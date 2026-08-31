@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { TodosScreen } from '../../../src/features/todos/TodosScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="할일"
-      legacyWebPath="/todos"
-      nativePath="/todos"
-      mode="NATIVE"
-    />
-  );
+  return <TodosScreen />;
 }

@@ -6,7 +6,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | Primary Menu | Secondary Menu | Web Path | Native Path | Source Component | API | Implementation Mode | Status | QA |
 |---|---|---|---|---|---|---|---|---|
 | 할일 및 알림 | 오늘의 TA | /ta-call | /ta-call | PlaceholderScreen | TBD | NATIVE | NOT_STARTED | |
-| 할일 및 알림 | 할일 | /todos | /todos | PlaceholderScreen | TBD | NATIVE | NOT_STARTED | |
+| 할일 및 알림 | 할일 | /todos | /todos | TodosScreen / TodoFormScreen | GET/POST /api/todos, PATCH/DELETE /api/todos/:id, PATCH complete/reopen | NATIVE | IN_PROGRESS | Android: filters/list/create/edit/delete/complete/reopen/customer link |
 | 할일 및 알림 | 메모 | /memo | /memo | PlaceholderScreen | TBD | NATIVE | NOT_STARTED | |
 | 할일 및 알림 | 알림 | /notifications | /notifications | PlaceholderScreen | TBD | NATIVE | NOT_STARTED | |
 | 고객관리 | 고객리스트 | /customers | /customers | CustomersScreen | GET/POST /api/customers, GET/PUT/DELETE /api/customers/:id | NATIVE | IN_PROGRESS | Android: list/search/favorite/detail/create/edit/delete/call/SMS |
