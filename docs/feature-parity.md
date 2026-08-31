@@ -20,8 +20,8 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 신청서 | 신청서 작성내역 | /application/documents/history | /application/documents/history | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 신청서 | 렌트(사고대차) | # | /placeholder/rent | PlaceholderScreen | — | DISABLED | NOT_STARTED | |
 | 팀관리 | 팀원리스트 | /team/members | /team/members | TeamMembersScreen | members/create/join/kick/transfer/leave/disband team APIs | NATIVE | IN_PROGRESS | Android: no-team setup/member roles/owner actions/storage |
-| 팀관리 | 팀 게시판 | /team/posts | /team/posts | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
-| 팀관리 | 팀 자료 | /team/files | /team/files | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
+| 팀관리 | 팀 게시판 | /team/posts | /team/posts | TeamPostsScreen | posts/comments/presigned attachment team APIs | NATIVE | IN_PROGRESS | Android: list/create/edit/notice permission/comments/image·PDF upload/open |
+| 팀관리 | 팀 자료 | /team/files | /team/files | TeamFilesScreen | GET /api/teams/files, GET /api/teams/members | NATIVE | IN_PROGRESS | Android: file list/open/team storage usage |
 | 업무편의 | 문자 발송 | /sms/settings | /sms/settings | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |

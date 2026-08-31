@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../../src/navigation/MenuRouteScreen';
+import { TeamFilesScreen } from '../../../../src/features/team/TeamFilesScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="팀 자료"
-      legacyWebPath="/team/files"
-      nativePath="/team/files"
-      mode="WEBVIEW_TEMP"
-    />
-  );
+  return <TeamFilesScreen />;
 }
