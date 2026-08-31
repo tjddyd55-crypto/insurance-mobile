@@ -264,7 +264,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '설계사이트',
         legacyWebPath: '/insurance/insurer-sites',
         nativePath: '/insurance/insurer-sites',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
     ],
   },
