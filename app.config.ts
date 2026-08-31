@@ -1,6 +1,6 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-type AppVariant = 'development' | 'production';
+type AppVariant = 'development' | 'device' | 'production';
 
 function resolveVariant(): AppVariant {
   const raw = String(process.env.APP_VARIANT ?? process.env.EXPO_PUBLIC_APP_ENV ?? 'development')
@@ -8,6 +8,9 @@ function resolveVariant(): AppVariant {
     .toLowerCase();
   if (raw === 'production' || raw === 'prod') {
     return 'production';
+  }
+  if (raw === 'device' || raw === 'local-device') {
+    return 'device';
   }
   return 'development';
 }
@@ -22,19 +25,23 @@ function resolveVariant(): AppVariant {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = resolveVariant();
   const isDev = variant === 'development';
+  const isDevice = variant === 'device';
+  const displayName = isDevice ? 'ONE FC NATIVE DEV' : isDev ? 'ONE FC DEV' : 'ONE FC';
+  const scheme = isDevice ? 'onefc-native-dev' : isDev ? 'onefc-dev' : 'onefc';
+  const applicationId = isDevice ? 'com.onefc.app.native.dev' : isDev ? 'com.onefc.app.dev' : 'com.onefc.app';
 
   const expoConfig: ExpoConfig = {
     ...config,
-    name: isDev ? 'ONE FC DEV' : 'ONE FC',
+    name: displayName,
     slug: 'one-fc-native',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon-prod.png',
-    scheme: isDev ? 'onefc-dev' : 'onefc',
+    scheme,
     userInterfaceStyle: 'light',
     ios: {
       supportsTablet: false,
-      bundleIdentifier: isDev ? 'com.onefc.app.dev' : 'com.onefc.app',
+      bundleIdentifier: applicationId,
       buildNumber: '1',
       infoPlist: {
         NSCameraUsageDescription:
@@ -46,7 +53,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
     },
     android: {
-      package: isDev ? 'com.onefc.app.dev' : 'com.onefc.app',
+      package: applicationId,
       versionCode: 1,
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon-prod.png',
@@ -75,7 +82,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       appVariant: variant,
-      isDevApp: isDev,
+      isDevApp: variant !== 'production',
       eas: {
         projectId: process.env.EAS_PROJECT_ID || undefined,
       },

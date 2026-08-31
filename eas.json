@@ -4,6 +4,22 @@
     "appVersionSource": "local"
   },
   "build": {
+    "device": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "native-device-development",
+      "env": {
+        "APP_VARIANT": "device",
+        "EXPO_PUBLIC_APP_ENV": "development"
+      },
+      "android": {
+        "buildType": "apk",
+        "applicationId": "com.onefc.app.native.dev"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal",
