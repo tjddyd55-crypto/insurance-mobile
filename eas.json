@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "native-development",
+      "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_APP_ENV": "development"
+      },
+      "android": {
+        "buildType": "apk",
+        "applicationId": "com.onefc.app.dev"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "native-preview",
+      "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_APP_ENV": "development"
+      },
+      "android": {
+        "buildType": "apk",
+        "applicationId": "com.onefc.app.dev"
+      }
+    }
+  }
+}
