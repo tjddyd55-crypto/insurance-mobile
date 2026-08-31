@@ -300,7 +300,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '문의요청',
         legacyWebPath: '/feature-request',
         nativePath: '/feature-request',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
     ],
   },

@@ -29,7 +29,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 내정보 | 내 저장공간 | /storage | /storage | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 내정보 | 내정보관리 | /profile | /profile | ProfileScreen | GET/PATCH /api/me, phone change verification | NATIVE | IN_PROGRESS | Android: identity/name/verified phone/password reset entry |
 | 내정보 | 구독 및 결제 | /billing/checkout | /billing | PlaceholderScreen | (no Toss in M1) | NATIVE | NOT_STARTED | |
-| 내정보 | 문의요청 | /feature-request | /feature-request | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
+| 내정보 | 문의요청 | /feature-request | /feature-request | FeatureRequestsScreen | my request CRUD/comments APIs | NATIVE | IN_PROGRESS | Android: list/create/delete/status/lazy answer loading |
 
 ## Auth (Foundation)
 
