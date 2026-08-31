@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { BillingScreen } from '../../../src/features/billing/BillingScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="구독 및 결제"
-      legacyWebPath="/billing/checkout"
-      nativePath="/billing"
-      mode="NATIVE"
-    />
-  );
+  return <BillingScreen />;
 }
