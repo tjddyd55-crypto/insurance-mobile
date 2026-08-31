@@ -214,7 +214,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '팀원리스트',
         legacyWebPath: '/team/members',
         nativePath: '/team/members',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'team-posts',
