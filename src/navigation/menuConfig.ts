@@ -257,7 +257,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '계정관리',
         legacyWebPath: '/insurance/account-credentials',
         nativePath: '/insurance/account-credentials',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'insurer-sites',
