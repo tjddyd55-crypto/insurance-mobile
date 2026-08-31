@@ -26,7 +26,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | InsuranceContactsScreen | GET /api/company/list | NATIVE | IN_PROGRESS | Android: category/search/company/manager/call/copy |
 | 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | AccountVaultScreen | CRUD /api/user-insurer-accounts | NATIVE | IN_PROGRESS | Android: categories/create/edit/delete/masked reveal/copy; no local credential persistence |
 | 업무편의 | 설계사이트 | /insurance/insurer-sites | /insurance/insurer-sites | InsurerSitesScreen | GET /api/insurer-sites | NATIVE | IN_PROGRESS | Android: life/non-life tabs/logo/sales/home/disclosure links |
-| 내정보 | 내 저장공간 | /storage | /storage | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
+| 내정보 | 내 저장공간 | /storage | /storage | StorageScreen | folders/files/quota/presign/open-token storage APIs | NATIVE | IN_PROGRESS | Android: folder browse/create/rename/delete, file upload/open/rename/delete, quota |
 | 내정보 | 내정보관리 | /profile | /profile | ProfileScreen | GET/PATCH /api/me, phone change verification | NATIVE | IN_PROGRESS | Android: identity/name/verified phone/password reset entry |
 | 내정보 | 구독 및 결제 | /billing/checkout | /billing | PlaceholderScreen | (no Toss in M1) | NATIVE | NOT_STARTED | |
 | 내정보 | 문의요청 | /feature-request | /feature-request | FeatureRequestsScreen | my request CRUD/comments APIs | NATIVE | IN_PROGRESS | Android: list/create/delete/status/lazy answer loading |

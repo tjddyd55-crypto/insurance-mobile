@@ -1,0 +1,20 @@
+import { ApiError, apiRequest, resolveApiUrl } from '../../api/client';
+import { normalizeStorageFile, normalizeStorageFolder, normalizeStorageQuota } from './storageModel';
+import type { StorageFile, StorageFolder, StorageQuota } from './types';
+function tokenOf(token: string | null) { if (!token?.trim()) throw new ApiError('로그인이 필요합니다.', 401); return token; }
+export async function listStorageFolders(token: string | null): Promise<StorageFolder[]> { const rows = await apiRequest<unknown[]>('/api/storage/folders', { token: tokenOf(token) }); return rows.map(normalizeStorageFolder).filter((row): row is StorageFolder => Boolean(row)); }
+export async function createStorageFolder(token: string | null, name: string, parentId: number | null): Promise<void> { await apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) }); }
+export async function renameStorageFolder(token: string | null, id: number, name: string): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ name: name.trim() }) }); }
+export async function deleteStorageFolder(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
+export async function listStorageFiles(token: string | null, folderId: number | null): Promise<StorageFile[]> { const path = folderId == null ? '/api/storage/files' : `/api/storage/files?folderId=${folderId}`; const rows = await apiRequest<unknown[]>(path, { token: tokenOf(token) }); return rows.map(normalizeStorageFile).filter((row): row is StorageFile => Boolean(row)); }
+export async function getStorageQuota(token: string | null): Promise<StorageQuota> { return normalizeStorageQuota(await apiRequest('/api/storage/quota', { token: tokenOf(token) })); }
+export async function renameStorageFile(token: string | null, id: number, displayName: string): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ displayName: displayName.trim() }) }); }
+export async function deleteStorageFile(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
+export async function createStorageOpenUrl(token: string | null, id: number): Promise<string> { const result = await apiRequest<{ openUrl: string }>(`/api/storage/files/${id}/open-token`, { method: 'POST', token: tokenOf(token), body: JSON.stringify({}) }); return resolveApiUrl(result.openUrl); }
+export async function uploadStorageFile(token: string | null, asset: { uri: string; name: string; mimeType?: string | null; size?: number }, folderId: number | null): Promise<void> {
+  const blob = await fetch(asset.uri).then((response) => response.blob()); const contentType = asset.mimeType || blob.type || 'application/octet-stream';
+  const presign = await apiRequest<{ fileId: number; uploadUrl: string; fileUrl: string; objectKey: string; putHeaders?: Record<string, string> }>('/api/storage/files/presign', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ fileName: asset.name, contentType, size: asset.size ?? blob.size, customerId: null }) });
+  const put = await fetch(presign.uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType, ...(presign.putHeaders ?? {}) }, body: blob });
+  if (!put.ok) { await apiRequest('/api/storage/files/upload-fail', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ fileId: presign.fileId }) }).catch(() => undefined); throw new ApiError('파일 업로드에 실패했습니다.', put.status); }
+  await apiRequest('/api/storage/files', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ fileId: presign.fileId, fileName: asset.name, displayName: asset.name, objectKey: presign.objectKey, fileUrl: presign.fileUrl, size: asset.size ?? blob.size, mimeType: contentType, content: '', folderId, customerId: null }) });
+}

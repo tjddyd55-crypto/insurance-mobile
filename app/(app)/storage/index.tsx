@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { StorageScreen } from '../../../src/features/storage/StorageScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="내 저장공간"
-      legacyWebPath="/storage"
-      nativePath="/storage"
-      mode="WEBVIEW_TEMP"
-    />
-  );
+  return <StorageScreen />;
 }

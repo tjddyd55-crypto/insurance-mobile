@@ -279,7 +279,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '내 저장공간',
         legacyWebPath: '/storage',
         nativePath: '/storage',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'profile',
