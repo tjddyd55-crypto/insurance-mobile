@@ -250,7 +250,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '원수사 연락처',
         legacyWebPath: '/insurance/contacts',
         nativePath: '/insurance/contacts',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'account-credentials',
