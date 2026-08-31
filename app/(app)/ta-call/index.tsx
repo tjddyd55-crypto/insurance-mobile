@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { TaCallScreen } from '../../../src/features/ta-call/TaCallScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="오늘의 TA"
-      legacyWebPath="/ta-call"
-      nativePath="/ta-call"
-      mode="NATIVE"
-    />
-  );
+  return <TaCallScreen />;
 }
