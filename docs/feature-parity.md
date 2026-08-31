@@ -16,8 +16,8 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 고객관리 | 청구관리 | /claim-requests | /claim-requests | ClaimsScreen | 고객연결 링크·청구 목록/상세·첨부 열기·상태/이력·확인 후 알림톡 | NATIVE | NATIVE | 외부 발송은 사용자 확인 필수 |
 | 소식지 | 원수사소식지 | /portal/newsletters | /portal/newsletters | NewslettersScreen | 보험사 필터·검색·상세·이미지/첨부/외부링크 | NATIVE | NATIVE | 서버 HTML은 안전한 일반 텍스트로 렌더링 |
 | 소식지 | 손해사정사 소식지 | /portal/adjuster-news | /portal/adjuster-news | NewslettersScreen | 채널 분리·검색·상세·이미지/첨부/외부링크 | NATIVE | NATIVE | LOSS_ADJUSTER 채널 고정 |
-| 신청서 | 신청서 작성 | /application/documents | /application/documents | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
-| 신청서 | 신청서 작성내역 | /application/documents/history | /application/documents/history | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
+| 신청서 | 신청서 작성 | /application/documents | /application/documents | ApplicationDocumentsScreen | 동적 템플릿·고객 자동매핑·필수값 검증·PDF 발급/공유 | NATIVE | NATIVE | 발급 시 서버 이력 생성 |
+| 신청서 | 신청서 작성내역 | /application/documents/history | /application/documents/history | ApplicationHistoryScreen | 검색·원본 PDF 공유·입력값 불러오기/재발급 | NATIVE | NATIVE | Expo FileSystem 임시 캐시 사용 |
 | 신청서 | 렌트(사고대차) | # | /placeholder/rent | PlaceholderScreen | — | DISABLED | NOT_STARTED | |
 | 팀관리 | 팀원리스트 | /team/members | /team/members | TeamMembersScreen | members/create/join/kick/transfer/leave/disband team APIs | NATIVE | IN_PROGRESS | Android: no-team setup/member roles/owner actions/storage |
 | 팀관리 | 팀 게시판 | /team/posts | /team/posts | TeamPostsScreen | posts/comments/presigned attachment team APIs | NATIVE | IN_PROGRESS | Android: list/create/edit/notice permission/comments/image·PDF upload/open |

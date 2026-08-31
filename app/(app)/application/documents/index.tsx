@@ -1,12 +1,8 @@
-import { MenuRouteScreen } from '../../../../src/navigation/MenuRouteScreen';
+import { useLocalSearchParams } from 'expo-router';
+import { ApplicationDocumentsScreen } from '../../../../src/features/application-documents/ApplicationDocumentsScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="신청서 작성"
-      legacyWebPath="/application/documents"
-      nativePath="/application/documents"
-      mode="WEBVIEW_TEMP"
-    />
-  );
+  const params = useLocalSearchParams<{ sourceIssuanceId?: string }>();
+  const sourceId = Number(params.sourceIssuanceId);
+  return <ApplicationDocumentsScreen sourceIssuanceId={Number.isInteger(sourceId) && sourceId > 0 ? sourceId : null} />;
 }

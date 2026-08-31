@@ -1,0 +1,6 @@
+import type { CustomerRecord } from '../customers/types';
+import type { PdfField } from './types';
+export function orderedInputFields(fields: PdfField[]): PdfField[] { return [...fields].filter((field) => field.inputRole !== 'disabled').sort((a, b) => (a.inputOrder ?? a.orderIndex) - (b.inputOrder ?? b.orderIndex)); }
+export function customerValue(customer: CustomerRecord | null, field: PdfField): string { if (!customer || field.dataMapping.dataSourceType !== 'customer' || !field.dataMapping.customerFieldKey) return field.dataMapping.fallbackText ?? ''; const key = field.dataMapping.customerFieldKey; const value = (customer as unknown as Record<string, unknown>)[key] ?? (customer.notes as unknown as Record<string, unknown>)[key]; return typeof value === 'string' || typeof value === 'number' ? String(value) : field.dataMapping.fallbackText ?? ''; }
+export function formatPdfBytes(bytes: number): string { if (!Number.isFinite(bytes) || bytes <= 0) return '—'; return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`; }
+export function safePdfFileName(code: string, id: number): string { return `${code.replace(/[^a-z0-9_-]/gi, '_') || 'onefc-document'}-${id}.pdf`; }

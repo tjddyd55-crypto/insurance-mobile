@@ -183,14 +183,14 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '신청서 작성',
         legacyWebPath: '/application/documents',
         nativePath: '/application/documents',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'application-history',
         label: '신청서 작성내역',
         legacyWebPath: '/application/documents/history',
         nativePath: '/application/documents/history',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'rent-placeholder',
