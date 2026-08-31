@@ -27,7 +27,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 업무편의 | 설계사이트 | /insurance/insurer-sites | /insurance/insurer-sites | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 내정보 | 내 저장공간 | /storage | /storage | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
-| 내정보 | 내정보관리 | /profile | /profile | PlaceholderScreen | /api/me | NATIVE | NOT_STARTED | |
+| 내정보 | 내정보관리 | /profile | /profile | ProfileScreen | GET/PATCH /api/me, phone change verification | NATIVE | IN_PROGRESS | Android: identity/name/verified phone/password reset entry |
 | 내정보 | 구독 및 결제 | /billing/checkout | /billing | PlaceholderScreen | (no Toss in M1) | NATIVE | NOT_STARTED | |
 | 내정보 | 문의요청 | /feature-request | /feature-request | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 

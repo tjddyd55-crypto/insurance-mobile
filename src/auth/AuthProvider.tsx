@@ -29,6 +29,7 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
   handleUnauthorized: () => Promise<void>;
+  updateUser: (patch: Partial<AuthUser>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -105,6 +106,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearLocalSession();
   }, [clearLocalSession]);
 
+  const updateUser = useCallback(async (patch: Partial<AuthUser>) => {
+    if (!token || !user) return;
+    const next = { ...user, ...patch };
+    await saveAuthSession({ token, user: next });
+    setUser(next);
+  }, [token, user]);
+
   useEffect(() => {
     void restoreSession();
   }, [restoreSession]);
@@ -126,8 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       restoreSession,
       handleUnauthorized,
+      updateUser,
     }),
-    [status, user, token, login, logout, restoreSession, handleUnauthorized],
+    [status, user, token, login, logout, restoreSession, handleUnauthorized, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

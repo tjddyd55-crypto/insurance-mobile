@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { ProfileScreen } from '../../../src/features/profile/ProfileScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="내정보관리"
-      legacyWebPath="/profile"
-      nativePath="/profile"
-      mode="NATIVE"
-    />
-  );
+  return <ProfileScreen />;
 }
