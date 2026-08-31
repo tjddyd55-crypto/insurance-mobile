@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { DrawerContentScrollView } from '@react-navigation/drawer';
-import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { DrawerContentScrollView, type DrawerContentComponentProps } from 'expo-router/drawer';
 
 import { useAuth } from '../auth/AuthProvider';
 import { Badge } from '../components/Badge';

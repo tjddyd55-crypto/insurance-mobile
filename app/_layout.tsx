@@ -8,10 +8,17 @@ import { useEffect } from 'react';
 import { createAppQueryClient } from '../src/api/queryClient';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { LoadingState } from '../src/components/LoadingState';
+import { getEnvironmentConfig } from '../src/config/environment';
+import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 
 void SplashScreen.preventAutoHideAsync();
 
 const queryClient = createAppQueryClient();
+
+function ThemedStatusBar() {
+  const { resolvedScheme } = useDesignSystem();
+  return <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />;
+}
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -23,8 +30,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
     const inAuthGroup = segments[0] === '(auth)';
+    const isDevDesignSystem =
+      getEnvironmentConfig().isDevApp && segments[0] === 'design-system';
 
-    if (status === 'anonymous' && !inAuthGroup) {
+    if (status === 'anonymous' && !inAuthGroup && !isDevDesignSystem) {
       router.replace('/(auth)/login');
     } else if (status === 'authenticated' && inAuthGroup) {
       router.replace('/(app)');
@@ -42,18 +51,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <StatusBar style="dark" />
-          <AuthGate>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(app)" />
-              <Stack.Screen name="index" />
-            </Stack>
-          </AuthGate>
-        </AuthProvider>
-      </QueryClientProvider>
+      <DesignSystemProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <ThemedStatusBar />
+            <AuthGate>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(app)" />
+                <Stack.Screen name="index" />
+                <Stack.Screen name="design-system" />
+              </Stack>
+            </AuthGate>
+          </AuthProvider>
+        </QueryClientProvider>
+      </DesignSystemProvider>
     </GestureHandlerRootView>
   );
 }
