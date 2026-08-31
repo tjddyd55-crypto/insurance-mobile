@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../../src/navigation/MenuRouteScreen';
+import { NewslettersScreen } from '../../../../src/features/newsletters/NewslettersScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="손해사정사 소식지"
-      legacyWebPath="/portal/adjuster-news"
-      nativePath="/portal/adjuster-news"
-      mode="WEBVIEW_TEMP"
-    />
-  );
+  return <NewslettersScreen channel="LOSS_ADJUSTER" />;
 }
