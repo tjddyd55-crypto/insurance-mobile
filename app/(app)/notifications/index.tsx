@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { NotificationsScreen } from '../../../src/features/notifications/NotificationsScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="알림"
-      legacyWebPath="/notifications"
-      nativePath="/notifications"
-      mode="NATIVE"
-    />
-  );
+  return <NotificationsScreen />;
 }
