@@ -9,7 +9,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 할일 및 알림 | 할일 | /todos | /todos | PlaceholderScreen | TBD | NATIVE | NOT_STARTED | |
 | 할일 및 알림 | 메모 | /memo | /memo | PlaceholderScreen | TBD | NATIVE | NOT_STARTED | |
 | 할일 및 알림 | 알림 | /notifications | /notifications | PlaceholderScreen | TBD | NATIVE | NOT_STARTED | |
-| 고객관리 | 고객리스트 | /customers | /customers | CustomersScreen | GET /api/customers, GET/PUT /api/customers/:id | NATIVE | IN_PROGRESS | Android: list/search/favorite/detail/call/SMS |
+| 고객관리 | 고객리스트 | /customers | /customers | CustomersScreen | GET/POST /api/customers, GET/PUT/DELETE /api/customers/:id | NATIVE | IN_PROGRESS | Android: list/search/favorite/detail/create/edit/delete/call/SMS |
 | 고객관리 | 고객 지도 | /customers/map | /customers/map | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 고객관리 | 카드 수납 | /premium-payments | /premium-payments | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 고객관리 | 고객소식지 | /claim-requests?claimTab=news-all | /claim-requests/news | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |

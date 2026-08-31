@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -18,18 +19,18 @@ import {
 import { customerMatchesSearch } from './customerModel';
 import { listCustomers, setCustomerFavorite } from './customersApi';
 import { CustomerListCard } from './CustomerListCard';
+import { customerQueryKeys } from './queryKeys';
 import type { CustomerRecord, ListCustomersResult } from './types';
-
-export const customerQueryKey = (token: string | null) => ['customers', token] as const;
 
 export function CustomersScreen() {
   const { token } = useAuth();
+  const router = useRouter();
   const theme = useAppTheme();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const query = useQuery({
-    queryKey: customerQueryKey(token),
+    queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
     enabled: Boolean(token),
   });
@@ -37,7 +38,7 @@ export function CustomersScreen() {
     mutationFn: ({ customerId, isFavorite }: { customerId: number; isFavorite: boolean }) =>
       setCustomerFavorite(token, customerId, isFavorite),
     onSuccess: (updated) => {
-      queryClient.setQueryData<ListCustomersResult>(customerQueryKey(token), (previous) =>
+      queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) =>
         previous
           ? {
               ...previous,
@@ -98,12 +99,19 @@ export function CustomersScreen() {
                     ? `${customers.length}명 검색됨`
                     : `전체 ${query.data?.total ?? customers.length}명`}
                 </AppText>
-                <Button
-                  label={favoritesOnly ? '전체 보기' : '중요 고객만'}
-                  size="sm"
-                  variant={favoritesOnly ? 'primary' : 'secondary'}
-                  onPress={() => setFavoritesOnly((value) => !value)}
-                />
+                <Inline>
+                  <Button
+                    label={favoritesOnly ? '전체 보기' : '중요 고객만'}
+                    size="sm"
+                    variant={favoritesOnly ? 'primary' : 'secondary'}
+                    onPress={() => setFavoritesOnly((value) => !value)}
+                  />
+                  <Button
+                    label="고객 등록"
+                    size="sm"
+                    onPress={() => router.push('/customers/new')}
+                  />
+                </Inline>
               </Inline>
               {favoriteMutation.isError ? (
                 <AppText variant="caption" color="danger">

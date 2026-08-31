@@ -51,6 +51,7 @@ export function TextField({
         editable={editable}
         style={[
           styles.input,
+          rest.multiline && styles.multiline,
           focused && styles.inputFocused,
           error && styles.inputError,
           !editable && styles.inputDisabled,
@@ -94,5 +95,10 @@ function createStyles(theme: AppTheme) {
     inputFocused: { borderColor: theme.colors.inputFocusBorder, borderWidth: 2 },
     inputError: { borderColor: theme.colors.danger },
     inputDisabled: { backgroundColor: theme.colors.disabledBackground, color: theme.colors.textDisabled },
+    multiline: {
+      minHeight: 112,
+      paddingVertical: theme.spacing.md,
+      textAlignVertical: 'top',
+    },
   });
 }

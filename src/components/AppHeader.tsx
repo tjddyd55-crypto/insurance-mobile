@@ -11,9 +11,15 @@ type AppHeaderProps = {
   title: string;
   showMenu?: boolean;
   showBack?: boolean;
+  onBackPress?: () => void;
 };
 
-export function AppHeader({ title, showMenu = true, showBack = false }: AppHeaderProps) {
+export function AppHeader({
+  title,
+  showMenu = true,
+  showBack = false,
+  onBackPress,
+}: AppHeaderProps) {
   const navigation = useNavigation() as ReturnType<typeof useNavigation> & { openDrawer: () => void };
   const router = useRouter();
   const { user } = useAuth();
@@ -29,7 +35,7 @@ export function AppHeader({ title, showMenu = true, showBack = false }: AppHeade
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="뒤로 가기"
-              onPress={() => router.back()}
+              onPress={() => (onBackPress ? onBackPress() : router.back())}
               style={styles.menuButton}
             >
               <AppText style={styles.backIcon}>‹</AppText>

@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
@@ -18,8 +20,8 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { customerGenderLabel, formatCustomerPhone } from './customerModel';
-import { getCustomer, setCustomerFavorite } from './customersApi';
-import { customerQueryKey } from './CustomersScreen';
+import { deleteCustomer, getCustomer, setCustomerFavorite } from './customersApi';
+import { customerQueryKeys } from './queryKeys';
 import type { ListCustomersResult } from './types';
 
 type CustomerDetailScreenProps = { customerId: number };
@@ -36,10 +38,12 @@ function phoneUrl(phone: string, scheme: 'tel' | 'sms'): string | null {
 
 export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) {
   const { token } = useAuth();
+  const router = useRouter();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
-  const queryKey = ['customer', token, customerId] as const;
+  const queryKey = customerQueryKeys.detail(customerId);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const query = useQuery({
     queryKey,
     queryFn: () => getCustomer(token, customerId),
@@ -49,7 +53,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
     mutationFn: (isFavorite: boolean) => setCustomerFavorite(token, customerId, isFavorite),
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKey, updated);
-      queryClient.setQueryData<ListCustomersResult>(customerQueryKey(token), (previous) =>
+      queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) =>
         previous
           ? {
               ...previous,
@@ -59,6 +63,21 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             }
           : previous,
       );
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCustomer(token, customerId),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey });
+      queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) =>
+        previous
+          ? {
+              total: Math.max(0, previous.total - 1),
+              customers: previous.customers.filter((item) => item.id !== customerId),
+            }
+          : previous,
+      );
+      router.replace('/customers');
     },
   });
 
@@ -118,6 +137,32 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   style={styles.grow}
                 />
               </Inline>
+              <Inline>
+                <Button
+                  label="정보 수정"
+                  variant="secondary"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/customers/[customerId]/edit',
+                      params: { customerId: String(customer.id) },
+                    })
+                  }
+                  style={styles.grow}
+                />
+                <Button
+                  label="고객 삭제"
+                  variant="danger"
+                  onPress={() => setDeleteOpen(true)}
+                  style={styles.grow}
+                />
+              </Inline>
+              {deleteMutation.isError ? (
+                <AppText variant="caption" color="danger">
+                  {deleteMutation.error instanceof Error
+                    ? deleteMutation.error.message
+                    : '고객을 삭제하지 못했습니다.'}
+                </AppText>
+              ) : null}
             </Stack>
           </Card>
 
@@ -158,6 +203,16 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
           </DetailSection>
         </ScrollView>
       )}
+      <ConfirmDialog
+        open={deleteOpen}
+        title="고객 삭제"
+        message={`${customer?.name ?? '이 고객'}의 정보와 연결된 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        tone="danger"
+        busy={deleteMutation.isPending}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() => deleteMutation.mutateAsync()}
+      />
     </View>
   );
 }
