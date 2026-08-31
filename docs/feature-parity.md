@@ -13,7 +13,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 고객관리 | 고객 지도 | /customers/map | /customers/map | CustomerMapScreen | GET /api/customers/map | NATIVE | IN_PROGRESS | Android: native map/markers/grouping/search/favorite/radius/unmapped list; Google Maps client key required |
 | 고객관리 | 카드 수납 | /premium-payments | /premium-payments | PremiumPaymentsScreen | 카드·수납대상 CRUD, 월 완료/재처리, 민감정보 마스킹·명시적 복사 | NATIVE | NATIVE | 카드 원문 기기 저장·로그 금지 |
 | 고객관리 | 고객소식지 | /claim-requests?claimTab=news-all | /claim-requests/news | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
-| 고객관리 | 청구관리 | /claim-requests | /claim-requests | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
+| 고객관리 | 청구관리 | /claim-requests | /claim-requests | ClaimsScreen | 고객연결 링크·청구 목록/상세·첨부 열기·상태/이력·확인 후 알림톡 | NATIVE | NATIVE | 외부 발송은 사용자 확인 필수 |
 | 소식지 | 원수사소식지 | /portal/newsletters | /portal/newsletters | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 소식지 | 손해사정사 소식지 | /portal/adjuster-news | /portal/adjuster-news | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 신청서 | 신청서 작성 | /application/documents | /application/documents | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |

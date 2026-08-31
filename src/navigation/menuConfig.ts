@@ -144,7 +144,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
               label: '청구관리',
               legacyWebPath: '/claim-requests',
               nativePath: '/claim-requests',
-              mode: 'WEBVIEW_TEMP',
+              mode: 'NATIVE',
             }),
           ]
         : []),

@@ -1,12 +1,7 @@
-import { MenuRouteScreen } from '../../../../src/navigation/MenuRouteScreen';
+import { useLocalSearchParams } from 'expo-router';
+import { ClaimsScreen } from '../../../../src/features/claims/ClaimsScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="고객 청구"
-      legacyWebPath="/customers/:id"
-      nativePath="/customers/[customerId]/claim-requests"
-      mode="NATIVE"
-    />
-  );
+  const params = useLocalSearchParams<{ customerId: string }>();
+  return <ClaimsScreen initialCustomerId={Number(params.customerId)} />;
 }

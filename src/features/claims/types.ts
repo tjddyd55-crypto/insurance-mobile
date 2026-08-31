@@ -1,0 +1,6 @@
+export type ClaimStatus = 'requested' | 'processing' | 'done' | 'rejected' | 'canceled';
+export type ClaimListItem = { id: number; customerId: number; deviceId: string; customerName: string; requesterName: string; requesterBirthDate: string; requesterPhone: string; status: ClaimStatus; title: string; memo: string; submittedAt: string | null; fileCount: number };
+export type ClaimFile = { id: number; storageKey: string; fileName: string; contentType: string; fileSize: number; sortOrder: number; uploadedAt: string | null; url: string; downloadUrl?: string };
+export type ClaimStatusLog = { id: number; fromStatus: ClaimStatus | null; toStatus: ClaimStatus; changedByUserId: string | null; changedAt: string | null; memo: string };
+export type ClaimDetail = ClaimListItem & { agentId: string; requestType: string; processedAt: string | null; files: ClaimFile[]; statusLogs: ClaimStatusLog[] };
+export type CustomerAppLink = { connectionState?: 'not_created' | 'link_created' | 'connected' | 'expired'; linkId?: number; linkCode?: string; agentCode?: string; connectUrl?: string; universalUrl?: string; customerId?: number; customerCode?: string; status?: string; createdAt?: string | null; expiresAt?: string | null; lastConnectedAt?: string | null; deviceCount?: number };

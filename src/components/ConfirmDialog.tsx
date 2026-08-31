@@ -13,7 +13,7 @@ export type ConfirmDialogProps = {
   tone?: 'default' | 'danger';
   /** SSOT: default false — backdrop must not auto-close confirm dialogs */
   closeOnBackdrop?: boolean;
-  onConfirm: () => void | Promise<void>;
+  onConfirm: () => unknown | Promise<unknown>;
   onCancel: () => void;
 };
 

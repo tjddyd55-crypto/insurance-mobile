@@ -156,6 +156,17 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   style={styles.grow}
                 />
               </Inline>
+              <Button
+                label="보험청구 관리"
+                variant="secondary"
+                fullWidth
+                onPress={() =>
+                  router.push({
+                    pathname: '/customers/[customerId]/claim-requests',
+                    params: { customerId: String(customer.id) },
+                  })
+                }
+              />
               {deleteMutation.isError ? (
                 <AppText variant="caption" color="danger">
                   {deleteMutation.error instanceof Error
