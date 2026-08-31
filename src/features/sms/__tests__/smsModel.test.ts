@@ -1,0 +1,2 @@
+import { detectSmsType, estimateSmsBytes, normalizeSmsSettings } from '../smsModel';
+describe('smsModel', () => { test('uses SMS byte rules', () => { expect(estimateSmsBytes('A가')).toBe(3); expect(detectSmsType('가'.repeat(46))).toBe('LMS'); }); test('normalizes safe provider defaults', () => { expect(normalizeSmsSettings({ configured: true, defaultSender: '0212345678' })).toMatchObject({ configured: true, realSendEnabled: false, defaultSender: '0212345678' }); }); });

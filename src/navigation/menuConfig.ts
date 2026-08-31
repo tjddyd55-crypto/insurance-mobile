@@ -243,7 +243,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '문자 발송',
         legacyWebPath: '/sms/settings',
         nativePath: '/sms/settings',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'insurance-contacts',

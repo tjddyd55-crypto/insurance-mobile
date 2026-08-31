@@ -22,7 +22,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 팀관리 | 팀원리스트 | /team/members | /team/members | TeamMembersScreen | members/create/join/kick/transfer/leave/disband team APIs | NATIVE | IN_PROGRESS | Android: no-team setup/member roles/owner actions/storage |
 | 팀관리 | 팀 게시판 | /team/posts | /team/posts | TeamPostsScreen | posts/comments/presigned attachment team APIs | NATIVE | IN_PROGRESS | Android: list/create/edit/notice permission/comments/image·PDF upload/open |
 | 팀관리 | 팀 자료 | /team/files | /team/files | TeamFilesScreen | GET /api/teams/files, GET /api/teams/members | NATIVE | IN_PROGRESS | Android: file list/open/team storage usage |
-| 업무편의 | 문자 발송 | /sms/settings | /sms/settings | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
+| 업무편의 | 문자 발송 | /sms/settings | /sms/settings | SmsScreen | SMS settings/send/templates/history/campaign/opt-out APIs | NATIVE | IN_PROGRESS | Android: Aligo settings/test/balance/opt-out, guarded single send, templates, history/reservation cancel |
 | 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | InsuranceContactsScreen | GET /api/company/list | NATIVE | IN_PROGRESS | Android: category/search/company/manager/call/copy |
 | 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | AccountVaultScreen | CRUD /api/user-insurer-accounts | NATIVE | IN_PROGRESS | Android: categories/create/edit/delete/masked reveal/copy; no local credential persistence |
 | 업무편의 | 설계사이트 | /insurance/insurer-sites | /insurance/insurer-sites | InsurerSitesScreen | GET /api/insurer-sites | NATIVE | IN_PROGRESS | Android: life/non-life tabs/logo/sales/home/disclosure links |
