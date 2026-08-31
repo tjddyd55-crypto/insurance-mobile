@@ -1,0 +1,2 @@
+import { formatWorkspaceBytes, newCustomerNoteId, todayYmd } from '../customerWorkspaceModel';
+describe('customerWorkspaceModel', () => { it('formats dates and sizes', () => { expect(todayYmd(new Date('2026-09-01T12:00:00+09:00'))).toBe('2026-09-01'); expect(formatWorkspaceBytes(1048576)).toBe('1.0 MB'); }); it('creates non-empty memo ids', () => { expect(newCustomerNoteId(1)).toMatch(/^memo-1-/); }); });

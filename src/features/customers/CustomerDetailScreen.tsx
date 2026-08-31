@@ -167,6 +167,29 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   })
                 }
               />
+              <Inline wrap>
+                <Button
+                  label="상담 이력"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => router.push(`/customers/${customer.id}/consultations`)}
+                  style={styles.grow}
+                />
+                <Button
+                  label="고객 메모"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => router.push(`/customers/${customer.id}/memos`)}
+                  style={styles.grow}
+                />
+                <Button
+                  label="고객 파일"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => router.push(`/customers/${customer.id}/files`)}
+                  style={styles.grow}
+                />
+              </Inline>
               {deleteMutation.isError ? (
                 <AppText variant="caption" color="danger">
                   {deleteMutation.error instanceof Error
