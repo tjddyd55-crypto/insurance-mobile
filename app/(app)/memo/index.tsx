@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { MemosScreen } from '../../../src/features/memos/MemosScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="메모"
-      legacyWebPath="/memo"
-      nativePath="/memo"
-      mode="NATIVE"
-    />
-  );
+  return <MemosScreen />;
 }
