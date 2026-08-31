@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { DrawerContentScrollView, type DrawerContentComponentProps } from 'expo-router/drawer';
 
 import { useAuth } from '../auth/AuthProvider';
-import { Badge } from '../components/Badge';
-import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { getEnvironmentConfig } from '../config/environment';
-import { colors, spacing, typography } from '../theme/tokens';
+import { AppText, Badge, Button, useAppTheme, type AppTheme } from '../design-system';
 import {
   filterMenuForRole,
   USER_APP_MENU,
@@ -20,6 +18,8 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const env = getEnvironmentConfig();
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,10 +40,10 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.brand}>{env.appDisplayName}</Text>
+        <AppText variant="title" color="brandStrong">{env.appDisplayName}</AppText>
         {env.isDevApp ? <Badge label="DEV" tone="warning" /> : null}
-        <Text style={styles.user}>{user?.displayName ?? user?.username ?? ''}</Text>
-        <Text style={styles.role}>{user?.role ?? ''}</Text>
+        <AppText>{user?.displayName ?? user?.username ?? ''}</AppText>
+        <AppText variant="caption">{user?.role ?? ''}</AppText>
       </View>
 
       <ScrollView style={styles.menuScroll}>
@@ -57,8 +57,8 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
                 }
                 style={styles.sectionHeader}
               >
-                <Text style={styles.sectionLabel}>{section.label}</Text>
-                <Text style={styles.chevron}>{isOpen ? '▾' : '▸'}</Text>
+                <AppText variant="label" style={styles.sectionLabel}>{section.label}</AppText>
+                <AppText color="textSecondary">{isOpen ? '▾' : '▸'}</AppText>
               </Pressable>
               {isOpen
                 ? section.children.map((child) => (
@@ -71,7 +71,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
                         (child.disabled || child.mode === 'DISABLED') && styles.linkDisabled,
                       ]}
                     >
-                      <Text style={styles.linkLabel}>{child.label}</Text>
+                      <AppText>{child.label}</AppText>
                       <View style={styles.linkMeta}>
                         {child.badge ? <Badge label={child.badge} tone="warning" /> : null}
                         {child.mode === 'WEBVIEW_TEMP' ? (
@@ -115,38 +115,17 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, paddingBottom: spacing.xl },
-  header: {
-    padding: spacing.lg,
-    gap: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  brand: { fontSize: 20, fontWeight: '800', color: colors.brandDark },
-  user: typography.body,
-  role: typography.caption,
-  menuScroll: { flex: 1 },
-  section: { paddingVertical: spacing.sm },
-  sectionHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.bgSoft,
-  },
-  sectionLabel: { ...typography.label, color: colors.textPrimary },
-  chevron: { color: colors.textSecondary },
-  link: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  linkDisabled: { opacity: 0.45 },
-  linkLabel: typography.body,
-  linkMeta: { flexDirection: 'row', gap: spacing.xs },
-  footer: { padding: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    container: { flexGrow: 1, paddingBottom: theme.spacing.xl, backgroundColor: theme.colors.surface },
+    header: { padding: theme.spacing.lg, gap: theme.spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border },
+    menuScroll: { flex: 1 },
+    section: { paddingVertical: theme.spacing.sm },
+    sectionHeader: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.colors.surfaceSubtle },
+    sectionLabel: { color: theme.colors.text },
+    link: { minHeight: theme.controlSize.minimumTouchTarget, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    linkDisabled: { opacity: theme.opacity.disabled },
+    linkMeta: { flexDirection: 'row', gap: theme.spacing.xs },
+    footer: { padding: theme.spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border },
+  });
+}

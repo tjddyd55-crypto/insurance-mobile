@@ -1,18 +1,17 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Link } from 'expo-router';
 
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
-import { Button } from '../../components/Button';
-import { Card } from '../../components/Card';
-import { TextInput } from '../../components/TextInput';
 import { getEnvironmentConfig } from '../../config/environment';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { AppText, Button, Card, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
 
 export function LoginForm() {
   const { login } = useAuth();
   const env = getEnvironmentConfig();
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -42,10 +41,10 @@ export function LoginForm() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.brand}>{env.appDisplayName}</Text>
-      <Text style={styles.subtitle}>Native client · Phase 1</Text>
+      <AppText variant="display" color="brandStrong" align="center">{env.appDisplayName}</AppText>
+      <AppText variant="caption" align="center" style={styles.subtitle}>ONE FC Native</AppText>
       <Card style={styles.card}>
-        <TextInput
+        <TextField
           label="아이디"
           autoCapitalize="none"
           autoCorrect={false}
@@ -53,54 +52,39 @@ export function LoginForm() {
           onChangeText={setUsername}
           editable={!loading}
         />
-        <TextInput
+        <TextField
           label="비밀번호"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
           editable={!loading}
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <AppText color="danger">{error}</AppText> : null}
         <Button label="로그인" loading={loading} onPress={() => void onSubmit()} />
         <View style={styles.links}>
           <Link href="/(auth)/register" style={styles.link}>
             회원가입
           </Link>
-          <Text style={styles.dot}>·</Text>
+          <AppText color="textMuted">·</AppText>
           <Link href="/(auth)/password-reset" style={styles.link}>
             비밀번호 재설정
           </Link>
         </View>
-        <Text style={styles.envHint}>API: {env.apiBaseUrl}</Text>
+        <Stack gap="xxs">
+          <AppText variant="caption" color="textMuted" align="center">API: {env.apiBaseUrl}</AppText>
+          {env.isDevApp ? <AppText variant="caption" color="warningText" align="center">개발 서버 연결</AppText> : null}
+        </Stack>
       </Card>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.bgBase,
-    gap: spacing.sm,
-  },
-  brand: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.brandDark,
-    textAlign: 'center',
-  },
-  subtitle: { ...typography.caption, textAlign: 'center', marginBottom: spacing.md },
-  card: { gap: spacing.md },
-  error: { color: colors.danger, fontSize: 13 },
-  links: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  link: { color: colors.primary, fontWeight: '600' },
-  dot: { color: colors.textMuted },
-  envHint: { ...typography.caption, textAlign: 'center', color: colors.textMuted },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    wrap: { flex: 1, justifyContent: 'center', padding: theme.spacing.xl, backgroundColor: theme.colors.background, gap: theme.spacing.sm },
+    subtitle: { marginBottom: theme.spacing.md },
+    card: { gap: theme.spacing.md },
+    links: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: theme.spacing.sm },
+    link: { color: theme.colors.primary, fontWeight: '600' },
+  });
+}

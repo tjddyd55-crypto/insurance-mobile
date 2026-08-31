@@ -1,8 +1,7 @@
-import { useEffect } from 'react';
-import { BackHandler, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { BackHandler, Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '../theme/tokens';
-import { Button } from './Button';
+import { AppText, Button, useAppTheme, type AppTheme } from '../design-system';
 
 export type ConfirmDialogProps = {
   open: boolean;
@@ -36,6 +35,8 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   useEffect(() => {
     if (!open) {
       return;
@@ -69,8 +70,8 @@ export function ConfirmDialog({
           }}
         />
         <View style={styles.panel}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
+          <AppText variant="heading">{title}</AppText>
+          <AppText color="textSecondary">{message}</AppText>
           <View style={styles.actions}>
             <Button
               label={cancelLabel}
@@ -94,21 +95,11 @@ export function ConfirmDialog({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  panel: {
-    backgroundColor: colors.bgSurface,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  title: typography.heading,
-  message: { ...typography.body, color: colors.textSecondary },
-  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  actionBtn: { flex: 1 },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: 'center', padding: theme.spacing.xl },
+    panel: { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg, padding: theme.spacing.xl, gap: theme.spacing.md },
+    actions: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
+    actionBtn: { flex: 1 },
+  });
+}
