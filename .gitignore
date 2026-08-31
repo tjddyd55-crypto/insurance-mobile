@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native builds
+build/
+android/app/build/
+ios/build/
+*.apk
+*.aab
+*.ipa
+
+# Tests / coverage
+coverage/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Signing / credentials
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+local.properties
+credentials.json
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.iml
+
+# Logs / misc
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+.turbo/
