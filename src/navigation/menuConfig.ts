@@ -124,7 +124,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '카드 수납',
         legacyWebPath: '/premium-payments',
         nativePath: '/premium-payments',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       ...(USER_MENU_FEATURE_FLAGS.customerManagementNewsletter
         ? [

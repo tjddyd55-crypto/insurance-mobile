@@ -11,7 +11,7 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 | 할일 및 알림 | 알림 | /notifications | /notifications | NotificationsScreen / NotificationSettingsScreen | GET/PATCH /api/notifications, read/dismiss/read-all/settings | NATIVE | IN_PROGRESS | Android: active/confirmed/grouping/read/confirm/customer link/settings |
 | 고객관리 | 고객리스트 | /customers | /customers | CustomersScreen | GET/POST /api/customers, GET/PUT/DELETE /api/customers/:id | NATIVE | IN_PROGRESS | Android: list/search/favorite/detail/create/edit/delete/call/SMS |
 | 고객관리 | 고객 지도 | /customers/map | /customers/map | CustomerMapScreen | GET /api/customers/map | NATIVE | IN_PROGRESS | Android: native map/markers/grouping/search/favorite/radius/unmapped list; Google Maps client key required |
-| 고객관리 | 카드 수납 | /premium-payments | /premium-payments | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
+| 고객관리 | 카드 수납 | /premium-payments | /premium-payments | PremiumPaymentsScreen | 카드·수납대상 CRUD, 월 완료/재처리, 민감정보 마스킹·명시적 복사 | NATIVE | NATIVE | 카드 원문 기기 저장·로그 금지 |
 | 고객관리 | 고객소식지 | /claim-requests?claimTab=news-all | /claim-requests/news | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 고객관리 | 청구관리 | /claim-requests | /claim-requests | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
 | 소식지 | 원수사소식지 | /portal/newsletters | /portal/newsletters | LegacyWebScreen | TBD | WEBVIEW_TEMP | WEBVIEW_TEMP | |
