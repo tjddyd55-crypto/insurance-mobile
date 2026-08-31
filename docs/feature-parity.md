@@ -37,8 +37,8 @@ Menu labels/order mirrored from insurance `buildAppMenuForSession` (USER).
 |---|---|---|---|---|---|
 | Login | /login | /(auth)/login | POST /api/auth/login | NATIVE | IN_PROGRESS |
 | Session | — | AuthProvider | GET /api/me | NATIVE | IN_PROGRESS |
-| Register entry | /register | /(auth)/register | POST /api/auth/register | NATIVE shell | NOT_STARTED |
-| Password reset | /password-reset | /(auth)/password-reset | /api/auth/request-password-reset-code, /api/auth/reset-password-by-sms | NATIVE shell | NOT_STARTED |
+| Register entry | /register | /(auth)/register | username availability, GA validate, signup phone verify, POST /api/auth/register | NATIVE | IN_PROGRESS |
+| Password reset | /password-reset | /(auth)/password-reset | /api/auth/request-password-reset-code, /api/auth/reset-password-by-sms | NATIVE | IN_PROGRESS |
 | Logout | client clear | AuthProvider.logout | no dedicated server endpoint | NATIVE | IN_PROGRESS |
 
 ## Status legend
