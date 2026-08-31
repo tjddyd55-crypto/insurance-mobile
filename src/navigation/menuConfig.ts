@@ -117,7 +117,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '고객 지도',
         legacyWebPath: '/customers/map',
         nativePath: '/customers/map',
-        mode: 'WEBVIEW_TEMP',
+        mode: 'NATIVE',
       }),
       link({
         id: 'premium-payments',
