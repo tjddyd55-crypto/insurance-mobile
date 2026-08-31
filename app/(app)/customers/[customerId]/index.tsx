@@ -1,12 +1,8 @@
-import { MenuRouteScreen } from '../../../../src/navigation/MenuRouteScreen';
+import { useLocalSearchParams } from 'expo-router';
+
+import { CustomerDetailScreen } from '../../../../src/features/customers/CustomerDetailScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="고객 상세"
-      legacyWebPath="/customers/:id"
-      nativePath="/customers/[customerId]"
-      mode="NATIVE"
-    />
-  );
+  const { customerId } = useLocalSearchParams<{ customerId?: string }>();
+  return <CustomerDetailScreen customerId={Number(customerId)} />;
 }

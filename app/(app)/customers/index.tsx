@@ -1,12 +1,5 @@
-import { MenuRouteScreen } from '../../../src/navigation/MenuRouteScreen';
+import { CustomersScreen } from '../../../src/features/customers/CustomersScreen';
 
 export default function Screen() {
-  return (
-    <MenuRouteScreen
-      title="고객리스트"
-      legacyWebPath="/customers"
-      nativePath="/customers"
-      mode="NATIVE"
-    />
-  );
+  return <CustomersScreen />;
 }
