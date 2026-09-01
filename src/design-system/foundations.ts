@@ -68,17 +68,52 @@ export const radius = {
   xs: 4,
   sm: 6,
   md: 8,
-  lg: 12,
+  lg: 14,
   xl: 16,
   xxl: 20,
   full: 999,
 } as const;
 
-export const controlSize = {
-  sm: 36,
-  md: 44,
-  lg: 52,
+/**
+ * Interaction metrics are intentionally independent from visual density.
+ * Compact controls may look smaller while their Pressable hit area remains 44px.
+ */
+export const interaction = {
   minimumTouchTarget: 44,
+  compactVisualSize: 36,
+  compactHitSlop: 4,
+} as const;
+
+export const controlSize = {
+  sm: interaction.compactVisualSize,
+  md: interaction.minimumTouchTarget,
+  lg: 52,
+  minimumTouchTarget: interaction.minimumTouchTarget,
+} as const;
+
+/** Semantic layout metrics shared by screen and overlay primitives. */
+export const layout = {
+  screenPaddingHorizontal: spacing.lg,
+  screenPaddingTop: spacing.lg,
+  sectionGap: spacing.md,
+  cardGap: spacing.md,
+  compactListGap: spacing.sm,
+  contentBottomInset: spacing.huge,
+  headerHeight: spacing.huge,
+  modalHeaderHeight: 64,
+  modalPadding: spacing.lg,
+} as const;
+
+/** Visual rhythm only. Interaction size continues to follow `interaction`. */
+export const density = {
+  compact: {
+    contentGap: spacing.sm,
+    controlVisualHeight: interaction.compactVisualSize,
+  },
+  normal: {
+    contentGap: spacing.md,
+    controlVisualHeight: interaction.minimumTouchTarget,
+  },
 } as const;
 
 export const typeScale = {
@@ -153,7 +188,10 @@ export const foundations = {
   palette,
   spacing,
   radius,
+  interaction,
   controlSize,
+  layout,
+  density,
   typeScale,
   fontWeight,
   lineHeight,

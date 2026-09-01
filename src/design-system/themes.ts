@@ -2,7 +2,10 @@ import type { TextStyle } from 'react-native';
 
 import {
   controlSize,
+  density,
   fontWeight,
+  interaction,
+  layout,
   lineHeight,
   motion,
   opacity,
@@ -132,6 +135,18 @@ function createTypography(colors: SemanticColors) {
       fontWeight: fontWeight.bold,
       color: colors.text,
     },
+    screenTitle: {
+      fontSize: typeScale.heading,
+      lineHeight: lineHeight.heading,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+    },
+    navigationTitle: {
+      fontSize: typeScale.body,
+      lineHeight: lineHeight.body,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+    },
     heading: {
       fontSize: typeScale.heading,
       lineHeight: lineHeight.heading,
@@ -141,6 +156,18 @@ function createTypography(colors: SemanticColors) {
     subheading: {
       fontSize: typeScale.subheading,
       lineHeight: lineHeight.subheading,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+    },
+    sectionTitle: {
+      fontSize: typeScale.subheading,
+      lineHeight: lineHeight.subheading,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+    },
+    cardTitle: {
+      fontSize: typeScale.body,
+      lineHeight: lineHeight.body,
       fontWeight: fontWeight.semibold,
       color: colors.text,
     },
@@ -168,10 +195,29 @@ function createTypography(colors: SemanticColors) {
       fontWeight: fontWeight.regular,
       color: colors.textSecondary,
     },
-    button: {
+    helper: {
+      fontSize: typeScale.caption,
+      lineHeight: lineHeight.caption,
+      fontWeight: fontWeight.regular,
+      color: colors.textMuted,
+    },
+    badge: {
+      fontSize: typeScale.caption,
+      lineHeight: lineHeight.caption,
+      fontWeight: fontWeight.bold,
+      color: colors.textSecondary,
+    },
+    numeric: {
       fontSize: typeScale.body,
       lineHeight: lineHeight.body,
       fontWeight: fontWeight.semibold,
+      fontVariant: ['tabular-nums'],
+      color: colors.text,
+    },
+    button: {
+      fontSize: typeScale.body,
+      lineHeight: lineHeight.body,
+      fontWeight: fontWeight.extraBold,
     },
   } as const satisfies Record<string, TextStyle>;
 }
@@ -184,7 +230,10 @@ function createTheme(scheme: ThemeScheme, colors: SemanticColors) {
     colors,
     spacing,
     radius,
+    interaction,
     controlSize,
+    layout,
+    density,
     typography: createTypography(colors),
     shadows,
     motion,

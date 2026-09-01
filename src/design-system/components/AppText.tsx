@@ -6,12 +6,19 @@ import type { SemanticColors } from '../themes';
 export type AppTextVariant =
   | 'display'
   | 'title'
+  | 'screenTitle'
+  | 'navigationTitle'
   | 'heading'
   | 'subheading'
+  | 'sectionTitle'
+  | 'cardTitle'
   | 'body'
   | 'bodyStrong'
   | 'label'
   | 'caption'
+  | 'helper'
+  | 'badge'
+  | 'numeric'
   | 'button';
 
 export type AppTextProps = TextProps & {

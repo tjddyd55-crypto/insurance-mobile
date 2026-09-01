@@ -1,4 +1,12 @@
-import { controlSize, darkTheme, lightTheme, spacing } from '..';
+import {
+  controlSize,
+  density,
+  darkTheme,
+  interaction,
+  layout,
+  lightTheme,
+  spacing,
+} from '..';
 
 describe('ONE FC design system', () => {
   it('uses a 4pt spacing grid for product layout tokens', () => {
@@ -13,6 +21,20 @@ describe('ONE FC design system', () => {
   it('keeps interactive controls at or above the minimum touch target', () => {
     expect(controlSize.md).toBeGreaterThanOrEqual(controlSize.minimumTouchTarget);
     expect(controlSize.lg).toBeGreaterThanOrEqual(controlSize.minimumTouchTarget);
+    expect(
+      controlSize.sm + interaction.compactHitSlop * 2,
+    ).toBeGreaterThanOrEqual(interaction.minimumTouchTarget);
+  });
+
+  it('separates compact visual density from interaction accessibility', () => {
+    expect(density.compact.controlVisualHeight).toBeLessThan(interaction.minimumTouchTarget);
+    expect(density.normal.controlVisualHeight).toBe(interaction.minimumTouchTarget);
+  });
+
+  it('defines semantic layout metrics on the spacing grid', () => {
+    expect(layout.screenPaddingHorizontal).toBe(spacing.lg);
+    expect(layout.compactListGap).toBe(spacing.sm);
+    expect(layout.headerHeight).toBe(interaction.minimumTouchTarget + spacing.xs);
   });
 
   it('defines every semantic color in both themes', () => {
