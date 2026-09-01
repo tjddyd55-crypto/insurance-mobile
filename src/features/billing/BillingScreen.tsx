@@ -6,8 +6,9 @@ import { AppHeader } from '../../components/AppHeader';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { AppText, Badge, Button, Card, Divider, Inline, Screen, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
-import { applyPromotion, cancelSubscription, changeCycle, confirmBillingAuth, getCheckoutSummary, getManageSummary, getQuote, requestPayment, resumeSubscription } from './billingApi';
+import { applyPromotion, billingCheckoutSummaryQueryKey, cancelSubscription, changeCycle, confirmBillingAuth, getCheckoutSummary, getManageSummary, getQuote, requestPayment, resumeSubscription } from './billingApi';
 import { billingMode, formatBillingDate, formatKrw, statusLabel } from './billingModel';
+import { hasActiveBillingEntitlement } from './billingEntitlement';
 import { TossBillingAuthModal } from './TossBillingAuthModal';
 import type { BillingCycle } from './types';
 
@@ -15,7 +16,7 @@ type Action = { type: 'pay' | 'promotion' | 'card' | 'cancel' | 'resume' } | { t
 
 export function BillingScreen() {
   const { token } = useAuth(); const client = useQueryClient(); const theme = useAppTheme(); const styles = useMemo(() => makeStyles(theme), [theme]); const [cycle, setCycle] = useState<BillingCycle>('monthly'); const [promo, setPromo] = useState(''); const [appliedPromo, setAppliedPromo] = useState<string | null>(null); const [action, setAction] = useState<Action>(null); const [authOpen, setAuthOpen] = useState(false); const [authIntent, setAuthIntent] = useState<'register' | 'charge'>('register'); const [notice, setNotice] = useState(''); const [error, setError] = useState('');
-  const summary = useQuery({ queryKey: ['billing', 'checkout'], queryFn: () => getCheckoutSummary(token), enabled: Boolean(token) }); const mode = billingMode(summary.data?.subscriptionStatus); const entitled = mode === 'active_paid' || mode === 'legacy_entitled' || Boolean(summary.data?.isEntitled); const planCode = summary.data?.plan?.code ?? 'insurance_basic';
+  const summary = useQuery({ queryKey: billingCheckoutSummaryQueryKey, queryFn: () => getCheckoutSummary(token), enabled: Boolean(token) }); const mode = billingMode(summary.data?.subscriptionStatus); const entitled = hasActiveBillingEntitlement(summary.data); const planCode = summary.data?.plan?.code ?? 'insurance_basic';
   useEffect(() => { if (summary.data?.billingCycle) setCycle(summary.data.billingCycle); }, [summary.data?.billingCycle]);
   const quote = useQuery({ queryKey: ['billing', 'quote', planCode, cycle, appliedPromo], queryFn: () => getQuote(token, planCode, cycle, appliedPromo), enabled: Boolean(token && summary.data && !entitled) }); const manage = useQuery({ queryKey: ['billing', 'manage'], queryFn: () => getManageSummary(token), enabled: Boolean(token && entitled) });
   const refresh = async () => { await Promise.all([summary.refetch(), entitled ? manage.refetch() : Promise.resolve()]); };

@@ -21,4 +21,17 @@ describe('billingStatusPill', () => {
       referral: null,
     })).toEqual({ label: '결제 필요', tone: 'danger' });
   });
+
+  test('does not label an expired trial as free use', () => {
+    expect(buildBillingStatusPill({
+      subscriptionStatus: 'trialing',
+      billingCycle: 'monthly',
+      trialEndsAt: '2026-09-21T00:00:00.000Z',
+      plan: null,
+      referral: null,
+    }, new Date('2026-09-21T15:00:00.000Z'))).toEqual({
+      label: '무료기간 종료',
+      tone: 'danger',
+    });
+  });
 });

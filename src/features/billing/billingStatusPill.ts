@@ -1,4 +1,5 @@
 import type { CheckoutSummary } from './types';
+import { evaluateBillingEntitlement } from './billingEntitlement';
 
 export type BillingStatusPillView = {
   label: string;
@@ -9,24 +10,38 @@ function formatDotDate(value?: string | null): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const month = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(kst.getUTCDate()).padStart(2, '0');
   return `${year}.${month}.${day}`;
 }
 
-export function buildBillingStatusPill(summary?: CheckoutSummary | null): BillingStatusPillView | null {
+export function buildBillingStatusPill(
+  summary?: CheckoutSummary | null,
+  now: Date = new Date(),
+): BillingStatusPillView | null {
   if (!summary) return null;
   const status = String(summary.subscriptionStatus ?? '').trim().toLowerCase();
+  const entitlement = evaluateBillingEntitlement(summary, now);
   if (status === 'trialing' || status === 'trial') {
+    if (!entitlement.entitled) {
+      return { label: '무료기간 종료', tone: 'danger' };
+    }
     const date = formatDotDate(summary.trialEndsAt);
     return { label: date ? `무료 이용 중 · ${date}까지` : '무료 이용 중', tone: 'primary' };
   }
   if (status === 'active_paid' || status === 'paid') {
+    if (!entitlement.entitled) {
+      return { label: '결제 필요', tone: 'danger' };
+    }
     const date = formatDotDate(summary.nextBillingAt ?? summary.currentPeriodEnd);
     return { label: date ? `유료 이용 중 · 다음 결제일 ${date}` : '유료 이용 중', tone: 'primary' };
   }
   if (status === 'legacy_active' || status === 'active' || status === 'free') {
+    if (!entitlement.entitled) {
+      return { label: '결제 필요', tone: 'danger' };
+    }
     return { label: '기존 이용자', tone: 'neutral' };
   }
   if (status === 'past_due') return { label: '결제 확인 필요', tone: 'warning' };
