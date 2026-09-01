@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../auth/AuthProvider';
@@ -10,6 +11,7 @@ import { buildBillingStatusPill } from '../features/billing/billingStatusPill';
 
 export function BillingStatusPill() {
   const { token, user } = useAuth();
+  const router = useRouter();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const query = useQuery({
@@ -21,10 +23,15 @@ export function BillingStatusPill() {
   const view = buildBillingStatusPill(query.data);
   if (!view) return null;
   return (
-    <View
-      accessible
-      accessibilityLabel={`결제 상태: ${view.label}`}
-      style={[styles.base, styles[view.tone]]}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`결제 상태: ${view.label}. 구독 및 결제로 이동`}
+      onPress={() => router.push('/billing')}
+      style={({ pressed }) => [
+        styles.base,
+        styles[view.tone],
+        pressed && styles.pressed,
+      ]}
     >
       <AppText
         variant="badge"
@@ -33,7 +40,7 @@ export function BillingStatusPill() {
       >
         {view.label}
       </AppText>
-    </View>
+    </Pressable>
   );
 }
 
@@ -55,5 +62,6 @@ function createStyles(theme: AppTheme) {
     neutralText: { color: theme.colors.onPrimary },
     warningText: { color: theme.colors.warningText },
     dangerText: { color: theme.colors.onPrimary },
+    pressed: { opacity: theme.opacity.pressed },
   });
 }
