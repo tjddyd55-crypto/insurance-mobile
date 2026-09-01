@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { getEnvironmentConfig } from '../../config/environment';
@@ -27,10 +28,11 @@ import {
   verifyPhoneChangeCode,
 } from './profileApi';
 import { formatProfilePhone, validateProfilePhone } from './profileModel';
+import { formatProfileOrganization, formatProfileRole } from './profilePresentation';
 import { profileQueryKeys } from './queryKeys';
 
 export function ProfileScreen() {
-  const { token, user, updateUser } = useAuth();
+  const { token, user, updateUser, logout } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
@@ -43,6 +45,8 @@ export function ProfileScreen() {
   const [cooldown, setCooldown] = useState(0);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
   const query = useQuery({
     queryKey: profileQueryKeys.current,
     queryFn: () => getProfile(token),
@@ -122,41 +126,163 @@ export function ProfileScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
         >
-          <Card variant="elevated">
-            <Stack gap="md">
+          <Card variant="elevated" padding="md">
+            <Stack gap="sm">
               <Inline justify="space-between" align="flex-start">
-                <View style={styles.identity}><AppText variant="title">{query.data.displayName || query.data.username}</AppText><AppText color="textSecondary">@{query.data.username}</AppText></View>
-                <Badge label={query.data.status || 'ACTIVE'} tone="success" />
+                <View style={styles.identity}>
+                  <AppText variant="heading" numberOfLines={2}>
+                    {query.data.displayName || query.data.username}
+                  </AppText>
+                  <AppText color="textSecondary" numberOfLines={2}>
+                    {formatProfileOrganization(user?.gaName, user?.gaCode)}
+                  </AppText>
+                </View>
+                <Badge label={formatProfileRole(query.data.role)} tone="info" />
               </Inline>
-              <Inline gap="sm" wrap><Badge label={query.data.role} tone="info" />{user?.gaName ? <Badge label={user.gaName} /> : null}{query.data.teamId ? <Badge label="팀 소속" tone="success" /> : null}</Inline>
             </Stack>
           </Card>
 
+          <SectionTitle title="계정 정보" description="로그인 계정과 표시 이름을 관리합니다." />
           <Card variant="outlined">
             <Stack gap="md">
-              <AppText variant="heading">기본 정보</AppText>
               <TextField label="이름" required value={displayName} onChangeText={setDisplayName} />
               <TextField label="아이디" value={query.data.username} editable={false} />
-              <TextField label="휴대폰 번호" value={phone} onChangeText={(value) => { setPhone(value); setPhoneProof(''); setCode(''); }} keyboardType="phone-pad" placeholder="010-1234-5678" />
+            </Stack>
+          </Card>
+
+          <SectionTitle title="연락처" description="휴대폰 번호 변경 시 본인 인증이 필요합니다." />
+          <Card variant="outlined">
+            <Stack gap="md">
+              <TextField
+                label="휴대폰 번호"
+                value={phone}
+                onChangeText={(value) => {
+                  setPhone(value);
+                  setPhoneProof('');
+                  setCode('');
+                }}
+                keyboardType="phone-pad"
+                placeholder="010-1234-5678"
+              />
               {phoneChanged ? (
-                <Card variant="filled">
+                <Card variant="filled" padding="md">
                   <Stack gap="md">
-                    <Inline justify="space-between"><AppText variant="bodyStrong">휴대폰 변경 인증</AppText>{phoneProof ? <Badge label="인증 완료" tone="success" /> : null}</Inline>
-                    <Button label={cooldown > 0 ? `재요청 (${cooldown}s)` : '인증번호 요청'} variant="secondary" loading={sendMutation.isPending} disabled={cooldown > 0 || Boolean(phoneProof)} onPress={requestCode} />
-                    <TextField label="인증번호" value={code} onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" placeholder="6자리" editable={!phoneProof} />
-                    <Button label="인증 확인" variant="secondary" loading={verifyMutation.isPending} disabled={code.length !== 6 || Boolean(phoneProof)} onPress={() => { setError(''); verifyMutation.mutate(); }} />
+                    <Inline justify="space-between">
+                      <AppText variant="bodyStrong">휴대폰 변경 인증</AppText>
+                      {phoneProof ? <Badge label="인증 완료" tone="success" /> : null}
+                    </Inline>
+                    <Button
+                      label={cooldown > 0 ? `재요청 (${cooldown}s)` : '인증번호 요청'}
+                      variant="secondary"
+                      loading={sendMutation.isPending}
+                      disabled={cooldown > 0 || Boolean(phoneProof)}
+                      onPress={requestCode}
+                    />
+                    <TextField
+                      label="인증번호"
+                      value={code}
+                      onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
+                      keyboardType="number-pad"
+                      placeholder="6자리"
+                      editable={!phoneProof}
+                    />
+                    <Button
+                      label="인증 확인"
+                      variant="secondary"
+                      loading={verifyMutation.isPending}
+                      disabled={code.length !== 6 || Boolean(phoneProof)}
+                      onPress={() => {
+                        setError('');
+                        verifyMutation.mutate();
+                      }}
+                    />
                   </Stack>
                 </Card>
               ) : null}
               {message ? <AppText variant="caption" color="success">{message}</AppText> : null}
               {error ? <AppText color="danger">{error}</AppText> : null}
-              <Button label="저장" loading={saveMutation.isPending} disabled={phoneChanged && !phoneProof} onPress={save} />
-              <Button label="비밀번호 재설정" variant="secondary" onPress={() => router.push('/profile/password-reset')} />
+              <Button
+                label="저장"
+                loading={saveMutation.isPending}
+                disabled={phoneChanged && !phoneProof}
+                onPress={save}
+              />
             </Stack>
           </Card>
+
+          <SectionTitle title="보안" description="비밀번호를 안전하게 변경할 수 있습니다." />
+          <Card variant="outlined">
+            <Button
+              label="비밀번호 재설정"
+              variant="secondary"
+              fullWidth
+              onPress={() => router.push('/profile/password-reset')}
+            />
+          </Card>
+
+          <SectionTitle title="서비스 관리" description="저장공간, 결제, 문의 내역으로 이동합니다." />
+          <Card variant="outlined">
+            <Stack gap="sm">
+              <Button
+                label="내 저장공간"
+                variant="secondary"
+                fullWidth
+                onPress={() => router.push('/storage')}
+              />
+              <Button
+                label="구독 및 결제"
+                variant="secondary"
+                fullWidth
+                onPress={() => router.push('/billing')}
+              />
+              <Button
+                label="문의요청"
+                variant="secondary"
+                fullWidth
+                onPress={() => router.push('/feature-request')}
+              />
+            </Stack>
+          </Card>
+
+          <SectionTitle title="로그아웃" description="이 기기에서 ONE FC 사용을 종료합니다." />
+          <Button
+            label="로그아웃"
+            variant="danger"
+            fullWidth
+            onPress={() => setConfirmLogout(true)}
+          />
         </ScrollView>
       </Screen>
+      <ConfirmDialog
+        open={confirmLogout}
+        title="로그아웃"
+        message="로그아웃 하시겠습니까?"
+        confirmLabel="로그아웃"
+        tone="danger"
+        busy={logoutBusy}
+        closeOnBackdrop={false}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={async () => {
+          setLogoutBusy(true);
+          try {
+            await logout();
+            setConfirmLogout(false);
+            router.replace('/(auth)/login');
+          } finally {
+            setLogoutBusy(false);
+          }
+        }}
+      />
     </View>
+  );
+}
+
+function SectionTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <Stack gap="xs">
+      <AppText variant="sectionTitle">{title}</AppText>
+      <AppText variant="caption">{description}</AppText>
+    </Stack>
   );
 }
 
