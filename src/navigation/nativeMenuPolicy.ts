@@ -129,7 +129,7 @@ function applyPublicAccountPolicy(
       if (child.disabled || !isPublicAccountGaOnlyPath(child.nativePath)) return child;
       return {
         ...child,
-        nativePath: `/public-account-restricted/index?from=${encodeURIComponent(child.nativePath)}`,
+        nativePath: `/public-account-restricted?from=${encodeURIComponent(child.nativePath)}`,
         badge: child.badge ?? 'GA 소속 계정 전용',
       };
     }),

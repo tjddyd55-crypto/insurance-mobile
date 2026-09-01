@@ -146,7 +146,7 @@ describe('native session menu policy', () => {
     const team = links.find((link) => link.id === 'team-members');
     const customers = links.find((link) => link.id === 'customer-list');
     expect(team?.nativePath).toEqual(
-      expect.stringContaining('/public-account-restricted/index?from='),
+      expect.stringContaining('/public-account-restricted?from='),
     );
     expect(team?.badge).toBe('GA 소속 계정 전용');
     expect(customers?.nativePath).toBe('/customers');

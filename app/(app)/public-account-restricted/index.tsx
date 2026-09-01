@@ -1,1 +1,5 @@
-export { PublicAccountRestrictedScreen as default } from '../../../src/features/auth/PublicAccountRestrictedScreen';
+import { PublicAccountRestrictedScreen } from '../../../src/features/auth/PublicAccountRestrictedScreen';
+
+export default function Screen() {
+  return <PublicAccountRestrictedScreen />;
+}

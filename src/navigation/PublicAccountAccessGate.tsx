@@ -21,7 +21,7 @@ export function PublicAccountAccessGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (restricted) {
       router.replace({
-        pathname: '/public-account-restricted/index',
+        pathname: '/public-account-restricted',
         params: { from: pathname },
       });
     }

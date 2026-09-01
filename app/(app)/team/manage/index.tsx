@@ -1,1 +1,5 @@
-export { TeamMembersScreen as default } from '../../../../src/features/team/TeamMembersScreen';
+import { TeamMembersScreen } from '../../../../src/features/team/TeamMembersScreen';
+
+export default function Screen() {
+  return <TeamMembersScreen />;
+}
