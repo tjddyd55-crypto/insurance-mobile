@@ -8,8 +8,13 @@ function resolveBuildEnvironment(
   appVariant?: string | null,
   publicEnvironment?: string | null,
 ): AppEnvironment {
-  const raw = String(appVariant || publicEnvironment || 'development').trim().toLowerCase();
-  return raw === 'production' || raw === 'prod' ? 'production' : 'development';
+  const normalize = (value?: string | null): AppEnvironment | null => {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'production' || raw === 'prod') return 'production';
+    if (['development', 'dev', 'device', 'local-device'].includes(raw)) return 'development';
+    return null;
+  };
+  return normalize(appVariant) ?? normalize(publicEnvironment) ?? 'development';
 }
 
 /**

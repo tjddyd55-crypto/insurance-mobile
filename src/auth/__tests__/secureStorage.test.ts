@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
+import { getEnvironmentConfig } from '../../config/environment';
 import {
   clearAuthSession,
   readAuthSession,
@@ -49,6 +50,10 @@ describe('secureStorage', () => {
     expect(session?.token).toBe('jwt-token');
     expect(session?.user.username).toBe('demo');
     expect(session?.user.role).toBe('USER');
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+      `onefc.auth.${getEnvironmentConfig().environment}.token`,
+      'jwt-token',
+    );
   });
 
   it('clears session', async () => {

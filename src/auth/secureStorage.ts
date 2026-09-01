@@ -1,9 +1,18 @@
 import * as SecureStore from 'expo-secure-store';
 
 import type { AuthUser } from '../api/authApi';
+import { getEnvironmentConfig } from '../config/environment';
 
-const TOKEN_KEY = 'onefc.auth.token';
-const USER_META_KEY = 'onefc.auth.userMeta';
+const LEGACY_TOKEN_KEY = 'onefc.auth.token';
+const LEGACY_USER_META_KEY = 'onefc.auth.userMeta';
+
+function storageKeys() {
+  const environment = getEnvironmentConfig().environment;
+  return {
+    token: `onefc.auth.${environment}.token`,
+    userMeta: `onefc.auth.${environment}.userMeta`,
+  };
+}
 
 export type StoredAuthSession = {
   token: string;
@@ -12,6 +21,7 @@ export type StoredAuthSession = {
 
 /** Persist JWT + minimal user metadata only. Never store password/secrets. */
 export async function saveAuthSession(session: StoredAuthSession): Promise<void> {
+  const keys = storageKeys();
   const token = session.token.trim();
   if (!token) {
     throw new Error('빈 토큰은 저장할 수 없습니다.');
@@ -29,13 +39,14 @@ export async function saveAuthSession(session: StoredAuthSession): Promise<void>
     tenantCode: session.user.tenantCode,
     subscription: session.user.subscription,
   };
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-  await SecureStore.setItemAsync(USER_META_KEY, JSON.stringify(meta));
+  await SecureStore.setItemAsync(keys.token, token);
+  await SecureStore.setItemAsync(keys.userMeta, JSON.stringify(meta));
 }
 
 export async function readAuthSession(): Promise<StoredAuthSession | null> {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
-  const metaRaw = await SecureStore.getItemAsync(USER_META_KEY);
+  const keys = storageKeys();
+  const token = await SecureStore.getItemAsync(keys.token);
+  const metaRaw = await SecureStore.getItemAsync(keys.userMeta);
   if (!token?.trim() || !metaRaw) {
     return null;
   }
@@ -58,6 +69,11 @@ export async function readAuthSession(): Promise<StoredAuthSession | null> {
 }
 
 export async function clearAuthSession(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await SecureStore.deleteItemAsync(USER_META_KEY);
+  const keys = storageKeys();
+  await Promise.all([
+    SecureStore.deleteItemAsync(keys.token),
+    SecureStore.deleteItemAsync(keys.userMeta),
+    SecureStore.deleteItemAsync(LEGACY_TOKEN_KEY),
+    SecureStore.deleteItemAsync(LEGACY_USER_META_KEY),
+  ]);
 }
