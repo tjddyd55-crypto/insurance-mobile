@@ -185,7 +185,7 @@ export function TodoFormScreen({
   const mutationError = saveMutation.error ?? deleteMutation.error;
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <AppHeader
         title={mode === 'create' ? '할 일 추가' : '할 일 수정'}
         showMenu={false}

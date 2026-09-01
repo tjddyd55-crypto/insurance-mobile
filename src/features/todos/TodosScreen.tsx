@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
@@ -15,8 +16,10 @@ import {
   Screen,
   Stack,
   useAppTheme,
+  type AppTheme,
 } from '../../design-system';
 import { buildTodoListParams, todoSourceLabel } from './todoModel';
+import { todoListEmptyCopy } from './todoPresentation';
 import { completeTodo, listTodos, reopenTodo } from './todosApi';
 import { TodoCard } from './TodoCard';
 import { todoQueryKeys } from './queryKeys';
@@ -58,6 +61,7 @@ export function TodosScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [quick, setQuick] = useState<TodoQuickFilter>('open');
   const [related, setRelated] = useState<TodoRelatedFilter>('any');
   const [source, setSource] = useState<TodoSourceType | 'all'>('all');
@@ -72,6 +76,7 @@ export function TodosScreen() {
       todo.status === 'completed' ? reopenTodo(token, todo.id) : completeTodo(token, todo.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: todoQueryKeys.all }),
   });
+  const emptyCopy = todoListEmptyCopy(quick !== 'open' || related !== 'any' || source !== 'all');
 
   return (
     <View style={styles.root}>
@@ -80,11 +85,7 @@ export function TodosScreen() {
         <FlatList
           data={query.data ?? []}
           keyExtractor={(todo) => todo.id}
-          contentContainerStyle={[
-            styles.list,
-            { padding: theme.spacing.lg, gap: theme.spacing.md },
-            !query.data?.length && styles.emptyList,
-          ]}
+          contentContainerStyle={[styles.list, !query.data?.length && styles.emptyList]}
           refreshControl={
             <RefreshControl
               refreshing={query.isRefetching}
@@ -94,17 +95,16 @@ export function TodosScreen() {
             />
           }
           ListHeaderComponent={
-            <Stack gap="md" style={{ marginBottom: theme.spacing.md }}>
+            <Stack gap="sm" style={styles.header}>
               <Inline justify="space-between" align="flex-start">
-                <View style={styles.headingCopy}>
-                  <AppText variant="heading">업무 목록</AppText>
-                  <AppText variant="caption">플랫폼 공통 할 일을 관리합니다.</AppText>
-                </View>
+                <AppText variant="caption" color="textSecondary" style={styles.headingCopy}>
+                  플랫폼 공통 업무 목록
+                </AppText>
                 <Button label="+ 추가" size="sm" onPress={() => router.push('/todos/new')} />
               </Inline>
 
-              <Card variant="outlined">
-                <Stack gap="md">
+              <Card variant="outlined" padding="sm">
+                <Stack gap="sm">
                   <FilterRow
                     accessibilityLabel="날짜 및 상태 필터"
                     items={QUICK_FILTERS}
@@ -154,20 +154,16 @@ export function TodosScreen() {
           )}
           ListEmptyComponent={
             query.isLoading ? (
-              <LoadingState message="할 일 목록을 불러오는 중…" />
+              <LoadingState compact message="할 일 목록을 불러오는 중…" />
             ) : query.isError ? (
               <ErrorState
+                compact
                 title="할 일 목록을 불러오지 못했습니다"
                 message={query.error instanceof Error ? query.error.message : '잠시 후 다시 시도해 주세요.'}
                 onRetry={() => void query.refetch()}
               />
             ) : (
-              <View style={styles.empty}>
-                <AppText variant="heading">표시할 할 일이 없습니다</AppText>
-                <AppText color="textSecondary" align="center">
-                  필터를 바꾸거나 새 할 일을 추가해 주세요.
-                </AppText>
-              </View>
+              <EmptyState compact title={emptyCopy.title} message={emptyCopy.message} />
             )
           }
         />
@@ -187,6 +183,10 @@ function FilterRow<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
+  const styles = useMemo(
+    () => StyleSheet.create({ filterEndPadding: { paddingRight: 8 } }),
+    [],
+  );
   return (
     <ScrollView
       horizontal
@@ -208,11 +208,19 @@ function FilterRow<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  list: { flexGrow: 1 },
-  emptyList: { justifyContent: 'center' },
-  empty: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 48 },
-  headingCopy: { flex: 1, gap: 2 },
-  filterEndPadding: { paddingRight: 8 },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    root: { flex: 1 },
+    list: {
+      flexGrow: 1,
+      paddingHorizontal: theme.layout.screenPaddingHorizontal,
+      paddingTop: theme.layout.screenPaddingTop,
+      paddingBottom: theme.layout.contentBottomInset,
+      gap: theme.layout.compactListGap,
+    },
+    emptyList: { flexGrow: 1 },
+    header: { marginBottom: theme.spacing.xs },
+    headingCopy: { flex: 1, minWidth: 0 },
+    filterEndPadding: { paddingRight: 8 },
+  });
+}
