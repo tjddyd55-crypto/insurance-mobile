@@ -31,6 +31,7 @@ import {
   deleteStorageFile,
   deleteStorageFolder,
   getStorageQuota,
+  getStorageUsageBreakdown,
   listStorageFiles,
   listStorageFolders,
   renameStorageFile,
@@ -74,8 +75,18 @@ export function StorageScreen() {
     queryFn: () => getStorageQuota(token),
     enabled: Boolean(token),
   });
+  const usage = useQuery({
+    queryKey: [...ROOT, "usage"],
+    queryFn: () => getStorageUsageBreakdown(token),
+    enabled: Boolean(token),
+  });
   const refresh = async () => {
-    await Promise.all([folders.refetch(), files.refetch(), quota.refetch()]);
+    await Promise.all([
+      folders.refetch(),
+      files.refetch(),
+      quota.refetch(),
+      usage.refetch(),
+    ]);
   };
   const createFolder = useMutation({
     mutationFn: () => createStorageFolder(token, folderName, folderId),
@@ -194,6 +205,35 @@ export function StorageScreen() {
               ) : null}
             </Stack>
           </Card>
+          {usage.data ? (
+            <Card variant="outlined">
+              <Stack gap="md">
+                <Inline justify="space-between">
+                  <View style={styles.grow}>
+                    <AppText variant="sectionTitle">파일 사용처</AppText>
+                    <AppText variant="caption">
+                      고객 파일과 청구 첨부를 포함한 전체 사용 현황입니다.
+                    </AppText>
+                  </View>
+                  <Badge label={`${usage.data.totalCount}개`} tone="info" />
+                </Inline>
+                {usage.data.summary.map((item) => (
+                  <Inline key={item.source || item.label} justify="space-between">
+                    <AppText>{item.label}</AppText>
+                    <AppText variant="caption">
+                      {item.count}개 · {formatStorageSize(item.size)}
+                    </AppText>
+                  </Inline>
+                ))}
+              </Stack>
+            </Card>
+          ) : null}
+          {usage.isError ? (
+            <AppText color="danger">
+              전체 파일 사용 현황을 불러오지 못했습니다. 아래 내 파일은 계속 사용할 수
+              있습니다.
+            </AppText>
+          ) : null}
           <Inline wrap>
             <Button
               label="전체 파일"

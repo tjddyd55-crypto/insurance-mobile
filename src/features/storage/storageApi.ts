@@ -1,6 +1,6 @@
 import { ApiError, apiRequest, resolveApiUrl } from '../../api/client';
-import { normalizeStorageFile, normalizeStorageFolder, normalizeStorageQuota } from './storageModel';
-import type { StorageFile, StorageFolder, StorageQuota } from './types';
+import { normalizeStorageFile, normalizeStorageFolder, normalizeStorageQuota, normalizeStorageUsageBreakdown } from './storageModel';
+import type { StorageFile, StorageFolder, StorageQuota, StorageUsageBreakdown } from './types';
 function tokenOf(token: string | null) { if (!token?.trim()) throw new ApiError('로그인이 필요합니다.', 401); return token; }
 export async function listStorageFolders(token: string | null): Promise<StorageFolder[]> { const rows = await apiRequest<unknown[]>('/api/storage/folders', { token: tokenOf(token) }); return rows.map(normalizeStorageFolder).filter((row): row is StorageFolder => Boolean(row)); }
 export async function createStorageFolder(token: string | null, name: string, parentId: number | null): Promise<void> { await apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) }); }
@@ -8,6 +8,7 @@ export async function renameStorageFolder(token: string | null, id: number, name
 export async function deleteStorageFolder(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
 export async function listStorageFiles(token: string | null, folderId: number | null): Promise<StorageFile[]> { const path = folderId == null ? '/api/storage/files' : `/api/storage/files?folderId=${folderId}`; const rows = await apiRequest<unknown[]>(path, { token: tokenOf(token) }); return rows.map(normalizeStorageFile).filter((row): row is StorageFile => Boolean(row)); }
 export async function getStorageQuota(token: string | null): Promise<StorageQuota> { return normalizeStorageQuota(await apiRequest('/api/storage/quota', { token: tokenOf(token) })); }
+export async function getStorageUsageBreakdown(token: string | null): Promise<StorageUsageBreakdown> { return normalizeStorageUsageBreakdown(await apiRequest('/api/storage/usage-breakdown', { token: tokenOf(token) })); }
 export async function renameStorageFile(token: string | null, id: number, displayName: string): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ displayName: displayName.trim() }) }); }
 export async function deleteStorageFile(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
 export async function createStorageOpenUrl(token: string | null, id: number): Promise<string> { const result = await apiRequest<{ openUrl: string }>(`/api/storage/files/${id}/open-token`, { method: 'POST', token: tokenOf(token), body: JSON.stringify({}) }); return resolveApiUrl(result.openUrl); }
