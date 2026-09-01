@@ -62,3 +62,7 @@ Menu labels/order mirror insurance `buildAppMenuForSession` (USER).
 - 2026-09-01 physical-device read-only smoke passed for every active USER menu screen against the production API. Production mutation paths remain deliberately unexecuted.
 - A missing Google Maps build key degrades to an explicit setup notice plus usable customer list; signed release builds must inject the key to activate the native map.
 - Team members/posts/files treat the source API's no-membership 400 as a normal setup/empty state rather than an application error.
+- CUSTOMER_DETAIL_UI_PARITY function backlog:
+  - P0: none identified in the currently exposed detail workflow.
+  - P1: related customers, customer special dates, multi-vehicle records, and customer-scoped navigation to card payment, application documents, map, customer app, and personal messages.
+  - P2: customer-scoped electronic signature while the Web feature flag remains disabled, and GA detail data parity.
