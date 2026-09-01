@@ -15,13 +15,21 @@ type FormState = { title: string; content: string; sendPush: boolean; pinned: bo
 const EMPTY_FORM: FormState = { title: '', content: '', sendPush: true, pinned: false, asset: null };
 type ConfirmState = { type: 'publish' } | { type: 'delete'; item: CustomerNewsItem } | null;
 
-export function CustomerNewsScreen() {
+export function CustomerNewsScreen({
+  initialScope = 'all',
+  initialCustomerId = null,
+  showBack = false,
+}: {
+  initialScope?: 'all' | 'personal';
+  initialCustomerId?: number | null;
+  showBack?: boolean;
+} = {}) {
   const { token } = useAuth();
   const client = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [scope, setScope] = useState<'all' | 'personal'>('all');
-  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [scope, setScope] = useState<'all' | 'personal'>(initialScope);
+  const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerNewsItem | null>(null);
@@ -51,7 +59,7 @@ export function CustomerNewsScreen() {
   const audience = linked.data?.find((item) => item.customerId === customerId);
   return (
     <View style={styles.root}>
-      <AppHeader title="고객소식지" />
+      <AppHeader title="고객소식지" showMenu={!showBack} showBack={showBack} />
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={news.isRefetching} onRefresh={() => void news.refetch()} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}>
           <Card>

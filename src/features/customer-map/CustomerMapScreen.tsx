@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
@@ -14,7 +14,13 @@ import {
 import { getCustomerMap } from './customerMapApi';
 import { groupCustomersByCoordinate, hasGoogleMapsApiKey } from './customerMapModel';
 
-export function CustomerMapScreen() {
+export function CustomerMapScreen({
+  focusCustomerId = null,
+  showBack = false,
+}: {
+  focusCustomerId?: number | null;
+  showBack?: boolean;
+} = {}) {
   const { token } = useAuth();
   const router = useRouter();
   const theme = useAppTheme();
@@ -22,6 +28,10 @@ export function CustomerMapScreen() {
   const [keyword, setKeyword] = useState('');
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [radiusText, setRadiusText] = useState('');
+  useEffect(() => {
+    if (!focusCustomerId) return;
+    setKeyword(String(focusCustomerId));
+  }, [focusCustomerId]);
   const radius = Number(radiusText);
   const mapAvailable = hasGoogleMapsApiKey();
   const query = useQuery({
@@ -40,7 +50,7 @@ export function CustomerMapScreen() {
 
   return (
     <View style={styles.root}>
-      <AppHeader title="고객 지도" />
+      <AppHeader title="고객 지도" showMenu={!showBack} showBack={showBack} />
       <Screen padded={false}>
         <ScrollView
           contentContainerStyle={styles.content}

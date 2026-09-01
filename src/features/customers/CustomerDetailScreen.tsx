@@ -1,27 +1,26 @@
-import { useMemo, useState } from 'react';
-import { Linking, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from "react";
+import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useAuth } from '../../auth/AuthProvider';
-import { AppHeader } from '../../components/AppHeader';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { ErrorState } from '../../components/ErrorState';
-import { LoadingState } from '../../components/LoadingState';
+import { useAuth } from "../../auth/AuthProvider";
+import { AppHeader } from "../../components/AppHeader";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { ErrorState } from "../../components/ErrorState";
+import { LoadingState } from "../../components/LoadingState";
 import {
   AppText,
   Badge,
   Button,
   Card,
-  Divider,
-  IconButton,
   Inline,
   Screen,
   Stack,
   useAppTheme,
   type AppTheme,
-} from '../../design-system';
-import { customerGenderLabel, formatCustomerPhone } from './customerModel';
+} from "../../design-system";
+import { customerGenderLabel, formatCustomerPhone } from "./customerModel";
 import {
   formatCustomerBodySize,
   formatCustomerDetailDate,
@@ -29,15 +28,35 @@ import {
   formatCustomerDriver,
   formatCustomerSsn,
   getCustomerFollowUpPresentation,
-} from './customerDetailPresentation';
-import { deleteCustomer, getCustomer, setCustomerFavorite } from './customersApi';
-import { customerQueryKeys } from './queryKeys';
-import type { ListCustomersResult } from './types';
+} from "./customerDetailPresentation";
+import { formatCustomerMobileCarrierDisplay } from "./customerCarrier";
+import { buildKakaoCustomerCopyText } from "./customerCopyText";
+import { listCustomerCars } from "./customerCarsApi";
+import { listCustomerRelations } from "./customerRelationsApi";
+import {
+  CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS,
+  listCustomerSpecialDates,
+} from "./customerSpecialDatesApi";
+import { formatCustomerInflowSourceDisplay } from "./customerInflowSource";
+import { deleteCustomer, getCustomer, setCustomerFavorite } from "./customersApi";
+import { customerQueryKeys } from "./queryKeys";
+import type { ListCustomersResult } from "./types";
+import { CustomerAppLinkSection } from "./CustomerAppLinkSection";
+import { CustomerGaDataModal } from "./CustomerGaDataModal";
+import {
+  CollapsibleDetailSection,
+  DetailRow,
+} from "./CollapsibleDetailSection";
+import {
+  buildCustomerWorkspaceActions,
+  resolveCustomerWorkspaceActionHref,
+  type CustomerWorkspaceActionId,
+} from "./customerWorkspaceActions";
 
 type CustomerDetailScreenProps = { customerId: number };
 
-function phoneUrl(phone: string, scheme: 'tel' | 'sms'): string | null {
-  const digits = phone.replace(/\D/g, '');
+function phoneUrl(phone: string, scheme: "tel" | "sms"): string | null {
+  const digits = phone.replace(/\D/g, "");
   return digits.length >= 8 ? `${scheme}:${digits}` : null;
 }
 
@@ -49,10 +68,27 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const queryClient = useQueryClient();
   const queryKey = customerQueryKeys.detail(customerId);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [gaOpen, setGaOpen] = useState(false);
+  const [copyNotice, setCopyNotice] = useState("");
   const query = useQuery({
     queryKey,
     queryFn: () => getCustomer(token, customerId),
     enabled: Boolean(token) && Number.isInteger(customerId) && customerId > 0,
+  });
+  const carsQuery = useQuery({
+    queryKey: ["customer-cars", customerId],
+    queryFn: () => listCustomerCars(token, customerId),
+    enabled: Boolean(token) && Boolean(query.data),
+  });
+  const relationsQuery = useQuery({
+    queryKey: ["customer-relations", customerId],
+    queryFn: () => listCustomerRelations(token, customerId),
+    enabled: Boolean(token) && Boolean(query.data),
+  });
+  const specialDatesQuery = useQuery({
+    queryKey: ["customer-special-dates", customerId],
+    queryFn: () => listCustomerSpecialDates(token, customerId),
+    enabled: Boolean(token) && Boolean(query.data),
   });
   const favoriteMutation = useMutation({
     mutationFn: (isFavorite: boolean) => setCustomerFavorite(token, customerId, isFavorite),
@@ -82,24 +118,40 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             }
           : previous,
       );
-      router.replace('/customers');
+      router.replace("/customers");
     },
   });
 
   const customer = query.data;
-  const telUrl = customer ? phoneUrl(customer.phone, 'tel') : null;
-  const smsUrl = customer ? phoneUrl(customer.phone, 'sms') : null;
+  const telUrl = customer ? phoneUrl(customer.phone, "tel") : null;
+  const smsUrl = customer ? phoneUrl(customer.phone, "sms") : null;
   const followUp = customer ? getCustomerFollowUpPresentation(customer) : null;
+  const actions = customer ? buildCustomerWorkspaceActions(customer.name) : [];
+
+  const handleAction = async (actionId: CustomerWorkspaceActionId) => {
+    if (!customer) return;
+    if (actionId === "copy") {
+      await Clipboard.setStringAsync(buildKakaoCustomerCopyText(customer));
+      setCopyNotice("고객 정보를 복사했습니다.");
+      return;
+    }
+    if (actionId === "gaData") {
+      setGaOpen(true);
+      return;
+    }
+    const href = resolveCustomerWorkspaceActionHref(customer.id, actionId);
+    if (href) router.push(href);
+  };
 
   return (
     <View style={styles.root}>
-      <AppHeader title={customer?.name ?? '고객 상세'} showMenu={false} showBack />
+      <AppHeader title={customer?.name ?? "고객 상세"} showMenu={false} showBack />
       {query.isLoading ? (
         <LoadingState message="고객 정보를 불러오는 중…" />
       ) : query.isError || !customer ? (
         <ErrorState
           title="고객 정보를 불러오지 못했습니다"
-          message={query.error instanceof Error ? query.error.message : '고객을 찾을 수 없습니다.'}
+          message={query.error instanceof Error ? query.error.message : "고객을 찾을 수 없습니다."}
           onRetry={() => void query.refetch()}
         />
       ) : (
@@ -111,7 +163,14 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             refreshControl={
               <RefreshControl
                 refreshing={query.isRefetching}
-                onRefresh={() => void query.refetch()}
+                onRefresh={() => {
+                  void Promise.all([
+                    query.refetch(),
+                    carsQuery.refetch(),
+                    relationsQuery.refetch(),
+                    specialDatesQuery.refetch(),
+                  ]);
+                }}
                 colors={[theme.colors.primary]}
                 tintColor={theme.colors.primary}
               />
@@ -128,33 +187,24 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                       {customer.customerCode ? <Badge label={customer.customerCode} /> : null}
                     </Inline>
                     <AppText color="textSecondary">
-                      {customer.phone ? formatCustomerPhone(customer.phone) : '연락처 없음'}
+                      {customer.phone ? formatCustomerPhone(customer.phone) : "연락처 없음"}
                     </AppText>
                     <Inline gap="xs" wrap>
                       <AppText variant="helper">
                         {customerGenderLabel(customer.gender)}
-                        {customer.insuranceAge != null ? ` · 보험나이 ${customer.insuranceAge}세` : ''}
+                        {customer.insuranceAge != null ? ` · 보험나이 ${customer.insuranceAge}세` : ""}
                       </AppText>
                       {customer.isFavorite ? <Badge label="중요 고객" tone="warning" /> : null}
                       {followUp ? <Badge label={followUp.label} tone={followUp.tone} /> : null}
                     </Inline>
                   </Stack>
-                  <IconButton
-                    accessibilityLabel={customer.isFavorite ? '중요 고객 해제' : '중요 고객'}
+                  <Button
+                    accessibilityLabel={customer.isFavorite ? "중요 고객 해제" : "중요 고객"}
+                    label={customer.isFavorite ? "★" : "☆"}
+                    size="sm"
                     variant="ghost"
                     disabled={favoriteMutation.isPending}
                     onPress={() => favoriteMutation.mutate(!customer.isFavorite)}
-                    icon={(color) => (
-                      <AppText
-                        accessibilityElementsHidden
-                        style={[
-                          styles.favoriteIcon,
-                          { color: customer.isFavorite ? theme.colors.warning : color },
-                        ]}
-                      >
-                        {customer.isFavorite ? '★' : '☆'}
-                      </AppText>
-                    )}
                   />
                 </Inline>
                 <Inline>
@@ -172,7 +222,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                         ? `${customer.name} 고객 문자 수신 거부`
                         : `${customer.name} 고객에게 문자`
                     }
-                    label={customer.smsOptOut ? '문자 수신거부' : '문자'}
+                    label={customer.smsOptOut ? "문자 수신거부" : "문자"}
                     size="sm"
                     variant="secondary"
                     disabled={!smsUrl || customer.smsOptOut}
@@ -183,49 +233,37 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               </Stack>
             </Card>
 
-            <DetailSection title="고객 업무" testID="customer-detail-section-actions">
-              <View style={styles.actionGrid}>
-                <Button
-                  accessibilityLabel={`${customer.name} 고객 상담 이력`}
-                  label="상담 이력"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => router.push(`/customers/${customer.id}/consultations`)}
-                  style={styles.actionButton}
-                />
-                <Button
-                  accessibilityLabel={`${customer.name} 고객 파일`}
-                  label="고객 파일"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => router.push(`/customers/${customer.id}/files`)}
-                  style={styles.actionButton}
-                />
-                <Button
-                  accessibilityLabel={`${customer.name} 고객 메모`}
-                  label="고객 메모"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => router.push(`/customers/${customer.id}/memos`)}
-                  style={styles.actionButton}
-                />
-                <Button
-                  accessibilityLabel={`${customer.name} 고객 보험청구 관리`}
-                  label="보험청구 관리"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/customers/[customerId]/claim-requests',
-                      params: { customerId: String(customer.id) },
-                    })
-                  }
-                  style={styles.actionButton}
-                />
-              </View>
-            </DetailSection>
+            <Stack gap="sm" testID="customer-detail-app-link">
+              <AppText variant="sectionTitle">고객앱</AppText>
+              <CustomerAppLinkSection
+                customerId={customer.id}
+                customerName={customer.name}
+                customerPhone={customer.phone}
+              />
+            </Stack>
 
-            <DetailSection title="기본 정보" testID="customer-detail-section-basic">
+            <CollapsibleDetailSection title="고객 업무" testID="customer-detail-section-actions">
+              <View style={styles.actionGrid}>
+                {actions.map((action) => (
+                  <Button
+                    key={action.id}
+                    accessibilityLabel={action.accessibilityLabel}
+                    label={action.label}
+                    size="sm"
+                    variant={action.variant ?? "secondary"}
+                    onPress={() => void handleAction(action.id)}
+                    style={styles.actionButton}
+                  />
+                ))}
+              </View>
+              {copyNotice ? (
+                <AppText variant="caption" color="success">
+                  {copyNotice}
+                </AppText>
+              ) : null}
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection title="기본 정보" testID="customer-detail-section-basic">
               <DetailRow label="주민번호" value={formatCustomerSsn(customer.ssn)} />
               <DetailRow label="성별" value={customerGenderLabel(customer.gender)} />
               <DetailRow
@@ -245,17 +283,27 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     : formatCustomerDetailValue(null)
                 }
               />
-              <DetailRow label="문자 수신" value={customer.smsOptOut ? '수신 거부' : '수신 허용'} />
-              <DetailRow label="통신사" value={formatCustomerDetailValue(customer.carrier)} />
+              <DetailRow label="문자 수신" value={customer.smsOptOut ? "수신 거부" : "수신 허용"} />
+              <DetailRow
+                label="통신사"
+                value={formatCustomerDetailValue(
+                  formatCustomerMobileCarrierDisplay(customer.carrier),
+                )}
+              />
               <DetailRow label="주소" value={formatCustomerDetailValue(customer.address)} />
               <DetailRow label="키 / 몸무게" value={formatCustomerBodySize(customer)} />
               <DetailRow label="직업·회사·지역" value={formatCustomerDetailValue(customer.job)} />
               <DetailRow label="운전 여부" value={formatCustomerDriver(customer)} />
-              <DetailRow label="유입 경로" value={formatCustomerDetailValue(customer.inflowSource)} />
-              <DetailRow label="소개자·이관자" value={formatCustomerDetailValue(customer.referrerName)} />
-            </DetailSection>
+              <DetailRow
+                label="유입 경로"
+                value={formatCustomerInflowSourceDisplay(
+                  customer.inflowSource,
+                  customer.referrerName,
+                )}
+              />
+            </CollapsibleDetailSection>
 
-            <DetailSection
+            <CollapsibleDetailSection
               title="상담 및 후속관리"
               testID="customer-detail-section-consultation"
             >
@@ -271,38 +319,92 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   customer.lastConsultationMemo ?? customer.lastConsultationSummary,
                 )}
               />
-              <DetailRow
-                label="접촉 결과"
-                value={formatCustomerDetailValue(customer.contactResult)}
-              />
+              <DetailRow label="접촉 결과" value={formatCustomerDetailValue(customer.contactResult)} />
               <DetailRow
                 label="다음 연락일"
                 value={formatCustomerDetailDate(customer.nextContactDate)}
               />
-              <DetailRow
-                label="후속 상태"
-                value={formatCustomerDetailValue(customer.followUpStatus)}
-              />
+              <DetailRow label="후속 상태" value={formatCustomerDetailValue(customer.followUpStatus)} />
               <DetailRow
                 label="후속 메모"
                 value={formatCustomerDetailValue(customer.followUpNotePreview)}
               />
-            </DetailSection>
+            </CollapsibleDetailSection>
 
-            <DetailSection title="차량 정보" testID="customer-detail-section-vehicle">
-              <DetailRow label="차량번호" value={formatCustomerDetailValue(customer.carNumber)} />
-              <DetailRow
-                label="차종"
-                value={formatCustomerDetailValue(customer.carModel || customer.carType)}
-              />
-              <DetailRow label="연식" value={formatCustomerDetailValue(customer.carYear)} />
-              <DetailRow
-                label="갱신 예정일"
-                value={formatCustomerDetailDate(customer.renewalDate)}
-              />
-            </DetailSection>
+            <CollapsibleDetailSection title="차량 정보" testID="customer-detail-section-vehicle">
+              {carsQuery.isLoading ? (
+                <AppText variant="caption">차량 정보를 불러오는 중…</AppText>
+              ) : carsQuery.data?.length ? (
+                carsQuery.data.map((car, index) => (
+                  <Stack key={car.id} gap="xs" style={styles.subBlock}>
+                    <AppText variant="bodyStrong">
+                      {car.isPrimary ? "대표 차량" : `차량 ${index + 1}`}
+                    </AppText>
+                    <DetailRow label="차량번호" value={formatCustomerDetailValue(car.carNumber)} />
+                    <DetailRow
+                      label="차종/모델"
+                      value={formatCustomerDetailValue(car.carModel || car.carType)}
+                    />
+                    <DetailRow label="연식" value={formatCustomerDetailValue(car.carYear)} />
+                    <DetailRow
+                      label="갱신 예정일"
+                      value={formatCustomerDetailDate(car.renewalDate)}
+                    />
+                  </Stack>
+                ))
+              ) : (
+                <>
+                  <DetailRow label="차량번호" value={formatCustomerDetailValue(customer.carNumber)} />
+                  <DetailRow
+                    label="차종"
+                    value={formatCustomerDetailValue(customer.carModel || customer.carType)}
+                  />
+                  <DetailRow label="연식" value={formatCustomerDetailValue(customer.carYear)} />
+                  <DetailRow
+                    label="갱신 예정일"
+                    value={formatCustomerDetailDate(customer.renewalDate)}
+                  />
+                </>
+              )}
+            </CollapsibleDetailSection>
 
-            <DetailSection title="보험 및 참고사항" testID="customer-detail-section-insurance">
+            <CollapsibleDetailSection title="관계인" testID="customer-detail-section-relations">
+              {relationsQuery.isLoading ? (
+                <AppText variant="caption">관계인을 불러오는 중…</AppText>
+              ) : relationsQuery.data?.length ? (
+                relationsQuery.data.map((relation) => (
+                  <DetailRow
+                    key={relation.relatedCustomerId}
+                    label={relation.relatedName}
+                    value={relation.relatedPhone || "연락처 없음"}
+                  />
+                ))
+              ) : (
+                <AppText variant="caption" color="textSecondary">
+                  연결된 관계인이 없습니다.
+                </AppText>
+              )}
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection title="기념일" testID="customer-detail-section-special-dates">
+              {specialDatesQuery.isLoading ? (
+                <AppText variant="caption">기념일을 불러오는 중…</AppText>
+              ) : specialDatesQuery.data?.length ? (
+                specialDatesQuery.data.map((item) => (
+                  <DetailRow
+                    key={item.id}
+                    label={`${CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS[item.purposeType]} · ${item.title}`}
+                    value={formatCustomerDetailDate(item.dateValue)}
+                  />
+                ))
+              ) : (
+                <AppText variant="caption" color="textSecondary">
+                  등록된 기념일이 없습니다.
+                </AppText>
+              )}
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection title="보험 및 참고사항" testID="customer-detail-section-insurance">
               <DetailRow label="병력" value={formatCustomerDetailValue(customer.medical)} />
               <DetailRow
                 label="보험가입내역"
@@ -320,9 +422,9 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 label="약 복용"
                 value={formatCustomerDetailValue(customer.notes.medicationHistoryNote)}
               />
-            </DetailSection>
+            </CollapsibleDetailSection>
 
-            <DetailSection title="정보 관리" testID="customer-detail-section-management">
+            <CollapsibleDetailSection title="정보 관리" testID="customer-detail-section-management">
               <Inline>
                 <Button
                   accessibilityLabel={`${customer.name} 고객 정보 수정`}
@@ -331,7 +433,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   variant="secondary"
                   onPress={() =>
                     router.push({
-                      pathname: '/customers/[customerId]/edit',
+                      pathname: "/customers/[customerId]/edit",
                       params: { customerId: String(customer.id) },
                     })
                   }
@@ -350,17 +452,23 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 <AppText variant="caption" color="danger">
                   {deleteMutation.error instanceof Error
                     ? deleteMutation.error.message
-                    : '고객을 삭제하지 못했습니다.'}
+                    : "고객을 삭제하지 못했습니다."}
                 </AppText>
               ) : null}
-            </DetailSection>
+            </CollapsibleDetailSection>
           </ScrollView>
         </Screen>
       )}
+      <CustomerGaDataModal
+        open={gaOpen}
+        customerId={customerId}
+        customerName={customer?.name ?? "고객"}
+        onClose={() => setGaOpen(false)}
+      />
       <ConfirmDialog
         open={deleteOpen}
         title="고객 삭제"
-        message={`${customer?.name ?? '이 고객'}의 정보와 연결된 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+        message={`${customer?.name ?? "이 고객"}의 정보와 연결된 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
         confirmLabel="삭제"
         tone="danger"
         busy={deleteMutation.isPending}
@@ -369,77 +477,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
       />
     </View>
   );
-}
-
-function DetailSection({
-  title,
-  children,
-  testID,
-}: {
-  title: string;
-  children: React.ReactNode;
-  testID?: string;
-}) {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createDetailStyles(theme), [theme]);
-  return (
-    <Card variant="outlined" padding="none" testID={testID}>
-      <View style={styles.sectionHeader}>
-        <AppText variant="sectionTitle">{title}</AppText>
-      </View>
-      <Divider />
-      <Stack gap="none" style={styles.sectionBody}>
-        {children}
-      </Stack>
-    </Card>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createDetailStyles(theme), [theme]);
-  return (
-    <View
-      style={styles.row}
-      accessible
-      accessibilityLabel={`${label}, ${value}`}
-    >
-      <AppText variant="label" style={styles.label}>
-        {label}
-      </AppText>
-      <AppText style={styles.value}>
-        {value}
-      </AppText>
-    </View>
-  );
-}
-
-const DETAIL_LABEL_WIDTH = 104;
-function createDetailStyles(theme: AppTheme) {
-  return StyleSheet.create({
-    sectionHeader: {
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm + theme.spacing.xxs,
-    },
-    sectionBody: {
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.xs,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-    },
-    label: {
-      width: DETAIL_LABEL_WIDTH,
-      flexShrink: 0,
-    },
-    value: {
-      flex: 1,
-      minWidth: 0,
-    },
-  });
 }
 
 function createStyles(theme: AppTheme) {
@@ -454,15 +491,21 @@ function createStyles(theme: AppTheme) {
     },
     grow: { flex: 1 },
     customerName: { flexShrink: 1 },
-    favoriteIcon: { fontSize: 20, lineHeight: 24 },
     actionGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: theme.spacing.sm,
+      paddingBottom: theme.spacing.sm,
     },
     actionButton: {
       flexGrow: 1,
-      flexBasis: '46%',
+      flexBasis: "46%",
+      minHeight: 44,
+    },
+    subBlock: {
+      paddingVertical: theme.spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
     },
   });
 }
