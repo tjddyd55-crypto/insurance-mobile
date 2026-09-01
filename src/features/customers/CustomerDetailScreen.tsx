@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -14,22 +14,27 @@ import {
   Button,
   Card,
   Divider,
+  IconButton,
   Inline,
+  Screen,
   Stack,
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
 import { customerGenderLabel, formatCustomerPhone } from './customerModel';
+import {
+  formatCustomerBodySize,
+  formatCustomerDetailDate,
+  formatCustomerDetailValue,
+  formatCustomerDriver,
+  formatCustomerSsn,
+  getCustomerFollowUpPresentation,
+} from './customerDetailPresentation';
 import { deleteCustomer, getCustomer, setCustomerFavorite } from './customersApi';
 import { customerQueryKeys } from './queryKeys';
 import type { ListCustomersResult } from './types';
 
 type CustomerDetailScreenProps = { customerId: number };
-
-function valueOrDash(value: string | number | null | undefined): string {
-  const normalized = String(value ?? '').trim();
-  return normalized || '—';
-}
 
 function phoneUrl(phone: string, scheme: 'tel' | 'sms'): string | null {
   const digits = phone.replace(/\D/g, '');
@@ -84,6 +89,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const customer = query.data;
   const telUrl = customer ? phoneUrl(customer.phone, 'tel') : null;
   const smsUrl = customer ? phoneUrl(customer.phone, 'sms') : null;
+  const followUp = customer ? getCustomerFollowUpPresentation(customer) : null;
 
   return (
     <View style={styles.root}>
@@ -97,49 +103,231 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
           onRetry={() => void query.refetch()}
         />
       ) : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-          <Card>
-            <Stack gap="md">
-              <Inline justify="space-between" align="flex-start">
-                <Stack gap="xs" style={styles.grow}>
-                  <Inline wrap>
-                    <AppText variant="title">{customer.name}</AppText>
-                    {customer.customerCode ? <Badge label={customer.customerCode} /> : null}
-                    {customer.isFavorite ? <Badge label="중요 고객" tone="warning" /> : null}
-                  </Inline>
-                  <AppText variant="caption">
-                    {customerGenderLabel(customer.gender)}
-                    {customer.insuranceAge != null ? ` · 보험나이 ${customer.insuranceAge}세` : ''}
-                  </AppText>
-                </Stack>
+        <Screen padded={false}>
+          <ScrollView
+            testID="customer-detail-scroll"
+            style={styles.scroll}
+            contentContainerStyle={styles.content}
+            refreshControl={
+              <RefreshControl
+                refreshing={query.isRefetching}
+                onRefresh={() => void query.refetch()}
+                colors={[theme.colors.primary]}
+                tintColor={theme.colors.primary}
+              />
+            }
+          >
+            <Card variant="outlined" padding="sm" testID="customer-detail-identity">
+              <Stack gap="sm">
+                <Inline justify="space-between" align="flex-start">
+                  <Stack gap="xs" style={styles.grow}>
+                    <Inline gap="xs" wrap>
+                      <AppText variant="title" style={styles.customerName}>
+                        {customer.name}
+                      </AppText>
+                      {customer.customerCode ? <Badge label={customer.customerCode} /> : null}
+                    </Inline>
+                    <AppText color="textSecondary">
+                      {customer.phone ? formatCustomerPhone(customer.phone) : '연락처 없음'}
+                    </AppText>
+                    <Inline gap="xs" wrap>
+                      <AppText variant="helper">
+                        {customerGenderLabel(customer.gender)}
+                        {customer.insuranceAge != null ? ` · 보험나이 ${customer.insuranceAge}세` : ''}
+                      </AppText>
+                      {customer.isFavorite ? <Badge label="중요 고객" tone="warning" /> : null}
+                      {followUp ? <Badge label={followUp.label} tone={followUp.tone} /> : null}
+                    </Inline>
+                  </Stack>
+                  <IconButton
+                    accessibilityLabel={customer.isFavorite ? '중요 고객 해제' : '중요 고객'}
+                    variant="ghost"
+                    disabled={favoriteMutation.isPending}
+                    onPress={() => favoriteMutation.mutate(!customer.isFavorite)}
+                    icon={(color) => (
+                      <AppText
+                        accessibilityElementsHidden
+                        style={[
+                          styles.favoriteIcon,
+                          { color: customer.isFavorite ? theme.colors.warning : color },
+                        ]}
+                      >
+                        {customer.isFavorite ? '★' : '☆'}
+                      </AppText>
+                    )}
+                  />
+                </Inline>
+                <Inline>
+                  <Button
+                    accessibilityLabel={`${customer.name} 고객에게 전화`}
+                    label="전화"
+                    size="sm"
+                    disabled={!telUrl}
+                    onPress={() => telUrl && void Linking.openURL(telUrl)}
+                    style={styles.grow}
+                  />
+                  <Button
+                    accessibilityLabel={
+                      customer.smsOptOut
+                        ? `${customer.name} 고객 문자 수신 거부`
+                        : `${customer.name} 고객에게 문자`
+                    }
+                    label={customer.smsOptOut ? '문자 수신거부' : '문자'}
+                    size="sm"
+                    variant="secondary"
+                    disabled={!smsUrl || customer.smsOptOut}
+                    onPress={() => smsUrl && void Linking.openURL(smsUrl)}
+                    style={styles.grow}
+                  />
+                </Inline>
+              </Stack>
+            </Card>
+
+            <DetailSection title="고객 업무" testID="customer-detail-section-actions">
+              <View style={styles.actionGrid}>
                 <Button
-                  label={customer.isFavorite ? '중요 해제' : '중요 고객'}
+                  accessibilityLabel={`${customer.name} 고객 상담 이력`}
+                  label="상담 이력"
                   size="sm"
                   variant="secondary"
-                  loading={favoriteMutation.isPending}
-                  onPress={() => favoriteMutation.mutate(!customer.isFavorite)}
-                />
-              </Inline>
-              <Inline>
-                <Button
-                  label="전화"
-                  fullWidth
-                  disabled={!telUrl}
-                  onPress={() => telUrl && void Linking.openURL(telUrl)}
-                  style={styles.grow}
+                  onPress={() => router.push(`/customers/${customer.id}/consultations`)}
+                  style={styles.actionButton}
                 />
                 <Button
-                  label={customer.smsOptOut ? '문자 수신거부' : '문자'}
-                  fullWidth
+                  accessibilityLabel={`${customer.name} 고객 파일`}
+                  label="고객 파일"
+                  size="sm"
                   variant="secondary"
-                  disabled={!smsUrl || customer.smsOptOut}
-                  onPress={() => smsUrl && void Linking.openURL(smsUrl)}
-                  style={styles.grow}
+                  onPress={() => router.push(`/customers/${customer.id}/files`)}
+                  style={styles.actionButton}
                 />
-              </Inline>
+                <Button
+                  accessibilityLabel={`${customer.name} 고객 메모`}
+                  label="고객 메모"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => router.push(`/customers/${customer.id}/memos`)}
+                  style={styles.actionButton}
+                />
+                <Button
+                  accessibilityLabel={`${customer.name} 고객 보험청구 관리`}
+                  label="보험청구 관리"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/customers/[customerId]/claim-requests',
+                      params: { customerId: String(customer.id) },
+                    })
+                  }
+                  style={styles.actionButton}
+                />
+              </View>
+            </DetailSection>
+
+            <DetailSection title="기본 정보" testID="customer-detail-section-basic">
+              <DetailRow label="주민번호" value={formatCustomerSsn(customer.ssn)} />
+              <DetailRow label="성별" value={customerGenderLabel(customer.gender)} />
+              <DetailRow
+                label="보험나이"
+                value={
+                  customer.insuranceAge != null
+                    ? `${customer.insuranceAge}세`
+                    : formatCustomerDetailValue(null)
+                }
+              />
+              <DetailRow label="상령일" value={formatCustomerDetailDate(customer.nextAgeDate)} />
+              <DetailRow
+                label="핸드폰번호"
+                value={
+                  customer.phone
+                    ? formatCustomerPhone(customer.phone)
+                    : formatCustomerDetailValue(null)
+                }
+              />
+              <DetailRow label="문자 수신" value={customer.smsOptOut ? '수신 거부' : '수신 허용'} />
+              <DetailRow label="통신사" value={formatCustomerDetailValue(customer.carrier)} />
+              <DetailRow label="주소" value={formatCustomerDetailValue(customer.address)} />
+              <DetailRow label="키 / 몸무게" value={formatCustomerBodySize(customer)} />
+              <DetailRow label="직업·회사·지역" value={formatCustomerDetailValue(customer.job)} />
+              <DetailRow label="운전 여부" value={formatCustomerDriver(customer)} />
+              <DetailRow label="유입 경로" value={formatCustomerDetailValue(customer.inflowSource)} />
+              <DetailRow label="소개자·이관자" value={formatCustomerDetailValue(customer.referrerName)} />
+            </DetailSection>
+
+            <DetailSection
+              title="상담 및 후속관리"
+              testID="customer-detail-section-consultation"
+            >
+              <DetailRow
+                label="최근 상담일"
+                value={formatCustomerDetailDate(
+                  customer.lastConsultDate ?? customer.lastConsultationAt,
+                )}
+              />
+              <DetailRow
+                label="최근 상담"
+                value={formatCustomerDetailValue(
+                  customer.lastConsultationMemo ?? customer.lastConsultationSummary,
+                )}
+              />
+              <DetailRow
+                label="접촉 결과"
+                value={formatCustomerDetailValue(customer.contactResult)}
+              />
+              <DetailRow
+                label="다음 연락일"
+                value={formatCustomerDetailDate(customer.nextContactDate)}
+              />
+              <DetailRow
+                label="후속 상태"
+                value={formatCustomerDetailValue(customer.followUpStatus)}
+              />
+              <DetailRow
+                label="후속 메모"
+                value={formatCustomerDetailValue(customer.followUpNotePreview)}
+              />
+            </DetailSection>
+
+            <DetailSection title="차량 정보" testID="customer-detail-section-vehicle">
+              <DetailRow label="차량번호" value={formatCustomerDetailValue(customer.carNumber)} />
+              <DetailRow
+                label="차종"
+                value={formatCustomerDetailValue(customer.carModel || customer.carType)}
+              />
+              <DetailRow label="연식" value={formatCustomerDetailValue(customer.carYear)} />
+              <DetailRow
+                label="갱신 예정일"
+                value={formatCustomerDetailDate(customer.renewalDate)}
+              />
+            </DetailSection>
+
+            <DetailSection title="보험 및 참고사항" testID="customer-detail-section-insurance">
+              <DetailRow label="병력" value={formatCustomerDetailValue(customer.medical)} />
+              <DetailRow
+                label="보험가입내역"
+                value={formatCustomerDetailValue(customer.notes.insuranceHistory)}
+              />
+              <DetailRow
+                label="계좌정보"
+                value={formatCustomerDetailValue(customer.notes.accountNumber)}
+              />
+              <DetailRow
+                label="수술·치료"
+                value={formatCustomerDetailValue(customer.notes.treatmentHistoryNote)}
+              />
+              <DetailRow
+                label="약 복용"
+                value={formatCustomerDetailValue(customer.notes.medicationHistoryNote)}
+              />
+            </DetailSection>
+
+            <DetailSection title="정보 관리" testID="customer-detail-section-management">
               <Inline>
                 <Button
+                  accessibilityLabel={`${customer.name} 고객 정보 수정`}
                   label="정보 수정"
+                  size="sm"
                   variant="secondary"
                   onPress={() =>
                     router.push({
@@ -150,43 +338,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   style={styles.grow}
                 />
                 <Button
+                  accessibilityLabel={`${customer.name} 고객 삭제`}
                   label="고객 삭제"
+                  size="sm"
                   variant="danger"
                   onPress={() => setDeleteOpen(true)}
-                  style={styles.grow}
-                />
-              </Inline>
-              <Button
-                label="보험청구 관리"
-                variant="secondary"
-                fullWidth
-                onPress={() =>
-                  router.push({
-                    pathname: '/customers/[customerId]/claim-requests',
-                    params: { customerId: String(customer.id) },
-                  })
-                }
-              />
-              <Inline wrap>
-                <Button
-                  label="상담 이력"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => router.push(`/customers/${customer.id}/consultations`)}
-                  style={styles.grow}
-                />
-                <Button
-                  label="고객 메모"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => router.push(`/customers/${customer.id}/memos`)}
-                  style={styles.grow}
-                />
-                <Button
-                  label="고객 파일"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => router.push(`/customers/${customer.id}/files`)}
                   style={styles.grow}
                 />
               </Inline>
@@ -197,45 +353,9 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     : '고객을 삭제하지 못했습니다.'}
                 </AppText>
               ) : null}
-            </Stack>
-          </Card>
-
-          <DetailSection title="기본 정보">
-            <DetailRow label="연락처" value={customer.phone ? formatCustomerPhone(customer.phone) : '—'} />
-            <DetailRow label="생년월일" value={valueOrDash(customer.birthDate?.slice(0, 10))} />
-            <DetailRow label="직업" value={valueOrDash(customer.job)} />
-            <DetailRow label="주소" value={valueOrDash(customer.address)} />
-            <DetailRow label="유입 경로" value={valueOrDash(customer.inflowSource)} />
-            <DetailRow label="소개자" value={valueOrDash(customer.referrerName)} />
-          </DetailSection>
-
-          <DetailSection title="상담 및 후속관리">
-            <DetailRow
-              label="최근 상담일"
-              value={valueOrDash((customer.lastConsultDate ?? customer.lastConsultationAt)?.slice(0, 10))}
-            />
-            <DetailRow
-              label="최근 상담"
-              value={valueOrDash(customer.lastConsultationMemo ?? customer.lastConsultationSummary)}
-            />
-            <DetailRow label="다음 연락일" value={valueOrDash(customer.nextContactDate?.slice(0, 10))} />
-            <DetailRow label="후속 상태" value={valueOrDash(customer.followUpStatus)} />
-          </DetailSection>
-
-          <DetailSection title="차량 정보">
-            <DetailRow label="차량번호" value={valueOrDash(customer.carNumber)} />
-            <DetailRow label="차종" value={valueOrDash(customer.carModel || customer.carType)} />
-            <DetailRow label="연식" value={valueOrDash(customer.carYear)} />
-            <DetailRow label="갱신 예정일" value={valueOrDash(customer.renewalDate?.slice(0, 10))} />
-          </DetailSection>
-
-          <DetailSection title="보험 및 참고사항">
-            <DetailRow label="보험가입내역" value={valueOrDash(customer.notes.insuranceHistory)} />
-            <DetailRow label="계좌정보" value={valueOrDash(customer.notes.accountNumber)} />
-            <DetailRow label="수술·치료" value={valueOrDash(customer.notes.treatmentHistoryNote)} />
-            <DetailRow label="약 복용" value={valueOrDash(customer.notes.medicationHistoryNote)} />
-          </DetailSection>
-        </ScrollView>
+            </DetailSection>
+          </ScrollView>
+        </Screen>
       )}
       <ConfirmDialog
         open={deleteOpen}
@@ -251,12 +371,24 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   );
 }
 
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+function DetailSection({
+  title,
+  children,
+  testID,
+}: {
+  title: string;
+  children: React.ReactNode;
+  testID?: string;
+}) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createDetailStyles(theme), [theme]);
   return (
-    <Card variant="outlined">
-      <Stack gap="md">
-        <AppText variant="heading">{title}</AppText>
-        <Divider />
+    <Card variant="outlined" padding="none" testID={testID}>
+      <View style={styles.sectionHeader}>
+        <AppText variant="sectionTitle">{title}</AppText>
+      </View>
+      <Divider />
+      <Stack gap="none" style={styles.sectionBody}>
         {children}
       </Stack>
     </Card>
@@ -264,19 +396,73 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createDetailStyles(theme), [theme]);
   return (
-    <View>
-      <AppText variant="label">{label}</AppText>
-      <AppText>{value}</AppText>
+    <View
+      style={styles.row}
+      accessible
+      accessibilityLabel={`${label}, ${value}`}
+    >
+      <AppText variant="label" style={styles.label}>
+        {label}
+      </AppText>
+      <AppText style={styles.value}>
+        {value}
+      </AppText>
     </View>
   );
+}
+
+const DETAIL_LABEL_WIDTH = 104;
+function createDetailStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    sectionHeader: {
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + theme.spacing.xxs,
+    },
+    sectionBody: {
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    label: {
+      width: DETAIL_LABEL_WIDTH,
+      flexShrink: 0,
+    },
+    value: {
+      flex: 1,
+      minWidth: 0,
+    },
+  });
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     scroll: { flex: 1 },
-    content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.huge, gap: theme.spacing.md },
+    content: {
+      paddingHorizontal: theme.layout.screenPaddingHorizontal,
+      paddingTop: theme.layout.screenPaddingTop,
+      paddingBottom: theme.layout.contentBottomInset,
+      gap: theme.layout.compactListGap,
+    },
     grow: { flex: 1 },
+    customerName: { flexShrink: 1 },
+    favoriteIcon: { fontSize: 20, lineHeight: 24 },
+    actionGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    actionButton: {
+      flexGrow: 1,
+      flexBasis: '46%',
+    },
   });
 }
