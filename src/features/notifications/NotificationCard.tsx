@@ -5,7 +5,6 @@ import {
   AppText,
   Badge,
   Button,
-  Card,
   Inline,
   Stack,
   useAppTheme,
@@ -16,6 +15,7 @@ import {
   notificationReferenceDate,
   todayInSeoul,
 } from './notificationModel';
+import { notificationSectionDateLabel } from './notificationPresentation';
 import type { NotificationRecord, NotificationView } from './types';
 
 export function NotificationCard({
@@ -35,62 +35,71 @@ export function NotificationCard({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const referenceDate = notificationReferenceDate(notification);
   const canOpen = notification.customerId != null && notification.customerId > 0;
+  const unread = !notification.isRead && view === 'active';
 
   return (
-    <Card variant="outlined" padding="none">
+    <View style={[styles.row, unread && styles.unread]}>
       <Pressable
         accessibilityRole={canOpen ? 'link' : undefined}
         disabled={!canOpen}
         onPress={() => onOpen(notification)}
         style={({ pressed }) => [styles.body, pressed && styles.pressed]}
       >
-        <Stack gap="sm">
+        <Stack gap="xs">
           <Inline justify="space-between" align="flex-start">
-            <View style={styles.titleWrap}>
-              <AppText variant="bodyStrong" color={canOpen ? 'info' : 'text'}>
-                {notification.customerName || '고객 정보 없음'}
-              </AppText>
-              {notification.message ? (
-                <AppText variant="caption" color="textSecondary" numberOfLines={3}>
-                  {notification.message}
-                </AppText>
-              ) : null}
-            </View>
-            {!notification.isRead && view === 'active' ? <Badge label="새 알림" tone="warning" /> : null}
+            <AppText
+              variant="bodyStrong"
+              color={canOpen ? 'info' : 'text'}
+              numberOfLines={1}
+              style={styles.title}
+            >
+              {notification.customerName || '고객 정보 없음'}
+            </AppText>
+            {unread ? <Badge label="새 알림" tone="warning" /> : null}
           </Inline>
-          <Inline gap="md" wrap>
-            <AppText variant="caption">기준일 {referenceDate ?? '—'}</AppText>
+          {notification.message ? (
+            <AppText variant="caption" color="textSecondary" numberOfLines={2}>
+              {notification.message}
+            </AppText>
+          ) : null}
+          <Inline gap="sm" wrap>
+            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+              {notificationSectionDateLabel(notification.type)} {referenceDate ?? '—'}
+            </AppText>
             <Badge label={notificationDDay(referenceDate, todayInSeoul())} tone="info" />
           </Inline>
         </Stack>
       </Pressable>
       {view === 'active' ? (
-        <View style={styles.actions}>
-          <Button
-            label="확인 처리"
-            variant="ghost"
-            size="sm"
-            loading={busy}
-            onPress={() => onConfirm(notification)}
-            style={styles.action}
-          />
-        </View>
+        <Button
+          label="확인"
+          variant="ghost"
+          size="sm"
+          loading={busy}
+          onPress={() => onConfirm(notification)}
+          style={styles.confirm}
+        />
       ) : null}
-    </Card>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    body: { padding: theme.spacing.lg },
-    pressed: { backgroundColor: theme.colors.surfaceSubtle, opacity: theme.opacity.pressed },
-    titleWrap: { flex: 1, gap: theme.spacing.xs },
-    actions: {
-      flexDirection: 'row',
+    row: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.colors.border,
-      padding: theme.spacing.xs,
     },
-    action: { flex: 1 },
+    unread: {
+      backgroundColor: theme.colors.infoSoft,
+    },
+    body: {
+      minHeight: theme.interaction.minimumTouchTarget,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    pressed: { backgroundColor: theme.colors.surfaceSubtle, opacity: theme.opacity.pressed },
+    title: { flex: 1, minWidth: 0, paddingRight: theme.spacing.sm },
+    confirm: { alignSelf: 'stretch', marginHorizontal: theme.spacing.xs, marginBottom: theme.spacing.xs },
   });
 }

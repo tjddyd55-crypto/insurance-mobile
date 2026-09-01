@@ -13,6 +13,8 @@ export const DEFAULT_ALERT_SETTINGS: UserAlertSettings = {
   claimRequest: { enabled: true },
 };
 
+export const NOTIFICATION_PANEL_PREVIEW_COUNT = 5;
+
 export const NOTIFICATION_SECTIONS: { type: NotificationType; title: string; dateLabel: string }[] = [
   { type: 'insurance_age_date', title: '상령일', dateLabel: '상령일' },
   { type: 'car_expiry', title: '자동차만기', dateLabel: '만기일' },
