@@ -1,96 +1,88 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { DrawerContentScrollView, type DrawerContentComponentProps } from 'expo-router/drawer';
+import { usePathname, useRouter } from 'expo-router';
+import { type DrawerContentComponentProps } from 'expo-router/drawer';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
+import { BillingStatusPill } from '../components/BillingStatusPill';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { getEnvironmentConfig } from '../config/environment';
-import { AppText, Badge, Button, useAppTheme, type AppTheme } from '../design-system';
-import {
-  filterMenuForRole,
-  USER_APP_MENU,
-  type NativeMenuLink,
-  type UserRole,
-} from './menuConfig';
+import { AppText, Button, IconButton, useAppTheme, type AppTheme } from '../design-system';
+import { filterMenuForRole, USER_APP_MENU, type NativeMenuLink, type UserRole } from './menuConfig';
+import { formatGaBannerLabel } from './gaTenantLabel';
 
 export function AppDrawerContent(props: DrawerContentComponentProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const env = getEnvironmentConfig();
+  const pathname = usePathname();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
-
   const menu = useMemo(
     () => filterMenuForRole(USER_APP_MENU, (user?.role as UserRole | undefined) ?? 'USER'),
     [user?.role],
   );
 
   const onPressLink = (item: NativeMenuLink) => {
-    if (item.disabled || item.mode === 'DISABLED') {
-      return;
-    }
+    if (item.disabled || item.mode === 'DISABLED') return;
     props.navigation.closeDrawer();
-    router.push(item.nativePath as `/customers`);
+    router.push(item.nativePath as '/customers');
   };
 
   return (
-    <DrawerContentScrollView {...props} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <AppText variant="title" color="brandStrong">{env.appDisplayName}</AppText>
-        {env.isDevApp ? <Badge label="DEV" tone="warning" /> : null}
-        <AppText>{user?.displayName ?? user?.username ?? ''}</AppText>
-        <AppText variant="caption">{user?.role ?? ''}</AppText>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <View style={styles.topbar}>
+        <IconButton
+          accessibilityLabel="메뉴 닫기"
+          onPress={() => props.navigation.closeDrawer()}
+          icon={(color) => (
+            <AppText accessibilityElementsHidden style={[styles.menuIcon, { color }]}>☰</AppText>
+          )}
+        />
+        <AppText variant="navigationTitle" numberOfLines={1} style={styles.gaName}>
+          {formatGaBannerLabel(user?.gaName, user?.gaCode, user?.username)}
+        </AppText>
+        <BillingStatusPill />
       </View>
-
-      <ScrollView style={styles.menuScroll}>
-        {menu.map((section) => {
-          const isOpen = expanded[section.id] ?? true;
-          return (
-            <View key={section.id} style={styles.section}>
-              <Pressable
-                onPress={() =>
-                  setExpanded((prev) => ({ ...prev, [section.id]: !isOpen }))
-                }
-                style={styles.sectionHeader}
-              >
-                <AppText variant="label" style={styles.sectionLabel}>{section.label}</AppText>
-                <AppText color="textSecondary">{isOpen ? '▾' : '▸'}</AppText>
-              </Pressable>
-              {isOpen
-                ? section.children.map((child) => (
-                    <Pressable
-                      key={child.id}
-                      disabled={child.disabled || child.mode === 'DISABLED'}
-                      onPress={() => onPressLink(child)}
-                      style={[
-                        styles.link,
-                        (child.disabled || child.mode === 'DISABLED') && styles.linkDisabled,
-                      ]}
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.nav}>
+          {menu.map((section, index) => (
+            <View key={section.id} style={[styles.section, index > 0 && styles.sectionDivided]}>
+              <AppText variant="label" style={styles.sectionLabel}>{section.label}</AppText>
+              {section.children.map((child) => {
+                const disabled = child.disabled || child.mode === 'DISABLED';
+                const selected = pathname === child.nativePath;
+                return (
+                  <Pressable
+                    key={child.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled, selected }}
+                    disabled={disabled}
+                    onPress={() => onPressLink(child)}
+                    style={({ pressed }) => [
+                      styles.link,
+                      selected && styles.linkSelected,
+                      pressed && styles.linkPressed,
+                      disabled && styles.linkDisabled,
+                    ]}
+                  >
+                    <AppText
+                      variant={selected ? 'bodyStrong' : 'body'}
+                      style={[styles.linkText, selected && styles.linkTextSelected]}
                     >
-                      <AppText>{child.label}</AppText>
-                      <View style={styles.linkMeta}>
-                        {child.badge ? <Badge label={child.badge} tone="warning" /> : null}
-                        {child.mode === 'WEBVIEW_TEMP' ? (
-                          <Badge label="WEB" tone="default" />
-                        ) : null}
-                        {child.mode === 'NATIVE' ? <Badge label="N" tone="success" /> : null}
-                      </View>
-                    </Pressable>
-                  ))
-                : null}
+                      {child.label}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
             </View>
-          );
-        })}
+          ))}
+        </View>
+        <View style={styles.footer}>
+          <Button label="로그아웃" variant="secondary" fullWidth onPress={() => setConfirmLogout(true)} />
+        </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <Button label="로그아웃" variant="secondary" onPress={() => setConfirmLogout(true)} />
-      </View>
-
       <ConfirmDialog
         open={confirmLogout}
         title="로그아웃"
@@ -111,21 +103,41 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
           }
         }}
       />
-    </DrawerContentScrollView>
+    </SafeAreaView>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    container: { flexGrow: 1, paddingBottom: theme.spacing.xl, backgroundColor: theme.colors.surface },
-    header: { padding: theme.spacing.lg, gap: theme.spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border },
-    menuScroll: { flex: 1 },
-    section: { paddingVertical: theme.spacing.sm },
-    sectionHeader: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.colors.surfaceSubtle },
-    sectionLabel: { color: theme.colors.text },
-    link: { minHeight: theme.controlSize.minimumTouchTarget, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    safe: { flex: 1, backgroundColor: theme.colors.surface },
+    topbar: {
+      minHeight: theme.layout.headerHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
+    },
+    menuIcon: { fontSize: 20, lineHeight: 24 },
+    gaName: { flex: 1, minWidth: 0 },
+    container: { flexGrow: 1, backgroundColor: theme.colors.surface },
+    nav: { paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.sm },
+    section: { paddingTop: theme.spacing.md },
+    sectionDivided: { borderTopWidth: 1, borderTopColor: theme.colors.border },
+    sectionLabel: { paddingBottom: theme.spacing.xs, color: theme.colors.textSecondary, fontWeight: '700', letterSpacing: 0.5 },
+    link: {
+      minHeight: theme.interaction.minimumTouchTarget,
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.md,
+    },
+    linkSelected: { backgroundColor: theme.colors.primarySoft },
+    linkPressed: { backgroundColor: theme.colors.surfaceSubtle },
     linkDisabled: { opacity: theme.opacity.disabled },
-    linkMeta: { flexDirection: 'row', gap: theme.spacing.xs },
-    footer: { padding: theme.spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border },
+    linkText: { color: theme.colors.textSecondary },
+    linkTextSelected: { color: theme.colors.primaryPressed },
+    footer: { padding: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border },
   });
 }

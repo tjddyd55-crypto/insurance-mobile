@@ -12,7 +12,7 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         drawerType: 'front',
-        drawerStyle: { width: 300, backgroundColor: theme.colors.surface },
+        drawerStyle: { width: '100%', backgroundColor: theme.colors.surface },
         overlayColor: theme.colors.overlay,
         swipeEnabled: true,
       }}

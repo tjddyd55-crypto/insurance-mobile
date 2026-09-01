@@ -1,17 +1,28 @@
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useMemo, type ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
+import { BillingStatusPill } from './BillingStatusPill';
 import { getEnvironmentConfig } from '../config/environment';
-import { AppText, Badge, useAppTheme, type AppTheme } from '../design-system';
+import {
+  AppText,
+  Badge,
+  IconButton,
+  useAppTheme,
+  type AppTheme,
+} from '../design-system';
+import { formatGaBannerLabel } from '../navigation/gaTenantLabel';
 
 type AppHeaderProps = {
   title: string;
   showMenu?: boolean;
   showBack?: boolean;
   onBackPress?: () => void;
+  subtitle?: string;
+  rightAction?: ReactNode;
+  showBillingStatus?: boolean;
 };
 
 export function AppHeader({
@@ -19,6 +30,9 @@ export function AppHeader({
   showMenu = true,
   showBack = false,
   onBackPress,
+  subtitle,
+  rightAction,
+  showBillingStatus,
 }: AppHeaderProps) {
   const navigation = useNavigation() as ReturnType<typeof useNavigation> & { openDrawer: () => void };
   const router = useRouter();
@@ -26,41 +40,41 @@ export function AppHeader({
   const { isDevApp } = getEnvironmentConfig();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const titleLabel = showBack
+    ? title
+    : formatGaBannerLabel(user?.gaName, user?.gaCode, user?.username);
+  const billingVisible = showBillingStatus ?? !showBack;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.wrap}>
         <View style={styles.left}>
           {showBack ? (
-            <Pressable
-              accessibilityRole="button"
+            <IconButton
               accessibilityLabel="뒤로 가기"
               onPress={() => (onBackPress ? onBackPress() : router.back())}
-              style={styles.menuButton}
-            >
-              <AppText style={styles.backIcon}>‹</AppText>
-            </Pressable>
+              icon={(color) => (
+                <AppText accessibilityElementsHidden style={[styles.backIcon, { color }]}>‹</AppText>
+              )}
+            />
           ) : showMenu ? (
-            <Pressable
-              accessibilityRole="button"
+            <IconButton
               accessibilityLabel="메뉴 열기"
               onPress={() => navigation.openDrawer()}
-              style={styles.menuButton}
-            >
-              <AppText style={styles.menuIcon}>☰</AppText>
-            </Pressable>
+              icon={(color) => (
+                <AppText accessibilityElementsHidden style={[styles.menuIcon, { color }]}>☰</AppText>
+              )}
+            />
           ) : null}
-          <AppText variant="heading" numberOfLines={1} style={styles.title}>
-            {title}
-          </AppText>
+          <View style={styles.titleBlock}>
+            <AppText variant="navigationTitle" numberOfLines={1}>{titleLabel}</AppText>
+            {subtitle ? <AppText variant="helper" numberOfLines={1}>{subtitle}</AppText> : null}
+          </View>
         </View>
         <View style={styles.right}>
           {isDevApp ? <Badge label="DEV" tone="warning" /> : null}
-          {user?.displayName ? (
-            <AppText variant="caption" numberOfLines={1} style={styles.user}>
-              {user.displayName}
-            </AppText>
-          ) : null}
+          {billingVisible ? <BillingStatusPill /> : null}
+          {rightAction}
         </View>
       </View>
     </SafeAreaView>
@@ -74,28 +88,22 @@ function createStyles(theme: AppTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      minHeight: theme.layout.headerHeight,
       paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
       backgroundColor: theme.colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
     },
-    left: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: theme.spacing.sm },
+    left: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0, gap: theme.spacing.sm },
+    titleBlock: { flexShrink: 1, minWidth: 0, gap: theme.spacing.xxs },
     right: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.sm,
-      maxWidth: '40%',
+      flexShrink: 1,
+      marginLeft: theme.spacing.sm,
     },
-    menuButton: {
-      minWidth: theme.controlSize.minimumTouchTarget,
-      minHeight: theme.controlSize.minimumTouchTarget,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    menuIcon: { fontSize: 22, color: theme.colors.brandStrong },
-    backIcon: { fontSize: 36, lineHeight: 38, color: theme.colors.text },
-    title: { flexShrink: 1 },
-    user: { maxWidth: 100 },
+    menuIcon: { fontSize: 20, lineHeight: 24 },
+    backIcon: { fontSize: 30, lineHeight: 32 },
   });
 }

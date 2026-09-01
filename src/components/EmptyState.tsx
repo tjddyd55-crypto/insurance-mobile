@@ -1,24 +1,27 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { spacing, typography } from '../theme/tokens';
+import { AppText, useAppTheme, type AppTheme } from '../design-system';
 
 export function EmptyState({ title = '항목 없음', message }: { title?: string; message?: string }) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{title}</Text>
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      <AppText variant="sectionTitle" align="center">{title}</AppText>
+      {message ? <AppText color="textSecondary" align="center">{message}</AppText> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    padding: spacing.xl,
-  },
-  title: typography.heading,
-  message: { ...typography.caption, textAlign: 'center' },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    wrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
+      padding: theme.spacing.xl,
+    },
+  });
+}

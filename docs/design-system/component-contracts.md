@@ -15,7 +15,13 @@
 
 - 한 영역에 primary 버튼을 여러 개 두지 않습니다.
 - 비동기 처리 중에는 `loading`으로 중복 실행을 차단합니다.
-- 아이콘만 있는 동작은 별도 IconButton 도입 전까지 Pressable을 임의 구현하지 않습니다.
+- `sm`은 compact visual size를 사용하지만 기본 hit slop으로 44px interaction target을 유지합니다.
+
+## IconButton
+
+- 아이콘 전용 동작은 `IconButton`을 사용하고 `accessibilityLabel`을 반드시 제공합니다.
+- `sm` visual size와 44px interaction target을 분리하며 화면에서 hit slop 숫자를 반복하지 않습니다.
+- `outlined`과 `ghost`, `default`·`primary`·`danger` tone만 지원합니다.
 
 ## TextField
 
@@ -44,3 +50,10 @@ Card 안에 Card를 반복 중첩하지 않습니다. 정보 계층은 Divider, 
 - 화면 루트는 `Screen`을 사용해 배경·안전 영역·기본 여백을 통일합니다.
 - 세로 간격은 `Stack`, 가로 정렬은 `Inline`을 사용합니다.
 - 복잡한 레이아웃에서만 StyleSheet를 추가하고, 간격 값은 theme token을 사용합니다.
+
+## ModalShell
+
+- fullscreen 입력·상세 modal의 header/body/footer/safe area/keyboard 구조를 제공합니다.
+- backdrop 닫힘은 기본 비활성입니다.
+- `ConfirmDialog`는 Android Back을 소비하는 별도 정책이 있으므로 `ModalShell`로 대체하지 않습니다.
+- 기능별 validation, 저장, 미저장 확인은 feature 계층이 계속 소유합니다.

@@ -33,6 +33,7 @@ export function Button({
   leading,
   trailing,
   disabled,
+  hitSlop,
   style,
   ...rest
 }: ButtonProps) {
@@ -53,6 +54,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
+      hitSlop={hitSlop ?? (size === 'sm' ? theme.interaction.compactHitSlop : undefined)}
       style={(state) => [
         styles.base,
         styles[size],

@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { colors, spacing, typography } from '../theme/tokens';
-import { Button } from './Button';
+import { AppText, Button, useAppTheme, type AppTheme } from '../design-system';
 
 type ErrorStateProps = {
   title?: string;
@@ -10,23 +10,25 @@ type ErrorStateProps = {
 };
 
 export function ErrorState({ title = '오류', message, onRetry }: ErrorStateProps) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
+      <AppText variant="sectionTitle" color="danger" align="center">{title}</AppText>
+      <AppText color="textSecondary" align="center">{message}</AppText>
       {onRetry ? <Button label="다시 시도" onPress={onRetry} /> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    padding: spacing.xl,
-  },
-  title: { ...typography.heading, color: colors.danger },
-  message: { ...typography.body, textAlign: 'center', color: colors.textSecondary },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    wrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.md,
+      padding: theme.spacing.xl,
+    },
+  });
+}
