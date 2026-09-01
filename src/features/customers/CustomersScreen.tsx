@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
@@ -15,10 +16,15 @@ import {
   Stack,
   TextField,
   useAppTheme,
+  type AppTheme,
 } from '../../design-system';
 import { customerMatchesSearch } from './customerModel';
 import { listCustomers, setCustomerFavorite } from './customersApi';
 import { CustomerListCard } from './CustomerListCard';
+import {
+  buildCustomerListCountText,
+  buildCustomerListEmptyCopy,
+} from './customerListPresentation';
 import { customerQueryKeys } from './queryKeys';
 import type { CustomerRecord, ListCustomersResult } from './types';
 
@@ -26,6 +32,7 @@ export function CustomersScreen() {
   const { token } = useAuth();
   const router = useRouter();
   const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -61,6 +68,13 @@ export function CustomersScreen() {
       return Date.parse(b.createdAt || '') - Date.parse(a.createdAt || '');
     });
   }, [favoritesOnly, query.data?.customers, search]);
+  const countText = buildCustomerListCountText({
+    visibleCount: customers.length,
+    totalCount: query.data?.total ?? customers.length,
+    search,
+    favoritesOnly,
+  });
+  const emptyCopy = buildCustomerListEmptyCopy(search, favoritesOnly);
 
   return (
     <View style={styles.root}>
@@ -71,10 +85,10 @@ export function CustomersScreen() {
           keyExtractor={(customer) => String(customer.id)}
           contentContainerStyle={[
             styles.list,
-            { padding: theme.spacing.lg, gap: theme.spacing.md },
             customers.length === 0 && styles.emptyList,
           ]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={
             <RefreshControl
               refreshing={query.isRefetching}
@@ -84,35 +98,36 @@ export function CustomersScreen() {
             />
           }
           ListHeaderComponent={
-            <Stack gap="md" style={{ marginBottom: theme.spacing.md }}>
-              <TextField
-                accessibilityLabel="고객 검색"
-                placeholder="이름, 연락처, 고객번호 검색"
-                value={search}
-                onChangeText={setSearch}
-                returnKeyType="search"
-                autoCorrect={false}
-              />
-              <Inline justify="space-between">
-                <AppText variant="caption">
-                  {search || favoritesOnly
-                    ? `${customers.length}명 검색됨`
-                    : `전체 ${query.data?.total ?? customers.length}명`}
-                </AppText>
-                <Inline>
-                  <Button
-                    label={favoritesOnly ? '전체 보기' : '중요 고객만'}
-                    size="sm"
-                    variant={favoritesOnly ? 'primary' : 'secondary'}
-                    onPress={() => setFavoritesOnly((value) => !value)}
-                  />
-                  <Button
-                    label="고객 등록"
-                    size="sm"
-                    onPress={() => router.push('/customers/new')}
-                  />
-                </Inline>
+            <Stack gap="md" style={styles.listHeader}>
+              <Inline justify="flex-end">
+                <Button
+                  label="고객 등록"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => router.push('/customers/new')}
+                />
               </Inline>
+              <Inline align="stretch" style={styles.searchRow}>
+                <TextField
+                  accessibilityLabel="고객 검색"
+                  placeholder="이름 / 전화번호 검색"
+                  value={search}
+                  onChangeText={setSearch}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                  containerStyle={styles.search}
+                />
+                <Button
+                  label="중요 고객"
+                  variant={favoritesOnly ? 'primary' : 'secondary'}
+                  onPress={() => setFavoritesOnly((value) => !value)}
+                />
+              </Inline>
+              {query.isSuccess && (query.data?.customers.length ?? 0) > 0 ? (
+                <AppText variant="helper" color="textSecondary">
+                  {countText}
+                </AppText>
+              ) : null}
               {favoriteMutation.isError ? (
                 <AppText variant="caption" color="danger">
                   즐겨찾기를 변경하지 못했습니다. 다시 시도해 주세요.
@@ -144,12 +159,7 @@ export function CustomersScreen() {
                 onRetry={() => void query.refetch()}
               />
             ) : (
-              <View style={styles.empty}>
-                <AppText variant="heading">고객이 없습니다</AppText>
-                <AppText variant="body" color="textSecondary" align="center">
-                  검색 조건을 바꾸거나 새 고객을 등록해 주세요.
-                </AppText>
-              </View>
+              <EmptyState title={emptyCopy.title} message={emptyCopy.message} />
             )
           }
         />
@@ -158,9 +168,19 @@ export function CustomersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  list: { flexGrow: 1 },
-  emptyList: { justifyContent: 'center' },
-  empty: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 48 },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    root: { flex: 1 },
+    list: {
+      flexGrow: 1,
+      paddingHorizontal: theme.layout.screenPaddingHorizontal,
+      paddingTop: theme.layout.screenPaddingTop,
+      paddingBottom: theme.layout.contentBottomInset,
+      gap: theme.layout.compactListGap,
+    },
+    emptyList: { minHeight: '100%' },
+    listHeader: { marginBottom: theme.spacing.xs },
+    searchRow: { gap: theme.spacing.sm },
+    search: { flex: 1, minWidth: 0 },
+  });
+}
