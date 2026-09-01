@@ -71,7 +71,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-splash-screen',
         {
-          image: './assets/images/splash-icon-prod.png',
+          image: './assets/images/icon-prod.png',
+          imageWidth: 120,
           resizeMode: 'contain',
           backgroundColor: '#ffffff',
         },
@@ -97,7 +98,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   // Splash kept via plugin; also set top-level for Expo Go compatibility.
   (expoConfig as ExpoConfig & { splash?: object }).splash = {
-    image: './assets/images/splash-icon-prod.png',
+    image: './assets/images/icon-prod.png',
     resizeMode: 'contain',
     backgroundColor: '#ffffff',
   };
