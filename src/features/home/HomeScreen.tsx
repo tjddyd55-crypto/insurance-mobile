@@ -15,7 +15,7 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
-import { filterMenuForRole, USER_APP_MENU, type UserRole } from '../../navigation/menuConfig';
+import { useNativeMenu } from '../../navigation/useNativeMenu';
 
 export function HomeScreen() {
   const { user } = useAuth();
@@ -23,10 +23,7 @@ export function HomeScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const env = getEnvironmentConfig();
-  const menu = useMemo(
-    () => filterMenuForRole(USER_APP_MENU, user?.role as UserRole | undefined),
-    [user?.role],
-  );
+  const menu = useNativeMenu();
 
   return (
     <View style={styles.root}>

@@ -4,17 +4,18 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../auth/AuthProvider';
 import { AppText, useAppTheme, type AppTheme } from '../design-system';
-import { getCheckoutSummary } from '../features/billing/billingApi';
+import { isBillingUiVisibleForUser } from '../features/billing/billingAccessPolicy';
+import { billingCheckoutSummaryQueryKey, getCheckoutSummary } from '../features/billing/billingApi';
 import { buildBillingStatusPill } from '../features/billing/billingStatusPill';
 
 export function BillingStatusPill() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const query = useQuery({
-    queryKey: ['billing', 'checkout'],
+    queryKey: billingCheckoutSummaryQueryKey,
     queryFn: () => getCheckoutSummary(token),
-    enabled: Boolean(token),
+    enabled: Boolean(token && user?.role === 'USER' && isBillingUiVisibleForUser(user)),
     staleTime: 60_000,
   });
   const view = buildBillingStatusPill(query.data);

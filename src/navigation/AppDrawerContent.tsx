@@ -8,8 +8,9 @@ import { useAuth } from '../auth/AuthProvider';
 import { BillingStatusPill } from '../components/BillingStatusPill';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { AppText, Button, IconButton, useAppTheme, type AppTheme } from '../design-system';
-import { filterMenuForRole, USER_APP_MENU, type NativeMenuLink, type UserRole } from './menuConfig';
+import { type NativeMenuLink } from './menuConfig';
 import { formatGaBannerLabel } from './gaTenantLabel';
+import { useNativeMenu } from './useNativeMenu';
 
 export function AppDrawerContent(props: DrawerContentComponentProps) {
   const { user, logout } = useAuth();
@@ -19,10 +20,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
-  const menu = useMemo(
-    () => filterMenuForRole(USER_APP_MENU, (user?.role as UserRole | undefined) ?? 'USER'),
-    [user?.role],
-  );
+  const menu = useNativeMenu();
 
   const onPressLink = (item: NativeMenuLink) => {
     if (item.disabled || item.mode === 'DISABLED') return;

@@ -26,6 +26,8 @@ export async function saveAuthSession(session: StoredAuthSession): Promise<void>
     companyId: session.user.companyId,
     displayName: session.user.displayName,
     teamId: session.user.teamId,
+    tenantCode: session.user.tenantCode,
+    subscription: session.user.subscription,
   };
   await SecureStore.setItemAsync(TOKEN_KEY, token);
   await SecureStore.setItemAsync(USER_META_KEY, JSON.stringify(meta));
@@ -42,7 +44,14 @@ export async function readAuthSession(): Promise<StoredAuthSession | null> {
     if (!user?.id || !user?.username || !user?.role) {
       return null;
     }
-    return { token: token.trim(), user };
+    return {
+      token: token.trim(),
+      user: {
+        ...user,
+        tenantCode: typeof user.tenantCode === 'string' ? user.tenantCode : '',
+        subscription: user.subscription ?? null,
+      },
+    };
   } catch {
     return null;
   }

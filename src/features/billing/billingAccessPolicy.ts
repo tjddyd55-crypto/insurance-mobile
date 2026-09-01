@@ -6,22 +6,22 @@ type BillingVisibilityUser = {
 
 const STORE_REVIEW_USERNAMES = new Set(['google_review', 'apple_review']);
 
-function readPublicBoolean(name: string, defaultValue: boolean): boolean {
-  const raw = String(process.env[name] ?? '').trim().toLowerCase();
+function readPublicBoolean(value: string | undefined, defaultValue: boolean): boolean {
+  const raw = String(value ?? '').trim().toLowerCase();
   if (!raw) return defaultValue;
   return !['false', '0', 'no', 'off'].includes(raw);
 }
 
 export function isInsuranceBillingEnabled(): boolean {
-  return readPublicBoolean('EXPO_PUBLIC_INSURANCE_BILLING_ENABLED', false);
+  return readPublicBoolean(process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENABLED, false);
 }
 
 export function isInsuranceBillingAccessEnforced(): boolean {
-  return readPublicBoolean('EXPO_PUBLIC_INSURANCE_BILLING_ENFORCE_ACCESS', false);
+  return readPublicBoolean(process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENFORCE_ACCESS, false);
 }
 
 export function isFreeLaunchBillingUiHidden(): boolean {
-  return readPublicBoolean('EXPO_PUBLIC_FREE_LAUNCH_HIDE_BILLING_UI', false);
+  return readPublicBoolean(process.env.EXPO_PUBLIC_FREE_LAUNCH_HIDE_BILLING_UI, false);
 }
 
 export function isStoreReviewBillingSubject(
@@ -41,7 +41,7 @@ export function isBillingUiVisibleForUser(
   user: BillingVisibilityUser | null | undefined,
 ): boolean {
   const reviewAccessEnabled = readPublicBoolean(
-    'EXPO_PUBLIC_BILLING_REVIEW_ACCESS_ENABLED',
+    process.env.EXPO_PUBLIC_BILLING_REVIEW_ACCESS_ENABLED,
     true,
   );
   if (reviewAccessEnabled && isStoreReviewBillingSubject(user)) {

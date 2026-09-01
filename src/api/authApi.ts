@@ -8,6 +8,16 @@ export type UserRole =
   | 'INSURER_MANAGER'
   | 'LOSS_ADJUSTER';
 
+export type AuthSubscription = {
+  plan: 'FREE' | 'TRIAL' | 'PAID' | 'EXPIRED';
+  effectiveStatus: 'ACTIVE' | 'EXPIRED';
+  startedAt: string | null;
+  expiresAt: string | null;
+  remainingDays: number | null;
+  reason: string;
+  policyActive: boolean;
+};
+
 export interface AuthUser {
   id: string;
   username: string;
@@ -18,6 +28,8 @@ export interface AuthUser {
   companyId: number | null;
   displayName: string;
   teamId: string | null;
+  tenantCode: string;
+  subscription: AuthSubscription | null;
 }
 
 export interface LoginResponse {
@@ -33,6 +45,8 @@ export interface LoginResponse {
     company_id?: number | null;
     display_name?: string | null;
     team_id?: string | null;
+    tenant_code?: string | null;
+    subscription?: SubscriptionResponse | null;
   };
 }
 
@@ -51,6 +65,35 @@ export interface MeResponse {
   company_id?: number | null;
   display_name?: string | null;
   team_id?: string | null;
+  tenant_code?: string | null;
+  subscription?: SubscriptionResponse | null;
+}
+
+type SubscriptionResponse = {
+  plan?: string | null;
+  effective_status?: string | null;
+  started_at?: string | null;
+  expires_at?: string | null;
+  remaining_days?: number | null;
+  reason?: string | null;
+  policy_active?: boolean;
+};
+
+function toAuthSubscription(raw: SubscriptionResponse | null | undefined): AuthSubscription | null {
+  if (!raw) return null;
+  const effectiveStatus = raw.effective_status === 'EXPIRED' ? 'EXPIRED' : 'ACTIVE';
+  const plan = ['FREE', 'TRIAL', 'PAID', 'EXPIRED'].includes(String(raw.plan).toUpperCase())
+    ? String(raw.plan).toUpperCase() as AuthSubscription['plan']
+    : 'FREE';
+  return {
+    plan,
+    effectiveStatus,
+    startedAt: raw.started_at ?? null,
+    expiresAt: raw.expires_at ?? null,
+    remainingDays: typeof raw.remaining_days === 'number' ? raw.remaining_days : null,
+    reason: String(raw.reason ?? ''),
+    policyActive: raw.policy_active === true,
+  };
 }
 
 function toAuthUser(raw: NonNullable<LoginResponse['user']> | MeResponse): AuthUser {
@@ -82,6 +125,8 @@ function toAuthUser(raw: NonNullable<LoginResponse['user']> | MeResponse): AuthU
     companyId: raw.role === 'INSURER_MANAGER' ? companyId : null,
     displayName,
     teamId,
+    tenantCode: String(raw.tenant_code ?? '').trim().toLowerCase(),
+    subscription: toAuthSubscription(raw.subscription),
   };
 }
 

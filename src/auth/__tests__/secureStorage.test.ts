@@ -41,6 +41,8 @@ describe('secureStorage', () => {
         companyId: null,
         displayName: 'Demo',
         teamId: null,
+        tenantCode: '',
+        subscription: null,
       },
     });
     const session = await readAuthSession();
@@ -62,6 +64,8 @@ describe('secureStorage', () => {
         companyId: null,
         displayName: 'Demo',
         teamId: null,
+        tenantCode: '',
+        subscription: null,
       },
     });
     await clearAuthSession();
