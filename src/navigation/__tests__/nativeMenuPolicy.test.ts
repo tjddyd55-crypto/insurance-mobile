@@ -77,11 +77,28 @@ describe('native session menu policy', () => {
   test.each<UserRole>([
     'GA_ADMIN',
     'GA_STAFF',
-    'SUPER_ADMIN',
     'INSURER_MANAGER',
     'LOSS_ADJUSTER',
   ])('does not expose unsupported Web-only routes to %s', (role) => {
     expect(buildNativeMenuForSession(user({ role }), capabilities)).toEqual([]);
+  });
+
+  test('keeps the Native CRM menu available to a SUPER_ADMIN QA session', () => {
+    const menu = buildNativeMenuForSession(user({ role: 'SUPER_ADMIN' }), {
+      isTeamOwner: false,
+      dynamicNewsletterBoards: undefined,
+    });
+
+    expect(menu.map((section) => section.label)).toEqual([
+      '할일 및 알림',
+      '고객관리',
+      '소식지',
+      '신청서',
+      '팀관리',
+      '업무편의',
+      '내정보',
+    ]);
+    expect(labels(menu)).toHaveLength(25);
   });
 
   test('injects team management only for the team owner', () => {
@@ -111,6 +128,15 @@ describe('native session menu policy', () => {
     expect(labels(menu)).not.toContain('영진서울중앙');
   });
 
+  test('keeps the base menu while optional newsletter capabilities are loading', () => {
+    const menu = buildNativeMenuForSession(user(), {
+      isTeamOwner: false,
+      dynamicNewsletterBoards: undefined,
+    });
+    expect(menu).toHaveLength(7);
+    expect(labels(menu)).toHaveLength(25);
+  });
+
   test('limits expired sessions to profile, billing, and inquiry routes', () => {
     const menu = buildNativeMenuForSession(user({
       subscription: {
@@ -127,6 +153,28 @@ describe('native session menu policy', () => {
     expect(isExpiredNativePathAllowed('/billing')).toBe(true);
     expect(isExpiredNativePathAllowed('/customers')).toBe(false);
   });
+
+  test.each([
+    { plan: 'PAID' as const, expiresAt: null, remainingDays: null },
+    { plan: 'TRIAL' as const, expiresAt: '2099-12-31T23:59:59.000Z', remainingDays: 30 },
+  ])(
+    'keeps the complete CRM menu for $plan subscriptions',
+    ({ plan, expiresAt, remainingDays }) => {
+      const menu = buildNativeMenuForSession(user({
+        subscription: {
+          plan,
+          effectiveStatus: 'ACTIVE',
+          startedAt: null,
+          expiresAt,
+          remainingDays,
+          reason: 'test',
+          policyActive: true,
+        },
+      }), capabilities);
+      expect(menu).toHaveLength(7);
+      expect(labels(menu)).toHaveLength(25);
+    },
+  );
 
   test('hides billing during free launch except for a review account', () => {
     process.env.EXPO_PUBLIC_FREE_LAUNCH_HIDE_BILLING_UI = 'true';

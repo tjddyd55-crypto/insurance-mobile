@@ -26,6 +26,7 @@ const PUBLIC_ACCOUNT_GA_ONLY_PREFIXES = [
   '/portal/newsletters',
   '/portal/adjuster-news',
 ] as const;
+const NATIVE_CRM_MENU_ROLES = new Set<AuthUser['role']>(['USER', 'SUPER_ADMIN']);
 
 export function isExpiredNativePathAllowed(pathname: string): boolean {
   return EXPIRED_ALLOWED_NATIVE_PATHS.some(
@@ -140,7 +141,7 @@ export function buildNativeMenuForSession(
   user: AuthUser | null | undefined,
   capabilities: NativeMenuCapabilities,
 ): NativeMenuSection[] {
-  if (!user || user.role !== 'USER') return [];
+  if (!user || !NATIVE_CRM_MENU_ROLES.has(user.role)) return [];
 
   const withNewsletter = applyNewsletterPolicy(
     cloneUserMenu(),
