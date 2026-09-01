@@ -1,5 +1,5 @@
 import type { CheckoutSummary } from './types';
-import { evaluateBillingEntitlement } from './billingEntitlement';
+import { presentBillingStatus } from './billingPresentation';
 
 export type BillingStatusPillView = {
   label: string;
@@ -23,30 +23,23 @@ export function buildBillingStatusPill(
 ): BillingStatusPillView | null {
   if (!summary) return null;
   const status = String(summary.subscriptionStatus ?? '').trim().toLowerCase();
-  const entitlement = evaluateBillingEntitlement(summary, now);
+  const presentation = presentBillingStatus(summary, null, now);
+  const tone: BillingStatusPillView['tone'] = presentation.tone === 'success'
+    ? 'primary'
+    : presentation.tone === 'default'
+      ? 'neutral'
+      : presentation.tone === 'info'
+        ? 'neutral'
+        : presentation.tone;
   if (status === 'trialing' || status === 'trial') {
-    if (!entitlement.entitled) {
-      return { label: '무료기간 종료', tone: 'danger' };
-    }
+    if (presentation.requiresPayment) return { label: presentation.label, tone };
     const date = formatDotDate(summary.trialEndsAt);
-    return { label: date ? `무료 이용 중 · ${date}까지` : '무료 이용 중', tone: 'primary' };
+    return { label: date ? `${presentation.label} · ${date}까지` : presentation.label, tone };
   }
   if (status === 'active_paid' || status === 'paid') {
-    if (!entitlement.entitled) {
-      return { label: '결제 필요', tone: 'danger' };
-    }
+    if (presentation.requiresPayment) return { label: presentation.label, tone };
     const date = formatDotDate(summary.nextBillingAt ?? summary.currentPeriodEnd);
-    return { label: date ? `유료 이용 중 · 다음 결제일 ${date}` : '유료 이용 중', tone: 'primary' };
+    return { label: date ? `${presentation.label} · 다음 결제일 ${date}` : presentation.label, tone };
   }
-  if (status === 'legacy_active' || status === 'active' || status === 'free') {
-    if (!entitlement.entitled) {
-      return { label: '결제 필요', tone: 'danger' };
-    }
-    return { label: '기존 이용자', tone: 'neutral' };
-  }
-  if (status === 'past_due') return { label: '결제 확인 필요', tone: 'warning' };
-  if (status === 'blocked') return { label: '이용 제한', tone: 'danger' };
-  if (status === 'expired') return { label: '무료기간 종료', tone: 'danger' };
-  if (status === 'pending_payment' || status === 'pending') return { label: '결제 필요', tone: 'danger' };
-  return null;
+  return { label: presentation.label, tone };
 }
