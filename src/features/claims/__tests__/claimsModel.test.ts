@@ -13,9 +13,9 @@ describe("claimsModel", () => {
   it("운영 Web과 동일한 청구 상태 의미를 사용한다", () => {
     expect(claimStatusMeta("requested")).toEqual({
       label: "요청됨",
-      tone: "info",
+      tone: "warning",
     });
-    expect(claimStatusMeta("processing").tone).toBe("warning");
+    expect(claimStatusMeta("processing").tone).toBe("info");
     expect(claimStatusMeta("done").tone).toBe("success");
     expect(claimStatusMeta("rejected").tone).toBe("danger");
     expect(claimStatusMeta("canceled").tone).toBe("default");

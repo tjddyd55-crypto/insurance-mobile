@@ -41,7 +41,7 @@ import {
   updateClaimStatus,
 } from "./claimsApi";
 import { CLAIM_STATUSES, extractClaimFileUrl } from "./claimsModel";
-import type { ClaimDetail, ClaimListItem, ClaimStatus } from "./types";
+import type { ClaimDetail, ClaimStatus } from "./types";
 import { ClaimCustomerPickerModal } from "./ClaimCustomerPickerModal";
 import { ClaimDetailModal } from "./ClaimDetailModal";
 import { ClaimListCard } from "./ClaimListCard";
@@ -49,8 +49,10 @@ import { CustomerClaimConnectionCard } from "./CustomerClaimConnectionCard";
 
 export function ClaimsScreen({
   initialCustomerId = null,
+  initialClaimId = null,
 }: {
   initialCustomerId?: number | null;
+  initialClaimId?: number | null;
 }) {
   const { token } = useAuth();
   const router = useRouter();
@@ -63,7 +65,7 @@ export function ClaimsScreen({
   const [status, setStatus] = useState<ClaimStatus | "">("");
   const [picker, setPicker] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<ClaimListItem | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialClaimId);
   const [nextStatus, setNextStatus] = useState<ClaimStatus>("processing");
   const [statusMemo, setStatusMemo] = useState("");
   const [sendConfirm, setSendConfirm] = useState(false);
@@ -81,8 +83,8 @@ export function ClaimsScreen({
   );
   useEffect(() => {
     setCustomerId(initialCustomerId);
-    setSelected(null);
-  }, [initialCustomerId]);
+    setSelectedId(initialClaimId);
+  }, [initialClaimId, initialCustomerId]);
   const listKey = ["claims", customerId, status] as const;
   const claims = useQuery({
     queryKey: listKey,
@@ -90,9 +92,9 @@ export function ClaimsScreen({
     enabled: Boolean(token),
   });
   const detail = useQuery({
-    queryKey: ["claim", selected?.id],
-    queryFn: () => getClaim(token, selected!.id),
-    enabled: Boolean(token && selected),
+    queryKey: ["claim", selectedId],
+    queryFn: () => getClaim(token, selectedId!),
+    enabled: Boolean(token && selectedId),
   });
   const link = useQuery({
     queryKey: ["customer-app-link", customerId],
@@ -107,12 +109,12 @@ export function ClaimsScreen({
   }, [detail.data]);
   const statusMutation = useMutation({
     mutationFn: () =>
-      updateClaimStatus(token, selected!.id, nextStatus, statusMemo.trim()),
+      updateClaimStatus(token, selectedId!, nextStatus, statusMemo.trim()),
     onSuccess: async () => {
       setNotice("청구 상태를 저장했습니다.");
       await Promise.all([
         client.invalidateQueries({ queryKey: listKey }),
-        client.invalidateQueries({ queryKey: ["claim", selected?.id] }),
+        client.invalidateQueries({ queryKey: ["claim", selectedId] }),
       ]);
     },
   });
@@ -340,7 +342,7 @@ export function ClaimsScreen({
               onPress={() => {
                 setNotice("");
                 setDetailActionError("");
-                setSelected(item);
+                setSelectedId(item.id);
               }}
             />
           )}
@@ -359,7 +361,7 @@ export function ClaimsScreen({
         }}
       />
       <ClaimDetailModal
-        open={Boolean(selected)}
+        open={Boolean(selectedId)}
         detail={detail.data}
         loading={detail.isLoading}
         nextStatus={nextStatus}
@@ -368,7 +370,7 @@ export function ClaimsScreen({
         error={statusMutation.error}
         loadError={detail.error}
         onClose={() => {
-          setSelected(null);
+          setSelectedId(null);
           setDetailActionError("");
         }}
         onRetryLoad={() => void detail.refetch()}
@@ -381,7 +383,7 @@ export function ClaimsScreen({
         bundleKind={bundleKind}
         onShareBundle={(kind) => void shareBundle(kind)}
         onOpenCustomer={(id) => {
-          setSelected(null);
+          setSelectedId(null);
           router.push(`/customers/${id}`);
         }}
         actionError={detailActionError}

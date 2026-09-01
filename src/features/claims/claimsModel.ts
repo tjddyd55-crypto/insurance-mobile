@@ -15,9 +15,8 @@ export function claimStatusMeta(status: ClaimStatus): {
   tone: "info" | "warning" | "success" | "danger" | "default";
 } {
   if (status === "done") return { label: LABELS[status], tone: "success" };
-  if (status === "processing")
-    return { label: LABELS[status], tone: "warning" };
-  if (status === "requested") return { label: LABELS[status], tone: "info" };
+  if (status === "processing") return { label: LABELS[status], tone: "info" };
+  if (status === "requested") return { label: LABELS[status], tone: "warning" };
   if (status === "rejected") return { label: LABELS[status], tone: "danger" };
   return { label: LABELS[status], tone: "default" };
 }
