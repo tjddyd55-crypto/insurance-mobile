@@ -14,7 +14,7 @@
       },
       "android": {
         "buildType": "apk",
-        "applicationId": "com.onefc.app.native.dev"
+        "applicationId": "com.onefc.app.mobile.dev"
       },
       "ios": {
         "simulator": false

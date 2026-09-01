@@ -32,7 +32,7 @@ When another Expo Dev Client is being tested on the same phone, build ONE FC wit
 | Field | Device QA value |
 |---|---|
 | App name | `ONE FC NATIVE DEV` |
-| Android / iOS id | `com.onefc.app.native.dev` |
+| Android / iOS id | `com.onefc.app.mobile.dev` |
 | Scheme | `onefc-native-dev` |
 | EAS profile | `device` |
 | Channel | `native-device-development` |

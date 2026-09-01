@@ -28,7 +28,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const isDevice = variant === 'device';
   const displayName = isDevice ? 'ONE FC NATIVE DEV' : isDev ? 'ONE FC DEV' : 'ONE FC';
   const scheme = isDevice ? 'onefc-native-dev' : isDev ? 'onefc-dev' : 'onefc';
-  const applicationId = isDevice ? 'com.onefc.app.native.dev' : isDev ? 'com.onefc.app.dev' : 'com.onefc.app';
+  const applicationId = isDevice ? 'com.onefc.app.mobile.dev' : isDev ? 'com.onefc.app.dev' : 'com.onefc.app';
 
   const expoConfig: ExpoConfig = {
     ...config,

@@ -2,12 +2,18 @@ import { useMemo } from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { AppText, Button, useAppTheme, type AppTheme } from '../../design-system';
+import { evaluateBillingNavigation } from './billingNavigation';
 import type { BillingConfig } from './types';
 
 export function TossBillingAuthModal({ open, config, onClose, onSuccess, onError }: { open: boolean; config: BillingConfig | null | undefined; onClose: () => void; onSuccess: (authKey: string, customerKey: string) => void; onError: (message: string) => void }) {
   const theme = useAppTheme(); const styles = useMemo(() => makeStyles(theme), [theme]); const clientKey = config?.clientKey ?? ''; const customerKey = config?.customerKey ?? '';
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><script src="https://js.tosspayments.com/v1/payment"></script></head><body><p style="font-family:sans-serif;padding:20px">안전한 카드 인증창을 여는 중입니다.</p><script>(async()=>{try{const toss=TossPayments(${JSON.stringify(clientKey)});await toss.requestBillingAuth('카드',{customerKey:${JSON.stringify(customerKey)},successUrl:'https://onefc.native/billing/mobile-success',failUrl:'https://onefc.native/billing/mobile-fail'});}catch(e){location.href='https://onefc.native/billing/mobile-fail?message='+encodeURIComponent(e&&e.message||'카드 인증을 시작하지 못했습니다.');}})();</script></body></html>`;
-  function intercept(nav: WebViewNavigation): boolean { try { const url = new URL(nav.url); if (url.hostname !== 'onefc.native') return true; if (url.pathname.includes('mobile-success')) { const authKey = url.searchParams.get('authKey') ?? ''; const returnedCustomerKey = url.searchParams.get('customerKey') ?? ''; if (authKey && returnedCustomerKey) onSuccess(authKey, returnedCustomerKey); else onError('카드 인증 결과가 올바르지 않습니다.'); return false; } if (url.pathname.includes('mobile-fail')) { onError(url.searchParams.get('message') || url.searchParams.get('errorMessage') || '카드 인증이 취소되었거나 실패했습니다.'); return false; } return false; } catch { return true; } }
+  function intercept(nav: WebViewNavigation): boolean {
+    const decision = evaluateBillingNavigation(nav.url, customerKey);
+    if (decision.action === 'success') onSuccess(decision.authKey, decision.customerKey);
+    if (decision.action === 'failure') onError(decision.message);
+    return decision.action === 'allow';
+  }
   return <Modal visible={open} animationType="slide" onRequestClose={onClose}><View style={styles.root}><View style={styles.header}><View><AppText variant="heading">결제수단 인증</AppText><AppText variant="caption">카드정보는 토스페이먼츠 화면에서만 입력합니다.</AppText></View><Button label="취소" size="sm" variant="ghost" onPress={onClose} /></View>{open && clientKey && customerKey ? <WebView originWhitelist={['https://*']} source={{ html, baseUrl: 'https://onefc.native' }} onShouldStartLoadWithRequest={intercept} javaScriptEnabled domStorageEnabled thirdPartyCookiesEnabled={false} sharedCookiesEnabled={false} onError={() => onError('결제사 인증 화면을 불러오지 못했습니다.')} /> : <AppText align="center">결제수단 등록 정보를 불러오지 못했습니다.</AppText>}</View></Modal>;
 }
 function makeStyles(theme: AppTheme) { return StyleSheet.create({ root: { flex: 1, backgroundColor: theme.colors.background }, header: { minHeight: 72, paddingHorizontal: theme.spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface } }); }
