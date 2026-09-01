@@ -94,7 +94,7 @@ export function ModalShell({
         >
           <KeyboardAvoidingView
             enabled={keyboardAvoiding}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboard}
           >
             <View style={styles.header}>
