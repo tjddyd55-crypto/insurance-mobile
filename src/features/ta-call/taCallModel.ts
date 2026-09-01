@@ -137,7 +137,7 @@ export function formatTaPhone(value: string): string {
 }
 
 export function taGenderLabel(value: string): string {
-  return value === 'male' || value === 'M' ? '남' : value === 'female' || value === 'F' ? '여' : '미지정';
+  return value === 'male' || value === 'M' ? '남' : value === 'female' || value === 'F' ? '여' : '-';
 }
 
 export function taDayStatus(day: TaCallDay): string {
