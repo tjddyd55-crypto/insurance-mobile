@@ -18,7 +18,7 @@ describe("claimsModel", () => {
     expect(claimStatusMeta("processing").tone).toBe("info");
     expect(claimStatusMeta("done").tone).toBe("success");
     expect(claimStatusMeta("rejected").tone).toBe("danger");
-    expect(claimStatusMeta("canceled").tone).toBe("default");
+    expect(claimStatusMeta("canceled").tone).toBe("danger");
   });
 
   it("메모를 요청 내용의 우선값으로 표시한다", () => {

@@ -18,7 +18,7 @@ export function claimStatusMeta(status: ClaimStatus): {
   if (status === "processing") return { label: LABELS[status], tone: "info" };
   if (status === "requested") return { label: LABELS[status], tone: "warning" };
   if (status === "rejected") return { label: LABELS[status], tone: "danger" };
-  return { label: LABELS[status], tone: "default" };
+  return { label: LABELS[status], tone: "danger" };
 }
 export function formatClaimDate(value: string | null): string {
   if (!value) return "—";
