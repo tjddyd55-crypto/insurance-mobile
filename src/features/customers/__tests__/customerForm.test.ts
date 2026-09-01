@@ -35,7 +35,7 @@ describe('customer form', () => {
       phone: '010-1234-5678',
       gender: 'male',
       driver: 'no',
-      inflowSource: ' ',
+      inflowSource: '소개',
       referrerName: ' 김소개 ',
       isFavorite: true,
     });
@@ -44,7 +44,7 @@ describe('customer form', () => {
       phone: '01012345678',
       gender: 'male',
       isDriver: false,
-      inflowSource: null,
+      inflowSource: '소개',
       referrerName: '김소개',
       isFavorite: true,
     });

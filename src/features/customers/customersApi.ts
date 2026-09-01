@@ -9,6 +9,9 @@ export type SaveCustomerPayload = {
   phone?: string;
   birthDate?: string;
   address?: string;
+  carrier?: string;
+  height?: string;
+  weight?: string;
   job?: string;
   isDriver?: boolean | null;
   carType?: string;

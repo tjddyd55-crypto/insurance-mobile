@@ -26,6 +26,7 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
+import { AddressSearchField } from '../../components/AddressSearchField';
 import {
   EMPTY_CUSTOMER_FORM,
   customerFormToPayload,
@@ -34,6 +35,19 @@ import {
   type CustomerFormErrors,
   type CustomerFormState,
 } from './customerForm';
+import { CUSTOMER_MOBILE_CARRIER_OPTIONS } from './customerCarrier';
+import {
+  CUSTOMER_INFLOW_SOURCE_OPTIONS,
+  getInflowSourceDetailFieldMeta,
+  requiresInflowSourceDetail,
+} from './customerInflowSource';
+import { CustomerCarsEditor } from './CustomerCarsEditor';
+import { loadCustomerCarFormItems, saveCustomerCarsForCustomer } from './customerCarsSave';
+import {
+  listCustomerSpecialDates,
+  saveCustomerSpecialDatesForCustomer,
+  type CustomerSpecialDateFormItem,
+} from './customerSpecialDatesApi';
 import { createCustomer, getCustomer, updateCustomer } from './customersApi';
 import { customerQueryKeys } from './queryKeys';
 import type { ListCustomersResult } from './types';
@@ -62,20 +76,49 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
 
   useEffect(() => {
     if (mode !== 'edit' || !customerQuery.data || initialized) return;
-    const next = customerToForm(customerQuery.data);
-    setForm(next);
-    setInitialSnapshot(JSON.stringify(next));
-    setInitialized(true);
-  }, [customerQuery.data, initialized, mode]);
+    void (async () => {
+      const next = customerToForm(customerQuery.data);
+      const [cars, specialDates] = await Promise.all([
+        loadCustomerCarFormItems(token, customerQuery.data.id, next.cars),
+        listCustomerSpecialDates(token, customerQuery.data.id),
+      ]);
+      const hydrated: CustomerFormState = {
+        ...next,
+        cars,
+        specialDates: specialDates.map((item) => ({
+          id: item.id,
+          purposeType: item.purposeType,
+          title: item.title,
+          dateValue: item.dateValue,
+          memo: item.memo,
+        })),
+      };
+      setForm(hydrated);
+      setInitialSnapshot(JSON.stringify(hydrated));
+      setInitialized(true);
+    })();
+  }, [customerQuery.data, initialized, mode, token]);
 
   const dirty = initialized && JSON.stringify(form) !== initialSnapshot;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = customerFormToPayload(form, customerQuery.data);
-      return mode === 'create'
-        ? createCustomer(token, payload)
-        : updateCustomer(token, customerId, payload);
+      const saved =
+        mode === 'create'
+          ? await createCustomer(token, payload)
+          : await updateCustomer(token, customerId, payload);
+      await saveCustomerCarsForCustomer({
+        token,
+        customerId: saved.id,
+        formCars: form.cars,
+      });
+      await saveCustomerSpecialDatesForCustomer({
+        token,
+        customerId: saved.id,
+        formItems: form.specialDates,
+      });
+      return saved;
     },
     onSuccess: (saved) => {
       setInitialSnapshot(JSON.stringify(form));
@@ -197,22 +240,48 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             placeholder="YYYY-MM-DD"
             keyboardType="numbers-and-punctuation"
           />
-          <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
-          <TextField
-            label="주소"
-            value={form.address}
-            onChangeText={(value) => updateField('address', value)}
+          <SelectChoice
+            label="통신사"
+            value={form.carrier}
+            options={CUSTOMER_MOBILE_CARRIER_OPTIONS}
+            onChange={(value) => updateField('carrier', value)}
           />
-          <TextField
+          <Inline>
+            <TextField
+              label="키(cm)"
+              value={form.height}
+              onChangeText={(value) => updateField('height', value)}
+              keyboardType="number-pad"
+              containerStyle={styles.grow}
+            />
+            <TextField
+              label="몸무게(kg)"
+              value={form.weight}
+              onChangeText={(value) => updateField('weight', value)}
+              keyboardType="number-pad"
+              containerStyle={styles.grow}
+            />
+          </Inline>
+          <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
+          <AddressSearchField
+            value={form.address}
+            onChange={(address) => updateField('address', address)}
+            disabled={saveMutation.isPending}
+          />
+          <SelectChoice
             label="유입 경로"
             value={form.inflowSource}
-            onChangeText={(value) => updateField('inflowSource', value)}
+            options={CUSTOMER_INFLOW_SOURCE_OPTIONS}
+            onChange={(value) => updateField('inflowSource', value)}
           />
-          <TextField
-            label="소개자·이관자"
-            value={form.referrerName}
-            onChangeText={(value) => updateField('referrerName', value)}
-          />
+          {requiresInflowSourceDetail(form.inflowSource) ? (
+            <TextField
+              label={getInflowSourceDetailFieldMeta(form.inflowSource)?.label ?? '소개자·이관자'}
+              value={form.referrerName}
+              onChangeText={(value) => updateField('referrerName', value)}
+              placeholder={getInflowSourceDetailFieldMeta(form.inflowSource)?.placeholder}
+            />
+          ) : null}
           <Inline>
             <Button
               label={form.isFavorite ? '★ 중요 고객' : '☆ 일반 고객'}
@@ -240,36 +309,18 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             ]}
             onChange={(value) => updateField('driver', value as CustomerFormState['driver'])}
           />
-          <TextField
-            label="차종"
-            value={form.carType}
-            onChangeText={(value) => updateField('carType', value)}
+          <CustomerCarsEditor
+            cars={form.cars}
+            onChange={(cars) => updateField('cars', cars)}
+            disabled={saveMutation.isPending}
           />
-          <TextField
-            label="차량번호"
-            value={form.carNumber}
-            onChangeText={(value) => updateField('carNumber', value)}
-          />
-          <TextField
-            label="차량 모델"
-            value={form.carModel}
-            onChangeText={(value) => updateField('carModel', value)}
-          />
-          <TextField
-            label="연식"
-            value={form.carYear}
-            error={errors.carYear}
-            onChangeText={(value) => updateField('carYear', value)}
-            keyboardType="number-pad"
-            placeholder="2026"
-          />
-          <TextField
-            label="갱신 예정일"
-            value={form.renewalDate}
-            error={errors.renewalDate}
-            onChangeText={(value) => updateField('renewalDate', value)}
-            placeholder="YYYY-MM-DD"
-            keyboardType="numbers-and-punctuation"
+        </FormSection>
+
+        <FormSection title="기념일">
+          <CustomerSpecialDatesEditor
+            items={form.specialDates}
+            onChange={(specialDates) => updateField('specialDates', specialDates)}
+            disabled={saveMutation.isPending}
           />
         </FormSection>
 
@@ -352,6 +403,124 @@ function FormSection({ title, children }: { title: string; children: React.React
         {children}
       </Stack>
     </Card>
+  );
+}
+
+function SelectChoice({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Stack gap="xs">
+      <AppText variant="label">{label}</AppText>
+      <Inline wrap>
+        {options.map((option) => (
+          <Button
+            key={option.value || 'empty'}
+            label={option.label}
+            variant={value === option.value ? 'primary' : 'secondary'}
+            size="sm"
+            onPress={() => onChange(option.value)}
+          />
+        ))}
+      </Inline>
+    </Stack>
+  );
+}
+
+function CustomerSpecialDatesEditor({
+  items,
+  onChange,
+  disabled = false,
+}: {
+  items: CustomerSpecialDateFormItem[];
+  onChange: (next: CustomerSpecialDateFormItem[]) => void;
+  disabled?: boolean;
+}) {
+  const updateAt = (index: number, next: CustomerSpecialDateFormItem) => {
+    const copy = [...items];
+    copy[index] = next;
+    onChange(copy);
+  };
+
+  return (
+    <Stack gap="md">
+      <Inline justify="space-between">
+        <AppText variant="caption">고객 기념일·안내일을 등록합니다.</AppText>
+        <Button
+          label="기념일 추가"
+          size="sm"
+          variant="secondary"
+          disabled={disabled}
+          onPress={() =>
+            onChange([
+              ...items,
+              {
+                purposeType: 'CELEBRATION',
+                title: '',
+                dateValue: '',
+                memo: '',
+              },
+            ])
+          }
+        />
+      </Inline>
+      {!items.length ? (
+        <AppText variant="caption" color="textSecondary">
+          등록된 기념일이 없습니다.
+        </AppText>
+      ) : null}
+      {items.map((item, index) => (
+        <Card key={item.id ?? `special-${index}`} variant="outlined">
+          <Stack gap="sm">
+            <Inline wrap>
+              {(['CELEBRATION', 'THANKS', 'NOTICE', 'CHECKUP'] as const).map((purpose) => (
+                <Button
+                  key={purpose}
+                  label={purpose}
+                  size="sm"
+                  variant={item.purposeType === purpose ? 'primary' : 'secondary'}
+                  onPress={() => updateAt(index, { ...item, purposeType: purpose })}
+                />
+              ))}
+            </Inline>
+            <TextField
+              label="제목"
+              value={item.title}
+              onChangeText={(value) => updateAt(index, { ...item, title: value })}
+              editable={!disabled}
+            />
+            <TextField
+              label="날짜"
+              value={item.dateValue}
+              onChangeText={(value) => updateAt(index, { ...item, dateValue: value })}
+              placeholder="YYYY-MM-DD"
+              editable={!disabled}
+            />
+            <TextField
+              label="메모"
+              value={item.memo}
+              onChangeText={(value) => updateAt(index, { ...item, memo: value })}
+              editable={!disabled}
+            />
+            <Button
+              label="삭제"
+              size="sm"
+              variant="danger"
+              disabled={disabled}
+              onPress={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
+            />
+          </Stack>
+        </Card>
+      ))}
+    </Stack>
   );
 }
 
