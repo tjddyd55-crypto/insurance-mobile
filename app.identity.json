@@ -1,0 +1,12 @@
+{
+  "development": {
+    "displayName": "ONE FC DEV",
+    "applicationId": "com.onefc.app.dev",
+    "scheme": "onefc-dev"
+  },
+  "production": {
+    "displayName": "ONE FC",
+    "applicationId": "com.onefc.app",
+    "scheme": "onefc"
+  }
+}

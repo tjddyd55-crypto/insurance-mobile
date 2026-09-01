@@ -24,21 +24,21 @@ Publishing an OTA update from this Native repo to the same projectId + runtimeVe
 5. `updates.enabled: false` in M1 app config.
 6. **Production OTA publish: forbidden** in M1.
 
-## Local device coexistence
+## Development identity
 
-When another Expo Dev Client is being tested on the same phone, build ONE FC with
-`APP_VARIANT=device`. This keeps the DEV API but isolates the installed app and deep links:
+Development Client, local Android QA, preview, and the compatibility `device` profile all use
+one application identity. They must not create an additional Native-only installation:
 
-| Field | Device QA value |
+| Field | Development value |
 |---|---|
-| App name | `ONE FC NATIVE DEV` |
-| Android / iOS id | `com.onefc.app.mobile.dev` |
-| Scheme | `onefc-native-dev` |
-| EAS profile | `device` |
-| Channel | `native-device-development` |
+| App name | `ONE FC DEV` |
+| Android / iOS id | `com.onefc.app.dev` |
+| Scheme | `onefc-dev` |
+| EAS profile | `development`, `preview`, `device` |
+| Channel | `native-development` (`preview` keeps `native-preview`) |
 
-The regular `development` and production identifiers remain unchanged. Never install the regular
-development variant while another project is using the same package id on the device.
+`APP_VARIANT=device` and `APP_VARIANT=local-device` remain backwards-compatible aliases for
+`development`; both resolve to the same DEV identity.
 
 ## Recommended follow-up (post-M1 approval)
 

@@ -10,19 +10,20 @@ Last audited: 2026-09-01
 - Risky external actions (SMS, Alimtalk, payment, subscription changes, destructive actions) require explicit confirmation.
 - Card and account secrets are not persisted outside server/SecureStore session boundaries and are not logged.
 - Toss card data is entered only in the payment-provider WebView. Callback paths and the returned customer key are validated before server confirmation.
-- Device coexistence is isolated with `com.onefc.app.mobile.dev`, `onefc-native-dev`, and port 8084.
+- All Development Client and local QA builds use `com.onefc.app.dev`, `ONE FC DEV`, and `onefc-dev`.
 - Expo dependency validation: 21/21 checks passed.
 - Static validation: typecheck and lint passed.
-- Automated validation: 33 suites / 103 tests passed.
-- Android device-variant export: Hermes bundle generated successfully.
-- Android native compile: Gradle `assembleDebug` succeeded for minSdk 24 / targetSdk 36; APK package is `com.onefc.app.mobile.dev`.
+- Automated validation: 39 suites / 142 tests passed.
+- Android development export: Hermes bundle generated successfully.
+- Android native compile: Gradle `assembleDebug` succeeded for minSdk 24 / targetSdk 36; the installed DEV APK uses `com.onefc.app.dev`.
 - Physical device smoke test passed on `SM-S931N`: production login/session restore, protected routing, Drawer navigation, Android back/deep links, and every active USER top-level screen rendered against production read-only data.
 - The production review account has no team. The API's intentional 400 response is normalized to native team setup/empty states across members, posts, and files.
 - A development build without a Google Maps key now shows a setup notice and keeps the customer list usable instead of instantiating the native map and crashing.
 
 ## Physical-device results (2026-09-01)
 
-- Passed: isolated install/package/scheme/Metro port while JJOINZONE remained installed and running.
+- Passed: DEV identity is consolidated under `ONE FC DEV` / `com.onefc.app.dev` / `onefc-dev`; the obsolete `com.onefc.app.mobile.dev` package was removed.
+- Passed: the rebuilt Development Client autolinks `expo-sharing` 57.0.16 and reaches the login screen without native-module errors.
 - Passed: native login with the designated production review account and cold-start SecureStore session restoration through `/api/me`.
 - Passed: read-only rendering for home, TA, todos, memos, notifications/settings, customers/list/detail/map, premium payments, claims/customer news, both newsletter channels, application documents/history, team members/posts/files, SMS settings, insurer contacts/accounts/sites, storage, profile, billing, and feature requests.
 - Passed: customer detail navigation to claim, consultation, memo, and file workspaces without production mutation.

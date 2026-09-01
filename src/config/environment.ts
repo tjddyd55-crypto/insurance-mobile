@@ -3,7 +3,13 @@
  * Only public API origins — never secrets.
  */
 
-export type AppEnvironment = 'development' | 'production';
+import {
+  getAppIdentity,
+  resolveBuildEnvironment,
+  type AppEnvironment,
+} from './appIdentity';
+
+export type { AppEnvironment } from './appIdentity';
 
 const DEFAULT_DEV_API = 'https://insurance-dev.up.railway.app';
 const DEFAULT_PROD_API = 'https://insurance-production-7bd8.up.railway.app';
@@ -25,24 +31,10 @@ export function resolveAppEnvironment(
   envName?: string | null,
   appVariant?: string | null,
 ): AppEnvironment {
-  const candidates = [
-    envName ?? readEnv('EXPO_PUBLIC_APP_ENV'),
+  return resolveBuildEnvironment(
     appVariant ?? readEnv('APP_VARIANT'),
-  ]
-    .map((v) => String(v ?? '').trim().toLowerCase())
-    .filter(Boolean);
-
-  for (const value of candidates) {
-    if (value === 'production' || value === 'prod') {
-      return 'production';
-    }
-    if (value === 'development' || value === 'dev') {
-      return 'development';
-    }
-  }
-
-  // Native M1 default: always DEV unless explicitly production.
-  return 'development';
+    envName ?? readEnv('EXPO_PUBLIC_APP_ENV'),
+  );
 }
 
 export function resolveApiBaseUrl(environment: AppEnvironment = resolveAppEnvironment()): string {
@@ -54,14 +46,15 @@ export function resolveApiBaseUrl(environment: AppEnvironment = resolveAppEnviro
 
 export function getEnvironmentConfig(environment: AppEnvironment = resolveAppEnvironment()) {
   const isDevApp = environment === 'development';
+  const identity = getAppIdentity(environment);
   return {
     environment,
     isDevApp,
     apiBaseUrl: resolveApiBaseUrl(environment),
-    appDisplayName: isDevApp ? 'ONE FC DEV' : 'ONE FC',
-    scheme: isDevApp ? 'onefc-dev' : 'onefc',
-    androidPackage: isDevApp ? 'com.onefc.app.dev' : 'com.onefc.app',
-    iosBundleIdentifier: isDevApp ? 'com.onefc.app.dev' : 'com.onefc.app',
+    appDisplayName: identity.displayName,
+    scheme: identity.scheme,
+    androidPackage: identity.applicationId,
+    iosBundleIdentifier: identity.applicationId,
   } as const;
 }
 

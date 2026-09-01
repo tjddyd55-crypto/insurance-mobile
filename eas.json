@@ -7,14 +7,14 @@
     "device": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "native-device-development",
+      "channel": "native-development",
       "env": {
-        "APP_VARIANT": "device",
+        "APP_VARIANT": "development",
         "EXPO_PUBLIC_APP_ENV": "development"
       },
       "android": {
         "buildType": "apk",
-        "applicationId": "com.onefc.app.mobile.dev"
+        "applicationId": "com.onefc.app.dev"
       },
       "ios": {
         "simulator": false

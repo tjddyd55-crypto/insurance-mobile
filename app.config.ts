@@ -1,18 +1,15 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-type AppVariant = 'development' | 'device' | 'production';
+import appIdentities from './app.identity.json';
 
-function resolveVariant(): AppVariant {
-  const raw = String(process.env.APP_VARIANT ?? process.env.EXPO_PUBLIC_APP_ENV ?? 'development')
-    .trim()
-    .toLowerCase();
-  if (raw === 'production' || raw === 'prod') {
-    return 'production';
-  }
-  if (raw === 'device' || raw === 'local-device') {
-    return 'device';
-  }
-  return 'development';
+type AppEnvironment = keyof typeof appIdentities;
+
+function resolveBuildEnvironment(
+  appVariant?: string | null,
+  publicEnvironment?: string | null,
+): AppEnvironment {
+  const raw = String(appVariant || publicEnvironment || 'development').trim().toLowerCase();
+  return raw === 'production' || raw === 'prod' ? 'production' : 'development';
 }
 
 /**
@@ -23,25 +20,24 @@ function resolveVariant(): AppVariant {
  * - M1 does NOT embed that projectId. DEV builds stay isolated until a migration plan is approved.
  */
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const variant = resolveVariant();
-  const isDev = variant === 'development';
-  const isDevice = variant === 'device';
-  const displayName = isDevice ? 'ONE FC NATIVE DEV' : isDev ? 'ONE FC DEV' : 'ONE FC';
-  const scheme = isDevice ? 'onefc-native-dev' : isDev ? 'onefc-dev' : 'onefc';
-  const applicationId = isDevice ? 'com.onefc.app.mobile.dev' : isDev ? 'com.onefc.app.dev' : 'com.onefc.app';
+  const environment = resolveBuildEnvironment(
+    process.env.APP_VARIANT,
+    process.env.EXPO_PUBLIC_APP_ENV,
+  );
+  const identity = appIdentities[environment];
 
   const expoConfig: ExpoConfig = {
     ...config,
-    name: displayName,
+    name: identity.displayName,
     slug: 'one-fc-native',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon-prod.png',
-    scheme,
+    scheme: identity.scheme,
     userInterfaceStyle: 'light',
     ios: {
       supportsTablet: false,
-      bundleIdentifier: applicationId,
+      bundleIdentifier: identity.applicationId,
       buildNumber: '1',
       infoPlist: {
         NSCameraUsageDescription:
@@ -53,7 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
     },
     android: {
-      package: applicationId,
+      package: identity.applicationId,
       versionCode: 1,
       config: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
         ? { googleMaps: { apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY } }
@@ -85,8 +81,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       typedRoutes: true,
     },
     extra: {
-      appVariant: variant,
-      isDevApp: variant !== 'production',
+      appVariant: environment,
+      isDevApp: environment !== 'production',
       eas: {
         projectId: process.env.EAS_PROJECT_ID || undefined,
       },
