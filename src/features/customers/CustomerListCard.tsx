@@ -65,7 +65,7 @@ export function CustomerListCard({
                 {customer.insuranceAge != null ? `보험나이 ${customer.insuranceAge}세` : '보험나이 —'}
               </AppText>
             </View>
-            <AppText variant="bodyStrong" numberOfLines={1}>
+            <AppText variant="body" color="textSecondary" numberOfLines={1}>
               {customer.phone ? formatCustomerPhone(customer.phone) : '연락처 없음'}
             </AppText>
             <AppText variant="helper" color="textSecondary" numberOfLines={1}>
@@ -78,6 +78,8 @@ export function CustomerListCard({
               accessibilityLabel={customer.isFavorite ? '중요 고객 해제' : '중요 고객'}
               variant="ghost"
               disabled={favoriteBusy}
+              hitSlop={styles.actionHitSlop}
+              style={styles.actionButton}
               onPress={(event) => {
                 event.stopPropagation();
                 onToggleFavorite(customer);
@@ -95,6 +97,8 @@ export function CustomerListCard({
               accessibilityLabel={customer.smsOptOut ? '문자 수신 거부 고객' : '문자 보내기'}
               variant="ghost"
               disabled={!smsUrl || customer.smsOptOut}
+              hitSlop={styles.actionHitSlop}
+              style={styles.actionButton}
               onPress={(event) => {
                 event.stopPropagation();
                 if (smsUrl) void Linking.openURL(smsUrl);
@@ -108,6 +112,8 @@ export function CustomerListCard({
               variant="ghost"
               tone="primary"
               disabled={!telUrl}
+              hitSlop={styles.actionHitSlop}
+              style={styles.actionButton}
               onPress={(event) => {
                 event.stopPropagation();
                 if (telUrl) void Linking.openURL(telUrl);
@@ -120,6 +126,8 @@ export function CustomerListCard({
               accessibilityLabel={expanded ? '고객 카드 접기' : '고객 카드 펼치기'}
               variant="ghost"
               tone="primary"
+              hitSlop={styles.actionHitSlop}
+              style={styles.actionButton}
               onPress={(event) => {
                 event.stopPropagation();
                 setExpanded((value) => !value);
@@ -180,15 +188,19 @@ export function CustomerListCard({
 }
 
 function createStyles(theme: AppTheme) {
-  return StyleSheet.create({
+  const actionHitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
+  const styles = StyleSheet.create({
     selectedCard: {
       borderWidth: 2,
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.surface,
     },
-    summary: { padding: theme.spacing.md },
+    summary: {
+      paddingHorizontal: theme.spacing.sm + theme.spacing.xxs,
+      paddingVertical: theme.spacing.sm + theme.spacing.xxs,
+    },
     pressed: { opacity: theme.opacity.pressed, backgroundColor: theme.colors.surfaceSubtle },
-    summaryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.xs },
+    summaryRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
     summaryContent: { flex: 1, minWidth: 0 },
     nameRow: {
       minWidth: 0,
@@ -197,9 +209,18 @@ function createStyles(theme: AppTheme) {
       gap: theme.spacing.sm,
     },
     name: { flexShrink: 1, minWidth: 0 },
-    actions: { flexDirection: 'row', marginTop: -theme.spacing.xs, marginRight: -theme.spacing.sm },
-    actionIcon: { fontSize: 18, lineHeight: 22 },
-    expandIcon: { fontSize: 13, lineHeight: 18 },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xxs + 2,
+      marginRight: -(theme.spacing.xxs + 2),
+    },
+    actionButton: {
+      width: 28,
+      height: 28,
+    },
+    actionIcon: { fontSize: 16, lineHeight: 18 },
+    expandIcon: { fontSize: 12, lineHeight: 16 },
     expanded: {
       paddingHorizontal: theme.spacing.md,
       paddingBottom: theme.spacing.md,
@@ -209,4 +230,5 @@ function createStyles(theme: AppTheme) {
     },
     badges: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
   });
+  return { ...styles, actionHitSlop };
 }

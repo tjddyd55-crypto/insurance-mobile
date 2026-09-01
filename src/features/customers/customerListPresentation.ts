@@ -13,7 +13,7 @@ export function buildCustomerListCountText(input: CustomerListSummaryInput): str
   if (input.totalCount > input.visibleCount) {
     return `전체 ${input.totalCount}명 중 ${input.visibleCount}명 표시`;
   }
-  return `전체 고객: ${input.visibleCount}명`;
+  return `검색·필터 결과: ${input.visibleCount}명`;
 }
 
 export function buildCustomerListEmptyCopy(

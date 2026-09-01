@@ -13,6 +13,15 @@ describe('customer list presentation', () => {
     })).toBe('검색·필터 결과: 3명');
   });
 
+  test('describes the default list count like mobile web', () => {
+    expect(buildCustomerListCountText({
+      visibleCount: 688,
+      totalCount: 688,
+      search: '',
+      favoritesOnly: false,
+    })).toBe('검색·필터 결과: 688명');
+  });
+
   test('distinguishes a truncated list from the server total', () => {
     expect(buildCustomerListCountText({
       visibleCount: 500,
