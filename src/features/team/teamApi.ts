@@ -14,7 +14,30 @@ function requireToken(token: string | null): string {
 }
 
 export async function getTeamMembers(token: string | null): Promise<TeamMembersResult> {
-  return normalizeTeamMembers(await apiRequest<unknown>('/api/teams/members', { token: requireToken(token) }));
+  try {
+    return normalizeTeamMembers(await apiRequest<unknown>('/api/teams/members', { token: requireToken(token) }));
+  } catch (error) {
+    if (isMissingTeamError(error)) return emptyTeamMembersResult();
+    throw error;
+  }
+}
+
+function isMissingTeamError(error: unknown): error is ApiError {
+  return error instanceof ApiError
+    && error.status === 400
+    && error.message.includes('팀에 소속되어 있지 않습니다');
+}
+
+function emptyTeamMembersResult(): TeamMembersResult {
+  return {
+    teamId: null,
+    teamName: null,
+    ownerId: null,
+    teamActive: true,
+    teamStorageUsedBytes: 0,
+    teamStorageLimitBytes: 0,
+    members: [],
+  };
 }
 
 async function post(token: string | null, path: string, body: Record<string, unknown> = {}) {
@@ -37,7 +60,14 @@ export const leaveTeam = (token: string | null) => post(token, '/api/teams/leave
 export const disbandTeam = (token: string | null) => post(token, '/api/teams/disband');
 
 export async function getTeamPosts(token: string | null): Promise<TeamPostsResult> {
-  return normalizeTeamPosts(await apiRequest<unknown>('/api/teams/posts?page=1&limit=100', { token: requireToken(token) }));
+  try {
+    return normalizeTeamPosts(await apiRequest<unknown>('/api/teams/posts?page=1&limit=100', { token: requireToken(token) }));
+  } catch (error) {
+    if (isMissingTeamError(error)) {
+      return { teamId: '', ownerId: null, page: 1, limit: 100, hasNext: false, posts: [] };
+    }
+    throw error;
+  }
 }
 
 export type TeamPostUpload = { objectKey: string; fileName: string; fileUrl: string };
@@ -80,6 +110,11 @@ export async function deleteTeamPostComment(token: string | null, commentId: str
 }
 
 export async function getTeamFiles(token: string | null): Promise<TeamFile[]> {
-  const result = await apiRequest<{ files?: unknown[] }>('/api/teams/files', { token: requireToken(token) });
-  return Array.isArray(result.files) ? result.files.map(normalizeTeamFile) : [];
+  try {
+    const result = await apiRequest<{ files?: unknown[] }>('/api/teams/files', { token: requireToken(token) });
+    return Array.isArray(result.files) ? result.files.map(normalizeTeamFile) : [];
+  } catch (error) {
+    if (isMissingTeamError(error)) return [];
+    throw error;
+  }
 }

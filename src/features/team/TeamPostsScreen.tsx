@@ -28,8 +28,8 @@ export function TeamPostsScreen() {
       <AppHeader title="팀 게시판" />
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}>
-          <Inline justify="space-between"><View><AppText variant="heading">팀 게시글</AppText><AppText variant="caption">공지와 업무 내용을 팀원과 공유합니다.</AppText></View><Button label="글 작성" size="sm" onPress={() => { setEditing(null); setFormOpen(true); }} /></Inline>
-          {query.isLoading ? <LoadingState message="팀 게시글을 불러오는 중…" /> : query.isError || !query.data ? <ErrorState title="팀 게시글을 불러오지 못했습니다" message={query.error instanceof Error ? query.error.message : '잠시 후 다시 시도해 주세요.'} onRetry={() => void query.refetch()} /> : query.data.posts.length === 0 ? <Card variant="outlined"><AppText color="textSecondary" align="center">등록된 글이 없습니다.</AppText></Card> : query.data.posts.map((post) => {
+          <Inline justify="space-between"><View style={styles.copy}><AppText variant="heading">팀 게시글</AppText><AppText variant="caption">공지와 업무 내용을 팀원과 공유합니다.</AppText></View>{query.data?.teamId ? <Button label="글 작성" size="sm" onPress={() => { setEditing(null); setFormOpen(true); }} /> : null}</Inline>
+          {query.isLoading ? <LoadingState message="팀 게시글을 불러오는 중…" /> : query.isError || !query.data ? <ErrorState title="팀 게시글을 불러오지 못했습니다" message={query.error instanceof Error ? query.error.message : '잠시 후 다시 시도해 주세요.'} onRetry={() => void query.refetch()} /> : !query.data.teamId ? <Card variant="filled"><Stack gap="xs"><AppText variant="bodyStrong">소속된 팀이 없습니다.</AppText><AppText variant="caption">먼저 팀원리스트에서 팀을 만들거나 팀 코드로 연결해 주세요.</AppText></Stack></Card> : query.data.posts.length === 0 ? <Card variant="outlined"><AppText color="textSecondary" align="center">등록된 글이 없습니다.</AppText></Card> : query.data.posts.map((post) => {
             const expanded = expandedId === post.id;
             return (
               <Card key={post.id} variant={post.isNotice ? 'filled' : 'outlined'} style={post.isNotice ? styles.noticeCard : undefined}>

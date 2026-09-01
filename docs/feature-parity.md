@@ -59,3 +59,6 @@ Menu labels/order mirror insurance `buildAppMenuForSession` (USER).
 - Rent remains disabled because the source menu itself exposes no active route.
 - Billing uses a narrowly scoped Toss authentication WebView only; normal product screens are native.
 - No production SMS, Alimtalk, payment, database mutation, OTA publish, or store release was executed during automated verification.
+- 2026-09-01 physical-device read-only smoke passed for every active USER menu screen against the production API. Production mutation paths remain deliberately unexecuted.
+- A missing Google Maps build key degrades to an explicit setup notice plus usable customer list; signed release builds must inject the key to activate the native map.
+- Team members/posts/files treat the source API's no-membership 400 as a normal setup/empty state rather than an application error.

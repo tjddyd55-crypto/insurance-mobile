@@ -13,24 +13,37 @@ Last audited: 2026-09-01
 - Device coexistence is isolated with `com.onefc.app.mobile.dev`, `onefc-native-dev`, and port 8084.
 - Expo dependency validation: 21/21 checks passed.
 - Static validation: typecheck and lint passed.
-- Automated validation: 32 suites / 98 tests passed.
+- Automated validation: 33 suites / 103 tests passed.
 - Android device-variant export: Hermes bundle generated successfully.
 - Android native compile: Gradle `assembleDebug` succeeded for minSdk 24 / targetSdk 36; APK package is `com.onefc.app.mobile.dev`.
+- Physical device smoke test passed on `SM-S931N`: production login/session restore, protected routing, Drawer navigation, Android back/deep links, and every active USER top-level screen rendered against production read-only data.
+- The production review account has no team. The API's intentional 400 response is normalized to native team setup/empty states across members, posts, and files.
+- A development build without a Google Maps key now shows a setup notice and keeps the customer list usable instead of instantiating the native map and crashing.
+
+## Physical-device results (2026-09-01)
+
+- Passed: isolated install/package/scheme/Metro port while JJOINZONE remained installed and running.
+- Passed: native login with the designated production review account and cold-start SecureStore session restoration through `/api/me`.
+- Passed: read-only rendering for home, TA, todos, memos, notifications/settings, customers/list/detail/map, premium payments, claims/customer news, both newsletter channels, application documents/history, team members/posts/files, SMS settings, insurer contacts/accounts/sites, storage, profile, billing, and feature requests.
+- Passed: customer detail navigation to claim, consultation, memo, and file workspaces without production mutation.
+- Passed: all seven primary Drawer groups were reachable by scroll; no React Native or Android crash remained after the map fallback fix.
+- Intentionally not executed: production create/update/delete, SMS/Alimtalk send, card/payment/subscription mutations, file upload, OTA publish, and store release.
+- Build-time gate: provide `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for the signed Android build to enable native map tiles and markers.
 
 ## Required before public release
 
 1. Create a new EAS project for the native app and inject its project ID. Do not reuse the legacy WebView project without a reviewed migration.
 2. Provision production signing credentials, Google Maps keys, and store records through the secret manager/EAS credentials flow.
-3. Run the physical-device checklist below with the isolated device variant, then repeat smoke tests against a staging account.
+3. Repeat the physical-device smoke test against a staging account and execute the controlled mutation cases below.
 4. Perform payment/SMS/Alimtalk checks with designated test credentials and controlled recipients. Never use automated production mutation tests.
 5. Obtain product/design acceptance and privacy/store disclosure review before enabling OTA or submitting a store build.
 
 ## Physical-device checklist
 
-- Cold start, login, expired-token redirect, logout, Android back behavior, deep links.
+- Completed read-only: cold start, login, session restoration, protected redirect, Android back behavior, deep links, and Drawer scrolling.
 - Keyboard, safe area, scrolling, large font, dark/light design-system gallery, offline and timeout errors.
 - Camera/photo/document picker, upload progress, file download/open/share, external phone/SMS/browser intents.
-- Customer map permission, markers, radius, search, missing-location behavior.
+- Pending signed build: Google Maps key, map tiles/markers, permission, radius/search interaction, and missing-location behavior. The no-key fallback is device-verified.
 - Toss test card authentication, cancel/failure/success callbacks, duplicate-tap protection.
 - Simultaneous install beside JJOINZONE and the legacy ONE FC app; verify names, package IDs, schemes, and Metro port isolation.
 
