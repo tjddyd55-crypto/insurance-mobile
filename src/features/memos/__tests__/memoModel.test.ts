@@ -1,5 +1,6 @@
 import {
   formatMemoUpdatedAt,
+  memoListEmptyCopy,
   memoMatchesSearch,
   memoTimestamp,
   normalizeMemo,
@@ -38,5 +39,7 @@ describe('memoModel', () => {
     });
     expect(memoTimestamp(memo)).toBe(Date.parse('2026-08-31T01:30:00Z'));
     expect(formatMemoUpdatedAt(memo.updatedAt, new Date('2026-08-31T03:00:00Z'))).toContain('10:30');
+    expect(memoListEmptyCopy('').title).toBe('등록된 메모가 없습니다.');
+    expect(memoListEmptyCopy('없는 말').title).toBe('검색 결과가 없습니다.');
   });
 });

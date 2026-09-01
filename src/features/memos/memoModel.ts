@@ -74,6 +74,12 @@ export function formatMemoUpdatedAt(value: string | null, now = new Date()): str
   return noteYmd.replaceAll('-', '.');
 }
 
+export const MEMO_LIST_PREVIEW_LINES = 3;
+
+export function memoListEmptyCopy(search: string): { title: string } {
+  return { title: search.trim() ? '검색 결과가 없습니다.' : '등록된 메모가 없습니다.' };
+}
+
 export function memoMatchesSearch(memo: MemoRecord, keyword: string): boolean {
   const needle = keyword.trim().toLocaleLowerCase('ko-KR');
   return !needle || memo.content.toLocaleLowerCase('ko-KR').includes(needle);

@@ -84,7 +84,7 @@ export function MemoFormScreen({
   const error = saveMutation.error ?? deleteMutation.error;
   const busy = saveMutation.isPending || deleteMutation.isPending;
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <AppHeader title="스티커 메모" showMenu={false} showBack onBackPress={requestBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <TextField
@@ -93,7 +93,7 @@ export function MemoFormScreen({
           autoFocus
           value={content}
           onChangeText={(value) => setContent(value.slice(0, 50_000))}
-          placeholder="메모 내용을 입력하세요"
+            placeholder="메모 내용을 입력하세요."
           style={styles.editor}
         />
         {error ? (
@@ -141,7 +141,7 @@ function createStyles(theme: AppTheme) {
     root: { flex: 1, backgroundColor: theme.colors.background },
     scroll: { flex: 1 },
     content: { flexGrow: 1, padding: theme.spacing.lg, gap: theme.spacing.md },
-    editor: { minHeight: 360, backgroundColor: theme.colors.warningSoft },
+    editor: { minHeight: 360, backgroundColor: theme.colors.surface },
     footerSafe: {
       backgroundColor: theme.colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,

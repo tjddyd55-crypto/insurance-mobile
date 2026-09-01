@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
@@ -20,8 +21,10 @@ import {
 } from '../../design-system';
 import {
   formatMemoUpdatedAt,
+  memoListEmptyCopy,
   memoMatchesSearch,
   memoTimestamp,
+  MEMO_LIST_PREVIEW_LINES,
   parseMemoContent,
 } from './memoModel';
 import { listMemos } from './memosApi';
@@ -45,6 +48,7 @@ export function MemosScreen() {
       .sort((a, b) => memoTimestamp(b) - memoTimestamp(a)),
     [query.data, search],
   );
+  const emptyCopy = memoListEmptyCopy(search);
 
   return (
     <View style={styles.root}>
@@ -63,19 +67,17 @@ export function MemosScreen() {
             />
           }
           ListHeaderComponent={
-            <Stack gap="md" style={styles.header}>
+            <Inline gap="sm" style={styles.header}>
               <TextField
                 accessibilityLabel="메모 검색"
-                placeholder="메모 검색"
+                placeholder="검색..."
                 value={search}
                 onChangeText={setSearch}
                 returnKeyType="search"
+                containerStyle={styles.search}
               />
-              <Inline justify="space-between">
-                <AppText variant="caption">{memos.length}개의 메모</AppText>
-                <Button label="+ 메모 추가" size="sm" onPress={() => router.push('/memo/new')} />
-              </Inline>
-            </Stack>
+              <Button label="+ 메모 추가" size="sm" onPress={() => router.push('/memo/new')} />
+            </Inline>
           }
           renderItem={({ item }: { item: MemoRecord }) => {
             const copy = parseMemoContent(item.content);
@@ -86,11 +88,19 @@ export function MemosScreen() {
                 onPress={() => router.push({ pathname: '/memo/[memoId]/edit', params: { memoId: item.id } })}
                 style={({ pressed }) => pressed && styles.pressed}
               >
-                <Card variant="filled" style={styles.memoCard}>
-                  <Stack gap="sm">
-                    <AppText variant="caption" align="right">{formatMemoUpdatedAt(item.updatedAt ?? item.createdAt)}</AppText>
-                    <AppText variant="subheading" numberOfLines={1}>{copy.title}</AppText>
-                    <AppText color="textSecondary" numberOfLines={5}>{copy.preview || '내용 없음'}</AppText>
+                <Card variant="filled" padding="md" style={styles.memoCard}>
+                  <Stack gap="xs">
+                    <Inline justify="space-between" align="flex-start">
+                      <AppText variant="bodyStrong" numberOfLines={1} style={styles.memoTitle}>
+                        {copy.title}
+                      </AppText>
+                      <AppText variant="caption" color="textMuted">
+                        {formatMemoUpdatedAt(item.updatedAt ?? item.createdAt)}
+                      </AppText>
+                    </Inline>
+                    <AppText color="textSecondary" numberOfLines={MEMO_LIST_PREVIEW_LINES}>
+                      {copy.preview || '내용 없음'}
+                    </AppText>
                   </Stack>
                 </Card>
               </Pressable>
@@ -99,18 +109,16 @@ export function MemosScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             query.isLoading ? (
-              <LoadingState message="메모를 불러오는 중…" />
+              <LoadingState compact message="메모를 불러오는 중…" />
             ) : query.isError ? (
               <ErrorState
+                compact
                 title="메모를 불러오지 못했습니다"
                 message={query.error instanceof Error ? query.error.message : '잠시 후 다시 시도해 주세요.'}
                 onRetry={() => void query.refetch()}
               />
             ) : (
-              <View style={styles.empty}>
-                <AppText variant="heading">{search ? '검색 결과가 없습니다' : '등록된 메모가 없습니다'}</AppText>
-                <AppText color="textSecondary" align="center">새 메모를 작성해 업무 내용을 기록해 보세요.</AppText>
-              </View>
+              <EmptyState compact title={emptyCopy.title} />
             )
           }
         />
@@ -122,12 +130,18 @@ export function MemosScreen() {
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1 },
-    list: { flexGrow: 1, padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
-    emptyList: { justifyContent: 'center' },
-    header: { marginBottom: theme.spacing.md },
+    list: {
+      flexGrow: 1,
+      paddingHorizontal: theme.layout.screenPaddingHorizontal,
+      paddingTop: theme.layout.screenPaddingTop,
+      paddingBottom: theme.layout.contentBottomInset,
+    },
+    emptyList: { flexGrow: 1 },
+    header: { marginBottom: theme.spacing.md, alignItems: 'center' },
+    search: { flex: 1, minWidth: 0 },
     memoCard: { backgroundColor: theme.colors.warningSoft },
+    memoTitle: { flex: 1, minWidth: 0, paddingRight: theme.spacing.sm },
     pressed: { opacity: theme.opacity.pressed },
-    separator: { height: theme.spacing.md },
-    empty: { alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.xl },
+    separator: { height: theme.layout.compactListGap },
   });
 }
