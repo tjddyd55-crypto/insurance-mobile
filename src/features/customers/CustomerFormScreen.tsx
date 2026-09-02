@@ -5,6 +5,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -22,6 +23,7 @@ import {
   Card,
   Inline,
   Stack,
+  SelectField,
   TextField,
   useAppTheme,
   type AppTheme,
@@ -52,7 +54,6 @@ import { createCustomer, getCustomer, updateCustomer } from './customersApi';
 import { navigateToCustomerDetail } from './customerWorkspaceNavigation';
 import {
   CUSTOMER_GENDER_FORM_OPTIONS,
-  resolveChoiceButtonVariant,
   resolveSegmentSelectedVariant,
 } from './customerFormChoices';
 import { customerQueryKeys } from './queryKeys';
@@ -248,11 +249,13 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             placeholder="YYYY-MM-DD"
             keyboardType="numbers-and-punctuation"
           />
-          <SelectChoice
+          <SelectField
             label="통신사"
             value={form.carrier}
             options={CUSTOMER_MOBILE_CARRIER_OPTIONS}
+            placeholder="통신사를 선택해 주세요"
             onChange={(value) => updateField('carrier', value)}
+            testID="customer-form-carrier-select"
           />
           <Inline>
             <TextField
@@ -276,11 +279,13 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             onChange={(address) => updateField('address', address)}
             disabled={saveMutation.isPending}
           />
-          <SelectChoice
+          <SelectField
             label="유입 경로"
             value={form.inflowSource}
             options={CUSTOMER_INFLOW_SOURCE_OPTIONS}
+            placeholder="유입 경로를 선택해 주세요"
             onChange={(value) => updateField('inflowSource', value)}
+            testID="customer-form-inflow-select"
           />
           {requiresInflowSourceDetail(form.inflowSource) ? (
             <TextField
@@ -290,18 +295,30 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
               placeholder={getInflowSourceDetailFieldMeta(form.inflowSource)?.placeholder}
             />
           ) : null}
-          <Inline>
-            <Button
-              label={form.isFavorite ? '★ 중요 고객' : '☆ 일반 고객'}
-              variant={form.isFavorite ? 'selected' : 'secondary'}
-              onPress={() => updateField('isFavorite', !form.isFavorite)}
-              style={styles.grow}
+          <Inline align="center" justify="space-between" style={styles.toggleRow}>
+            <AppText variant="label">중요 고객</AppText>
+            <Switch
+              accessibilityLabel="중요 고객"
+              value={form.isFavorite}
+              onValueChange={(value) => updateField('isFavorite', value)}
+              trackColor={{
+                false: theme.colors.border,
+                true: theme.colors.primarySoft,
+              }}
+              thumbColor={form.isFavorite ? theme.colors.primary : theme.colors.surface}
             />
-            <Button
-              label={form.smsOptOut ? '문자 수신거부' : '문자 수신허용'}
-              variant={form.smsOptOut ? 'danger' : 'secondary'}
-              onPress={() => updateField('smsOptOut', !form.smsOptOut)}
-              style={styles.grow}
+          </Inline>
+          <Inline align="center" justify="space-between" style={styles.toggleRow}>
+            <AppText variant="label">문자 수신거부</AppText>
+            <Switch
+              accessibilityLabel="문자 수신거부"
+              value={form.smsOptOut}
+              onValueChange={(value) => updateField('smsOptOut', value)}
+              trackColor={{
+                false: theme.colors.border,
+                true: theme.colors.dangerSoft,
+              }}
+              thumbColor={form.smsOptOut ? theme.colors.danger : theme.colors.surface}
             />
           </Inline>
         </FormSection>
@@ -415,35 +432,6 @@ function FormSection({ title, children }: { title: string; children: React.React
         {children}
       </Stack>
     </Card>
-  );
-}
-
-function SelectChoice({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Stack gap="xs">
-      <AppText variant="label">{label}</AppText>
-      <Inline wrap>
-        {options.map((option) => (
-          <Button
-            key={option.value || 'empty'}
-            label={option.label}
-            variant={resolveChoiceButtonVariant(option.value, value)}
-            size="sm"
-            onPress={() => onChange(option.value)}
-          />
-        ))}
-      </Inline>
-    </Stack>
   );
 }
 
@@ -594,5 +582,9 @@ function createStyles(theme: AppTheme) {
     },
     footer: { flexDirection: 'row', gap: theme.spacing.sm, padding: theme.spacing.md },
     grow: { flex: 1 },
+    toggleRow: {
+      minHeight: theme.controlSize.md,
+      paddingVertical: theme.spacing.xs,
+    },
   });
 }
