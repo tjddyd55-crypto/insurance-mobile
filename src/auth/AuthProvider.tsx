@@ -13,6 +13,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { fetchMe, loginRequest, type AuthUser } from '../api/authApi';
 import { ApiError, resetUnauthorizedLatch, setUnauthorizedHandler } from '../api/client';
 import {
+  syncPushRegistrationAfterLogin,
+  unregisterPushDeviceWithServer,
+} from '../features/push/pushRegistration';
+import {
   clearAuthSession,
   readAuthSession,
   saveAuthSession,
@@ -40,6 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const handlingUnauthorized = useRef(false);
+  const tokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   const clearLocalSession = useCallback(async () => {
     await clearAuthSession();
@@ -56,6 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     handlingUnauthorized.current = true;
     try {
+      const currentToken = tokenRef.current;
+      if (currentToken) {
+        await unregisterPushDeviceWithServer(currentToken);
+      }
       await clearLocalSession();
     } finally {
       handlingUnauthorized.current = false;
@@ -79,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(me);
       setStatus('authenticated');
       resetUnauthorizedLatch();
+      void syncPushRegistrationAfterLogin(stored.token);
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         await clearLocalSession();
@@ -90,28 +104,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearLocalSession]);
 
-  const login = useCallback(
-    async (username: string, password: string) => {
-      const session = await loginRequest(username, password);
-      await saveAuthSession(session);
-      setToken(session.token);
-      setUser(session.user);
-      setStatus('authenticated');
-      resetUnauthorizedLatch();
-    },
-    [],
-  );
+  const login = useCallback(async (username: string, password: string) => {
+    const session = await loginRequest(username, password);
+    await saveAuthSession(session);
+    setToken(session.token);
+    setUser(session.user);
+    setStatus('authenticated');
+    resetUnauthorizedLatch();
+    void syncPushRegistrationAfterLogin(session.token);
+  }, []);
 
   const logout = useCallback(async () => {
+    const currentToken = tokenRef.current;
+    if (currentToken) {
+      await unregisterPushDeviceWithServer(currentToken);
+    }
     await clearLocalSession();
   }, [clearLocalSession]);
 
-  const updateUser = useCallback(async (patch: Partial<AuthUser>) => {
-    if (!token || !user) return;
-    const next = { ...user, ...patch };
-    await saveAuthSession({ token, user: next });
-    setUser(next);
-  }, [token, user]);
+  const updateUser = useCallback(
+    async (patch: Partial<AuthUser>) => {
+      if (!token || !user) return;
+      const next = { ...user, ...patch };
+      await saveAuthSession({ token, user: next });
+      setUser(next);
+    },
+    [token, user],
+  );
 
   useEffect(() => {
     void restoreSession();

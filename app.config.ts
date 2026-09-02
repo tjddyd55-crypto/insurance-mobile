@@ -64,6 +64,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#003D1F',
       },
       predictiveBackGestureEnabled: false,
+      permissions: ['POST_NOTIFICATIONS'],
     },
     web: {
       bundler: 'metro',
@@ -73,6 +74,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-router',
       'expo-secure-store',
       'expo-sharing',
+      [
+        'expo-notifications',
+        {
+          icon: './assets/images/icon-prod.png',
+          color: '#003D1F',
+          defaultChannel: 'claim_notifications',
+        },
+      ],
       [
         'expo-splash-screen',
         {
