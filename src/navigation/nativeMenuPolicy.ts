@@ -1,6 +1,10 @@
 import type { AuthUser } from '../api/authApi';
 import { isBillingUiVisibleForUser } from '../features/billing/billingAccessPolicy';
 import {
+  partitionNewsletterBoardsForMenu,
+  buildNewsletterBoardViewPath,
+} from '../features/newsletters/newsletterBoardMenu';
+import {
   USER_APP_MENU,
   type NativeMenuLink,
   type NativeMenuSection,
@@ -25,6 +29,7 @@ const PUBLIC_ACCOUNT_GA_ONLY_PREFIXES = [
   '/team',
   '/portal/newsletters',
   '/portal/adjuster-news',
+  '/portal/boards',
 ] as const;
 const NATIVE_CRM_MENU_ROLES = new Set<AuthUser['role']>(['USER', 'SUPER_ADMIN']);
 
@@ -59,19 +64,33 @@ function applyNewsletterPolicy(
   sections: NativeMenuSection[],
   boards: DynamicNewsletterBoardMenuItem[] | undefined,
 ): NativeMenuSection[] {
-  if (!boards || boards.length === 0) return sections;
-  const lossAdjuster = boards.find(
-    (board) => board.isActive !== false
-      && String(board.systemKey ?? '').trim().toUpperCase() === 'LOSS_ADJUSTER',
-  );
+  if (boards == null) return sections;
+  const { lossAdjuster, dynamicBoards } = partitionNewsletterBoardsForMenu(boards);
   return sections.map((section) => {
     if (section.id !== 'newsletters') return section;
     const children = section.children
       .filter((child) => child.id !== 'adjuster-news' || Boolean(lossAdjuster))
-      .map((child) => child.id === 'adjuster-news' && lossAdjuster
-        ? { ...child, label: lossAdjuster.label.trim() || child.label }
-        : child);
-    return { ...section, children };
+      .map((child) =>
+        child.id === 'adjuster-news' && lossAdjuster
+          ? { ...child, label: lossAdjuster.label.trim() || child.label }
+          : child,
+      );
+    const boardLinks: NativeMenuLink[] = dynamicBoards
+      .filter((board) => board.isActive !== false && board.slug.trim())
+      .map((board) => {
+        const slug = board.slug.trim();
+        const path = buildNewsletterBoardViewPath(slug);
+        return {
+          type: 'link',
+          id: `newsletter-board-${slug}`,
+          label: board.label.trim() || '소식지',
+          legacyWebPath: path,
+          nativePath: path,
+          mode: 'NATIVE',
+          roles: ['USER'],
+        };
+      });
+    return { ...section, children: [...children, ...boardLinks] };
   });
 }
 

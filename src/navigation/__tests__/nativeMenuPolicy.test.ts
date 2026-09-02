@@ -8,7 +8,7 @@ import {
 
 const capabilities: NativeMenuCapabilities = {
   isTeamOwner: false,
-  dynamicNewsletterBoards: [],
+  dynamicNewsletterBoards: undefined,
 };
 
 function user(overrides: Partial<AuthUser> = {}): AuthUser {
@@ -115,7 +115,7 @@ describe('native session menu policy', () => {
     ]);
   });
 
-  test('uses the dynamic loss-adjuster label without inventing unsupported board routes', () => {
+  test('injects dynamic newsletter boards while keeping loss-adjuster on fixed path', () => {
     const menu = buildNativeMenuForSession(user(), {
       ...capabilities,
       dynamicNewsletterBoards: [
@@ -125,16 +125,20 @@ describe('native session menu policy', () => {
     });
     expect(labels(menu)).toContain('보상 실무 자료');
     expect(labels(menu)).not.toContain('손해사정사 소식지');
-    expect(labels(menu)).not.toContain('영진서울중앙');
+    expect(labels(menu)).toContain('영진서울중앙');
+    const yeongjin = menu
+      .flatMap((section) => section.children)
+      .find((child) => child.id === 'newsletter-board-yeongjin');
+    expect(yeongjin?.nativePath).toBe('/portal/boards/yeongjin');
   });
 
-  test('keeps the base menu while optional newsletter capabilities are loading', () => {
+  test('hides adjuster-news when loaded boards omit LOSS_ADJUSTER', () => {
     const menu = buildNativeMenuForSession(user(), {
       isTeamOwner: false,
-      dynamicNewsletterBoards: undefined,
+      dynamicNewsletterBoards: [{ label: '영진', slug: 'yeongjin', boardScope: 'ga' }],
     });
-    expect(menu).toHaveLength(7);
-    expect(labels(menu)).toHaveLength(25);
+    expect(labels(menu)).not.toContain('손해사정사 소식지');
+    expect(labels(menu)).toContain('영진');
   });
 
   test('limits expired sessions to profile, billing, and inquiry routes', () => {
