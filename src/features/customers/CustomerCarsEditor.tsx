@@ -88,7 +88,7 @@ export function CustomerCarsEditor({
               </Inline>
             </Inline>
             <TextField
-              label="차량번호"
+              label="차량 번호"
               value={car.carNumber}
               onChangeText={(value) => updateAt(index, { ...car, carNumber: value })}
               editable={!disabled}
@@ -123,12 +123,6 @@ export function CustomerCarsEditor({
                 editable={!disabled}
               />
             </Inline>
-            <TextField
-              label="메모"
-              value={car.memo}
-              onChangeText={(value) => updateAt(index, { ...car, memo: value })}
-              editable={!disabled}
-            />
           </Stack>
         </Card>
       ))}

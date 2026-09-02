@@ -48,6 +48,7 @@ import {
   CollapsibleDetailSection,
   DetailRow,
 } from "./CollapsibleDetailSection";
+import { useGoBackFromCustomerDetail } from "./customerWorkspaceNavigation";
 import {
   buildCustomerWorkspaceActions,
   resolveCustomerWorkspaceActionHref,
@@ -68,6 +69,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
   const queryKey = customerQueryKeys.detail(customerId);
+  const onBackFromDetail = useGoBackFromCustomerDetail();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [gaOpen, setGaOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState("");
@@ -141,7 +143,12 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
 
   return (
     <View style={styles.root}>
-      <AppHeader title={customer?.name ?? "고객 상세"} showMenu={false} showBack />
+      <AppHeader
+        title={customer?.name ?? "고객 상세"}
+        showMenu={false}
+        showBack
+        onBackPress={onBackFromDetail}
+      />
       {query.isLoading ? (
         <LoadingState message="고객 정보를 불러오는 중…" />
       ) : query.isError || !customer ? (
@@ -330,11 +337,9 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     <AppText variant="bodyStrong">
                       {car.isPrimary ? "대표 차량" : `차량 ${index + 1}`}
                     </AppText>
-                    <DetailRow label="차량번호" value={formatCustomerDetailValue(car.carNumber)} />
-                    <DetailRow
-                      label="차종/모델"
-                      value={formatCustomerDetailValue(car.carModel || car.carType)}
-                    />
+                    <DetailRow label="차량 번호" value={formatCustomerDetailValue(car.carNumber)} />
+                    <DetailRow label="차종" value={formatCustomerDetailValue(car.carType)} />
+                    <DetailRow label="차량 모델" value={formatCustomerDetailValue(car.carModel)} />
                     <DetailRow label="연식" value={formatCustomerDetailValue(car.carYear)} />
                     <DetailRow
                       label="갱신 예정일"
@@ -344,11 +349,9 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 ))
               ) : (
                 <>
-                  <DetailRow label="차량번호" value={formatCustomerDetailValue(customer.carNumber)} />
-                  <DetailRow
-                    label="차종"
-                    value={formatCustomerDetailValue(customer.carModel || customer.carType)}
-                  />
+                  <DetailRow label="차량 번호" value={formatCustomerDetailValue(customer.carNumber)} />
+                  <DetailRow label="차종" value={formatCustomerDetailValue(customer.carType)} />
+                  <DetailRow label="차량 모델" value={formatCustomerDetailValue(customer.carModel)} />
                   <DetailRow label="연식" value={formatCustomerDetailValue(customer.carYear)} />
                   <DetailRow
                     label="갱신 예정일"
@@ -379,22 +382,21 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             </CollapsibleDetailSection>
 
             <CollapsibleDetailSection title="보험 및 참고사항" testID="customer-detail-section-insurance">
-              <DetailRow label="병력" value={formatCustomerDetailValue(customer.medical)} />
               <DetailRow
-                label="보험가입내역"
-                value={formatCustomerDetailValue(customer.notes.insuranceHistory)}
-              />
-              <DetailRow
-                label="계좌정보"
-                value={formatCustomerDetailValue(customer.notes.accountNumber)}
-              />
-              <DetailRow
-                label="수술·치료"
+                label="수술·치료 관련"
                 value={formatCustomerDetailValue(customer.notes.treatmentHistoryNote)}
               />
               <DetailRow
-                label="약 복용"
+                label="약 복용 관련"
                 value={formatCustomerDetailValue(customer.notes.medicationHistoryNote)}
+              />
+              <DetailRow
+                label="보험 가입 내역"
+                value={formatCustomerDetailValue(customer.notes.insuranceHistory)}
+              />
+              <DetailRow
+                label="계좌 정보"
+                value={formatCustomerDetailValue(customer.notes.accountNumber)}
               />
             </CollapsibleDetailSection>
 

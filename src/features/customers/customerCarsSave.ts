@@ -17,7 +17,7 @@ function trim(value: string | undefined): string {
   return String(value ?? "").trim();
 }
 
-function formItemToInput(
+export function formItemToInput(
   car: CustomerCarFormItem,
   isPrimary: boolean,
 ): CustomerCarInput {

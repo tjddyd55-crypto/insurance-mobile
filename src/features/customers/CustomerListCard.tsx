@@ -1,11 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
 import {
   AppText,
-  Button,
-  Badge,
   Card,
   IconButton,
   Stack,
@@ -13,6 +11,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { customerGenderLabel, formatCustomerPhone } from './customerModel';
+import { customerDetailPath } from './customerWorkspaceNavigation';
 import type { CustomerRecord } from './types';
 
 type CustomerListCardProps = {
@@ -34,23 +33,18 @@ export function CustomerListCard({
   const router = useRouter();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [expanded, setExpanded] = useState(false);
   const telUrl = phoneUrl(customer.phone, 'tel');
   const smsUrl = phoneUrl(customer.phone, 'sms');
-  const lastConsultation = customer.lastConsultationMemo ?? customer.lastConsultationSummary;
 
   return (
-    <Card
-      variant="outlined"
-      padding="none"
-      style={expanded && styles.selectedCard}
-    >
+    <Card variant="outlined" padding="none">
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${customer.name} 고객 카드 ${expanded ? '접기' : '펼치기'}`}
-        accessibilityState={{ expanded }}
+        accessibilityLabel={`${customer.name} 고객 상세 보기`}
         style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
-        onPress={() => setExpanded((value) => !value)}
+        onPress={() =>
+          router.push(customerDetailPath(customer.id) as Href)
+        }
       >
         <View style={styles.summaryRow}>
           <Stack gap="xs" style={styles.summaryContent}>
@@ -62,7 +56,9 @@ export function CustomerListCard({
                 {customerGenderLabel(customer.gender)}
               </AppText>
               <AppText variant="helper" color="textMuted" numberOfLines={1}>
-                {customer.insuranceAge != null ? `보험나이 ${customer.insuranceAge}세` : '보험나이 —'}
+                {customer.insuranceAge != null
+                  ? `보험나이 ${customer.insuranceAge}세`
+                  : '보험나이 —'}
               </AppText>
             </View>
             <AppText variant="body" color="textSecondary" numberOfLines={1}>
@@ -87,14 +83,19 @@ export function CustomerListCard({
               icon={(color) => (
                 <AppText
                   accessibilityElementsHidden
-                  style={[styles.actionIcon, { color: customer.isFavorite ? theme.colors.warning : color }]}
+                  style={[
+                    styles.actionIcon,
+                    { color: customer.isFavorite ? theme.colors.warning : color },
+                  ]}
                 >
                   {customer.isFavorite ? '★' : '☆'}
                 </AppText>
               )}
             />
             <IconButton
-              accessibilityLabel={customer.smsOptOut ? '문자 수신 거부 고객' : '문자 보내기'}
+              accessibilityLabel={
+                customer.smsOptOut ? '문자 수신 거부 고객' : '문자 보내기'
+              }
               variant="ghost"
               disabled={!smsUrl || customer.smsOptOut}
               hitSlop={styles.actionHitSlop}
@@ -104,7 +105,12 @@ export function CustomerListCard({
                 if (smsUrl) void Linking.openURL(smsUrl);
               }}
               icon={(color) => (
-                <AppText accessibilityElementsHidden style={[styles.actionIcon, { color }]}>✉</AppText>
+                <AppText
+                  accessibilityElementsHidden
+                  style={[styles.actionIcon, { color }]}
+                >
+                  ✉
+                </AppText>
               )}
             />
             <IconButton
@@ -119,70 +125,17 @@ export function CustomerListCard({
                 if (telUrl) void Linking.openURL(telUrl);
               }}
               icon={(color) => (
-                <AppText accessibilityElementsHidden style={[styles.actionIcon, { color }]}>☎</AppText>
-              )}
-            />
-            <IconButton
-              accessibilityLabel={expanded ? '고객 카드 접기' : '고객 카드 펼치기'}
-              variant="ghost"
-              tone="primary"
-              hitSlop={styles.actionHitSlop}
-              style={styles.actionButton}
-              onPress={(event) => {
-                event.stopPropagation();
-                setExpanded((value) => !value);
-              }}
-              icon={(color) => (
-                <AppText accessibilityElementsHidden style={[styles.expandIcon, { color }]}>
-                  {expanded ? '▲' : '▼'}
+                <AppText
+                  accessibilityElementsHidden
+                  style={[styles.actionIcon, { color }]}
+                >
+                  ☎
                 </AppText>
               )}
             />
           </View>
         </View>
       </Pressable>
-
-      {expanded ? (
-        <View style={styles.expanded}>
-          <Stack gap="sm">
-            <View style={styles.badges}>
-              {customer.customerCode ? <Badge label={customer.customerCode} /> : null}
-              {customer.nextContactDate ? (
-                <Badge
-                  label={`다음 연락 ${customer.nextContactDate.slice(0, 10)}`}
-                  tone={customer.overdueFollowUp ? 'danger' : customer.todayFollowUp ? 'warning' : 'info'}
-                />
-              ) : null}
-            </View>
-            {customer.job ? (
-              <AppText variant="helper" color="textSecondary" numberOfLines={1}>
-                직업 · {customer.job}
-              </AppText>
-            ) : null}
-            {customer.address ? (
-              <AppText variant="helper" color="textSecondary" numberOfLines={1}>
-                주소 · {customer.address}
-              </AppText>
-            ) : null}
-            {lastConsultation ? (
-              <AppText variant="helper" color="textSecondary" numberOfLines={2}>
-                최근 상담 · {lastConsultation}
-              </AppText>
-            ) : null}
-            <Button
-              label="고객 상세"
-              size="sm"
-              variant="secondary"
-              onPress={() =>
-                router.push({
-                  pathname: '/customers/[customerId]',
-                  params: { customerId: String(customer.id) },
-                })
-              }
-            />
-          </Stack>
-        </View>
-      ) : null}
     </Card>
   );
 }
@@ -190,16 +143,14 @@ export function CustomerListCard({
 function createStyles(theme: AppTheme) {
   const actionHitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
   const styles = StyleSheet.create({
-    selectedCard: {
-      borderWidth: 2,
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.surface,
-    },
     summary: {
       paddingHorizontal: theme.spacing.sm + theme.spacing.xxs,
       paddingVertical: theme.spacing.sm + theme.spacing.xxs,
     },
-    pressed: { opacity: theme.opacity.pressed, backgroundColor: theme.colors.surfaceSubtle },
+    pressed: {
+      opacity: theme.opacity.pressed,
+      backgroundColor: theme.colors.surfaceSubtle,
+    },
     summaryRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
     summaryContent: { flex: 1, minWidth: 0 },
     nameRow: {
@@ -220,15 +171,6 @@ function createStyles(theme: AppTheme) {
       height: 28,
     },
     actionIcon: { fontSize: 16, lineHeight: 18 },
-    expandIcon: { fontSize: 12, lineHeight: 16 },
-    expanded: {
-      paddingHorizontal: theme.spacing.md,
-      paddingBottom: theme.spacing.md,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.border,
-      paddingTop: theme.spacing.sm,
-    },
-    badges: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
   });
   return { ...styles, actionHitSlop };
 }

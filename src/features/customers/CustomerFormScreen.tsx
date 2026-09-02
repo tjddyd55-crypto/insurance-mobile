@@ -347,18 +347,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
 
         <FormSection title="보험 및 참고사항">
           <TextField
-            label="보험가입내역"
-            multiline
-            value={form.insuranceHistory}
-            onChangeText={(value) => updateField('insuranceHistory', value)}
-          />
-          <TextField
-            label="계좌정보"
-            multiline
-            value={form.accountNumber}
-            onChangeText={(value) => updateField('accountNumber', value)}
-          />
-          <TextField
             label="수술·치료 관련"
             multiline
             value={form.treatmentHistoryNote}
@@ -369,6 +357,18 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             multiline
             value={form.medicationHistoryNote}
             onChangeText={(value) => updateField('medicationHistoryNote', value)}
+          />
+          <TextField
+            label="보험가입내역"
+            multiline
+            value={form.insuranceHistory}
+            onChangeText={(value) => updateField('insuranceHistory', value)}
+          />
+          <TextField
+            label="계좌정보"
+            multiline
+            value={form.accountNumber}
+            onChangeText={(value) => updateField('accountNumber', value)}
           />
         </FormSection>
 
@@ -385,13 +385,14 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         <View style={styles.footer}>
           <Button
             label="취소"
-            variant="secondary"
+            variant="ghost"
             disabled={saveMutation.isPending}
             onPress={requestBack}
             style={styles.grow}
           />
           <Button
             label={mode === 'create' ? '고객 등록' : '변경 저장'}
+            variant="actionEmphasis"
             loading={saveMutation.isPending}
             onPress={submit}
             style={styles.grow}
