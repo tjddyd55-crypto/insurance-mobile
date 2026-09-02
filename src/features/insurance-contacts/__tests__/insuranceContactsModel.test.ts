@@ -9,6 +9,10 @@ describe('insuranceContactsModel', () => {
   });
   test('formats and sanitizes phone numbers', () => {
     expect(formatPhone('01012345678')).toBe('010-1234-5678');
+    expect(formatPhone('15885656')).toBe('1588-5656');
+    expect(formatPhone('15771234')).toBe('1577-1234');
+    expect(formatPhone('0212345678')).toBe('02-1234-5678');
+    expect(formatPhone('1588-5656')).toBe('1588-5656');
     expect(normalizePhone('02-1234-5678')).toBe('0212345678');
   });
 });

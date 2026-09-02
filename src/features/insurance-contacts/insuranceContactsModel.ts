@@ -1,4 +1,7 @@
+import { formatPhone as formatInsuranceContactPhone } from './formatInsuranceContactPhone';
 import type { CompanyDirectoryEntry, InsuranceCategory } from './types';
+
+export { formatInsuranceContactPhone as formatPhone };
 
 export function normalizeCompanyDirectoryEntry(value: unknown): CompanyDirectoryEntry | null {
   if (!value || typeof value !== 'object') return null;
@@ -21,15 +24,6 @@ export function normalizeCompanyDirectoryEntry(value: unknown): CompanyDirectory
 
 export function normalizePhone(value: string): string {
   return value.replace(/[^0-9+]/g, '');
-}
-
-export function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, '');
-  if (digits.length === 11) return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
-  if (digits.length === 10 && digits.startsWith('02')) return digits.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
-  if (digits.length === 10) return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-  if (digits.length === 9 && digits.startsWith('02')) return digits.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
-  return value.trim();
 }
 
 export function categoryOf(entry: CompanyDirectoryEntry): InsuranceCategory {
