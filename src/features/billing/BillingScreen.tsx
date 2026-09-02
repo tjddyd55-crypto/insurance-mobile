@@ -294,14 +294,14 @@ export function BillingScreen() {
                           label={`월간 ${formatKrw(summary.data.plan?.monthlyTotal ?? 8800)}`}
                           style={styles.grow}
                           variant={
-                            cycle === "monthly" ? "primary" : "secondary"
+                            cycle === "monthly" ? "selected" : "secondary"
                           }
                           onPress={() => setCycle("monthly")}
                         />
                         <Button
                           label={`연간 ${formatKrw(summary.data.plan?.yearlyTotal ?? 88000)}`}
                           style={styles.grow}
-                          variant={cycle === "yearly" ? "primary" : "secondary"}
+                          variant={cycle === "yearly" ? "selected" : "secondary"}
                           onPress={() => setCycle("yearly")}
                         />
                       </Inline>

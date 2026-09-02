@@ -143,7 +143,7 @@ export function TaCallSettingsScreen() {
               <AppText variant="label">대상 성별</AppText>
               <Inline>
                 {([['all', '전체'], ['male', '남성'], ['female', '여성']] as const).map(([value, label]) => (
-                  <Button key={value} label={label} size="sm" variant={draft.targetGender === value ? 'primary' : 'secondary'} onPress={() => update('targetGender', value)} style={styles.grow} />
+                  <Button key={value} label={label} size="sm" variant={draft.targetGender === value ? 'selected' : 'secondary'} onPress={() => update('targetGender', value)} style={styles.grow} />
                 ))}
               </Inline>
             </Stack>

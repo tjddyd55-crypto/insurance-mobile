@@ -126,7 +126,7 @@ export function TodosScreen() {
                             key={item}
                             label={item === 'all' ? '전체' : todoSourceLabel(item)}
                             size="sm"
-                            variant={source === item ? 'primary' : 'secondary'}
+                            variant={source === item ? 'selected' : 'secondary'}
                             onPress={() => setSource(item)}
                           />
                         ))}
@@ -199,7 +199,7 @@ function FilterRow<T extends string>({
             key={item.value}
             label={item.label}
             size="sm"
-            variant={value === item.value ? 'primary' : 'secondary'}
+            variant={value === item.value ? 'selected' : 'secondary'}
             onPress={() => onChange(item.value)}
           />
         ))}

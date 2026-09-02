@@ -197,7 +197,7 @@ export function ClaimDetailModal({
                       label={item.label}
                       size="sm"
                       variant={
-                        nextStatus === item.value ? "primary" : "secondary"
+                        nextStatus === item.value ? "selected" : "secondary"
                       }
                       onPress={() => onStatusChange(item.value)}
                     />

@@ -271,7 +271,7 @@ export function ClaimsScreen({
                 <Button
                   label="전체"
                   size="sm"
-                  variant={!status ? "primary" : "secondary"}
+                  variant={!status ? "selected" : "secondary"}
                   onPress={() => setStatus("")}
                 />
                 {CLAIM_STATUSES.map((item) => (
@@ -279,7 +279,7 @@ export function ClaimsScreen({
                     key={item.value}
                     label={item.label}
                     size="sm"
-                    variant={status === item.value ? "primary" : "secondary"}
+                    variant={status === item.value ? "selected" : "secondary"}
                     onPress={() => setStatus(item.value)}
                   />
                 ))}

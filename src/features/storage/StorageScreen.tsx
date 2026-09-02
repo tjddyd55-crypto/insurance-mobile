@@ -238,7 +238,7 @@ export function StorageScreen() {
             <Button
               label="전체 파일"
               size="sm"
-              variant={folderId == null ? "primary" : "secondary"}
+              variant={folderId == null ? "selected" : "secondary"}
               onPress={() => setFolderId(null)}
             />
             {folderId != null ? (

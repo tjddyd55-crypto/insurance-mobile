@@ -133,13 +133,13 @@ export function NotificationsScreen() {
                   <Button
                     label="미확인"
                     size="sm"
-                    variant={view === 'active' ? 'primary' : 'secondary'}
+                    variant={view === 'active' ? 'selected' : 'secondary'}
                     onPress={() => setView('active')}
                   />
                   <Button
                     label="확인한 알림"
                     size="sm"
-                    variant={view === 'confirmed' ? 'primary' : 'secondary'}
+                    variant={view === 'confirmed' ? 'selected' : 'secondary'}
                     onPress={() => setView('confirmed')}
                   />
                 </Inline>

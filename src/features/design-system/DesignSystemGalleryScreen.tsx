@@ -51,7 +51,7 @@ export function DesignSystemGalleryScreen() {
                 key={candidate}
                 label={candidate}
                 size="sm"
-                variant={mode === candidate ? 'primary' : 'secondary'}
+                variant={mode === candidate ? 'selected' : 'secondary'}
                 onPress={() => setMode(candidate)}
               />
             ))}
