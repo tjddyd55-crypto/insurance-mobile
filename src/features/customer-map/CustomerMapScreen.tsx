@@ -11,6 +11,8 @@ import {
   AppText, Badge, Button, Card, Inline, Screen, Stack, TextField,
   useAppTheme, type AppTheme,
 } from '../../design-system';
+import { getCustomer } from '../customers/customersApi';
+import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import { getCustomerMap } from './customerMapApi';
 import { groupCustomersByCoordinate, hasGoogleMapsApiKey } from './customerMapModel';
 
@@ -23,15 +25,22 @@ export function CustomerMapScreen({
 } = {}) {
   const { token } = useAuth();
   const router = useRouter();
+  const onBackPress = useCustomerDetailBack(focusCustomerId ?? 0);
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [keyword, setKeyword] = useState('');
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [radiusText, setRadiusText] = useState('');
+  const focusCustomer = useQuery({
+    queryKey: ['customer', focusCustomerId],
+    queryFn: () => getCustomer(token, focusCustomerId!),
+    enabled: Boolean(token && focusCustomerId),
+  });
   useEffect(() => {
-    if (!focusCustomerId) return;
-    setKeyword(String(focusCustomerId));
-  }, [focusCustomerId]);
+    if (!focusCustomerId || !focusCustomer.data) return;
+    const nextKeyword = focusCustomer.data.name.trim() || focusCustomer.data.phone.trim();
+    if (nextKeyword) setKeyword(nextKeyword);
+  }, [focusCustomer.data, focusCustomerId]);
   const radius = Number(radiusText);
   const mapAvailable = hasGoogleMapsApiKey();
   const query = useQuery({
@@ -50,7 +59,12 @@ export function CustomerMapScreen({
 
   return (
     <View style={styles.root}>
-      <AppHeader title="고객 지도" showMenu={!showBack} showBack={showBack} />
+      <AppHeader
+        title="고객 지도"
+        showMenu={!showBack}
+        showBack={showBack}
+        onBackPress={showBack && focusCustomerId ? onBackPress : undefined}
+      />
       <Screen padded={false}>
         <ScrollView
           contentContainerStyle={styles.content}

@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { AppText, Badge, Button, Card, Divider, Inline, Screen, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
 import { createCustomerNews, createNewsComment, deleteCustomerNews, listCustomerNews, listLinkedCustomers, listNewsComments, updateCustomerNews, uploadNewsAttachment } from './customerNewsApi';
+import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import { attachmentKind, newsScopeLabel, validateNewsAttachment } from './customerNewsModel';
 import type { CustomerNewsItem, LinkedCustomer, LocalAttachment } from './types';
 
@@ -26,6 +27,7 @@ export function CustomerNewsScreen({
 } = {}) {
   const { token } = useAuth();
   const client = useQueryClient();
+  const onBackPress = useCustomerDetailBack(initialCustomerId ?? 0);
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [scope, setScope] = useState<'all' | 'personal'>(initialScope);
@@ -59,7 +61,12 @@ export function CustomerNewsScreen({
   const audience = linked.data?.find((item) => item.customerId === customerId);
   return (
     <View style={styles.root}>
-      <AppHeader title="고객소식지" showMenu={!showBack} showBack={showBack} />
+      <AppHeader
+        title="고객소식지"
+        showMenu={!showBack}
+        showBack={showBack}
+        onBackPress={showBack && initialCustomerId ? onBackPress : undefined}
+      />
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={news.isRefetching} onRefresh={() => void news.refetch()} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}>
           <Card>

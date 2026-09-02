@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FlatList, Linking, StyleSheet, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppHeader } from "../../components/AppHeader";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -35,6 +36,7 @@ import {
 import type { CustomerFile } from "./types";
 export function CustomerFilesScreen({ customerId }: { customerId: number }) {
   const { token } = useAuth();
+  const onBackPress = useCustomerDetailBack(customerId);
   const client = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -108,6 +110,7 @@ export function CustomerFilesScreen({ customerId }: { customerId: number }) {
         title={`${customer.data?.name ?? "고객"} 파일`}
         showMenu={false}
         showBack
+        onBackPress={onBackPress}
       />
       <Screen padded={false}>
         <FlatList

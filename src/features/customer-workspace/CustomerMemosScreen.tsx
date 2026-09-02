@@ -19,6 +19,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { getCustomer, updateCustomer } from '../customers/customersApi';
+import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import type { CustomerNote } from '../customers/types';
 import { newCustomerNoteId } from './customerWorkspaceModel';
 
@@ -31,6 +32,7 @@ const CLOSED_EDITOR: MemoEditorState = { open: false, note: null };
 
 export function CustomerMemosScreen({ customerId }: { customerId: number }) {
   const { token } = useAuth();
+  const onBackPress = useCustomerDetailBack(customerId);
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -96,7 +98,12 @@ export function CustomerMemosScreen({ customerId }: { customerId: number }) {
 
   return (
     <View style={styles.root}>
-      <AppHeader title={`${query.data?.name ?? '고객'} 메모`} showMenu={false} showBack />
+      <AppHeader
+        title={`${query.data?.name ?? '고객'} 메모`}
+        showMenu={false}
+        showBack
+        onBackPress={onBackPress}
+      />
       <Screen padded={false}>
         <ScrollView
           contentContainerStyle={styles.content}

@@ -20,6 +20,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
+import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import {
   createConsultation,
   deleteConsultation,
@@ -38,6 +39,7 @@ const CLOSED_EDITOR: ConsultationEditorState = { open: false, row: null };
 
 export function CustomerConsultationsScreen({ customerId }: { customerId: number }) {
   const { token } = useAuth();
+  const onBackPress = useCustomerDetailBack(customerId);
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -64,7 +66,12 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
 
   return (
     <View style={styles.root}>
-      <AppHeader title={`${customer.data?.name ?? '고객'} 상담`} showMenu={false} showBack />
+      <AppHeader
+        title={`${customer.data?.name ?? '고객'} 상담`}
+        showMenu={false}
+        showBack
+        onBackPress={onBackPress}
+      />
       <Screen padded={false}>
         <ScrollView
           contentContainerStyle={styles.content}

@@ -30,6 +30,7 @@ import {
 } from "../../design-system";
 import { listCustomers } from "../customers/customersApi";
 import { formatCustomerPhone } from "../customers/customerModel";
+import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation";
 import { shareRemoteFile } from "../files/remoteFileSharing";
 import {
   createCustomerAppLink,
@@ -56,6 +57,7 @@ export function ClaimsScreen({
 }) {
   const { token } = useAuth();
   const router = useRouter();
+  const onCustomerBack = useCustomerDetailBack(initialCustomerId ?? 0);
   const client = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -220,6 +222,7 @@ export function ClaimsScreen({
         title="청구관리"
         showMenu={!initialCustomerId}
         showBack={Boolean(initialCustomerId)}
+        onBackPress={initialCustomerId ? onCustomerBack : undefined}
       />
       <Screen padded={false}>
         <FlatList

@@ -49,6 +49,7 @@ import {
   type CustomerSpecialDateFormItem,
 } from './customerSpecialDatesApi';
 import { createCustomer, getCustomer, updateCustomer } from './customersApi';
+import { navigateToCustomerDetail } from './customerWorkspaceNavigation';
 import { customerQueryKeys } from './queryKeys';
 import type { ListCustomersResult } from './types';
 
@@ -140,6 +141,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const requestBack = () => {
     if (dirty && !saveMutation.isPending) {
       setDiscardOpen(true);
+      return;
+    }
+    if (mode === 'edit' && customerId) {
+      navigateToCustomerDetail(router, customerId);
       return;
     }
     router.back();
@@ -388,6 +393,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         onConfirm={() => {
           setDiscardOpen(false);
           setInitialSnapshot(JSON.stringify(form));
+          if (mode === 'edit' && customerId) {
+            navigateToCustomerDetail(router, customerId);
+            return;
+          }
           router.back();
         }}
       />
