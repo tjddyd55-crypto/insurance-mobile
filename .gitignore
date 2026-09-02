@@ -33,7 +33,11 @@ coverage/
 *.p12
 *.mobileprovision
 google-services.json
+google-services.dev.json
+google-services.prod.json
 GoogleService-Info.plist
+GoogleService-Info.dev.plist
+GoogleService-Info.prod.plist
 local.properties
 credentials.json
 

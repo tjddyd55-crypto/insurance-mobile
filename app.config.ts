@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 import appIdentities from './app.identity.json';
@@ -17,6 +19,20 @@ function resolveBuildEnvironment(
   return normalize(appVariant) ?? normalize(publicEnvironment) ?? 'development';
 }
 
+function resolveGoogleServicesFile(environment: AppEnvironment): string | undefined {
+  // Never commit these files. Local/EAS secret path only.
+  const candidates =
+    environment === 'production'
+      ? ['./google-services.prod.json', './google-services.json']
+      : ['./google-services.dev.json', './google-services.json'];
+  for (const relative of candidates) {
+    if (fs.existsSync(path.resolve(__dirname, relative))) {
+      return relative;
+    }
+  }
+  return undefined;
+}
+
 /**
  * EAS project continuity (M1):
  * - Legacy WebView app EAS projectId: 46c22c3a-0cf3-4a85-b877-908dab8116fe
@@ -30,6 +46,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     process.env.EXPO_PUBLIC_APP_ENV,
   );
   const identity = appIdentities[environment];
+  const googleServicesFile = resolveGoogleServicesFile(environment);
 
   const expoConfig: ExpoConfig = {
     ...config,
@@ -56,6 +73,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       package: identity.applicationId,
       versionCode: 1,
+      googleServicesFile,
       config: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
         ? { googleMaps: { apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY } }
         : undefined,
