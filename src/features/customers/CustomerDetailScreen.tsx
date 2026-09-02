@@ -43,7 +43,7 @@ import { customerQueryKeys } from "./queryKeys";
 import type { ListCustomersResult } from "./types";
 import { CustomerAppLinkSection } from "./CustomerAppLinkSection";
 import { CustomerGaDataModal } from "./CustomerGaDataModal";
-import { CUSTOMER_WORKSPACE_NAVIGATION_VARIANT } from "./customerFormChoices";
+import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
 import {
   CollapsibleDetailSection,
   DetailRow,
@@ -244,19 +244,10 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             </Stack>
 
             <CollapsibleDetailSection title="고객 업무" testID="customer-detail-section-actions">
-              <View style={styles.actionGrid}>
-                {actions.map((action) => (
-                  <Button
-                    key={action.id}
-                    accessibilityLabel={action.accessibilityLabel}
-                    label={action.label}
-                    size="sm"
-                    variant={CUSTOMER_WORKSPACE_NAVIGATION_VARIANT}
-                    onPress={() => void handleAction(action.id)}
-                    style={styles.actionButton}
-                  />
-                ))}
-              </View>
+              <CustomerWorkspaceActionGrid
+                actions={actions}
+                onAction={(actionId) => void handleAction(actionId)}
+              />
               {copyNotice ? (
                 <AppText variant="caption" color="success">
                   {copyNotice}
@@ -492,17 +483,6 @@ function createStyles(theme: AppTheme) {
     },
     grow: { flex: 1 },
     customerName: { flexShrink: 1 },
-    actionGrid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: theme.spacing.sm,
-      paddingBottom: theme.spacing.sm,
-    },
-    actionButton: {
-      flexGrow: 1,
-      flexBasis: "46%",
-      minHeight: 44,
-    },
     subBlock: {
       paddingVertical: theme.spacing.sm,
       borderBottomWidth: StyleSheet.hairlineWidth,
