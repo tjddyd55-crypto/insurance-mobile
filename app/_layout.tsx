@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { LoadingState } from '../src/components/LoadingState';
 import { getEnvironmentConfig } from '../src/config/environment';
 import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
+import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -24,6 +25,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  usePushNotificationListeners();
 
   useEffect(() => {
     if (status === 'booting') {

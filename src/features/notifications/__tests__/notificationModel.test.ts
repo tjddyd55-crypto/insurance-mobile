@@ -31,14 +31,20 @@ describe('notificationModel', () => {
     const result = normalizeNotificationList({ notifications: [raw], settings: {} });
     expect(result.notifications).toHaveLength(1);
     expect(result.settings.insuranceAge.daysBefore).toBe(30);
+    expect(result.settings.appPush.enabled).toBe(true);
+    expect(result.settings.newCustomer.enabled).toBe(true);
   });
 
   test('normalizes valid settings and bounds invalid days', () => {
     const settings = normalizeNotificationSettings({
+      appPush: { enabled: false },
+      newCustomer: { enabled: false },
       insuranceAge: { enabled: false, daysBefore: 10 },
       carExpiry: { enabled: true, daysBefore: 999 },
       claimRequest: { enabled: false },
     });
+    expect(settings.appPush.enabled).toBe(false);
+    expect(settings.newCustomer.enabled).toBe(false);
     expect(settings.insuranceAge).toEqual({ enabled: false, daysBefore: 10 });
     expect(settings.carExpiry.daysBefore).toBe(30);
     expect(settings.claimRequest.enabled).toBe(false);
@@ -59,8 +65,12 @@ describe('notificationModel', () => {
     expect(notificationReferenceDate(claim)).toBe('2026-08-31');
     const groups = groupNotifications([normalizeNotification(raw), claim]);
     expect(groups.map((group) => group.type)).toEqual([
-      'insurance_age_date', 'car_expiry', 'special_date', 'claim_request_received',
+      'customer_created',
+      'claim_request_received',
+      'insurance_age_date',
+      'car_expiry',
+      'special_date',
     ]);
-    expect(groups[1].data).toHaveLength(1);
+    expect(groups.find((group) => group.type === 'car_expiry')?.data).toHaveLength(1);
   });
 });

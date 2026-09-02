@@ -3,6 +3,7 @@ import { NOTIFICATION_SECTIONS } from './notificationModel';
 import type { NotificationType } from './types';
 
 export function notificationSectionTone(type: NotificationType): BadgeTone {
+  if (type === 'customer_created') return 'info';
   if (type === 'insurance_age_date') return 'success';
   if (type === 'car_expiry') return 'info';
   if (type === 'claim_request_received') return 'warning';

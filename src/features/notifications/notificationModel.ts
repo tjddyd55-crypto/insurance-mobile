@@ -7,6 +7,10 @@ import type {
 } from './types';
 
 export const DEFAULT_ALERT_SETTINGS: UserAlertSettings = {
+  appPush: { enabled: true },
+  newCustomer: { enabled: true },
+  customerAppFile: { enabled: true },
+  workAlert: { enabled: true },
   insuranceAge: { enabled: true, daysBefore: 30 },
   carExpiry: { enabled: true, daysBefore: 30 },
   specialDate: { enabled: true, daysBefore: 30 },
@@ -16,10 +20,11 @@ export const DEFAULT_ALERT_SETTINGS: UserAlertSettings = {
 export const NOTIFICATION_PANEL_PREVIEW_COUNT = 5;
 
 export const NOTIFICATION_SECTIONS: { type: NotificationType; title: string; dateLabel: string }[] = [
+  { type: 'customer_created', title: '신규 고객', dateLabel: '등록일' },
+  { type: 'claim_request_received', title: '청구요청', dateLabel: '접수일' },
   { type: 'insurance_age_date', title: '상령일', dateLabel: '상령일' },
   { type: 'car_expiry', title: '자동차만기', dateLabel: '만기일' },
   { type: 'special_date', title: '지정일', dateLabel: '지정일' },
-  { type: 'claim_request_received', title: '청구요청', dateLabel: '접수일' },
 ];
 
 function text(value: unknown): string {
@@ -43,8 +48,11 @@ function notificationType(value: unknown): NotificationType {
     raw === 'car_expiry' ||
     raw === 'insurance_age_date' ||
     raw === 'claim_request_received' ||
-    raw === 'special_date'
-  ) return raw;
+    raw === 'special_date' ||
+    raw === 'customer_created'
+  ) {
+    return raw;
+  }
   throw new ApiError('지원하지 않는 알림 유형입니다.', 500);
 }
 
@@ -83,18 +91,26 @@ function normalizeWindowed(value: unknown, fallback: { enabled: boolean; daysBef
   };
 }
 
+function normalizeToggle(value: unknown, fallback: { enabled: boolean }) {
+  if (!value || typeof value !== 'object') return { ...fallback };
+  const row = value as Record<string, unknown>;
+  return { enabled: row.enabled !== false };
+}
+
 export function normalizeNotificationSettings(value: unknown): UserAlertSettings {
   const row = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   return {
+    appPush: normalizeToggle(row.appPush ?? row.app_push, DEFAULT_ALERT_SETTINGS.appPush),
+    newCustomer: normalizeToggle(row.newCustomer ?? row.new_customer, DEFAULT_ALERT_SETTINGS.newCustomer),
+    customerAppFile: normalizeToggle(
+      row.customerAppFile ?? row.customer_app_file,
+      DEFAULT_ALERT_SETTINGS.customerAppFile,
+    ),
+    workAlert: normalizeToggle(row.workAlert ?? row.work_alert, DEFAULT_ALERT_SETTINGS.workAlert),
     insuranceAge: normalizeWindowed(row.insuranceAge ?? row.insurance_age, DEFAULT_ALERT_SETTINGS.insuranceAge),
     carExpiry: normalizeWindowed(row.carExpiry ?? row.car_expiry, DEFAULT_ALERT_SETTINGS.carExpiry),
     specialDate: normalizeWindowed(row.specialDate ?? row.special_date, DEFAULT_ALERT_SETTINGS.specialDate),
-    claimRequest: {
-      enabled:
-        row.claimRequest && typeof row.claimRequest === 'object'
-          ? (row.claimRequest as { enabled?: unknown }).enabled !== false
-          : DEFAULT_ALERT_SETTINGS.claimRequest.enabled,
-    },
+    claimRequest: normalizeToggle(row.claimRequest ?? row.claim_request, DEFAULT_ALERT_SETTINGS.claimRequest),
   };
 }
 
@@ -123,8 +139,15 @@ function dateOnly(value: string | null): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(result) ? result : null;
 }
 
-export function notificationReferenceDate(row: Pick<NotificationRecord, 'targetDate' | 'createdAt' | 'type'>): string | null {
-  return dateOnly(row.targetDate) ?? (row.type === 'claim_request_received' ? dateOnly(row.createdAt) : null);
+export function notificationReferenceDate(
+  row: Pick<NotificationRecord, 'targetDate' | 'createdAt' | 'type'>,
+): string | null {
+  return (
+    dateOnly(row.targetDate) ??
+    (row.type === 'claim_request_received' || row.type === 'customer_created'
+      ? dateOnly(row.createdAt)
+      : null)
+  );
 }
 
 function utcDay(value: string): number {
@@ -142,7 +165,10 @@ export function notificationDDay(referenceDate: string | null, today: string): s
 
 export function todayInSeoul(now = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).formatToParts(now);
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')}`;
@@ -153,6 +179,8 @@ export function groupNotifications(rows: NotificationRecord[]) {
     ...section,
     data: rows
       .filter((row) => row.type === section.type)
-      .sort((a, b) => (notificationReferenceDate(a) ?? '').localeCompare(notificationReferenceDate(b) ?? '')),
+      .sort((a, b) =>
+        (notificationReferenceDate(a) ?? '').localeCompare(notificationReferenceDate(b) ?? ''),
+      ),
   }));
 }

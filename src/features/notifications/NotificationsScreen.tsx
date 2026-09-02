@@ -101,6 +101,13 @@ export function NotificationsScreen() {
       });
       return;
     }
+    if (notification.type === 'customer_created') {
+      router.push({
+        pathname: '/customers/[customerId]',
+        params: { customerId: String(notification.customerId) },
+      });
+      return;
+    }
     router.push({
       pathname: '/customers/[customerId]/consultations',
       params: { customerId: String(notification.customerId) },
