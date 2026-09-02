@@ -220,18 +220,22 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             label="연락처"
             value={form.phone}
             error={errors.phone}
+            format="phone"
             onChangeText={(value) => updateField('phone', value)}
             keyboardType="phone-pad"
-            placeholder="01012345678"
+            placeholder="010-1234-5678"
           />
           <TextField
             label="주민등록번호"
             value={form.ssn}
             error={errors.ssn}
+            format="residentNumber"
             onChangeText={(value) => updateField('ssn', value)}
             keyboardType="number-pad"
-            placeholder="생년월일 6자리 + 성별번호"
+            placeholder="900101-1234567"
             helperText="민감정보이므로 업무에 필요한 범위에서만 입력해 주세요."
+            autoComplete="off"
+            textContentType="none"
           />
           <SegmentedChoice
             label="성별"
@@ -240,14 +244,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             error={errors.gender}
             options={CUSTOMER_GENDER_FORM_OPTIONS}
             onChange={(value) => updateField('gender', value as CustomerFormState['gender'])}
-          />
-          <TextField
-            label="생년월일"
-            value={form.birthDate}
-            error={errors.birthDate}
-            onChangeText={(value) => updateField('birthDate', value)}
-            placeholder="YYYY-MM-DD"
-            keyboardType="numbers-and-punctuation"
           />
           <SelectField
             label="통신사"

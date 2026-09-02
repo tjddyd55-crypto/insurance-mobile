@@ -7,6 +7,12 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import {
+  applyFormInputFormat,
+  PHONE_INPUT_MAX_LENGTH,
+  RESIDENT_NUMBER_INPUT_MAX_LENGTH,
+  type FormInputFormat,
+} from '../../utils/inputFormatters';
 import { useAppTheme } from '../DesignSystemProvider';
 import type { AppTheme } from '../themes';
 import { AppText } from './AppText';
@@ -17,6 +23,8 @@ export type TextFieldProps = NativeTextInputProps & {
   helperText?: string;
   required?: boolean;
   containerStyle?: ViewStyle;
+  /** Web SSOT FormInput format — as-you-type display formatting */
+  format?: FormInputFormat;
 };
 
 export function TextField({
@@ -28,12 +36,22 @@ export function TextField({
   style,
   onFocus,
   onBlur,
+  onChangeText,
+  format,
+  maxLength,
   editable = true,
   ...rest
 }: TextFieldProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [focused, setFocused] = useState(false);
+  const resolvedMaxLength =
+    maxLength ??
+    (format === 'phone'
+      ? PHONE_INPUT_MAX_LENGTH
+      : format === 'residentNumber'
+        ? RESIDENT_NUMBER_INPUT_MAX_LENGTH
+        : undefined);
 
   return (
     <View style={[styles.wrap, containerStyle]}>
@@ -44,11 +62,13 @@ export function TextField({
         </AppText>
       ) : null}
       <NativeTextInput
+        {...rest}
         accessibilityLabel={rest.accessibilityLabel ?? label}
         accessibilityState={{ disabled: !editable }}
         placeholderTextColor={theme.colors.textMuted}
         selectionColor={theme.colors.primary}
         editable={editable}
+        maxLength={resolvedMaxLength}
         style={[
           styles.input,
           rest.multiline && styles.multiline,
@@ -65,7 +85,10 @@ export function TextField({
           setFocused(false);
           onBlur?.(event);
         }}
-        {...rest}
+        onChangeText={(value) => {
+          if (!onChangeText) return;
+          onChangeText(format ? applyFormInputFormat(format, value) : value);
+        }}
       />
       {error ? (
         <AppText variant="caption" color="danger" accessibilityLiveRegion="polite">

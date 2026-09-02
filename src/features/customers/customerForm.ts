@@ -11,6 +11,12 @@ import type { CustomerCarFormItem } from "./customerCarsModel";
 import { customerRecordToCarFormItems } from "./customerCarsModel";
 import type { CustomerSpecialDateFormItem } from "./customerSpecialDatesApi";
 import type { CustomerRecord } from "./types";
+import {
+  formatKoreanMobilePhone,
+  formatKoreanResidentNumber,
+  stripPhoneFormatting,
+  stripResidentNumberFormatting,
+} from "../../utils/inputFormatters";
 
 export type CustomerFormState = {
   name: string;
@@ -112,9 +118,10 @@ function ymd(value: string | null | undefined): string {
 export function customerToForm(customer: CustomerRecord): CustomerFormState {
   return {
     name: customer.name,
-    ssn: customer.ssn,
+    ssn: formatKoreanResidentNumber(customer.ssn),
     gender: customer.gender ?? "",
-    phone: customer.phone,
+    phone: formatKoreanMobilePhone(customer.phone),
+    // birthDate는 UI 입력란을 쓰지 않고 기존 API 값만 유지한다(SSN 파생은 서버).
     birthDate: ymd(customer.birthDate),
     carrier: customer.carrier,
     height: customer.height,
@@ -189,9 +196,9 @@ export function customerFormToPayload(
     form.cars.find((car) => car.isPrimary) ?? form.cars[0] ?? null;
   return {
     name: form.name.trim(),
-    ssn: form.ssn.trim(),
+    ssn: stripResidentNumberFormatting(form.ssn),
     gender: form.gender || null,
-    phone: form.phone.replace(/\D/g, ""),
+    phone: stripPhoneFormatting(form.phone),
     birthDate: form.birthDate.trim(),
     carrier: normalizeCustomerCarrierForSave(form.carrier),
     height: form.height.trim(),

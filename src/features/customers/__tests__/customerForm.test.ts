@@ -40,11 +40,12 @@ describe('customer form', () => {
     });
   });
 
-  it('normalizes phone, booleans and empty nullable fields for the API', () => {
+  it('normalizes phone, resident number, booleans and empty nullable fields for the API', () => {
     const payload = customerFormToPayload({
       ...EMPTY_CUSTOMER_FORM,
       name: ' 홍길동 ',
       phone: '010-1234-5678',
+      ssn: '900101-1234567',
       gender: 'male',
       driver: 'no',
       inflowSource: '소개',
@@ -54,6 +55,7 @@ describe('customer form', () => {
     expect(payload).toMatchObject({
       name: '홍길동',
       phone: '01012345678',
+      ssn: '9001011234567',
       gender: 'male',
       isDriver: false,
       inflowSource: '소개',
