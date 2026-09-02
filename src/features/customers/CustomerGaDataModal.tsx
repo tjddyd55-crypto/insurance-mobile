@@ -3,19 +3,19 @@ import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { AppHeader } from "../../components/AppHeader";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import {
   AppText,
-  Button,
   Card,
-  Screen,
   Stack,
   useAppTheme,
   type AppTheme,
 } from "../../design-system";
 import { getCustomerGaExcelData } from "./customerGaDataApi";
+import { getGaDataEmptyState } from "./customerGaDataPresentation";
 
 export function CustomerGaDataModal({
   open,
@@ -37,17 +37,19 @@ export function CustomerGaDataModal({
     enabled: Boolean(token) && open,
   });
 
+  const emptyState = getGaDataEmptyState(query.data?.useGaExcel);
+
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
-        <View style={styles.header}>
-          <View style={styles.grow}>
-            <AppText variant="heading">GA 데이터 보기</AppText>
-            <AppText variant="caption">{customerName}</AppText>
-          </View>
-          <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
-        </View>
-        <Screen padded={false}>
+        <AppHeader
+          title="GA 데이터"
+          subtitle={customerName}
+          showMenu={false}
+          showBack
+          onBackPress={onClose}
+        />
+        <View style={styles.body}>
           {query.isLoading ? (
             <LoadingState message="GA 데이터를 불러오는 중…" compact />
           ) : query.isError ? (
@@ -61,14 +63,7 @@ export function CustomerGaDataModal({
               onRetry={() => void query.refetch()}
             />
           ) : !query.data?.rows.length ? (
-            <EmptyState
-              title="표시할 GA 데이터가 없습니다"
-              message={
-                query.data?.useGaExcel
-                  ? "이 고객에 연결된 GA Excel 데이터가 없습니다."
-                  : "GA Excel 기능이 활성화되지 않았습니다."
-              }
-            />
+            <EmptyState title={emptyState.title} message={emptyState.message} />
           ) : (
             <ScrollView contentContainerStyle={styles.content}>
               {query.data.rows.map((row, index) => (
@@ -84,7 +79,7 @@ export function CustomerGaDataModal({
               ))}
             </ScrollView>
           )}
-        </Screen>
+        </View>
       </View>
     </Modal>
   );
@@ -93,17 +88,7 @@ export function CustomerGaDataModal({
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    header: {
-      minHeight: 64,
-      paddingHorizontal: theme.spacing.lg,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.md,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
-      backgroundColor: theme.colors.surface,
-    },
-    grow: { flex: 1 },
+    body: { flex: 1 },
     content: {
       padding: theme.spacing.lg,
       gap: theme.spacing.md,
