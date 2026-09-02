@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 import appIdentities from './app.identity.json';
@@ -21,12 +19,16 @@ function resolveBuildEnvironment(
 
 function resolveGoogleServicesFile(environment: AppEnvironment): string | undefined {
   // Never commit these files. Local/EAS secret path only.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('fs') as { existsSync: (path: string) => boolean };
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const path = require('path') as { resolve: (...parts: string[]) => string };
   const candidates =
     environment === 'production'
       ? ['./google-services.prod.json', './google-services.json']
       : ['./google-services.dev.json', './google-services.json'];
   for (const relative of candidates) {
-    if (fs.existsSync(path.resolve(__dirname, relative))) {
+    if (fs.existsSync(path.resolve(process.cwd(), relative))) {
       return relative;
     }
   }
