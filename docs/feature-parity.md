@@ -15,14 +15,15 @@ Menu labels/order mirror insurance `buildAppMenuForSession` (USER).
 | 고객관리 | 카드 수납 | /premium-payments | /premium-payments | PremiumPaymentsScreen | 카드·수납대상 CRUD, 월 완료/재처리, 민감정보 마스킹·명시적 복사 | NATIVE | NATIVE | 카드 원문 기기 저장·로그 금지 |
 | 고객관리 | 고객소식지 | /claim-requests?claimTab=news-all | /claim-requests/news | CustomerNewsScreen | 전체/개인 게시·앱알림 확인·첨부·수정·삭제·댓글 | NATIVE | NATIVE | 이미지/PDF 10MB, 외부 알림 확인 필수 |
 | 고객관리 | 청구관리 | /claim-requests | /claim-requests | ClaimsScreen | 고객연결 링크·청구 목록/상세·첨부 열기·상태/이력·확인 후 알림톡 | NATIVE | NATIVE | 외부 발송은 사용자 확인 필수 |
-| 소식지 | 원수사소식지 | /portal/newsletters | /portal/newsletters | NewslettersScreen | 보험사 필터·검색·상세·이미지/첨부/외부링크 | NATIVE | NATIVE | 서버 HTML은 안전한 일반 텍스트로 렌더링 |
-| 소식지 | 손해사정사 소식지 | /portal/adjuster-news | /portal/adjuster-news | NewslettersScreen | 채널 분리·검색·상세·이미지/첨부/외부링크 | NATIVE | NATIVE | LOSS_ADJUSTER 채널 고정 |
-| 신청서 | 신청서 작성 | /application/documents | /application/documents | ApplicationDocumentsScreen | 동적 템플릿·고객 자동매핑·필수값 검증·PDF 발급/공유 | NATIVE | NATIVE | 발급 시 서버 이력 생성 |
-| 신청서 | 신청서 작성내역 | /application/documents/history | /application/documents/history | ApplicationHistoryScreen | 검색·원본 PDF 공유·입력값 불러오기/재발급 | NATIVE | NATIVE | Expo FileSystem 임시 캐시 사용 |
+| 소식지 | 원수사소식지 | /portal/newsletters | /portal/newsletters | NewslettersScreen | 보험사 필터·검색·상세·이미지/첨부/외부링크 | NATIVE | PARITY | |
+| 소식지 | 손해사정사 소식지 | /portal/adjuster-news | /portal/adjuster-news | NewslettersScreen | 채널 분리·검색·상세·이미지/첨부/외부링크 | NATIVE | PARITY | LOSS_ADJUSTER 채널 고정; 보드 비활성 시 메뉴 숨김 |
+| 소식지 | 동적 게시판 | /portal/boards/:slug | /portal/boards/[slug] | NewslettersScreen(mode=board) | GET boards/:slug/newsletters | NATIVE | PARITY | LOSS_ADJUSTER 제외 메뉴 주입 |
+| 신청서 | 신청서 작성 | /application/documents | /application/documents | ApplicationDocumentsScreen | 동적 템플릿·고객 검색 매핑·필수값 검증·PDF 발급/공유 | NATIVE | PARITY | customer workspace scoped; search API picker |
+| 신청서 | 신청서 작성내역 | /application/documents/history | /application/documents/history | ApplicationHistoryScreen | 검색·원본 PDF 공유·입력값 불러오기/재발급 | NATIVE | PARITY | |
 | 신청서 | 렌트(사고대차) | # | /placeholder/rent | PlaceholderScreen | — | DISABLED | NOT_STARTED | |
-| 팀관리 | 팀원리스트 | /team/members | /team/members | TeamMembersScreen | members/create/join/kick/transfer/leave/disband team APIs | NATIVE | PARITY | Device QA pending: setup/member roles/owner actions/storage |
-| 팀관리 | 팀 게시판 | /team/posts | /team/posts | TeamPostsScreen | posts/comments/presigned attachment team APIs | NATIVE | PARITY | Device QA pending: CRUD/notice/comments/image·PDF upload/open |
-| 팀관리 | 팀 자료 | /team/files | /team/files | TeamFilesScreen | GET /api/teams/files, GET /api/teams/members | NATIVE | PARITY | Device QA pending: file list/open/team storage usage |
+| 팀관리 | 팀원리스트 | /team/members | /team/members | TeamMembersScreen | members/create/join/kick/transfer/leave/disband team APIs | NATIVE | PARITY | |
+| 팀관리 | 팀 게시판 | /team/posts | /team/posts | TeamPostsScreen | posts/comments/presign/create/update/delete | NATIVE | NEAR_PARITY | 글 삭제 Native 구현; 수정 시 첨부 변경은 API 없음 backlog |
+| 팀관리 | 팀 자료 | /team/files | /team/files | TeamFilesScreen | GET /api/teams/files + shareRemoteFile | NATIVE | PARITY | open/share |
 | 업무편의 | 문자 발송 | /sms/settings | /sms/settings | SmsScreen | SMS settings/send/templates/history/campaign/opt-out APIs | NATIVE | PARTIAL | Native: 단건·설정·템플릿·이력/취소. FUNCTION GAP: 예약 생성·그룹/대량·자동발송. realSendEnabled로 실발송/테스트 발송 게이트. |
 | 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | InsuranceContactsScreen | GET /api/company/list | NATIVE | PARITY | category/search/call/copy; selected outline tabs; Web phone format (1588/1577/02). |
 | 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | AccountVaultScreen | CRUD /api/user-insurer-accounts | NATIVE | PARITY | masking/CRUD/ModalShell; memo·share vault는 FUNCTION GAP. |
