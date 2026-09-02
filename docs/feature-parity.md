@@ -23,10 +23,10 @@ Menu labels/order mirror insurance `buildAppMenuForSession` (USER).
 | 팀관리 | 팀원리스트 | /team/members | /team/members | TeamMembersScreen | members/create/join/kick/transfer/leave/disband team APIs | NATIVE | PARITY | Device QA pending: setup/member roles/owner actions/storage |
 | 팀관리 | 팀 게시판 | /team/posts | /team/posts | TeamPostsScreen | posts/comments/presigned attachment team APIs | NATIVE | PARITY | Device QA pending: CRUD/notice/comments/image·PDF upload/open |
 | 팀관리 | 팀 자료 | /team/files | /team/files | TeamFilesScreen | GET /api/teams/files, GET /api/teams/members | NATIVE | PARITY | Device QA pending: file list/open/team storage usage |
-| 업무편의 | 문자 발송 | /sms/settings | /sms/settings | SmsScreen | SMS settings/send/templates/history/campaign/opt-out APIs | NATIVE | PARITY | Device QA pending; real send requires explicit confirmation |
-| 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | InsuranceContactsScreen | GET /api/company/list | NATIVE | PARITY | Device QA pending: category/search/call/copy |
-| 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | AccountVaultScreen | CRUD /api/user-insurer-accounts | NATIVE | PARITY | Device QA pending; no local credential persistence |
-| 업무편의 | 설계사이트 | /insurance/insurer-sites | /insurance/insurer-sites | InsurerSitesScreen | GET /api/insurer-sites | NATIVE | PARITY | Device QA pending: tabs/logo/external links |
+| 업무편의 | 문자 발송 | /sms/settings | /sms/settings | SmsScreen | SMS settings/send/templates/history/campaign/opt-out APIs | NATIVE | PARTIAL | Native: 단건·설정·템플릿·이력/취소. FUNCTION GAP: 예약 생성·그룹/대량·자동발송. realSendEnabled로 실발송/테스트 발송 게이트. |
+| 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | InsuranceContactsScreen | GET /api/company/list | NATIVE | PARITY | category/search/call/copy; selected outline tabs; Web phone format (1588/1577/02). |
+| 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | AccountVaultScreen | CRUD /api/user-insurer-accounts | NATIVE | PARITY | masking/CRUD/ModalShell; memo·share vault는 FUNCTION GAP. |
+| 업무편의 | 설계사이트 | /insurance/insurer-sites | /insurance/insurer-sites | InsurerSitesScreen | GET /api/insurer-sites | NATIVE | PARITY | tabs/logo/http(s) external open. |
 | 내정보 | 내 저장공간 | /storage | /storage | StorageScreen | folders/files/quota/presign/open-token storage APIs | NATIVE | PARITY | Device QA pending: folder/file lifecycle and quota |
 | 내정보 | 내정보관리 | /profile | /profile | ProfileScreen | GET/PATCH /api/me, phone change verification | NATIVE | PARITY | Device QA pending: profile/verified phone/password reset entry |
 | 내정보 | 구독 및 결제 | /billing/checkout | /billing | BillingScreen | 상태·견적·쿠폰·Toss 카드인증·결제·주기변경·해지/재개·내역 | NATIVE | NATIVE | 결제사 입력은 격리 WebView, 모든 상태변경 확인 필수 |
