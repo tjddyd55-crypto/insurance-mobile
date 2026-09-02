@@ -95,7 +95,7 @@ export function ModalShell({
           <KeyboardAvoidingView
             enabled={keyboardAvoiding}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboard}
+            style={isDialog ? styles.dialogKeyboard : styles.keyboard}
           >
             <View style={styles.header}>
               <View style={styles.titleBlock}>
@@ -143,6 +143,11 @@ function createStyles(theme: AppTheme) {
     },
     keyboard: {
       flex: 1,
+    },
+    // dialog는 콘텐츠 높이로 패널을 잡는다. flex:1이면 Android에서 본문이 0 높이로 접힌다.
+    dialogKeyboard: {
+      flexGrow: 0,
+      flexShrink: 1,
     },
     header: {
       minHeight: theme.layout.modalHeaderHeight,
