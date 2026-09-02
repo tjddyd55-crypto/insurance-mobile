@@ -101,7 +101,7 @@ export function AccountVaultScreen() {
             <AppText variant="heading">
               {TABS.find((tab) => tab.id === category)?.label} 계정
             </AppText>
-            <Button label="+ 계정 추가" size="sm" onPress={() => setAddOpen(true)} />
+            <Button label="+ 계정 추가" variant="action" size="sm" onPress={() => setAddOpen(true)} />
           </Inline>
           {message ? <AppText color="success">{message}</AppText> : null}
           {query.isLoading ? <LoadingState message="계정 정보를 불러오는 중…" /> : null}
@@ -234,6 +234,7 @@ function AccountCard({
         <Inline>
           <Button
             label="저장"
+            variant="actionEmphasis"
             loading={save.isPending}
             onPress={() => save.mutate()}
             style={styles.tab}
@@ -303,6 +304,7 @@ function AddAccountModal({
       footer={
         <Button
           label="추가"
+          variant="action"
           fullWidth
           loading={create.isPending}
           disabled={!companyName.trim()}

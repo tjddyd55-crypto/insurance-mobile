@@ -155,6 +155,7 @@ export function ApplicationDocumentsScreen({
                 </Inline>
                 <Button
                   label="이 신청서 작성"
+                  variant="actionEmphasis"
                   size="sm"
                   onPress={() => setSelected(row)}
                 />
@@ -343,6 +344,7 @@ function PdfFormModal({
               </AppText>
               <Button
                 label="PDF 발급 및 공유"
+                variant="action"
                 fullWidth
                 loading={issue.isPending}
                 onPress={() => issue.mutate()}

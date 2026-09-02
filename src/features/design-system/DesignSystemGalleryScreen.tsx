@@ -87,8 +87,11 @@ export function DesignSystemGalleryScreen() {
 
         <GallerySection title="Buttons">
           <Stack gap="sm">
-            <Button label="Primary" variant="primary" />
+            <Button label="Action" variant="action" />
+            <Button label="Action Emphasis" variant="actionEmphasis" />
+            <Button label="Primary (alias)" variant="primary" />
             <Button label="Secondary" variant="secondary" />
+            <Button label="Selected" variant="selected" />
             <Button label="Danger" variant="danger" />
             <Button label="Ghost" variant="ghost" />
             <Button label="Disabled" disabled />

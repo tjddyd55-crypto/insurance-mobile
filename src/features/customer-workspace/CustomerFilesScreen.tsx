@@ -134,7 +134,7 @@ export function CustomerFilesScreen({ customerId }: { customerId: number }) {
               </Inline>
               <Button
                 label="파일 업로드"
-                variant="secondary"
+                variant="actionEmphasis"
                 fullWidth
                 loading={upload.isPending}
                 onPress={() => upload.mutate()}

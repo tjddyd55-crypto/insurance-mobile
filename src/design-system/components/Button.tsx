@@ -18,6 +18,8 @@ import {
 export type ButtonVariant =
   | 'primary'
   | 'secondary'
+  | 'action'
+  | 'actionEmphasis'
   | 'selected'
   | 'danger'
   | 'ghost';
@@ -36,7 +38,7 @@ export type ButtonProps = Omit<PressableProps, 'children'> & {
 export function Button({
   label,
   loading = false,
-  variant = 'primary',
+  variant = 'secondary',
   size = 'md',
   fullWidth = false,
   leading,
@@ -77,7 +79,15 @@ export function Button({
       ) : (
         <View style={styles.content}>
           {leading}
-          <AppText variant="button" style={{ color: contentColor }} numberOfLines={1}>
+          <AppText
+            variant="button"
+            style={{
+              color: contentColor,
+              fontWeight:
+                variant === 'actionEmphasis' || variant === 'primary' ? '700' : '600',
+            }}
+            numberOfLines={1}
+          >
             {label}
           </AppText>
           {trailing}

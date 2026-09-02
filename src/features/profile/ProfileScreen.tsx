@@ -203,6 +203,7 @@ export function ProfileScreen() {
               {error ? <AppText color="danger">{error}</AppText> : null}
               <Button
                 label="저장"
+                variant="actionEmphasis"
                 loading={saveMutation.isPending}
                 disabled={phoneChanged && !phoneProof}
                 onPress={save}

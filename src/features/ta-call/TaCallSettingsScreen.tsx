@@ -163,7 +163,7 @@ export function TaCallSettingsScreen() {
         {saveMutation.isError ? <AppText color="danger">{saveMutation.error instanceof Error ? saveMutation.error.message : '설정을 저장하지 못했습니다.'}</AppText> : null}
       </ScrollView>
       <SafeAreaView style={styles.footerSafe} edges={['bottom']}>
-        <View style={styles.footer}><Button label="취소" variant="secondary" onPress={requestBack} disabled={saveMutation.isPending} style={styles.grow} /><Button label="저장" onPress={submit} loading={saveMutation.isPending} style={styles.grow} /></View>
+        <View style={styles.footer}><Button label="취소" variant="ghost" onPress={requestBack} disabled={saveMutation.isPending} style={styles.grow} /><Button label="저장" variant="actionEmphasis" onPress={submit} loading={saveMutation.isPending} style={styles.grow} /></View>
       </SafeAreaView>
       <ConfirmDialog
         open={discardOpen}

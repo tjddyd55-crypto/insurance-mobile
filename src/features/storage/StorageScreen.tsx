@@ -256,6 +256,7 @@ export function StorageScreen() {
             ) : null}
             <Button
               label="파일 업로드"
+              variant="actionEmphasis"
               size="sm"
               loading={upload.isPending}
               onPress={() => upload.mutate()}
@@ -352,6 +353,7 @@ export function StorageScreen() {
                   </View>
                   <Button
                     label="열기"
+                    variant="action"
                     size="sm"
                     onPress={() => void openFile(file)}
                   />
@@ -443,6 +445,7 @@ function RenameOverlay({
           />
           <Button
             label="저장"
+            variant="actionEmphasis"
             loading={busy}
             disabled={!name.trim()}
             onPress={onSave}

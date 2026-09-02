@@ -84,7 +84,7 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
                 </Stack>
               ) : <AppText variant="caption">기존 첨부파일은 수정 화면에서 변경되지 않습니다.</AppText>}
               {mutation.error ? <AppText color="danger">{mutation.error instanceof Error ? mutation.error.message : '게시글을 저장하지 못했습니다.'}</AppText> : null}
-              <Button label={post ? '수정 완료' : '등록'} fullWidth loading={mutation.isPending} disabled={!valid} onPress={() => mutation.mutate()} />
+              <Button label={post ? '수정 완료' : '등록'} variant="actionEmphasis" fullWidth loading={mutation.isPending} disabled={!valid} onPress={() => mutation.mutate()} />
             </Stack>
           </Card>
         </ScrollView>
