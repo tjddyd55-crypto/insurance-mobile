@@ -23,7 +23,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   const menu = useNativeMenu();
 
   const onPressLink = (item: NativeMenuLink) => {
-    if (item.disabled || item.mode === 'DISABLED') return;
+    if (item.disabled || item.mode === 'DISABLED' || item.mode === 'PC_ONLY') return;
     props.navigation.closeDrawer();
     router.push(item.nativePath as '/customers');
   };
@@ -49,7 +49,8 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
             <View key={section.id} style={[styles.section, index > 0 && styles.sectionDivided]}>
               <AppText variant="label" style={styles.sectionLabel}>{section.label}</AppText>
               {section.children.map((child) => {
-                const disabled = child.disabled || child.mode === 'DISABLED';
+                const disabled =
+                  child.disabled || child.mode === 'DISABLED' || child.mode === 'PC_ONLY';
                 const selected = pathname === child.nativePath;
                 return (
                   <Pressable

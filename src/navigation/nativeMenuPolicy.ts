@@ -156,6 +156,15 @@ function applyPublicAccountPolicy(
   }));
 }
 
+function applyPcOnlyMenuPolicy(sections: NativeMenuSection[]): NativeMenuSection[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      children: section.children.filter((child) => child.mode !== 'PC_ONLY'),
+    }))
+    .filter((section) => section.children.length > 0);
+}
+
 export function buildNativeMenuForSession(
   user: AuthUser | null | undefined,
   capabilities: NativeMenuCapabilities,
@@ -172,5 +181,9 @@ export function buildNativeMenuForSession(
     withBillingPolicy,
     user.subscription?.effectiveStatus === 'EXPIRED',
   );
-  return applyPublicAccountPolicy(withExpiredPolicy, isPublicGeneralAccount(user));
+  const withPublicAccount = applyPublicAccountPolicy(
+    withExpiredPolicy,
+    isPublicGeneralAccount(user),
+  );
+  return applyPcOnlyMenuPolicy(withPublicAccount);
 }

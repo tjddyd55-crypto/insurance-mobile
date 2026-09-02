@@ -1,5 +1,5 @@
-import { SmsScreen } from '../../../../src/features/sms/SmsScreen';
+import { SmsPcOnlyScreen } from '../../../../src/features/sms/SmsPcOnlyScreen';
 
 export default function Screen() {
-  return <SmsScreen />;
+  return <SmsPcOnlyScreen />;
 }

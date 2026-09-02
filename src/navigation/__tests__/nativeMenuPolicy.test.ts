@@ -69,7 +69,7 @@ describe('native session menu policy', () => {
       '원수사소식지', '손해사정사 소식지',
       '신청서 작성', '신청서 작성내역', '렌트(사고대차)',
       '팀원리스트', '팀 게시판', '팀 자료',
-      '문자 발송', '원수사 연락처', '계정관리', '설계사이트',
+      '원수사 연락처', '계정관리', '설계사이트',
       '내 저장공간', '내정보관리', '구독 및 결제', '문의요청',
     ]);
   });
@@ -98,7 +98,7 @@ describe('native session menu policy', () => {
       '업무편의',
       '내정보',
     ]);
-    expect(labels(menu)).toHaveLength(25);
+    expect(labels(menu)).toHaveLength(24);
   });
 
   test('injects team management only for the team owner', () => {
@@ -176,7 +176,7 @@ describe('native session menu policy', () => {
         },
       }), capabilities);
       expect(menu).toHaveLength(7);
-      expect(labels(menu)).toHaveLength(25);
+      expect(labels(menu)).toHaveLength(24);
     },
   );
 

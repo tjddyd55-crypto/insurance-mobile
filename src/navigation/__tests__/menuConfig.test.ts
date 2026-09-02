@@ -23,8 +23,13 @@ describe('menuConfig', () => {
     const secondary = listSecondaryMenuLabels();
     expect(secondary).toContain('오늘의 TA');
     expect(secondary).toContain('고객리스트');
-    expect(secondary).toContain('문자 발송');
     expect(secondary).toContain('구독 및 결제');
+  });
+
+  it('marks SMS messaging as PC_ONLY', () => {
+    const sms = findMenuLinkByNativePath('/sms/settings');
+    expect(sms?.label).toBe('문자 발송');
+    expect(sms?.mode).toBe('PC_ONLY');
   });
 
   it('filters by role', () => {
