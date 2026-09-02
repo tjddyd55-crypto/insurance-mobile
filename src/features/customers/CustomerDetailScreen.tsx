@@ -32,7 +32,6 @@ import {
 import { formatCustomerMobileCarrierDisplay } from "./customerCarrier";
 import { buildKakaoCustomerCopyText } from "./customerCopyText";
 import { listCustomerCars } from "./customerCarsApi";
-import { listCustomerRelations } from "./customerRelationsApi";
 import {
   CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS,
   listCustomerSpecialDates,
@@ -43,6 +42,7 @@ import { customerQueryKeys } from "./queryKeys";
 import type { ListCustomersResult } from "./types";
 import { CustomerAppLinkSection } from "./CustomerAppLinkSection";
 import { CustomerGaDataModal } from "./CustomerGaDataModal";
+import { CustomerRelationsPanel } from "./CustomerRelationsPanel";
 import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
 import {
   CollapsibleDetailSection,
@@ -79,11 +79,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const carsQuery = useQuery({
     queryKey: ["customer-cars", customerId],
     queryFn: () => listCustomerCars(token, customerId),
-    enabled: Boolean(token) && Boolean(query.data),
-  });
-  const relationsQuery = useQuery({
-    queryKey: ["customer-relations", customerId],
-    queryFn: () => listCustomerRelations(token, customerId),
     enabled: Boolean(token) && Boolean(query.data),
   });
   const specialDatesQuery = useQuery({
@@ -168,8 +163,13 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   void Promise.all([
                     query.refetch(),
                     carsQuery.refetch(),
-                    relationsQuery.refetch(),
                     specialDatesQuery.refetch(),
+                    queryClient.invalidateQueries({
+                      queryKey: ["customer-relation-groups", customerId],
+                    }),
+                    queryClient.invalidateQueries({
+                      queryKey: ["customer-relations", customerId],
+                    }),
                   ]);
                 }}
                 colors={[theme.colors.primary]}
@@ -235,14 +235,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               </Stack>
             </Card>
 
-            <Stack gap="sm" testID="customer-detail-app-link">
-              <AppText variant="sectionTitle">고객앱</AppText>
-              <CustomerAppLinkSection
-                customerId={customer.id}
-                customerName={customer.name}
-                customerPhone={customer.phone}
-              />
-            </Stack>
+            <CustomerAppLinkSection
+              customerId={customer.id}
+              customerName={customer.name}
+              customerPhone={customer.phone}
+            />
 
             <CollapsibleDetailSection title="고객 업무" testID="customer-detail-section-actions">
               <CustomerWorkspaceActionGrid
@@ -361,23 +358,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               )}
             </CollapsibleDetailSection>
 
-            <CollapsibleDetailSection title="관계인" testID="customer-detail-section-relations">
-              {relationsQuery.isLoading ? (
-                <AppText variant="caption">관계인을 불러오는 중…</AppText>
-              ) : relationsQuery.data?.length ? (
-                relationsQuery.data.map((relation) => (
-                  <DetailRow
-                    key={relation.relatedCustomerId}
-                    label={relation.relatedName}
-                    value={relation.relatedPhone || "연락처 없음"}
-                  />
-                ))
-              ) : (
-                <AppText variant="caption" color="textSecondary">
-                  연결된 관계인이 없습니다.
-                </AppText>
-              )}
-            </CollapsibleDetailSection>
+            <CustomerRelationsPanel customerId={customer.id} />
 
             <CollapsibleDetailSection title="기념일" testID="customer-detail-section-special-dates">
               {specialDatesQuery.isLoading ? (
