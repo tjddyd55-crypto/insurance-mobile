@@ -211,6 +211,16 @@ export function ProfileScreen() {
             </Stack>
           </Card>
 
+          <SectionTitle title="알림" description="앱 Push와 알림센터 표시 정책을 관리합니다." />
+          <Card variant="outlined">
+            <Button
+              label="알림 설정"
+              variant="secondary"
+              fullWidth
+              onPress={() => router.push('/notifications/settings')}
+            />
+          </Card>
+
           <SectionTitle title="보안" description="비밀번호를 안전하게 변경할 수 있습니다." />
           <Card variant="outlined">
             <Button

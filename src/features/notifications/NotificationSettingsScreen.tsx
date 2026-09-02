@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BackHandler, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { AppState, BackHandler, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +19,10 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
+import {
+  getOsNotificationPermissionGranted,
+  openOsNotificationSettings,
+} from '../push/pushRegistration';
 import { DEFAULT_ALERT_SETTINGS } from './notificationModel';
 import { getNotificationSettings, saveNotificationSettings } from './notificationsApi';
 import { notificationQueryKeys } from './queryKeys';
@@ -35,11 +39,24 @@ export function NotificationSettingsScreen() {
   const [initialized, setInitialized] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [formError, setFormError] = useState('');
+  const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
   const query = useQuery({
     queryKey: notificationQueryKeys.settings,
     queryFn: () => getNotificationSettings(token),
     enabled: Boolean(token),
   });
+
+  const refreshOsPermission = () => {
+    void getOsNotificationPermissionGranted().then(setOsPermissionGranted);
+  };
+
+  useEffect(() => {
+    refreshOsPermission();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshOsPermission();
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!query.data || initialized) return;
@@ -86,9 +103,15 @@ export function NotificationSettingsScreen() {
     next: Partial<UserAlertSettings[typeof key]>,
   ) => setDraft((previous) => ({ ...previous, [key]: { ...previous[key], ...next } }));
 
+  const setToggle = (
+    key: 'appPush' | 'newCustomer' | 'customerAppFile' | 'workAlert' | 'claimRequest',
+    enabled: boolean,
+  ) => setDraft((previous) => ({ ...previous, [key]: { enabled } }));
+
   const validateAndSave = () => {
-    const invalid = [draft.insuranceAge, draft.carExpiry, draft.specialDate]
-      .some((setting) => !Number.isInteger(setting.daysBefore) || setting.daysBefore < 0 || setting.daysBefore > 365);
+    const invalid = [draft.insuranceAge, draft.carExpiry, draft.specialDate].some(
+      (setting) => !Number.isInteger(setting.daysBefore) || setting.daysBefore < 0 || setting.daysBefore > 365,
+    );
     if (invalid) {
       setFormError('표시 시작일은 0~365 사이 정수여야 합니다.');
       return;
@@ -101,6 +124,54 @@ export function NotificationSettingsScreen() {
     <View style={styles.root}>
       <AppHeader title="알림 설정" showMenu={false} showBack onBackPress={requestBack} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Card variant="outlined">
+          <Stack gap="sm">
+            <AppText variant="bodyStrong">기기 알림 권한</AppText>
+            <AppText variant="caption">
+              {osPermissionGranted == null
+                ? '권한 상태를 확인하는 중…'
+                : osPermissionGranted
+                  ? 'Android 알림 권한이 허용되어 있습니다.'
+                  : '기기 알림이 꺼져 있습니다. 앱 설정을 켜도 Push가 오지 않을 수 있습니다.'}
+            </AppText>
+            {osPermissionGranted === false ? (
+              <Button label="기기 설정 열기" variant="secondary" onPress={openOsNotificationSettings} />
+            ) : null}
+          </Stack>
+        </Card>
+
+        <ToggleSettingCard
+          title="전체 앱 알림"
+          description="꺼두면 모든 Push 알림이 전송되지 않습니다. 알림센터 저장은 유지될 수 있습니다."
+          enabled={draft.appPush.enabled}
+          onEnabled={(enabled) => setToggle('appPush', enabled)}
+        />
+        <ToggleSettingCard
+          title="신규 고객 등록"
+          description="고객앱 초대로 신규 고객이 등록되면 Push로 알립니다."
+          enabled={draft.newCustomer.enabled}
+          onEnabled={(enabled) => setToggle('newCustomer', enabled)}
+        />
+        <ToggleSettingCard
+          title="보험금 청구"
+          description="고객앱 청구 요청이 도착하면 Push로 알립니다."
+          enabled={draft.claimRequest.enabled}
+          onEnabled={(enabled) => setToggle('claimRequest', enabled)}
+        />
+        <ToggleSettingCard
+          title="고객 파일/문의"
+          description="고객앱에서 파일 또는 문의가 등록되면 Push로 알립니다."
+          enabled={draft.customerAppFile.enabled}
+          onEnabled={(enabled) => setToggle('customerAppFile', enabled)}
+        />
+        <ToggleSettingCard
+          title="업무 알림"
+          description="상령일·자동차 만기·지정일 알림센터 표시를 제어합니다."
+          enabled={draft.workAlert.enabled}
+          onEnabled={(enabled) => setToggle('workAlert', enabled)}
+        />
+
+        <AppText variant="sectionTitle">업무 알림 상세</AppText>
         <WindowedSettingCard
           title="상령일 알림"
           setting={draft.insuranceAge}
@@ -119,22 +190,6 @@ export function NotificationSettingsScreen() {
           onEnabled={(enabled) => setWindowed('specialDate', { enabled })}
           onDays={(daysBefore) => setWindowed('specialDate', { daysBefore })}
         />
-        <Card variant="outlined">
-          <Inline justify="space-between">
-            <View style={styles.settingCopy}>
-              <AppText variant="bodyStrong">청구요청 알림</AppText>
-              <AppText variant="caption">고객앱에서 문의 또는 파일이 올라오면 표시합니다.</AppText>
-            </View>
-            <Switch
-              value={draft.claimRequest.enabled}
-              onValueChange={(enabled) =>
-                setDraft((previous) => ({ ...previous, claimRequest: { enabled } }))
-              }
-              trackColor={{ false: theme.colors.borderStrong, true: theme.colors.primaryBorder }}
-              thumbColor={draft.claimRequest.enabled ? theme.colors.primary : theme.colors.textMuted}
-            />
-          </Inline>
-        </Card>
         {formError ? <AppText color="danger">{formError}</AppText> : null}
         {saveMutation.isError ? (
           <AppText color="danger">
@@ -162,6 +217,36 @@ export function NotificationSettingsScreen() {
         }}
       />
     </View>
+  );
+}
+
+function ToggleSettingCard({
+  title,
+  description,
+  enabled,
+  onEnabled,
+}: {
+  title: string;
+  description: string;
+  enabled: boolean;
+  onEnabled: (enabled: boolean) => void;
+}) {
+  const theme = useAppTheme();
+  return (
+    <Card variant="outlined">
+      <Inline justify="space-between">
+        <View style={{ flex: 1, gap: theme.spacing.xs }}>
+          <AppText variant="bodyStrong">{title}</AppText>
+          <AppText variant="caption">{description}</AppText>
+        </View>
+        <Switch
+          value={enabled}
+          onValueChange={onEnabled}
+          trackColor={{ false: theme.colors.borderStrong, true: theme.colors.primaryBorder }}
+          thumbColor={enabled ? theme.colors.primary : theme.colors.textMuted}
+        />
+      </Inline>
+    </Card>
   );
 }
 
@@ -208,7 +293,6 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl, gap: theme.spacing.md },
-    settingCopy: { flex: 1, gap: theme.spacing.xs },
     footerSafe: {
       backgroundColor: theme.colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,
