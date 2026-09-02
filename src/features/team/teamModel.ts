@@ -134,3 +134,13 @@ export function canEditTeamPost(post: TeamPost, userId: string | undefined, owne
   if (!userId) return false;
   return post.authorId === userId || ownerId === userId || role === 'SUPER_ADMIN' || role === 'GA_ADMIN';
 }
+
+/** 서버 DELETE 권한과 동일 축 (작성자 · 팀장 · elevated role) */
+export function canDeleteTeamPost(
+  post: TeamPost,
+  userId: string | undefined,
+  ownerId: string | null,
+  role: string | undefined,
+): boolean {
+  return canEditTeamPost(post, userId, ownerId, role);
+}

@@ -1,4 +1,5 @@
 import {
+  canDeleteTeamPost,
   canEditTeamPost,
   formatStorageBytes,
   normalizeTeamComment,
@@ -40,5 +41,7 @@ describe('teamModel', () => {
     expect(canEditTeamPost(post, 'owner', 'owner', 'USER')).toBe(true);
     expect(canEditTeamPost(post, 'admin', null, 'GA_ADMIN')).toBe(true);
     expect(canEditTeamPost(post, 'other', 'owner', 'USER')).toBe(false);
+    expect(canDeleteTeamPost(post, 'author', null, 'USER')).toBe(true);
+    expect(canDeleteTeamPost(post, 'other', 'owner', 'USER')).toBe(false);
   });
 });

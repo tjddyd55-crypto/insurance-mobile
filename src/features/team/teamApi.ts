@@ -92,6 +92,13 @@ export async function updateTeamPost(token: string | null, postId: string, input
   });
 }
 
+export async function deleteTeamPost(token: string | null, postId: string): Promise<void> {
+  await apiRequest(`/api/teams/posts/${encodeURIComponent(postId)}`, {
+    method: 'DELETE',
+    token: requireToken(token),
+  });
+}
+
 export async function getTeamPostComments(token: string | null, postId: string): Promise<TeamPostComment[]> {
   const result = await apiRequest<{ comments?: unknown[] }>(`/api/teams/posts/${encodeURIComponent(postId)}/comments`, { token: requireToken(token) });
   return Array.isArray(result.comments) ? result.comments.map(normalizeTeamComment) : [];
