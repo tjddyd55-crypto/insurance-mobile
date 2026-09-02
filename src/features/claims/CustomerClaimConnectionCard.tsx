@@ -47,6 +47,7 @@ export function CustomerClaimConnectionCard({
           <Button
             label={linkValue ? "링크 갱신" : "링크 생성"}
             size="sm"
+            variant="secondary"
             loading={creating}
             onPress={onCreate}
           />

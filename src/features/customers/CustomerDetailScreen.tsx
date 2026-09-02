@@ -213,6 +213,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     accessibilityLabel={`${customer.name} 고객에게 전화`}
                     label="전화"
                     size="sm"
+                    variant="secondary"
                     disabled={!telUrl}
                     onPress={() => telUrl && void Linking.openURL(telUrl)}
                     style={styles.grow}

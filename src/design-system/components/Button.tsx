@@ -10,6 +10,10 @@ import {
 import { useAppTheme } from '../DesignSystemProvider';
 import type { AppTheme } from '../themes';
 import { AppText } from './AppText';
+import {
+  resolveButtonContentColor,
+  resolveButtonSurfaceStyle,
+} from './buttonPresentation';
 
 export type ButtonVariant =
   | 'primary'
@@ -45,14 +49,8 @@ export function Button({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const isDisabled = Boolean(disabled || loading);
-  const contentColor =
-    variant === 'primary' || variant === 'selected'
-      ? theme.colors.onPrimary
-      : variant === 'danger'
-        ? theme.colors.danger
-        : variant === 'ghost'
-          ? theme.colors.primary
-          : theme.colors.text;
+  const surface = resolveButtonSurfaceStyle(theme, variant);
+  const contentColor = resolveButtonContentColor(theme, variant);
 
   return (
     <Pressable
@@ -63,7 +61,10 @@ export function Button({
       style={(state) => [
         styles.base,
         styles[size],
-        styles[variant],
+        {
+          backgroundColor: surface.backgroundColor,
+          borderColor: surface.borderColor,
+        },
         fullWidth && styles.fullWidth,
         state.pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
@@ -99,11 +100,6 @@ function createStyles(theme: AppTheme) {
     md: { minHeight: theme.controlSize.md },
     lg: { minHeight: theme.controlSize.lg, paddingHorizontal: theme.spacing.xl },
     fullWidth: { alignSelf: 'stretch' },
-    primary: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-    selected: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-    secondary: { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-    danger: { backgroundColor: theme.colors.surface, borderColor: theme.colors.dangerBorder },
-    ghost: { backgroundColor: 'transparent', borderColor: 'transparent' },
     pressed: { opacity: theme.opacity.pressed },
     disabled: { opacity: theme.opacity.disabled },
     content: {

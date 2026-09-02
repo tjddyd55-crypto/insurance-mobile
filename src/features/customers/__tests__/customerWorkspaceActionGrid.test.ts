@@ -3,6 +3,7 @@ import {
   countEmphasizedWorkspaceActions,
   resolveWorkspaceActionButtonVariant,
 } from '../CustomerWorkspaceActionGrid';
+import { lightTheme, usesFilledGreenAction } from '../../../design-system';
 
 describe('CustomerWorkspaceActionGrid presentation', () => {
   it('모든 업무 action button variant는 secondary다', () => {
@@ -22,5 +23,13 @@ describe('CustomerWorkspaceActionGrid presentation', () => {
       expect(action).not.toHaveProperty('highlighted');
       expect(action).not.toHaveProperty('tone');
     }
+  });
+
+  it('업무 grid는 filled green action을 쓰지 않는다', () => {
+    const actions = buildCustomerWorkspaceActions('홍길동');
+    const greenCount = actions.filter((action) =>
+      usesFilledGreenAction(lightTheme, resolveWorkspaceActionButtonVariant(action.id)),
+    ).length;
+    expect(greenCount).toBe(0);
   });
 });

@@ -67,7 +67,7 @@ export function CustomerCarsEditor({
                 <Button
                   label={car.isPrimary ? "대표" : "대표 지정"}
                   size="sm"
-                  variant={car.isPrimary ? "primary" : "ghost"}
+                  variant={car.isPrimary ? "selected" : "ghost"}
                   disabled={disabled || car.isPrimary}
                   onPress={() =>
                     onChange(
