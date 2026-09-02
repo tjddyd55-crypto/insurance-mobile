@@ -9,6 +9,18 @@ describe('customer form', () => {
     expect(validateCustomerForm({ ...EMPTY_CUSTOMER_FORM }).name).toBeTruthy();
   });
 
+  it('requires gender to be male or female', () => {
+    expect(validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동' }).gender).toBe(
+      '성별을 선택해 주세요.',
+    );
+    expect(
+      validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'male' }).gender,
+    ).toBeUndefined();
+    expect(
+      validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'female' }).gender,
+    ).toBeUndefined();
+  });
+
   it('validates optional phone, date, resident number and car year formats', () => {
     const errors = validateCustomerForm({
       ...EMPTY_CUSTOMER_FORM,

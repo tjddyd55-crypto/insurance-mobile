@@ -169,6 +169,9 @@ export function validateCustomerForm(form: CustomerFormState): CustomerFormError
   if (form.birthDate && !isValidYmd(form.birthDate)) {
     errors.birthDate = "생년월일을 YYYY-MM-DD 형식으로 입력해 주세요.";
   }
+  if (form.gender !== "male" && form.gender !== "female") {
+    errors.gender = "성별을 선택해 주세요.";
+  }
   if (form.renewalDate && !isValidYmd(form.renewalDate)) {
     errors.renewalDate = "갱신 예정일을 YYYY-MM-DD 형식으로 입력해 주세요.";
   }

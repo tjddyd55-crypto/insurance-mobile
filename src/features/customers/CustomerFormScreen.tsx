@@ -50,6 +50,11 @@ import {
 } from './customerSpecialDatesApi';
 import { createCustomer, getCustomer, updateCustomer } from './customersApi';
 import { navigateToCustomerDetail } from './customerWorkspaceNavigation';
+import {
+  CUSTOMER_GENDER_FORM_OPTIONS,
+  resolveChoiceButtonVariant,
+  resolveSegmentSelectedVariant,
+} from './customerFormChoices';
 import { customerQueryKeys } from './queryKeys';
 import type { ListCustomersResult } from './types';
 
@@ -229,12 +234,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           />
           <SegmentedChoice
             label="성별"
+            required
             value={form.gender}
-            options={[
-              { value: '', label: '미선택' },
-              { value: 'male', label: '남' },
-              { value: 'female', label: '여' },
-            ]}
+            error={errors.gender}
+            options={CUSTOMER_GENDER_FORM_OPTIONS}
             onChange={(value) => updateField('gender', value as CustomerFormState['gender'])}
           />
           <TextField
@@ -290,7 +293,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           <Inline>
             <Button
               label={form.isFavorite ? '★ 중요 고객' : '☆ 일반 고객'}
-              variant={form.isFavorite ? 'primary' : 'secondary'}
+              variant={form.isFavorite ? 'selected' : 'secondary'}
               onPress={() => updateField('isFavorite', !form.isFavorite)}
               style={styles.grow}
             />
@@ -434,7 +437,7 @@ function SelectChoice({
           <Button
             key={option.value || 'empty'}
             label={option.label}
-            variant={value === option.value ? 'primary' : 'secondary'}
+            variant={resolveChoiceButtonVariant(option.value, value)}
             size="sm"
             onPress={() => onChange(option.value)}
           />
@@ -495,7 +498,7 @@ function CustomerSpecialDatesEditor({
                   key={purpose}
                   label={purpose}
                   size="sm"
-                  variant={item.purposeType === purpose ? 'primary' : 'secondary'}
+                  variant={item.purposeType === purpose ? 'selected' : 'secondary'}
                   onPress={() => updateAt(index, { ...item, purposeType: purpose })}
                 />
               ))}
@@ -538,27 +541,39 @@ function SegmentedChoice({
   value,
   options,
   onChange,
+  required = false,
+  error,
 }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  required?: boolean;
+  error?: string;
 }) {
   return (
     <Stack gap="xs">
-      <AppText variant="label">{label}</AppText>
+      <AppText variant="label">
+        {label}
+        {required ? ' *' : ''}
+      </AppText>
       <Inline>
         {options.map((option) => (
           <Button
             key={option.value || 'empty'}
             label={option.label}
-            variant={value === option.value ? 'primary' : 'secondary'}
+            variant={resolveSegmentSelectedVariant(option.value, value)}
             size="sm"
             onPress={() => onChange(option.value)}
             style={{ flex: 1 }}
           />
         ))}
       </Inline>
+      {error ? (
+        <AppText variant="caption" color="danger">
+          {error}
+        </AppText>
+      ) : null}
     </Stack>
   );
 }
