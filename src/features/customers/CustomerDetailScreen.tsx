@@ -43,6 +43,7 @@ import { customerQueryKeys } from "./queryKeys";
 import type { ListCustomersResult } from "./types";
 import { CustomerAppLinkSection } from "./CustomerAppLinkSection";
 import { CustomerGaDataModal } from "./CustomerGaDataModal";
+import { CUSTOMER_WORKSPACE_NAVIGATION_VARIANT } from "./customerFormChoices";
 import {
   CollapsibleDetailSection,
   DetailRow,
@@ -250,7 +251,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     accessibilityLabel={action.accessibilityLabel}
                     label={action.label}
                     size="sm"
-                    variant={action.variant ?? "secondary"}
+                    variant={CUSTOMER_WORKSPACE_NAVIGATION_VARIANT}
                     onPress={() => void handleAction(action.id)}
                     style={styles.actionButton}
                   />

@@ -11,7 +11,12 @@ import { useAppTheme } from '../DesignSystemProvider';
 import type { AppTheme } from '../themes';
 import { AppText } from './AppText';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'selected'
+  | 'danger'
+  | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export type ButtonProps = Omit<PressableProps, 'children'> & {
@@ -41,7 +46,7 @@ export function Button({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const isDisabled = Boolean(disabled || loading);
   const contentColor =
-    variant === 'primary'
+    variant === 'primary' || variant === 'selected'
       ? theme.colors.onPrimary
       : variant === 'danger'
         ? theme.colors.danger
@@ -95,6 +100,7 @@ function createStyles(theme: AppTheme) {
     lg: { minHeight: theme.controlSize.lg, paddingHorizontal: theme.spacing.xl },
     fullWidth: { alignSelf: 'stretch' },
     primary: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    selected: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
     secondary: { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
     danger: { backgroundColor: theme.colors.surface, borderColor: theme.colors.dangerBorder },
     ghost: { backgroundColor: 'transparent', borderColor: 'transparent' },

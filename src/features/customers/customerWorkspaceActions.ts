@@ -16,7 +16,6 @@ export type CustomerWorkspaceAction = {
   id: CustomerWorkspaceActionId;
   label: string;
   accessibilityLabel: string;
-  variant?: "primary" | "secondary";
 };
 
 export function buildCustomerWorkspaceActions(
@@ -27,61 +26,51 @@ export function buildCustomerWorkspaceActions(
       id: "map",
       label: "지도에서 보기",
       accessibilityLabel: `${customerName} 고객 지도에서 보기`,
-      variant: "primary",
     },
     {
       id: "files",
       label: "고객 파일",
       accessibilityLabel: `${customerName} 고객 파일`,
-      variant: "primary",
     },
     {
       id: "consultations",
       label: "상담 내역",
       accessibilityLabel: `${customerName} 고객 상담 내역`,
-      variant: "primary",
     },
     {
       id: "applications",
       label: "신청서",
       accessibilityLabel: `${customerName} 고객 신청서`,
-      variant: "secondary",
     },
     {
       id: "gaData",
       label: "GA 데이터 보기",
       accessibilityLabel: `${customerName} 고객 GA 데이터 보기`,
-      variant: "secondary",
     },
     {
       id: "personalMessage",
       label: "개인메시지",
       accessibilityLabel: `${customerName} 고객 개인메시지`,
-      variant: "secondary",
     },
     {
       id: "claims",
       label: "청구",
       accessibilityLabel: `${customerName} 고객 청구`,
-      variant: "primary",
     },
     {
       id: "memos",
       label: "메모",
       accessibilityLabel: `${customerName} 고객 메모`,
-      variant: "secondary",
     },
     {
       id: "copy",
       label: "복사",
       accessibilityLabel: `${customerName} 고객 정보 복사`,
-      variant: "secondary",
     },
     {
       id: "premiumPayments",
       label: "카드 수납",
       accessibilityLabel: `${customerName} 고객 카드 수납`,
-      variant: "secondary",
     },
   ];
 }
