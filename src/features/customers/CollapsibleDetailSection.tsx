@@ -63,6 +63,19 @@ export function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Lightweight in-section label — nested cards 금지. */
+export function DetailSubsectionLabel({ label }: { label: string }) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return (
+    <View style={styles.subsection}>
+      <AppText variant="caption" color="textSecondary">
+        {label}
+      </AppText>
+    </View>
+  );
+}
+
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     sectionHeader: {
@@ -76,6 +89,12 @@ function createStyles(theme: AppTheme) {
     sectionBody: {
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.xs,
+    },
+    subsection: {
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.xs,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
     },
     row: {
       flexDirection: "row",

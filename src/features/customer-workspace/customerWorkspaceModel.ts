@@ -1,3 +1,30 @@
+import type { Consultation } from "./types";
+
+export const RECENT_CONSULTATION_PREVIEW_LIMIT = 3;
+
+/**
+ * 고객 상세 미리보기용 — 상담일/작성일 기준 최신순 N건.
+ */
+export function selectRecentConsultations(
+  rows: Consultation[],
+  limit = RECENT_CONSULTATION_PREVIEW_LIMIT,
+): Consultation[] {
+  return [...rows]
+    .sort((a, b) => {
+      const left = Date.parse(a.consultationDate || a.createdAt || "") || 0;
+      const right = Date.parse(b.consultationDate || b.createdAt || "") || 0;
+      return right - left;
+    })
+    .slice(0, Math.max(0, limit));
+}
+
+export function consultationPreviewDate(row: Consultation): string {
+  const raw = String(row.consultationDate || row.createdAt || "").trim();
+  if (!raw) return "날짜 없음";
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  return formatWorkspaceDate(raw);
+}
+
 export function todayYmd(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",

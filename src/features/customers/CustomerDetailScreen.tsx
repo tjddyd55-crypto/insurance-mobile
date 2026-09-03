@@ -27,7 +27,6 @@ import {
   formatCustomerDetailValue,
   formatCustomerDriver,
   formatCustomerSsn,
-  getCustomerFollowUpPresentation,
 } from "./customerDetailPresentation";
 import { formatCustomerMobileCarrierDisplay } from "./customerCarrier";
 import { buildKakaoCustomerCopyText } from "./customerCopyText";
@@ -47,6 +46,7 @@ import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
 import {
   CollapsibleDetailSection,
   DetailRow,
+  DetailSubsectionLabel,
 } from "./CollapsibleDetailSection";
 import { useGoBackFromCustomerDetail } from "./customerWorkspaceNavigation";
 import {
@@ -54,6 +54,11 @@ import {
   resolveCustomerWorkspaceActionHref,
   type CustomerWorkspaceActionId,
 } from "./customerWorkspaceActions";
+import { listConsultations } from "../customer-workspace/customerWorkspaceApi";
+import {
+  consultationPreviewDate,
+  selectRecentConsultations,
+} from "../customer-workspace/customerWorkspaceModel";
 
 type CustomerDetailScreenProps = { customerId: number };
 
@@ -86,6 +91,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const specialDatesQuery = useQuery({
     queryKey: ["customer-special-dates", customerId],
     queryFn: () => listCustomerSpecialDates(token, customerId),
+    enabled: Boolean(token) && Boolean(query.data),
+  });
+  const consultationsQuery = useQuery({
+    queryKey: ["customer-consultations", customerId],
+    queryFn: () => listConsultations(token, customerId),
     enabled: Boolean(token) && Boolean(query.data),
   });
   const favoriteMutation = useMutation({
@@ -123,8 +133,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const customer = query.data;
   const telUrl = customer ? phoneUrl(customer.phone, "tel") : null;
   const smsUrl = customer ? phoneUrl(customer.phone, "sms") : null;
-  const followUp = customer ? getCustomerFollowUpPresentation(customer) : null;
   const actions = customer ? buildCustomerWorkspaceActions(customer.name) : [];
+  const recentConsultations = useMemo(
+    () => selectRecentConsultations(consultationsQuery.data ?? []),
+    [consultationsQuery.data],
+  );
 
   const handleAction = async (actionId: CustomerWorkspaceActionId) => {
     if (!customer) return;
@@ -171,11 +184,15 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     query.refetch(),
                     carsQuery.refetch(),
                     specialDatesQuery.refetch(),
+                    consultationsQuery.refetch(),
                     queryClient.invalidateQueries({
                       queryKey: ["customer-relation-groups", customerId],
                     }),
                     queryClient.invalidateQueries({
                       queryKey: ["customer-relations", customerId],
+                    }),
+                    queryClient.invalidateQueries({
+                      queryKey: ["customer-consultations", customerId],
                     }),
                   ]);
                 }}
@@ -203,7 +220,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                         {customer.insuranceAge != null ? ` · 보험나이 ${customer.insuranceAge}세` : ""}
                       </AppText>
                       {customer.isFavorite ? <Badge label="중요 고객" tone="warning" /> : null}
-                      {followUp ? <Badge label={followUp.label} tone={followUp.tone} /> : null}
                     </Inline>
                   </Stack>
                   <Button
@@ -298,33 +314,62 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   customer.referrerName,
                 )}
               />
+
+              <DetailSubsectionLabel label="건강/보험 참고" />
+              <DetailRow
+                label="수술·치료 관련"
+                value={formatCustomerDetailValue(customer.notes.treatmentHistoryNote)}
+              />
+              <DetailRow
+                label="약 복용 관련"
+                value={formatCustomerDetailValue(customer.notes.medicationHistoryNote)}
+              />
+
+              <DetailSubsectionLabel label="보험 가입" />
+              <DetailRow
+                label="보험 가입 내역"
+                value={formatCustomerDetailValue(customer.notes.insuranceHistory)}
+              />
+
+              <DetailSubsectionLabel label="계좌" />
+              <DetailRow
+                label="계좌 정보"
+                value={formatCustomerDetailValue(customer.notes.accountNumber)}
+              />
             </CollapsibleDetailSection>
 
             <CollapsibleDetailSection
-              title="상담 및 후속관리"
+              title="상담"
               testID="customer-detail-section-consultation"
             >
-              <DetailRow
-                label="최근 상담일"
-                value={formatCustomerDetailDate(
-                  customer.lastConsultDate ?? customer.lastConsultationAt,
-                )}
-              />
-              <DetailRow
-                label="최근 상담"
-                value={formatCustomerDetailValue(
-                  customer.lastConsultationMemo ?? customer.lastConsultationSummary,
-                )}
-              />
-              <DetailRow label="접촉 결과" value={formatCustomerDetailValue(customer.contactResult)} />
-              <DetailRow
-                label="다음 연락일"
-                value={formatCustomerDetailDate(customer.nextContactDate)}
-              />
-              <DetailRow label="후속 상태" value={formatCustomerDetailValue(customer.followUpStatus)} />
-              <DetailRow
-                label="후속 메모"
-                value={formatCustomerDetailValue(customer.followUpNotePreview)}
+              {consultationsQuery.isLoading ? (
+                <AppText variant="caption">상담 기록을 불러오는 중…</AppText>
+              ) : recentConsultations.length ? (
+                recentConsultations.map((row) => (
+                  <Stack key={row.id} gap="xs" style={styles.subBlock}>
+                    <AppText variant="bodyStrong">{consultationPreviewDate(row)}</AppText>
+                    <AppText color="textSecondary">
+                      {formatCustomerDetailValue(row.body)}
+                    </AppText>
+                  </Stack>
+                ))
+              ) : (
+                <AppText variant="caption" color="textSecondary">
+                  등록된 상담 기록이 없습니다.
+                </AppText>
+              )}
+              <Button
+                accessibilityLabel={`${customer.name} 전체 상담 보기`}
+                label="전체 상담 보기"
+                size="sm"
+                variant="secondary"
+                onPress={() =>
+                  router.push({
+                    pathname: "/customers/[customerId]/consultations",
+                    params: { customerId: String(customer.id) },
+                  })
+                }
+                style={styles.fullWidthAction}
               />
             </CollapsibleDetailSection>
 
@@ -381,49 +426,24 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               )}
             </CollapsibleDetailSection>
 
-            <CollapsibleDetailSection title="보험 및 참고사항" testID="customer-detail-section-insurance">
-              <DetailRow
-                label="수술·치료 관련"
-                value={formatCustomerDetailValue(customer.notes.treatmentHistoryNote)}
+            <Stack gap="sm" style={styles.bottomActions} testID="customer-detail-bottom-actions">
+              <Button
+                accessibilityLabel={`${customer.name} 고객 정보 수정`}
+                label="정보 수정"
+                variant="action"
+                onPress={() =>
+                  router.push({
+                    pathname: "/customers/[customerId]/edit",
+                    params: { customerId: String(customer.id) },
+                  })
+                }
               />
-              <DetailRow
-                label="약 복용 관련"
-                value={formatCustomerDetailValue(customer.notes.medicationHistoryNote)}
+              <Button
+                accessibilityLabel={`${customer.name} 고객 삭제`}
+                label="고객 삭제"
+                variant="danger"
+                onPress={() => setDeleteOpen(true)}
               />
-              <DetailRow
-                label="보험 가입 내역"
-                value={formatCustomerDetailValue(customer.notes.insuranceHistory)}
-              />
-              <DetailRow
-                label="계좌 정보"
-                value={formatCustomerDetailValue(customer.notes.accountNumber)}
-              />
-            </CollapsibleDetailSection>
-
-            <CollapsibleDetailSection title="정보 관리" testID="customer-detail-section-management">
-              <Inline>
-                <Button
-                  accessibilityLabel={`${customer.name} 고객 정보 수정`}
-                  label="정보 수정"
-                  size="sm"
-                  variant="secondary"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/customers/[customerId]/edit",
-                      params: { customerId: String(customer.id) },
-                    })
-                  }
-                  style={styles.grow}
-                />
-                <Button
-                  accessibilityLabel={`${customer.name} 고객 삭제`}
-                  label="고객 삭제"
-                  size="sm"
-                  variant="danger"
-                  onPress={() => setDeleteOpen(true)}
-                  style={styles.grow}
-                />
-              </Inline>
               {deleteMutation.isError ? (
                 <AppText variant="caption" color="danger">
                   {deleteMutation.error instanceof Error
@@ -431,7 +451,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     : "고객을 삭제하지 못했습니다."}
                 </AppText>
               ) : null}
-            </CollapsibleDetailSection>
+            </Stack>
           </ScrollView>
         </Screen>
       )}
@@ -467,6 +487,11 @@ function createStyles(theme: AppTheme) {
     },
     grow: { flex: 1 },
     customerName: { flexShrink: 1 },
+    fullWidthAction: { alignSelf: "stretch", marginTop: theme.spacing.sm },
+    bottomActions: {
+      marginTop: theme.spacing.sm,
+      marginBottom: theme.spacing.md,
+    },
     subBlock: {
       paddingVertical: theme.spacing.sm,
       borderBottomWidth: StyleSheet.hairlineWidth,

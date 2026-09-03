@@ -8,7 +8,6 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import {
   AppText,
-  Badge,
   Button,
   Card,
   Inline,
@@ -121,19 +120,10 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
           {query.data?.map((row) => (
             <Card key={row.id} variant="outlined" padding="sm">
               <Stack gap="sm">
-                <Inline justify="space-between" align="flex-start">
-                  <AppText variant="bodyStrong">
-                    {row.consultationDate || row.createdAt.slice(0, 10)}
-                  </AppText>
-                  {row.contactResult ? <Badge label={row.contactResult} tone="info" /> : null}
-                </Inline>
+                <AppText variant="bodyStrong">
+                  {row.consultationDate || row.createdAt.slice(0, 10)}
+                </AppText>
                 <AppText>{row.body || '상담 내용 없음'}</AppText>
-                {row.followUpNote ? (
-                  <AppText variant="caption">후속 메모 · {row.followUpNote}</AppText>
-                ) : null}
-                {row.nextContactDate ? (
-                  <Badge label={`다음 연락 ${row.nextContactDate}`} tone="warning" />
-                ) : null}
                 <Inline>
                   <Button
                     label="수정"
@@ -202,27 +192,23 @@ function ConsultationEditor({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [date, setDate] = useState(todayYmd);
   const [body, setBody] = useState('');
-  const [result, setResult] = useState('');
-  const [nextDate, setNextDate] = useState('');
-  const [followUp, setFollowUp] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setDate(row?.consultationDate || todayYmd());
     setBody(row?.body ?? '');
-    setResult(row?.contactResult ?? '');
-    setNextDate(row?.nextContactDate ?? '');
-    setFollowUp(row?.followUpNote ?? '');
   }, [open, row]);
 
   const save = useMutation({
     mutationFn: () => {
+      // 후속 필드 UI는 제거했지만 기존 저장값을 null overwrite 하지 않는다.
       const payload = {
         body: body.trim(),
         consultationDate: date,
-        contactResult: result.trim() || null,
-        nextContactDate: nextDate.trim() || null,
-        followUpNote: followUp.trim() || null,
+        contactResult: row?.contactResult ?? null,
+        nextContactDate: row?.nextContactDate ?? null,
+        followUpNote: row?.followUpNote ?? null,
+        followUpStatus: row?.followUpStatus ?? null,
       };
       return row
         ? updateConsultation(token, customerId, row.id, payload)
@@ -276,24 +262,6 @@ function ConsultationEditor({
             onChangeText={setBody}
             multiline
             numberOfLines={8}
-          />
-          <TextField
-            label="접촉 결과"
-            value={result}
-            onChangeText={setResult}
-            placeholder="예: 통화완료, 부재"
-          />
-          <TextField
-            label="다음 연락일"
-            value={nextDate}
-            onChangeText={setNextDate}
-            placeholder="YYYY-MM-DD"
-          />
-          <TextField
-            label="후속 메모"
-            value={followUp}
-            onChangeText={setFollowUp}
-            multiline
           />
           {save.isError ? (
             <AppText color="danger">
