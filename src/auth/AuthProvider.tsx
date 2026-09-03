@@ -16,6 +16,7 @@ import {
   syncPushRegistrationAfterLogin,
   unregisterPushDeviceWithServer,
 } from '../features/push/pushRegistration';
+import { ensureNativeUpgradeMigration } from './nativeUpgradeMigration';
 import {
   clearAuthSession,
   readAuthSession,
@@ -77,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const restoreSession = useCallback(async () => {
     setStatus('booting');
+    // Legacy WebView → Native 교체: 서버 데이터는 유지, 로컬 세션만 안전하게 초기화.
+    await ensureNativeUpgradeMigration();
     const stored = await readAuthSession();
     if (!stored) {
       setUser(null);

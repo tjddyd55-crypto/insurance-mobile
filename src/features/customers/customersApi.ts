@@ -34,7 +34,7 @@ function requireToken(token: string | null): string {
   return value;
 }
 
-export async function listCustomers(token: string | null, limit = 500): Promise<ListCustomersResult> {
+export async function listCustomers(token: string | null, limit = 2000): Promise<ListCustomersResult> {
   const body = await apiRequest<unknown>(`/api/customers?limit=${limit}`, {
     token: requireToken(token),
   });

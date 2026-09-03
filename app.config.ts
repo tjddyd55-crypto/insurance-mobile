@@ -92,6 +92,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
       predictiveBackGestureEnabled: false,
       permissions: ['POST_NOTIFICATIONS'],
+      // Legacy apps/mobile parity: onefc://customers/... (DEV uses onefc-dev)
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: false,
+          data: [
+            {
+              scheme: identity.scheme,
+              host: 'customers',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       bundler: 'metro',
