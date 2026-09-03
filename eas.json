@@ -47,6 +47,21 @@
         "buildType": "apk",
         "applicationId": "com.onefc.app.dev"
       }
+    },
+    "production": {
+      "distribution": "store",
+      "channel": "native-production",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "applicationId": "com.onefc.app"
+      },
+      "ios": {
+        "simulator": false
+      }
     }
   }
 }

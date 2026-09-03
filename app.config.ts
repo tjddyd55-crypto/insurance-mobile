@@ -50,11 +50,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const identity = appIdentities[environment];
   const googleServicesFile = resolveGoogleServicesFile(environment);
 
+  // Play Store listing com.onefc.app is currently 1.0.2 (versionCode 4).
+  // Production updates must continue that sequence; DEV stays on its own low codes.
+  const isProduction = environment === 'production';
+  const appVersion = isProduction ? '1.0.3' : '1.0.0';
+  const androidVersionCode = isProduction ? 5 : 1;
+  const iosBuildNumber = isProduction ? '5' : '1';
+
   const expoConfig: ExpoConfig = {
     ...config,
     name: identity.displayName,
     slug: 'one-fc-native',
-    version: '1.0.0',
+    version: appVersion,
     orientation: 'portrait',
     icon: './assets/images/icon-prod.png',
     scheme: identity.scheme,
@@ -62,7 +69,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       supportsTablet: false,
       bundleIdentifier: identity.applicationId,
-      buildNumber: '1',
+      buildNumber: iosBuildNumber,
       infoPlist: {
         NSCameraUsageDescription:
           '청구서류나 고객 관련 이미지를 촬영하여 첨부하기 위해 카메라 접근이 필요합니다.',
@@ -74,7 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: identity.applicationId,
-      versionCode: 1,
+      versionCode: androidVersionCode,
       googleServicesFile,
       config: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
         ? { googleMaps: { apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY } }
