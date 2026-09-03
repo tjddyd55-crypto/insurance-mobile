@@ -41,6 +41,15 @@ export async function listCustomers(token: string | null, limit = 500): Promise<
   return normalizeCustomerListResponse(body);
 }
 
+export async function getCustomerRegistrationLink(token: string | null): Promise<string> {
+  const result = await apiRequest<{ registrationUrl?: string }>('/api/agent/customer-registration/link', {
+    token: requireToken(token),
+  });
+  const url = String(result.registrationUrl ?? '').trim();
+  if (!url) throw new ApiError('고객등록 링크를 만들 수 없습니다.', 400);
+  return url;
+}
+
 export async function getCustomer(token: string | null, customerId: number): Promise<CustomerRecord> {
   const body = await apiRequest<unknown>(`/api/customers/${customerId}`, {
     token: requireToken(token),

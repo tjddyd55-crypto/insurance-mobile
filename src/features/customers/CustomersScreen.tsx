@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Clipboard from 'expo-clipboard';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -12,6 +13,7 @@ import {
   AppText,
   Button,
   Inline,
+  ModalShell,
   Screen,
   Stack,
   TextField,
@@ -19,7 +21,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { customerMatchesSearch } from './customerModel';
-import { listCustomers, setCustomerFavorite } from './customersApi';
+import { getCustomerRegistrationLink, listCustomers, setCustomerFavorite } from './customersApi';
 import { CustomerListCard } from './CustomerListCard';
 import {
   buildCustomerListCountText,
@@ -28,6 +30,13 @@ import {
 import { customerQueryKeys } from './queryKeys';
 import type { CustomerRecord, ListCustomersResult } from './types';
 
+/**
+ * Root cause (필터 버튼 소실):
+ * 7808d36 정렬 커밋에서 좌측 상단 액션이 사라지고
+ * 「중요 고객」만 검색창 옆으로 이동했다.
+ * WIP로 「고객 등록 발송」만 추가되어 상단이 2개만 보였고,
+ * 「필터」는 overflow/숨김이 아니라 애초에 복구되지 않은 상태였다.
+ */
 export function CustomersScreen() {
   const { token } = useAuth();
   const router = useRouter();
@@ -36,6 +45,8 @@ export function CustomersScreen() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [status, setStatus] = useState('');
   const query = useQuery({
     queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
@@ -55,6 +66,16 @@ export function CustomersScreen() {
             }
           : previous,
       );
+    },
+  });
+  const inviteMutation = useMutation({
+    mutationFn: () => getCustomerRegistrationLink(token),
+    onSuccess: async (url) => {
+      await Clipboard.setStringAsync(url);
+      setStatus('고객등록 링크를 복사했습니다.');
+    },
+    onError: (error) => {
+      setStatus(error instanceof Error ? error.message : '고객등록 링크를 만들 수 없습니다.');
     },
   });
 
@@ -99,33 +120,47 @@ export function CustomersScreen() {
           }
           ListHeaderComponent={
             <Stack gap="md" style={styles.listHeader}>
-              <Inline justify="flex-end">
+              <Inline wrap gap="xs" style={styles.topActions} testID="customers-top-actions">
                 <Button
                   label="고객 등록"
                   size="sm"
-                  variant="secondary"
+                  variant="action"
                   onPress={() => router.push('/customers/new')}
-                />
-              </Inline>
-              <Inline align="stretch" style={styles.searchRow}>
-                <TextField
-                  accessibilityLabel="고객 검색"
-                  placeholder="이름 / 전화번호 검색"
-                  value={search}
-                  onChangeText={setSearch}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                  containerStyle={styles.search}
+                  style={styles.topActionButton}
                 />
                 <Button
-                  label="중요 고객"
-                  variant={favoritesOnly ? 'primary' : 'secondary'}
-                  onPress={() => setFavoritesOnly((value) => !value)}
+                  label="고객 등록 발송"
+                  size="sm"
+                  variant="action"
+                  loading={inviteMutation.isPending}
+                  onPress={() => inviteMutation.mutate()}
+                  style={styles.topActionButton}
+                />
+                <Button
+                  label="필터"
+                  size="sm"
+                  variant={favoritesOnly ? 'secondary' : 'ghost'}
+                  onPress={() => setFilterOpen(true)}
+                  style={styles.topActionButton}
+                  accessibilityState={{ selected: favoritesOnly }}
                 />
               </Inline>
+              <TextField
+                accessibilityLabel="고객 검색"
+                placeholder="이름 / 전화번호 검색"
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+                autoCorrect={false}
+              />
               {query.isSuccess && (query.data?.customers.length ?? 0) > 0 ? (
                 <AppText variant="helper" color="textSecondary">
                   {countText}
+                </AppText>
+              ) : null}
+              {status ? (
+                <AppText variant="caption" color="success">
+                  {status}
                 </AppText>
               ) : null}
               {favoriteMutation.isError ? (
@@ -164,6 +199,42 @@ export function CustomersScreen() {
           }
         />
       </Screen>
+
+      <ModalShell
+        open={filterOpen}
+        title="필터"
+        onRequestClose={() => setFilterOpen(false)}
+        headerAction={
+          <Button label="닫기" size="sm" variant="ghost" onPress={() => setFilterOpen(false)} />
+        }
+        footer={
+          <Inline>
+            <Button
+              label="초기화"
+              variant="secondary"
+              onPress={() => setFavoritesOnly(false)}
+              style={styles.grow}
+            />
+            <Button
+              label="적용"
+              variant="action"
+              onPress={() => setFilterOpen(false)}
+              style={styles.grow}
+            />
+          </Inline>
+        }
+      >
+        <Stack gap="md">
+          <AppText variant="helper" color="textSecondary">
+            기존 중요 고객 필터를 그대로 사용합니다.
+          </AppText>
+          <Button
+            label={favoritesOnly ? '중요 고객만 보기 · 켜짐' : '중요 고객만 보기'}
+            variant={favoritesOnly ? 'secondary' : 'ghost'}
+            onPress={() => setFavoritesOnly((value) => !value)}
+          />
+        </Stack>
+      </ModalShell>
     </View>
   );
 }
@@ -180,7 +251,8 @@ function createStyles(theme: AppTheme) {
     },
     emptyList: { minHeight: '100%' },
     listHeader: { marginBottom: theme.spacing.xs },
-    searchRow: { gap: theme.spacing.sm },
-    search: { flex: 1, minWidth: 0 },
+    topActions: { width: '100%' },
+    topActionButton: { flexGrow: 1, flexBasis: '30%', minWidth: 96 },
+    grow: { flex: 1 },
   });
 }
