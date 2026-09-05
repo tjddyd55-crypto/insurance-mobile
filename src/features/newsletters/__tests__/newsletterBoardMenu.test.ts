@@ -1,5 +1,6 @@
 import {
   buildNewsletterBoardViewPath,
+  dedupeNewsletterBoardMenuItems,
   isLossAdjusterSystemMenuBoard,
   partitionNewsletterBoardsForMenu,
 } from '../newsletterBoardMenu';
@@ -19,5 +20,14 @@ describe('newsletterBoardMenu', () => {
     expect(dynamicBoards.map((board) => board.slug)).toEqual(['yeongjin']);
     expect(isLossAdjusterSystemMenuBoard({ systemKey: 'LOSS_ADJUSTER' })).toBe(true);
     expect(buildNewsletterBoardViewPath('yeongjin')).toBe('/portal/boards/yeongjin');
+  });
+
+  it('dedupes newsletter boards by slug case-insensitively', () => {
+    const unique = dedupeNewsletterBoardMenuItems([
+      { label: 'A', slug: 'Board-A', boardScope: 'ga' },
+      { label: 'B', slug: 'board-a', boardScope: 'ga' },
+      { label: 'C', slug: 'other', boardScope: 'ga' },
+    ]);
+    expect(unique.map((board) => board.label)).toEqual(['A', 'C']);
   });
 });

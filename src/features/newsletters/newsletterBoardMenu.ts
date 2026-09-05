@@ -1,5 +1,33 @@
-import type { DynamicNewsletterBoardMenuItem } from '../../navigation/nativeMenuPolicy';
 import type { NewsletterBoard } from './types';
+
+export type DynamicNewsletterBoardMenuItem = {
+  label: string;
+  slug: string;
+  boardScope: 'global' | 'ga';
+  systemKey?: string | null;
+  isActive?: boolean;
+};
+
+/** API가 동일 slug를 중복 반환할 때 menu child id(`newsletter-board-${slug}`) 충돌을 막는다. */
+export function dedupeNewsletterBoardMenuItems(
+  boards: DynamicNewsletterBoardMenuItem[],
+): DynamicNewsletterBoardMenuItem[] {
+  const seen = new Set<string>();
+  const unique: DynamicNewsletterBoardMenuItem[] = [];
+  for (const board of boards) {
+    const slug = board.slug.trim();
+    if (!slug) {
+      continue;
+    }
+    const key = slug.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(board);
+  }
+  return unique;
+}
 
 export const LOSS_ADJUSTER_SYSTEM_KEY = 'LOSS_ADJUSTER';
 

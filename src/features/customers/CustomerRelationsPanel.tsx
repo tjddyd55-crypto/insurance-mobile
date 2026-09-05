@@ -342,7 +342,7 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
         ) : individualRelations.length ? (
           individualRelations.map((relation) => (
             <Pressable
-              key={relation.relatedCustomerId}
+              key={`relation:${relation.relatedCustomerId}:${relation.createdAt}`}
               accessibilityRole="button"
               onPress={() => openRelated(relation.relatedCustomerId)}
               style={styles.row}

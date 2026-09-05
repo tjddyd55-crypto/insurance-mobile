@@ -1,22 +1,19 @@
 import type { AuthUser } from '../api/authApi';
 import { isBillingUiVisibleForUser } from '../features/billing/billingAccessPolicy';
 import {
+  dedupeNewsletterBoardMenuItems,
   partitionNewsletterBoardsForMenu,
   buildNewsletterBoardViewPath,
+  type DynamicNewsletterBoardMenuItem,
 } from '../features/newsletters/newsletterBoardMenu';
 import {
   USER_APP_MENU,
   type NativeMenuLink,
   type NativeMenuSection,
 } from './menuConfig';
+import { normalizeNativeMenuSections, uniqueNativeMenuLinksById } from './menuIdentity';
 
-export type DynamicNewsletterBoardMenuItem = {
-  label: string;
-  slug: string;
-  boardScope: 'global' | 'ga';
-  systemKey?: string | null;
-  isActive?: boolean;
-};
+export type { DynamicNewsletterBoardMenuItem } from '../features/newsletters/newsletterBoardMenu';
 
 export type NativeMenuCapabilities = {
   isTeamOwner: boolean;
@@ -65,7 +62,9 @@ function applyNewsletterPolicy(
   boards: DynamicNewsletterBoardMenuItem[] | undefined,
 ): NativeMenuSection[] {
   if (boards == null) return sections;
-  const { lossAdjuster, dynamicBoards } = partitionNewsletterBoardsForMenu(boards);
+  const { lossAdjuster, dynamicBoards } = partitionNewsletterBoardsForMenu(
+    dedupeNewsletterBoardMenuItems(boards),
+  );
   return sections.map((section) => {
     if (section.id !== 'newsletters') return section;
     const children = section.children
@@ -90,7 +89,10 @@ function applyNewsletterPolicy(
           roles: ['USER'],
         };
       });
-    return { ...section, children: [...children, ...boardLinks] };
+    return {
+      ...section,
+      children: uniqueNativeMenuLinksById([...children, ...boardLinks]),
+    };
   });
 }
 
@@ -185,5 +187,5 @@ export function buildNativeMenuForSession(
     withExpiredPolicy,
     isPublicGeneralAccount(user),
   );
-  return applyPcOnlyMenuPolicy(withPublicAccount);
+  return normalizeNativeMenuSections(applyPcOnlyMenuPolicy(withPublicAccount));
 }
