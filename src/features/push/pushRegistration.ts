@@ -5,6 +5,10 @@ import { Alert, Linking, Platform } from 'react-native';
 
 import { ApiError, apiRequest } from '../../api/client';
 import { getEnvironmentConfig } from '../../config/environment';
+import {
+  WORK_NOTIFICATION_CHANNEL_ID,
+  workNotificationChannelInput,
+} from './notificationChannelConfig';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -106,12 +110,10 @@ export function promptNotificationPermissionOnce(): Promise<boolean> {
 
 export async function ensureWorkNotificationChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('claim_notifications', {
-    name: '업무 알림',
-    importance: Notifications.AndroidImportance.HIGH,
-    sound: 'default',
-    vibrationPattern: [0, 250],
-  });
+  await Notifications.setNotificationChannelAsync(
+    WORK_NOTIFICATION_CHANNEL_ID,
+    workNotificationChannelInput(),
+  );
 }
 
 export async function getNativeDevicePushToken(): Promise<string | null> {
