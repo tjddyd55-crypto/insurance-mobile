@@ -3,7 +3,7 @@ import { usePathname, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
-import { LoadingState } from '../../components/LoadingState';
+import { resolveAppEnvironment } from '../../config/environment';
 import {
   isBillingAllowedNativePath,
   isBillingUiVisibleForUser,
@@ -11,12 +11,13 @@ import {
   isInsuranceBillingEnabled,
 } from './billingAccessPolicy';
 import { billingCheckoutSummaryQueryKey, getCheckoutSummary } from './billingApi';
-import { hasActiveBillingEntitlement } from './billingEntitlement';
+import { resolveBillingStartupAccess } from './billingStartupAccess';
 
 export function BillingEntitlementGate({ children }: { children: ReactNode }) {
   const { token, user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const environment = resolveAppEnvironment();
   const policyApplies =
     isInsuranceBillingEnabled()
     && isInsuranceBillingAccessEnforced()
@@ -27,17 +28,23 @@ export function BillingEntitlementGate({ children }: { children: ReactNode }) {
     queryKey: billingCheckoutSummaryQueryKey,
     queryFn: () => getCheckoutSummary(token),
     enabled: policyApplies && !allowedPath && Boolean(token),
+    retry: 1,
   });
-  const entitled = hasActiveBillingEntitlement(summary.data);
+  const access = resolveBillingStartupAccess({
+    policyApplies,
+    allowedPath,
+    isLoading: summary.isLoading,
+    isError: summary.isError,
+    error: summary.error,
+    summary: summary.data,
+    environment,
+  });
 
   useEffect(() => {
-    if (policyApplies && !allowedPath && summary.isSuccess && !entitled) {
+    if (access === 'redirect_billing') {
       router.replace('/billing');
     }
-  }, [allowedPath, entitled, policyApplies, router, summary.isSuccess]);
+  }, [access, router]);
 
-  if (!policyApplies || allowedPath || summary.isError || entitled) {
-    return <>{children}</>;
-  }
-  return <LoadingState message="이용 권한을 확인하는 중…" />;
+  return <>{children}</>;
 }

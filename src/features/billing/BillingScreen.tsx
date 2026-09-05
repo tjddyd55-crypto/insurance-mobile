@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppHeader } from "../../components/AppHeader";
@@ -37,6 +38,7 @@ import {
   statusLabel,
 } from "./billingModel";
 import { hasActiveBillingEntitlement } from "./billingEntitlement";
+import { isBillingUnavailableError } from "./billingStartupAccess";
 import {
   formatBillingCycle,
   presentBillingStatus,
@@ -51,6 +53,7 @@ type Action =
 
 export function BillingScreen() {
   const { token } = useAuth();
+  const router = useRouter();
   const client = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -216,15 +219,33 @@ export function BillingScreen() {
             </Card>
           ) : null}
           {summary.isError ? (
-            <ErrorState
-              title="구독 정보를 불러오지 못했습니다"
-              message={
-                summary.error instanceof Error
-                  ? summary.error.message
-                  : "잠시 후 다시 시도해 주세요."
-              }
-              onRetry={() => void summary.refetch()}
-            />
+            isBillingUnavailableError(summary.error) ? (
+              <Card variant="outlined">
+                <Stack gap="md">
+                  <AppText variant="sectionTitle">결제 기능 준비 중</AppText>
+                  <AppText color="textSecondary">
+                    현재 환경에서는 결제단이 활성화되지 않았습니다. 고객 관리 등 CRM
+                    기능은 정상적으로 이용할 수 있습니다.
+                  </AppText>
+                  <Button
+                    label="홈으로"
+                    variant="secondary"
+                    onPress={() => router.replace("/(app)")}
+                  />
+                </Stack>
+              </Card>
+            ) : (
+              <ErrorState
+                compact
+                title="구독 정보를 불러오지 못했습니다"
+                message={
+                  summary.error instanceof Error
+                    ? summary.error.message
+                    : "잠시 후 다시 시도해 주세요."
+                }
+                onRetry={() => void summary.refetch()}
+              />
+            )
           ) : null}
           {summary.data ? (
             <>
