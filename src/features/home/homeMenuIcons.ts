@@ -1,20 +1,27 @@
-import type { SFSymbol } from 'expo-symbols';
+import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 
-const MENU_ICON_BY_ID: Partial<Record<string, SFSymbol>> = {
-  'ta-call': 'phone.fill',
-  todos: 'checklist',
-  memos: 'note.text',
-  notifications: 'bell.fill',
-  customers: 'person.2.fill',
-  'customer-map': 'map.fill',
-  'premium-payments': 'creditcard.fill',
-  newsletters: 'newspaper.fill',
-  billing: 'doc.text.fill',
-  profile: 'person.crop.circle.fill',
-  team: 'person.3.fill',
-  storage: 'folder.fill',
+export type HomeMenuIconName = SFSymbol | { ios: SFSymbol; android: AndroidSymbol };
+
+const MENU_ICON_BY_ID: Partial<Record<string, HomeMenuIconName>> = {
+  'ta-call': { ios: 'phone.fill', android: 'call' },
+  todos: { ios: 'checklist', android: 'checklist' },
+  memo: { ios: 'note.text', android: 'note' },
+  notifications: { ios: 'bell.fill', android: 'notifications' },
+  'customer-list': { ios: 'person.2.fill', android: 'groups' },
+  'customer-map': { ios: 'map.fill', android: 'map' },
+  'premium-payments': { ios: 'creditcard.fill', android: 'credit_card' },
+  'customer-newsletter': { ios: 'newspaper.fill', android: 'newspaper' },
+  'claim-requests': { ios: 'doc.text.fill', android: 'description' },
+  'insurer-newsletters': { ios: 'newspaper.fill', android: 'newspaper' },
+  'adjuster-news': { ios: 'newspaper.fill', android: 'newspaper' },
+  billing: { ios: 'doc.text.fill', android: 'description' },
+  profile: { ios: 'person.crop.circle.fill', android: 'person' },
+  'team-members': { ios: 'person.3.fill', android: 'groups' },
+  storage: { ios: 'folder.fill', android: 'folder' },
 };
 
-export function resolveHomeMenuIcon(menuId: string): SFSymbol {
-  return MENU_ICON_BY_ID[menuId] ?? 'square.grid.2x2.fill';
+const DEFAULT_MENU_ICON: HomeMenuIconName = { ios: 'square.grid.2x2.fill', android: 'note' };
+
+export function resolveHomeMenuIcon(menuId: string): HomeMenuIconName {
+  return MENU_ICON_BY_ID[menuId] ?? DEFAULT_MENU_ICON;
 }

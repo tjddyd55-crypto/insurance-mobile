@@ -167,8 +167,8 @@ function createStyles(theme: AppTheme) {
       marginRight: -(theme.spacing.xxs + 2),
     },
     actionButton: {
-      width: 28,
-      height: 28,
+      width: 44,
+      height: 44,
     },
     actionIcon: { fontSize: 16, lineHeight: 18 },
   });

@@ -44,7 +44,7 @@ export function CollapsibleDetailSection({
   );
 }
 
-const DETAIL_LABEL_WIDTH = 104;
+const DETAIL_LABEL_WIDTH = 92;
 
 export function DetailRow({ label, value }: { label: string; value: string }) {
   const theme = useAppTheme();
@@ -79,6 +79,7 @@ export function DetailSubsectionLabel({ label }: { label: string }) {
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     sectionHeader: {
+      minHeight: 44,
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.sm + theme.spacing.xxs,
       flexDirection: "row",

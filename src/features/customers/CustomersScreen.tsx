@@ -272,7 +272,7 @@ function createStyles(theme: AppTheme) {
     emptyList: { minHeight: '100%' },
     listHeader: { marginBottom: theme.spacing.xs },
     topActions: { width: '100%' },
-    topActionButton: { flexGrow: 1, flexBasis: '30%', minWidth: 96 },
+    topActionButton: { flex: 1, minWidth: 0 },
     grow: { flex: 1 },
   });
 }

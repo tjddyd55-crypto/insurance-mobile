@@ -331,7 +331,7 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
         <DetailSubsectionLabel label="개별 연결" />
         <Inline justify="flex-end">
           <Button
-            label="고객 연결"
+            label="개별 연결"
             size="sm"
             variant="secondary"
             onPress={() => setPicker({ kind: "legacy-add" })}
@@ -391,7 +391,7 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
         open={picker != null}
         title={
           picker?.kind === "legacy-add"
-            ? "고객 연결"
+            ? "개별 연결"
             : picker?.kind === "family-create"
               ? "그룹 만들기"
               : "그룹 구성원 추가"
