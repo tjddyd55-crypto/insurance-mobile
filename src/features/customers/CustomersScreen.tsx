@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +20,13 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
-import { customerMatchesSearch } from './customerModel';
+import {
+  DEFAULT_CUSTOMER_LIST_FILTERS,
+  filterCustomerList,
+  hasActiveCustomerListFilters,
+  sortCustomerList,
+  type CustomerListFilters,
+} from './customerListFilters';
 import { getCustomerRegistrationLink, listCustomers, setCustomerFavorite } from './customersApi';
 import { CustomerListCard } from './CustomerListCard';
 import {
@@ -44,9 +50,20 @@ export function CustomersScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<CustomerListFilters>(
+    DEFAULT_CUSTOMER_LIST_FILTERS,
+  );
+  const [draftFilters, setDraftFilters] = useState<CustomerListFilters>(
+    DEFAULT_CUSTOMER_LIST_FILTERS,
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    if (filterOpen) {
+      setDraftFilters(appliedFilters);
+    }
+  }, [appliedFilters, filterOpen]);
   const query = useQuery({
     queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
@@ -80,22 +97,17 @@ export function CustomersScreen() {
   });
 
   const customers = useMemo(() => {
-    const rows = (query.data?.customers ?? [])
-      .filter((customer) => customerMatchesSearch(customer, search))
-      .filter((customer) => !favoritesOnly || customer.isFavorite);
-    return [...rows].sort((a, b) => {
-      const favoriteDiff = Number(b.isFavorite) - Number(a.isFavorite);
-      if (favoriteDiff) return favoriteDiff;
-      return Date.parse(b.createdAt || '') - Date.parse(a.createdAt || '');
-    });
-  }, [favoritesOnly, query.data?.customers, search]);
+    const rows = filterCustomerList(query.data?.customers ?? [], search, appliedFilters);
+    return sortCustomerList(rows);
+  }, [appliedFilters, query.data?.customers, search]);
   const countText = buildCustomerListCountText({
     visibleCount: customers.length,
     totalCount: query.data?.total ?? customers.length,
     search,
-    favoritesOnly,
+    favoritesOnly: appliedFilters.favoritesOnly,
   });
-  const emptyCopy = buildCustomerListEmptyCopy(search, favoritesOnly);
+  const emptyCopy = buildCustomerListEmptyCopy(search, appliedFilters.favoritesOnly);
+  const filtersActive = hasActiveCustomerListFilters(appliedFilters);
 
   return (
     <View style={styles.root}>
@@ -139,10 +151,10 @@ export function CustomersScreen() {
                 <Button
                   label="필터"
                   size="sm"
-                  variant={favoritesOnly ? 'secondary' : 'ghost'}
+                  variant={filtersActive ? 'secondary' : 'ghost'}
                   onPress={() => setFilterOpen(true)}
                   style={styles.topActionButton}
-                  accessibilityState={{ selected: favoritesOnly }}
+                  accessibilityState={{ selected: filtersActive }}
                 />
               </Inline>
               <TextField
@@ -212,13 +224,16 @@ export function CustomersScreen() {
             <Button
               label="초기화"
               variant="secondary"
-              onPress={() => setFavoritesOnly(false)}
+              onPress={() => setDraftFilters(DEFAULT_CUSTOMER_LIST_FILTERS)}
               style={styles.grow}
             />
             <Button
               label="적용"
               variant="action"
-              onPress={() => setFilterOpen(false)}
+              onPress={() => {
+                setAppliedFilters(draftFilters);
+                setFilterOpen(false);
+              }}
               style={styles.grow}
             />
           </Inline>
@@ -229,9 +244,14 @@ export function CustomersScreen() {
             기존 중요 고객 필터를 그대로 사용합니다.
           </AppText>
           <Button
-            label={favoritesOnly ? '중요 고객만 보기 · 켜짐' : '중요 고객만 보기'}
-            variant={favoritesOnly ? 'secondary' : 'ghost'}
-            onPress={() => setFavoritesOnly((value) => !value)}
+            label={draftFilters.favoritesOnly ? '중요 고객만 보기 · 켜짐' : '중요 고객만 보기'}
+            variant={draftFilters.favoritesOnly ? 'secondary' : 'ghost'}
+            onPress={() =>
+              setDraftFilters((current) => ({
+                ...current,
+                favoritesOnly: !current.favoritesOnly,
+              }))
+            }
           />
         </Stack>
       </ModalShell>

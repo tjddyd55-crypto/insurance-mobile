@@ -28,4 +28,19 @@ describe("customer car memo preservation", () => {
     };
     expect(formItemToInput(car, false).memo).toBe("keep-me");
   });
+
+  it("keeps existing carModel in save payload when UI omits model field", () => {
+    const car = {
+      ...createEmptyCustomerCar(),
+      carNumber: "12가3456",
+      carType: "승용",
+      carModel: "쏘나타",
+      carYear: "2020",
+      renewalDate: "2026-01-01",
+      isPrimary: true,
+    };
+
+    const payload = formItemToInput(car, true);
+    expect(payload.carModel).toBe("쏘나타");
+  });
 });

@@ -1,10 +1,9 @@
 import { useMemo } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import {
   AppText,
   Button,
-  Card,
   Inline,
   Stack,
   TextField,
@@ -57,74 +56,70 @@ export function CustomerCarsEditor({
         />
       </Inline>
       {list.map((car, index) => (
-        <Card key={car.id ?? `car-${index}`} variant="outlined">
-          <Stack gap="sm">
-            <Inline justify="space-between">
-              <AppText variant="bodyStrong">
-                {car.isPrimary ? "대표 차량" : `차량 ${index + 1}`}
-              </AppText>
-              <Inline>
-                <Button
-                  label={car.isPrimary ? "대표" : "대표 지정"}
-                  size="sm"
-                  variant={car.isPrimary ? "selected" : "ghost"}
-                  disabled={disabled || car.isPrimary}
-                  onPress={() =>
-                    onChange(
-                      list.map((item, itemIndex) => ({
-                        ...item,
-                        isPrimary: itemIndex === index,
-                      })),
-                    )
-                  }
-                />
-                <Button
-                  label="삭제"
-                  size="sm"
-                  variant="danger"
-                  disabled={disabled}
-                  onPress={() => removeAt(index)}
-                />
-              </Inline>
+        <View key={car.id ?? `car-${index}`} style={styles.carBlock}>
+          <Inline justify="space-between">
+            <AppText variant="bodyStrong">
+              {car.isPrimary ? "대표 차량" : `차량 ${index + 1}`}
+            </AppText>
+            <Inline>
+              <Button
+                label={car.isPrimary ? "대표" : "대표 지정"}
+                size="sm"
+                variant={car.isPrimary ? "selected" : "ghost"}
+                disabled={disabled || car.isPrimary}
+                onPress={() =>
+                  onChange(
+                    list.map((item, itemIndex) => ({
+                      ...item,
+                      isPrimary: itemIndex === index,
+                    })),
+                  )
+                }
+              />
+              <Button
+                label="삭제"
+                size="sm"
+                variant="danger"
+                disabled={disabled}
+                onPress={() => removeAt(index)}
+              />
             </Inline>
+          </Inline>
+          <Inline gap="sm">
             <TextField
               label="차량 번호"
               value={car.carNumber}
               onChangeText={(value) => updateAt(index, { ...car, carNumber: value })}
+              containerStyle={styles.grow}
               editable={!disabled}
             />
             <TextField
               label="차종"
               value={car.carType}
               onChangeText={(value) => updateAt(index, { ...car, carType: value })}
+              containerStyle={styles.grow}
+              editable={!disabled}
+            />
+          </Inline>
+          <Inline gap="sm">
+            <TextField
+              label="연식"
+              value={car.carYear}
+              onChangeText={(value) => updateAt(index, { ...car, carYear: value })}
+              keyboardType="number-pad"
+              containerStyle={styles.grow}
               editable={!disabled}
             />
             <TextField
-              label="차량 모델"
-              value={car.carModel}
-              onChangeText={(value) => updateAt(index, { ...car, carModel: value })}
+              label="갱신 예정일"
+              value={car.renewalDate}
+              onChangeText={(value) => updateAt(index, { ...car, renewalDate: value })}
+              placeholder="YYYY-MM-DD"
+              containerStyle={styles.grow}
               editable={!disabled}
             />
-            <Inline>
-              <TextField
-                label="연식"
-                value={car.carYear}
-                onChangeText={(value) => updateAt(index, { ...car, carYear: value })}
-                keyboardType="number-pad"
-                containerStyle={styles.grow}
-                editable={!disabled}
-              />
-              <TextField
-                label="갱신 예정일"
-                value={car.renewalDate}
-                onChangeText={(value) => updateAt(index, { ...car, renewalDate: value })}
-                placeholder="YYYY-MM-DD"
-                containerStyle={styles.grow}
-                editable={!disabled}
-              />
-            </Inline>
-          </Stack>
-        </Card>
+          </Inline>
+        </View>
       ))}
     </Stack>
   );
@@ -132,6 +127,7 @@ export function CustomerCarsEditor({
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    grow: { flex: 1 },
+    carBlock: { gap: theme.spacing.sm },
+    grow: { flex: 1, minWidth: 0 },
   });
 }

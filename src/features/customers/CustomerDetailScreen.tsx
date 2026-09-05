@@ -43,6 +43,7 @@ import { CustomerAppLinkSection } from "./CustomerAppLinkSection";
 import { CustomerGaDataModal } from "./CustomerGaDataModal";
 import { CustomerRelationsPanel } from "./CustomerRelationsPanel";
 import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
+import { VehicleInfoGrid } from "./VehicleInfoGrid";
 import {
   CollapsibleDetailSection,
   DetailRow,
@@ -264,7 +265,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               customerPhone={customer.phone}
             />
 
-            <CollapsibleDetailSection title="고객 업무" testID="customer-detail-section-actions">
+            <CollapsibleDetailSection
+              title="고객 업무"
+              testID="customer-detail-section-actions"
+              defaultExpanded
+            >
               <CustomerWorkspaceActionGrid
                 actions={actions}
                 onAction={(actionId) => void handleAction(actionId)}
@@ -276,26 +281,48 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               ) : null}
             </CollapsibleDetailSection>
 
-            <CollapsibleDetailSection title="기본 정보" testID="customer-detail-section-basic">
+            <CollapsibleDetailSection
+              title="차량 정보"
+              testID="customer-detail-section-vehicle"
+              defaultExpanded
+            >
+              {carsQuery.isLoading ? (
+                <AppText variant="caption">차량 정보를 불러오는 중…</AppText>
+              ) : carsQuery.data?.length ? (
+                carsQuery.data.map((car, index) => (
+                  <Stack key={car.id} gap="xs" style={styles.subBlock}>
+                    <AppText variant="bodyStrong">
+                      {car.isPrimary ? "대표 차량" : `차량 ${index + 1}`}
+                    </AppText>
+                    <VehicleInfoGrid
+                      values={{
+                        carNumber: car.carNumber,
+                        carType: car.carType,
+                        carYear: car.carYear,
+                        renewalDate: car.renewalDate,
+                      }}
+                    />
+                  </Stack>
+                ))
+              ) : (
+                <VehicleInfoGrid
+                  values={{
+                    carNumber: customer.carNumber,
+                    carType: customer.carType,
+                    carYear: customer.carYear,
+                    renewalDate: customer.renewalDate,
+                  }}
+                />
+              )}
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection
+              title="기본 정보"
+              testID="customer-detail-section-basic"
+              defaultExpanded
+            >
               <DetailRow label="주민번호" value={formatCustomerSsn(customer.ssn)} />
-              <DetailRow label="성별" value={customerGenderLabel(customer.gender)} />
-              <DetailRow
-                label="보험나이"
-                value={
-                  customer.insuranceAge != null
-                    ? `${customer.insuranceAge}세`
-                    : formatCustomerDetailValue(null)
-                }
-              />
               <DetailRow label="상령일" value={formatCustomerDetailDate(customer.nextAgeDate)} />
-              <DetailRow
-                label="핸드폰번호"
-                value={
-                  customer.phone
-                    ? formatCustomerPhone(customer.phone)
-                    : formatCustomerDetailValue(null)
-                }
-              />
               <DetailRow label="문자 수신" value={customer.smsOptOut ? "수신 거부" : "수신 허용"} />
               <DetailRow
                 label="통신사"
@@ -341,6 +368,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="상담"
               testID="customer-detail-section-consultation"
+              defaultExpanded={false}
             >
               {consultationsQuery.isLoading ? (
                 <AppText variant="caption">상담 기록을 불러오는 중…</AppText>
@@ -373,42 +401,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               />
             </CollapsibleDetailSection>
 
-            <CollapsibleDetailSection title="차량 정보" testID="customer-detail-section-vehicle">
-              {carsQuery.isLoading ? (
-                <AppText variant="caption">차량 정보를 불러오는 중…</AppText>
-              ) : carsQuery.data?.length ? (
-                carsQuery.data.map((car, index) => (
-                  <Stack key={car.id} gap="xs" style={styles.subBlock}>
-                    <AppText variant="bodyStrong">
-                      {car.isPrimary ? "대표 차량" : `차량 ${index + 1}`}
-                    </AppText>
-                    <DetailRow label="차량 번호" value={formatCustomerDetailValue(car.carNumber)} />
-                    <DetailRow label="차종" value={formatCustomerDetailValue(car.carType)} />
-                    <DetailRow label="차량 모델" value={formatCustomerDetailValue(car.carModel)} />
-                    <DetailRow label="연식" value={formatCustomerDetailValue(car.carYear)} />
-                    <DetailRow
-                      label="갱신 예정일"
-                      value={formatCustomerDetailDate(car.renewalDate)}
-                    />
-                  </Stack>
-                ))
-              ) : (
-                <>
-                  <DetailRow label="차량 번호" value={formatCustomerDetailValue(customer.carNumber)} />
-                  <DetailRow label="차종" value={formatCustomerDetailValue(customer.carType)} />
-                  <DetailRow label="차량 모델" value={formatCustomerDetailValue(customer.carModel)} />
-                  <DetailRow label="연식" value={formatCustomerDetailValue(customer.carYear)} />
-                  <DetailRow
-                    label="갱신 예정일"
-                    value={formatCustomerDetailDate(customer.renewalDate)}
-                  />
-                </>
-              )}
-            </CollapsibleDetailSection>
-
-            <CustomerRelationsPanel customerId={customer.id} />
-
-            <CollapsibleDetailSection title="기념일" testID="customer-detail-section-special-dates">
+            <CollapsibleDetailSection
+              title="기념일"
+              testID="customer-detail-section-special-dates"
+              defaultExpanded={false}
+            >
               {specialDatesQuery.isLoading ? (
                 <AppText variant="caption">기념일을 불러오는 중…</AppText>
               ) : specialDatesQuery.data?.length ? (
@@ -425,6 +422,8 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 </AppText>
               )}
             </CollapsibleDetailSection>
+
+            <CustomerRelationsPanel customerId={customer.id} />
 
             <Stack gap="sm" style={styles.bottomActions} testID="customer-detail-bottom-actions">
               <Button

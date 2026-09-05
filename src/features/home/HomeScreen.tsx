@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -16,6 +17,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { useNativeMenu } from '../../navigation/useNativeMenu';
+import { resolveHomeMenuIcon } from './homeMenuIcons';
 
 export function HomeScreen() {
   const { user } = useAuth();
@@ -46,7 +48,7 @@ export function HomeScreen() {
           </Card>
 
           {menu.map((section) => (
-            <Stack key={section.id} gap="sm">
+            <Stack key={section.id} gap="xs">
               <AppText variant="heading">{section.label}</AppText>
               <View style={styles.grid}>
                 {section.children.map((item) => {
@@ -64,19 +66,26 @@ export function HomeScreen() {
                         disabled && styles.disabled,
                       ]}
                     >
-                      <Stack gap="sm">
-                        <View style={styles.menuSymbol}>
-                          <AppText variant="heading" color="brandStrong">
-                            {item.label.slice(0, 1)}
-                          </AppText>
+                      <View style={styles.menuCardInner}>
+                        <View style={styles.menuIconPlate}>
+                          <SymbolView
+                            name={resolveHomeMenuIcon(item.id)}
+                            size={18}
+                            tintColor={theme.colors.primary}
+                            fallback={
+                              <AppText variant="caption" color="brandStrong">•</AppText>
+                            }
+                          />
                         </View>
-                        <AppText variant="bodyStrong" numberOfLines={2}>{item.label}</AppText>
-                        <Inline gap="xs" wrap>
-                          {item.badge ? <Badge label={item.badge} tone="warning" /> : null}
-                          {item.mode === 'NATIVE' ? <Badge label="앱" tone="success" /> : null}
-                          {item.mode === 'WEBVIEW_TEMP' ? <Badge label="전환 중" /> : null}
-                        </Inline>
-                      </Stack>
+                        <View style={styles.menuCopy}>
+                          <AppText variant="bodyStrong" numberOfLines={2}>{item.label}</AppText>
+                          {item.badge ? (
+                            <Badge label={item.badge} tone="warning" />
+                          ) : item.mode === 'WEBVIEW_TEMP' ? (
+                            <Badge label="전환 중" />
+                          ) : null}
+                        </View>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -96,24 +105,48 @@ export function HomeScreen() {
 }
 
 function createStyles(theme: AppTheme) {
+  const menuCardMinHeight = Platform.select({ android: 68, default: 72 }) ?? 72;
   return StyleSheet.create({
     root: { flex: 1 },
-    content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl, gap: theme.spacing.xl },
+    content: {
+      padding: theme.spacing.lg,
+      paddingBottom: theme.spacing.xxl,
+      gap: theme.spacing.lg,
+    },
     hero: { borderColor: theme.colors.primaryBorder },
     heroCopy: { flex: 1, gap: theme.spacing.xs },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
     menuCard: {
       width: '48.5%',
-      minHeight: 132,
-      padding: theme.spacing.lg,
+      minHeight: menuCardMinHeight,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.surface,
+      justifyContent: 'center',
     },
-    menuSymbol: {
-      width: 36, height: 36, borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center',
+    menuCardInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      minHeight: 44,
+    },
+    menuIconPlate: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    menuCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: theme.spacing.xxs,
+      justifyContent: 'center',
     },
     pressed: { opacity: theme.opacity.pressed, backgroundColor: theme.colors.surfaceSubtle },
     disabled: { opacity: theme.opacity.disabled },
