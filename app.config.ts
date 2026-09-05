@@ -140,7 +140,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       appVariant: environment,
       isDevApp: environment !== 'production',
       eas: {
-        projectId: process.env.EAS_PROJECT_ID || undefined,
+        projectId:
+          process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305',
       },
     },
     runtimeVersion: {

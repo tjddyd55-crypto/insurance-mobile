@@ -13,8 +13,7 @@
         "EXPO_PUBLIC_APP_ENV": "development"
       },
       "android": {
-        "buildType": "apk",
-        "applicationId": "com.onefc.app.dev"
+        "buildType": "apk"
       },
       "ios": {
         "simulator": false
@@ -29,8 +28,7 @@
         "EXPO_PUBLIC_APP_ENV": "development"
       },
       "android": {
-        "buildType": "apk",
-        "applicationId": "com.onefc.app.dev"
+        "buildType": "apk"
       },
       "ios": {
         "simulator": false
@@ -44,8 +42,7 @@
         "EXPO_PUBLIC_APP_ENV": "development"
       },
       "android": {
-        "buildType": "apk",
-        "applicationId": "com.onefc.app.dev"
+        "buildType": "apk"
       }
     },
     "production": {
@@ -56,8 +53,7 @@
         "EXPO_PUBLIC_APP_ENV": "production"
       },
       "android": {
-        "buildType": "app-bundle",
-        "applicationId": "com.onefc.app"
+        "buildType": "app-bundle"
       },
       "ios": {
         "simulator": false
