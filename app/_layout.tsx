@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { createAppQueryClient } from '../src/api/queryClient';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { LoadingState } from '../src/components/LoadingState';
+import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 import { getEnvironmentConfig } from '../src/config/environment';
 import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
@@ -56,15 +57,17 @@ export default function RootLayout() {
       <DesignSystemProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <ThemedStatusBar />
-            <AuthGate>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(app)" />
-                <Stack.Screen name="index" />
-                <Stack.Screen name="design-system" />
-              </Stack>
-            </AuthGate>
+            <AppErrorBoundary>
+              <ThemedStatusBar />
+              <AuthGate>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(app)" />
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="design-system" />
+                </Stack>
+              </AuthGate>
+            </AppErrorBoundary>
           </AuthProvider>
         </QueryClientProvider>
       </DesignSystemProvider>
