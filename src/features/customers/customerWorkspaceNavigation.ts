@@ -29,24 +29,45 @@ export function goBackFromCustomerDetail(
   router.replace(customersListPath() as Href);
 }
 
+export function isCustomerDetailBackEnabled(
+  customerId: number,
+  options?: { enabled?: boolean },
+): boolean {
+  if (options?.enabled === false) {
+    return false;
+  }
+  return Number.isFinite(customerId) && customerId > 0;
+}
+
 /**
  * 고객 sub-route(파일/청구/지도 등) → 고객 상세.
  * Header/Android back 공통. focus 중에만 hardware back을 가로챈다.
+ * customerId가 없으면(0/null 컨텍스트) BackHandler를 등록하지 않는다.
  */
-export function useCustomerDetailBack(customerId: number) {
+export function useCustomerDetailBack(
+  customerId: number,
+  options?: { enabled?: boolean },
+) {
   const router = useRouter();
+  const backEnabled = isCustomerDetailBackEnabled(customerId, options);
   const onBack = useCallback(() => {
+    if (!backEnabled) {
+      return;
+    }
     navigateToCustomerDetail(router, customerId);
-  }, [customerId, router]);
+  }, [backEnabled, customerId, router]);
 
   useFocusEffect(
     useCallback(() => {
+      if (!backEnabled) {
+        return undefined;
+      }
       const sub = BackHandler.addEventListener("hardwareBackPress", () => {
         navigateToCustomerDetail(router, customerId);
         return true;
       });
       return () => sub.remove();
-    }, [customerId, router]),
+    }, [backEnabled, customerId, router]),
   );
 
   return onBack;

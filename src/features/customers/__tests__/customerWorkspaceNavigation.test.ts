@@ -2,6 +2,7 @@ import {
   customerDetailPath,
   customersListPath,
   goBackFromCustomerDetail,
+  isCustomerDetailBackEnabled,
   navigateToCustomerDetail,
 } from "../customerWorkspaceNavigation";
 
@@ -24,5 +25,12 @@ describe("customerWorkspaceNavigation", () => {
     const replace = jest.fn();
     goBackFromCustomerDetail({ replace });
     expect(replace).toHaveBeenCalledWith("/customers");
+  });
+
+  it("disables customer detail back when customerId is missing", () => {
+    expect(isCustomerDetailBackEnabled(0)).toBe(false);
+    expect(isCustomerDetailBackEnabled(-1)).toBe(false);
+    expect(isCustomerDetailBackEnabled(42)).toBe(true);
+    expect(isCustomerDetailBackEnabled(42, { enabled: false })).toBe(false);
   });
 });

@@ -10,8 +10,9 @@ import {
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { shouldClearStoredSessionOnRestoreError } from './authSessionRestore';
 import { fetchMe, loginRequest, type AuthUser } from '../api/authApi';
-import { ApiError, resetUnauthorizedLatch, setUnauthorizedHandler } from '../api/client';
+import { resetUnauthorizedLatch, setUnauthorizedHandler } from '../api/client';
 import {
   syncPushRegistrationAfterLogin,
   unregisterPushDeviceWithServer,
@@ -97,13 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetUnauthorizedLatch();
       void syncPushRegistrationAfterLogin(stored.token);
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      if (shouldClearStoredSessionOnRestoreError(error)) {
         await clearLocalSession();
         return;
       }
-      // Network failure on cold start: keep anonymous rather than trusting stale token blindly
-      // without validation. User can re-login.
-      await clearLocalSession();
+      // Transient network/server errors: keep cached session until a later /me succeeds.
+      setToken(stored.token);
+      setUser(stored.user);
+      setStatus('authenticated');
+      resetUnauthorizedLatch();
     }
   }, [clearLocalSession]);
 
