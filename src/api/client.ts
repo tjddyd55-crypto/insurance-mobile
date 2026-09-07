@@ -56,6 +56,16 @@ export function resetUnauthorizedLatch(): void {
   unauthorizedHandled = false;
 }
 
+/** True when the server rejected credentials (not transient network). */
+export function isApiUnauthorizedError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
+}
+
+/** Offline, timeout, or other transport failures (status 0). */
+export function isTransientApiError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 0;
+}
+
 function notifyUnauthorized(): void {
   if (unauthorizedHandled) {
     return;
@@ -121,7 +131,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     notifyUnauthorized();
   }
 
-  if (response.status === 204) {
+  if (response.status === 204 || response.status === 205) {
     return undefined as T;
   }
 

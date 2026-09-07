@@ -19,6 +19,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
+import { customerQueryKeys } from '../customers/queryKeys';
 import { searchCustomers } from '../customers/customerSearchApi';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import type { CustomerRecord } from '../customers/types';
@@ -212,7 +213,7 @@ function PdfFormModal({
     enabled: Boolean(token && template),
   });
   const scopedCustomer = useQuery({
-    queryKey: ['customer', initialCustomerId],
+    queryKey: customerQueryKeys.detail(initialCustomerId ?? 0),
     queryFn: () => getCustomer(token, initialCustomerId!),
     enabled: Boolean(token && template && initialCustomerId),
   });

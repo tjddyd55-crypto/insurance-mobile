@@ -3,6 +3,7 @@ import { FlatList, Linking, StyleSheet, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation";
+import { customerQueryKeys } from "../customers/queryKeys";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppHeader } from "../../components/AppHeader";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -49,7 +50,7 @@ export function CustomerFilesScreen({ customerId }: { customerId: number }) {
   }, [customerId]);
   const key = ["customer-files", customerId] as const;
   const customer = useQuery({
-    queryKey: ["customer", customerId],
+    queryKey: customerQueryKeys.detail(customerId),
     queryFn: () => getCustomer(token, customerId),
     enabled: Boolean(token && customerId),
   });

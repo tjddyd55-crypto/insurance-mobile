@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -64,6 +64,77 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
     },
   });
 
+  const rows = query.data ?? [];
+  const renderItem = useCallback(
+    ({ item: row }: { item: Consultation }) => (
+      <Card variant="outlined" padding="sm">
+        <Stack gap="sm">
+          <AppText variant="bodyStrong">
+            {row.consultationDate || row.createdAt.slice(0, 10)}
+          </AppText>
+          <AppText>{row.body || '상담 내용 없음'}</AppText>
+          <Inline>
+            <Button
+              label="수정"
+              size="sm"
+              variant="secondary"
+              onPress={() => setEditor({ open: true, row })}
+            />
+            <Button
+              label="삭제"
+              size="sm"
+              variant="danger"
+              onPress={() => setDeleting(row)}
+            />
+          </Inline>
+        </Stack>
+      </Card>
+    ),
+    [],
+  );
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.listHeader}>
+        <Inline justify="space-between" align="flex-start">
+          <View style={styles.grow}>
+            <AppText variant="title">상담 이력</AppText>
+            <AppText variant="caption">
+              {customer.data?.name ?? `고객 #${customerId}`}
+            </AppText>
+          </View>
+          <Button
+            label="+ 상담 기록"
+            size="sm"
+            onPress={() => setEditor({ open: true, row: null })}
+          />
+        </Inline>
+        {query.isError ? (
+          <ErrorState
+            title="상담 이력을 불러오지 못했습니다"
+            message={
+              query.error instanceof Error
+                ? query.error.message
+                : '잠시 후 다시 시도해 주세요.'
+            }
+            onRetry={() => void query.refetch()}
+          />
+        ) : null}
+      </View>
+    ),
+    [customer.data?.name, customerId, query, styles.grow, styles.listHeader],
+  );
+  const listEmpty = useMemo(
+    () =>
+      !query.isLoading ? (
+        <Card variant="outlined" padding="sm">
+          <AppText align="center" color="textSecondary" style={styles.compactEmpty}>
+            등록된 상담 이력이 없습니다.
+          </AppText>
+        </Card>
+      ) : null,
+    [query.isLoading, styles.compactEmpty],
+  );
+
   return (
     <View style={styles.root}>
       <AppHeader
@@ -73,7 +144,12 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
         onBackPress={onBackPress}
       />
       <Screen padded={false}>
-        <ScrollView
+        <FlatList
+          data={rows}
+          keyExtractor={(row) => String(row.id)}
+          renderItem={renderItem}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
           contentContainerStyle={styles.content}
           refreshControl={
             <RefreshControl
@@ -83,66 +159,7 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
               tintColor={theme.colors.primary}
             />
           }
-        >
-          <Inline justify="space-between" align="flex-start">
-            <View style={styles.grow}>
-              <AppText variant="title">상담 이력</AppText>
-              <AppText variant="caption">
-                {customer.data?.name ?? `고객 #${customerId}`}
-              </AppText>
-            </View>
-            <Button
-              label="+ 상담 기록"
-              size="sm"
-              onPress={() => setEditor({ open: true, row: null })}
-            />
-          </Inline>
-
-          {query.isError ? (
-            <ErrorState
-              title="상담 이력을 불러오지 못했습니다"
-              message={
-                query.error instanceof Error
-                  ? query.error.message
-                  : '잠시 후 다시 시도해 주세요.'
-              }
-              onRetry={() => void query.refetch()}
-            />
-          ) : null}
-
-          {!query.isLoading && !query.data?.length ? (
-            <Card variant="outlined" padding="sm">
-              <AppText align="center" color="textSecondary" style={styles.compactEmpty}>
-                등록된 상담 이력이 없습니다.
-              </AppText>
-            </Card>
-          ) : null}
-
-          {query.data?.map((row) => (
-            <Card key={row.id} variant="outlined" padding="sm">
-              <Stack gap="sm">
-                <AppText variant="bodyStrong">
-                  {row.consultationDate || row.createdAt.slice(0, 10)}
-                </AppText>
-                <AppText>{row.body || '상담 내용 없음'}</AppText>
-                <Inline>
-                  <Button
-                    label="수정"
-                    size="sm"
-                    variant="secondary"
-                    onPress={() => setEditor({ open: true, row })}
-                  />
-                  <Button
-                    label="삭제"
-                    size="sm"
-                    variant="danger"
-                    onPress={() => setDeleting(row)}
-                  />
-                </Inline>
-              </Stack>
-            </Card>
-          ))}
-        </ScrollView>
+        />
       </Screen>
 
       <ConsultationEditor
@@ -281,6 +298,7 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     grow: { flex: 1 },
+    listHeader: { gap: theme.layout.compactListGap },
     content: {
       paddingHorizontal: theme.layout.screenPaddingHorizontal,
       paddingTop: theme.layout.screenPaddingTop,

@@ -12,6 +12,7 @@ import {
   useAppTheme, type AppTheme,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
+import { customerQueryKeys } from '../customers/queryKeys';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import { getCustomerMap } from './customerMapApi';
 import { groupCustomersByCoordinate, hasGoogleMapsApiKey } from './customerMapModel';
@@ -32,7 +33,7 @@ export function CustomerMapScreen({
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [radiusText, setRadiusText] = useState('');
   const focusCustomer = useQuery({
-    queryKey: ['customer', focusCustomerId],
+    queryKey: customerQueryKeys.detail(focusCustomerId ?? 0),
     queryFn: () => getCustomer(token, focusCustomerId!),
     enabled: Boolean(token && focusCustomerId),
   });

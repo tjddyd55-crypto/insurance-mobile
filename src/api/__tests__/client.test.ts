@@ -1,4 +1,11 @@
-import { ApiError, resolveApiUrl, resetUnauthorizedLatch, setUnauthorizedHandler } from '../../api/client';
+import {
+  ApiError,
+  isApiUnauthorizedError,
+  isTransientApiError,
+  resolveApiUrl,
+  resetUnauthorizedLatch,
+  setUnauthorizedHandler,
+} from '../../api/client';
 
 describe('api client', () => {
   it('resolves /api paths against absolute base', () => {
@@ -11,6 +18,14 @@ describe('api client', () => {
     const err = new ApiError('실패', 401, { code: 'unauthorized' });
     expect(err.status).toBe(401);
     expect(err.code).toBe('unauthorized');
+    expect(isApiUnauthorizedError(err)).toBe(true);
+    expect(isTransientApiError(err)).toBe(false);
+  });
+
+  it('classifies transient network errors', () => {
+    const err = new ApiError('offline', 0);
+    expect(isTransientApiError(err)).toBe(true);
+    expect(isApiUnauthorizedError(err)).toBe(false);
   });
 
   it('401 handler fires once (no infinite retry latch)', () => {
@@ -19,14 +34,7 @@ describe('api client', () => {
     setUnauthorizedHandler(() => {
       count += 1;
     });
-    // simulate double notify via importing internal behavior — use latch reset API
-    // Direct unit: handler set, then call via two 401-like invocations by resetting only once
-    const handler = () => {
-      count += 1;
-    };
-    setUnauthorizedHandler(handler);
     resetUnauthorizedLatch();
-    // Invoke through a small local reimplementation of latch semantics checked via exports
     expect(typeof setUnauthorizedHandler).toBe('function');
     expect(count).toBe(0);
   });
