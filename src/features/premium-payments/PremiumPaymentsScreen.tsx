@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { AppText, Badge, Button, Card, Divider, Inline, Screen, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
 import { listCustomers } from '../customers/customersApi';
+import { CUSTOMER_LIST_STALE_MS, customerQueryKeys } from '../customers/queryKeys';
 import { formatCustomerPhone } from '../customers/customerModel';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import type { CustomerRecord } from '../customers/types';
@@ -28,7 +29,7 @@ export function PremiumPaymentsScreen({
   const { token } = useAuth(); const queryClient = useQueryClient(); const theme = useAppTheme(); const styles = useMemo(() => createStyles(theme), [theme]);
   const onBackPress = useCustomerDetailBack(initialCustomerId ?? 0);
   const [month, setMonth] = useState(currentKoreaMonth); const [selectedId, setSelectedId] = useState<number | null>(initialCustomerId); const [pickerOpen, setPickerOpen] = useState(false); const [search, setSearch] = useState(''); const [cardForm, setCardForm] = useState<{ open: boolean; row: PaymentCard | null }>({ open: false, row: null }); const [contractForm, setContractForm] = useState<{ open: boolean; row: CardPaymentContract | null }>({ open: false, row: null }); const [confirm, setConfirm] = useState<ConfirmTarget | null>(null); const [notice, setNotice] = useState('');
-  const customers = useQuery({ queryKey: ['customers', 'premium-picker'], queryFn: () => listCustomers(token, 1000), enabled: Boolean(token) });
+  const customers = useQuery({ queryKey: customerQueryKeys.all, queryFn: () => listCustomers(token), enabled: Boolean(token), staleTime: CUSTOMER_LIST_STALE_MS });
   const selected = customers.data?.customers.find((customer) => customer.id === selectedId) ?? null;
   const detailKey = ['premium-payments', selectedId, month] as const;
   const detail = useQuery({ queryKey: detailKey, queryFn: async () => { const [cards, contractData] = await Promise.all([listPaymentCards(token, selectedId!), listContracts(token, selectedId!, month)]); return { cards, contracts: contractData.contracts, targetMonth: contractData.targetMonth }; }, enabled: Boolean(token && selectedId) });

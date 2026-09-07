@@ -45,10 +45,10 @@ eas build --profile production --platform android
 
 다음이 해결·승인되기 전에는 **Production 트랙 / 전체 rollout 금지**:
 
-- Native 실기기 QA 전 화면 PASS (Phase 2 Android QA)
-- 결제·SMS·알림 등 운영 변경과 무관한 안정화 마커 완료
+- Native 실기기 QA (Android) — **코드 안정화 완료 후 별도 Phase**
+- 결제·SMS·알림 등 운영 변경과 무관한 Pre-Device QA 안정화 마커 완료
 - Product/Design 스토어·개인정보·OTA 정책 서명
-- iOS Push scope 결정 (현재 v1.0.3는 **Android Push only** — [native-push.md](./native-push.md))
+- iOS Push scope 결정 (현재 v1.0.3는 **Android target, iOS Push 미포함** — [native-push.md](./native-push.md))
 
 ## main merge
 

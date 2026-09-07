@@ -33,7 +33,7 @@ import {
   buildCustomerListCountText,
   buildCustomerListEmptyCopy,
 } from './customerListPresentation';
-import { customerQueryKeys } from './queryKeys';
+import { CUSTOMER_LIST_STALE_MS, customerQueryKeys } from './queryKeys';
 import type { CustomerRecord, ListCustomersResult } from './types';
 
 /**
@@ -68,7 +68,7 @@ export function CustomersScreen() {
     queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
     enabled: Boolean(token),
-    staleTime: 60_000,
+    staleTime: CUSTOMER_LIST_STALE_MS,
   });
   const favoriteMutation = useMutation({
     mutationFn: ({ customerId, isFavorite }: { customerId: number; isFavorite: boolean }) =>

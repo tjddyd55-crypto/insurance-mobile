@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Linking, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useQuery } from '@tanstack/react-query';
 
@@ -40,7 +40,9 @@ export function InsuranceContactsScreen() {
     queryKey: ['insurance-company-directory'],
     queryFn: () => getInsuranceCompanyDirectory(token),
     enabled: Boolean(token),
+    staleTime: 120_000,
   });
+  const { isLoading, isError, error, refetch, isRefetching } = query;
   const entries = useMemo(
     () =>
       (query.data ?? [])
@@ -54,76 +56,93 @@ export function InsuranceContactsScreen() {
     setMessage('전화번호를 복사했습니다.');
   }
 
+  const renderItem = useCallback(
+    ({ item }: { item: CompanyDirectoryEntry }) => (
+      <CompanyCard entry={item} onCopy={(phone) => void copyPhone(phone)} styles={styles} />
+    ),
+    [styles],
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.listHeader}>
+        <Inline>
+          {TABS.map((tab) => (
+            <Button
+              key={tab.id}
+              label={tab.label}
+              size="sm"
+              variant={category === tab.id ? 'selected' : 'secondary'}
+              onPress={() => setCategory(tab.id)}
+              style={styles.tab}
+            />
+          ))}
+        </Inline>
+        <TextField
+          accessibilityLabel="보험사 또는 담당자 검색"
+          placeholder="보험사 또는 담당자 검색"
+          value={search}
+          onChangeText={setSearch}
+          returnKeyType="search"
+        />
+        {message ? (
+          <AppText color="success" accessibilityLiveRegion="polite">
+            {message}
+          </AppText>
+        ) : null}
+        {isLoading ? <LoadingState message="원수사 연락처를 불러오는 중…" /> : null}
+        {isError ? (
+          <ErrorState
+            title="원수사 연락처를 불러오지 못했습니다"
+            message={
+              error instanceof Error
+                ? error.message
+                : '잠시 후 다시 시도해 주세요.'
+            }
+            onRetry={() => void refetch()}
+          />
+        ) : null}
+      </View>
+    ),
+    [category, error, isError, isLoading, message, refetch, search, styles],
+  );
+
+  const listEmpty = useMemo(() => {
+    if (isLoading || isError) {
+      return null;
+    }
+    return (
+      <Card variant="outlined">
+        <AppText color="textSecondary" align="center">
+          {search.trim()
+            ? '검색 결과가 없습니다.'
+            : '이 분류에 등록된 보험사가 없습니다.'}
+        </AppText>
+      </Card>
+    );
+  }, [isError, isLoading, search]);
+
   return (
     <View style={styles.root}>
       <AppHeader title="원수사 연락처" />
       <Screen padded={false}>
-        <ScrollView
+        <FlatList
+          data={isLoading || isError ? [] : entries}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={query.isRefetching}
-              onRefresh={() => void query.refetch()}
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
               colors={[theme.colors.primary]}
               tintColor={theme.colors.primary}
             />
           }
-        >
-          <Inline>
-            {TABS.map((tab) => (
-              <Button
-                key={tab.id}
-                label={tab.label}
-                size="sm"
-                variant={category === tab.id ? 'selected' : 'secondary'}
-                onPress={() => setCategory(tab.id)}
-                style={styles.tab}
-              />
-            ))}
-          </Inline>
-          <TextField
-            accessibilityLabel="보험사 또는 담당자 검색"
-            placeholder="보험사 또는 담당자 검색"
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {message ? (
-            <AppText color="success" accessibilityLiveRegion="polite">
-              {message}
-            </AppText>
-          ) : null}
-          {query.isLoading ? <LoadingState message="원수사 연락처를 불러오는 중…" /> : null}
-          {query.isError ? (
-            <ErrorState
-              title="원수사 연락처를 불러오지 못했습니다"
-              message={
-                query.error instanceof Error
-                  ? query.error.message
-                  : '잠시 후 다시 시도해 주세요.'
-              }
-              onRetry={() => void query.refetch()}
-            />
-          ) : null}
-          {!query.isLoading && !query.isError && entries.length === 0 ? (
-            <Card variant="outlined">
-              <AppText color="textSecondary" align="center">
-                {search.trim()
-                  ? '검색 결과가 없습니다.'
-                  : '이 분류에 등록된 보험사가 없습니다.'}
-              </AppText>
-            </Card>
-          ) : null}
-          {entries.map((entry) => (
-            <CompanyCard
-              key={entry.id}
-              entry={entry}
-              onCopy={(phone) => void copyPhone(phone)}
-              styles={styles}
-            />
-          ))}
-        </ScrollView>
+        />
       </Screen>
     </View>
   );
@@ -170,7 +189,7 @@ function CompanyCard({
             <Stack gap="sm">
               {entry.contacts.map((contact, index) => (
                 <PhoneRow
-                  key={contact.id || index}
+                  key={contact.id || `${contact.name}-${index}`}
                   label={
                     [contact.position, contact.name].filter(Boolean).join(' · ') ||
                     '담당자'
@@ -246,11 +265,15 @@ function createStyles(theme: AppTheme) {
       paddingBottom: theme.spacing.xl,
       gap: theme.spacing.md,
     },
+    listHeader: {
+      gap: theme.spacing.md,
+      marginBottom: theme.spacing.md,
+    },
     tab: { flex: 1 },
     label: { width: 74 },
     value: { flex: 1, fontWeight: '600' },
     phoneRow: {
-      minHeight: 42,
+      minHeight: 44,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
     },

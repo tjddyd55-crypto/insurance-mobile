@@ -29,6 +29,7 @@ import {
   type AppTheme,
 } from "../../design-system";
 import { listCustomers } from "../customers/customersApi";
+import { CUSTOMER_LIST_STALE_MS, customerQueryKeys } from "../customers/queryKeys";
 import { formatCustomerPhone } from "../customers/customerModel";
 import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation";
 import { shareRemoteFile } from "../files/remoteFileSharing";
@@ -76,9 +77,10 @@ export function ClaimsScreen({
   const [bundleKind, setBundleKind] = useState<"pdf" | "zip" | null>(null);
   const [detailActionError, setDetailActionError] = useState("");
   const customers = useQuery({
-    queryKey: ["customers", "claims-picker"],
-    queryFn: () => listCustomers(token, 1000),
+    queryKey: customerQueryKeys.all,
+    queryFn: () => listCustomers(token),
     enabled: Boolean(token),
+    staleTime: CUSTOMER_LIST_STALE_MS,
   });
   const customer = customers.data?.customers.find(
     (row) => row.id === customerId,

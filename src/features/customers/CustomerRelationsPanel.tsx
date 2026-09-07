@@ -17,6 +17,7 @@ import {
   type AppTheme,
 } from "../../design-system";
 import { listCustomers } from "./customersApi";
+import { customerQueryKeys, CUSTOMER_LIST_STALE_MS } from "./queryKeys";
 import { formatCustomerPhone } from "./customerModel";
 import {
   createCustomerRelation,
@@ -82,9 +83,10 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
     enabled: Boolean(token),
   });
   const customersQuery = useQuery({
-    queryKey: ["customers"],
+    queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
     enabled: Boolean(token) && picker != null,
+    staleTime: CUSTOMER_LIST_STALE_MS,
   });
 
   const invalidate = async () => {

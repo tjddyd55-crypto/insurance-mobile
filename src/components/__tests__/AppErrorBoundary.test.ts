@@ -10,4 +10,11 @@ describe('AppErrorBoundary', () => {
     const boundary = new AppErrorBoundary({ children: null });
     expect(boundary.state.error).toBeNull();
   });
+
+  it('replaces prior error when a new error is derived', () => {
+    const first = new Error('first');
+    const second = new Error('second');
+    expect(AppErrorBoundary.getDerivedStateFromError(first)).toEqual({ error: first });
+    expect(AppErrorBoundary.getDerivedStateFromError(second)).toEqual({ error: second });
+  });
 });
