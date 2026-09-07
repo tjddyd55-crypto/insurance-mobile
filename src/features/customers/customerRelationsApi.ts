@@ -48,6 +48,20 @@ export async function createCustomerRelation(
     throw new ApiError("관계인 연결 응답이 올바르지 않습니다.", 502);
   }
   const item = row as Record<string, unknown>;
+  if (item.ok === true) {
+    const relatedId = Number(item.relatedCustomerId ?? relatedCustomerId);
+    const rows = await listCustomerRelations(token, customerId);
+    const found = rows.find((entry) => entry.relatedCustomerId === relatedId);
+    if (found) {
+      return found;
+    }
+    return {
+      relatedCustomerId: relatedId,
+      relatedName: "",
+      relatedPhone: "",
+      createdAt: new Date().toISOString(),
+    };
+  }
   return {
     relatedCustomerId: Number(item.relatedCustomerId),
     relatedName: String(item.relatedName ?? ""),
