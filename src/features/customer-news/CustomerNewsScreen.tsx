@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Linking, Modal, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, Linking, Modal, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../auth/AuthProvider';
@@ -43,7 +43,17 @@ export function CustomerNewsScreen({
   useEffect(() => { if (!customerId && linked.data?.[0]) setCustomerId(linked.data[0].customerId); }, [customerId, linked.data]);
   const listKey = ['customer-news', scope, scope === 'personal' ? customerId : null] as const;
   const news = useQuery({ queryKey: listKey, queryFn: () => listCustomerNews(token, scope, scope === 'personal' ? customerId : null), enabled: Boolean(token && (scope === 'all' || customerId)) });
-  const rows = (news.data ?? []).filter((item) => !search.trim() || `${item.title} ${item.content} ${item.targetCustomerName}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const rows = useMemo(
+    () =>
+      (news.data ?? []).filter(
+        (item) =>
+          !search.trim() ||
+          `${item.title} ${item.content} ${item.targetCustomerName}`
+            .toLowerCase()
+            .includes(search.trim().toLowerCase()),
+      ),
+    [news.data, search],
+  );
   const publish = useMutation({
     mutationFn: async () => {
       if (!form.title.trim() || !form.content.trim()) throw new Error('제목과 내용을 입력해 주세요.');
@@ -55,10 +65,71 @@ export function CustomerNewsScreen({
     onSuccess: async () => { setConfirm(null); setFormOpen(false); setEditing(null); setForm(EMPTY_FORM); setNotice(form.sendPush ? '소식지를 게시하고 고객 앱 알림을 요청했습니다.' : '소식지를 게시했습니다.'); await client.invalidateQueries({ queryKey: ['customer-news'] }); },
   });
   const remove = useMutation({ mutationFn: (item: CustomerNewsItem) => deleteCustomerNews(token, item), onSuccess: async () => { setConfirm(null); setSelected(null); setNotice('소식지를 삭제했습니다.'); await client.invalidateQueries({ queryKey: ['customer-news'] }); } });
-  function openCreate() { setEditing(null); setForm({ ...EMPTY_FORM, title: scope === 'personal' ? `${linked.data?.find((item) => item.customerId === customerId)?.customerName ?? '고객'} 고객님께` : '' }); setFormOpen(true); }
+  const openCreate = useCallback(() => {
+    setEditing(null);
+    setForm({
+      ...EMPTY_FORM,
+      title:
+        scope === 'personal'
+          ? `${linked.data?.find((item) => item.customerId === customerId)?.customerName ?? '고객'} 고객님께`
+          : '',
+    });
+    setFormOpen(true);
+  }, [customerId, linked.data, scope]);
   function openEdit(item: CustomerNewsItem) { setEditing(item); setForm({ title: item.title, content: item.content, sendPush: false, pinned: item.isPinned, asset: null }); setFormOpen(true); }
   async function chooseFile() { const result = await DocumentPicker.getDocumentAsync({ type: ['image/*', 'application/pdf'], multiple: false, copyToCacheDirectory: true }); if (result.canceled) return; const asset = result.assets[0]; if (!asset) return; const local: LocalAttachment = { uri: asset.uri, name: asset.name, mimeType: asset.mimeType, size: asset.size, kind: attachmentKind(asset.mimeType ?? '') }; const error = validateNewsAttachment(local); if (error) { setNotice(error); return; } setForm((value) => ({ ...value, asset: local })); }
   const audience = linked.data?.find((item) => item.customerId === customerId);
+  const renderNewsItem = useCallback(
+    ({ item }: { item: CustomerNewsItem }) => (
+      <NewsCard
+        item={item}
+        onDetail={() => setSelected(item)}
+        onEdit={() => openEdit(item)}
+        onDelete={() => setConfirm({ type: 'delete', item })}
+      />
+    ),
+    [],
+  );
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.listHeader}>
+        <Card>
+          <Stack gap="md">
+            <AppText variant="heading">고객 앱 소식지</AppText>
+            <AppText variant="caption">전체 공지와 연결 고객 개인메시지를 게시하고 고객 댓글을 확인합니다.</AppText>
+            <Inline><Button label="전체소식지" style={styles.grow} variant={scope === 'all' ? 'selected' : 'secondary'} onPress={() => setScope('all')} /><Button label="개인메시지" style={styles.grow} variant={scope === 'personal' ? 'selected' : 'secondary'} onPress={() => setScope('personal')} /></Inline>
+            {scope === 'personal' ? <LinkedCustomerPicker rows={linked.data ?? []} selectedId={customerId} onSelect={setCustomerId} /> : null}
+            <Inline align="flex-end"><TextField label="검색" placeholder="제목 · 내용 검색" value={search} onChangeText={setSearch} containerStyle={styles.grow} /><Button label="+ 작성" onPress={openCreate} disabled={scope === 'personal' && !customerId} /></Inline>
+          </Stack>
+        </Card>
+        {notice ? <Card variant="filled"><AppText color="success">{notice}</AppText></Card> : null}
+        {news.isError || linked.isError ? <ErrorState title="고객소식지를 불러오지 못했습니다" message={(news.error ?? linked.error) instanceof Error ? ((news.error ?? linked.error)?.message ?? '잠시 후 다시 시도해 주세요.') : '잠시 후 다시 시도해 주세요.'} onRetry={() => void Promise.all([news.refetch(), linked.refetch()])} /> : null}
+        <Inline wrap><Badge label={newsScopeLabel(scope, audience?.customerName)} tone="info" /><Badge label={`${rows.length}건`} /></Inline>
+      </View>
+    ),
+    [
+      audience?.customerName,
+      customerId,
+      linked,
+      news,
+      notice,
+      openCreate,
+      rows.length,
+      scope,
+      search,
+      styles.grow,
+      styles.listHeader,
+    ],
+  );
+  const listEmpty = useMemo(
+    () =>
+      !news.isLoading ? (
+        <Card variant="outlined">
+          <AppText color="textSecondary" align="center">게시된 소식지가 없습니다.</AppText>
+        </Card>
+      ) : null,
+    [news.isLoading],
+  );
   return (
     <View style={styles.root}>
       <AppHeader
@@ -68,22 +139,23 @@ export function CustomerNewsScreen({
         onBackPress={showBack && initialCustomerId ? onBackPress : undefined}
       />
       <Screen padded={false}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={news.isRefetching} onRefresh={() => void news.refetch()} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}>
-          <Card>
-            <Stack gap="md">
-              <AppText variant="heading">고객 앱 소식지</AppText>
-              <AppText variant="caption">전체 공지와 연결 고객 개인메시지를 게시하고 고객 댓글을 확인합니다.</AppText>
-              <Inline><Button label="전체소식지" style={styles.grow} variant={scope === 'all' ? 'selected' : 'secondary'} onPress={() => setScope('all')} /><Button label="개인메시지" style={styles.grow} variant={scope === 'personal' ? 'selected' : 'secondary'} onPress={() => setScope('personal')} /></Inline>
-              {scope === 'personal' ? <LinkedCustomerPicker rows={linked.data ?? []} selectedId={customerId} onSelect={setCustomerId} /> : null}
-              <Inline align="flex-end"><TextField label="검색" placeholder="제목 · 내용 검색" value={search} onChangeText={setSearch} containerStyle={styles.grow} /><Button label="+ 작성" onPress={openCreate} disabled={scope === 'personal' && !customerId} /></Inline>
-            </Stack>
-          </Card>
-          {notice ? <Card variant="filled"><AppText color="success">{notice}</AppText></Card> : null}
-          {news.isError || linked.isError ? <ErrorState title="고객소식지를 불러오지 못했습니다" message={(news.error ?? linked.error) instanceof Error ? ((news.error ?? linked.error)?.message ?? '잠시 후 다시 시도해 주세요.') : '잠시 후 다시 시도해 주세요.'} onRetry={() => void Promise.all([news.refetch(), linked.refetch()])} /> : null}
-          <Inline wrap><Badge label={newsScopeLabel(scope, audience?.customerName)} tone="info" /><Badge label={`${rows.length}건`} /></Inline>
-          {!news.isLoading && !rows.length ? <Card variant="outlined"><AppText color="textSecondary" align="center">게시된 소식지가 없습니다.</AppText></Card> : null}
-          {rows.map((item) => <NewsCard key={item.id} item={item} onDetail={() => setSelected(item)} onEdit={() => openEdit(item)} onDelete={() => setConfirm({ type: 'delete', item })} />)}
-        </ScrollView>
+        <FlatList
+          data={rows}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderNewsItem}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={news.isRefetching}
+              onRefresh={() => void news.refetch()}
+              colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
+            />
+          }
+        />
       </Screen>
       <NewsFormModal open={formOpen} scope={scope} audience={audience} editing={editing} value={form} setValue={setForm} busy={publish.isPending} error={publish.error} onChooseFile={() => void chooseFile()} onClose={() => setFormOpen(false)} onSubmit={() => setConfirm({ type: 'publish' })} />
       <NewsDetailModal open={Boolean(selected)} item={selected} token={token} onClose={() => setSelected(null)} />
@@ -98,4 +170,4 @@ function NewsCard({ item, onDetail, onEdit, onDelete }: { item: CustomerNewsItem
 function NewsFormModal({ open, scope, audience, editing, value, setValue, busy, error, onChooseFile, onClose, onSubmit }: { open: boolean; scope: 'all' | 'personal'; audience?: LinkedCustomer; editing: CustomerNewsItem | null; value: FormState; setValue: React.Dispatch<React.SetStateAction<FormState>>; busy: boolean; error: Error | null; onChooseFile: () => void; onClose: () => void; onSubmit: () => void }) { const theme = useAppTheme(); const styles = useMemo(() => makeStyles(theme), [theme]); return <Modal visible={open} animationType="slide" onRequestClose={onClose}><View style={styles.modal}><View style={styles.modalHeader}><AppText variant="heading">{editing ? '소식지 수정' : '소식지 작성'}</AppText><Button label="닫기" size="sm" variant="ghost" onPress={onClose} /></View><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"><Card variant="outlined"><Stack gap="md"><Badge label={newsScopeLabel(scope, audience?.customerName)} tone="info" /><TextField label="제목" required value={value.title} onChangeText={(title) => setValue((old) => ({ ...old, title }))} /><TextField label="내용" required value={value.content} onChangeText={(content) => setValue((old) => ({ ...old, content }))} multiline numberOfLines={10} /><Inline wrap><Button label={value.sendPush ? '앱 알림 포함' : '알림 없이 게시'} size="sm" variant={value.sendPush ? 'selected' : 'secondary'} onPress={() => setValue((old) => ({ ...old, sendPush: !old.sendPush }))} /><Button label={value.pinned ? '상단 고정' : '일반 게시'} size="sm" variant={value.pinned ? 'selected' : 'secondary'} disabled={Boolean(editing)} onPress={() => setValue((old) => ({ ...old, pinned: !old.pinned }))} /><Button label="이미지/PDF 첨부" size="sm" variant="secondary" onPress={onChooseFile} /></Inline>{value.asset ? <AppText variant="caption">첨부: {value.asset.name}</AppText> : editing?.attachments?.length ? <AppText variant="caption">기존 첨부 {editing.attachments.length}개 유지</AppText> : null}{error ? <AppText color="danger">{error.message}</AppText> : null}<Button label={editing ? '수정 내용 확인' : '게시 내용 확인'} fullWidth loading={busy} disabled={!value.title.trim() || !value.content.trim()} onPress={onSubmit} /></Stack></Card></ScrollView></View></Modal>; }
 
 function NewsDetailModal({ open, item, token, onClose }: { open: boolean; item: CustomerNewsItem | null; token: string | null; onClose: () => void }) { const client = useQueryClient(); const theme = useAppTheme(); const styles = useMemo(() => makeStyles(theme), [theme]); const [comment, setComment] = useState(''); const comments = useQuery({ queryKey: ['customer-news-comments', item?.id], queryFn: () => listNewsComments(token, item!.id), enabled: Boolean(token && item) }); const create = useMutation({ mutationFn: () => createNewsComment(token, item!.id, comment), onSuccess: async () => { setComment(''); await client.invalidateQueries({ queryKey: ['customer-news-comments', item?.id] }); } }); return <Modal visible={open} animationType="slide" onRequestClose={onClose}><View style={styles.modal}><View style={styles.modalHeader}><AppText variant="heading">소식지 상세</AppText><Button label="닫기" size="sm" variant="ghost" onPress={onClose} /></View><ScrollView contentContainerStyle={styles.content}>{item ? <><Card><Stack gap="md"><Inline wrap>{item.isPinned ? <Badge label="고정" tone="warning" /> : null}<Badge label={newsScopeLabel(item.scope, item.targetCustomerName)} tone="info" /></Inline><AppText variant="title">{item.title}</AppText><Divider /><AppText>{item.content}</AppText>{item.attachments?.map((file) => <Button key={file.id ?? file.url} label={`첨부 열기 · ${file.fileName}`} variant="secondary" onPress={() => void Linking.openURL(file.url)} />)}</Stack></Card><AppText variant="heading">댓글</AppText>{comments.data?.map((row) => <Card key={row.id} variant="filled"><AppText variant="bodyStrong">{row.authorName} · {row.authorType === 'customer' ? '고객' : '담당자'}</AppText><AppText>{row.content}</AppText></Card>)}<Card variant="outlined"><Stack gap="sm"><TextField label="댓글 작성" value={comment} onChangeText={setComment} multiline /><Button label="댓글 등록" loading={create.isPending} disabled={!comment.trim()} onPress={() => create.mutate()} /></Stack></Card></> : null}</ScrollView></View></Modal>; }
-function makeStyles(theme: AppTheme) { return StyleSheet.create({ root: { flex: 1, backgroundColor: theme.colors.background }, grow: { flex: 1 }, content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.huge, gap: theme.spacing.md }, modal: { flex: 1, backgroundColor: theme.colors.background }, modalHeader: { minHeight: 64, paddingHorizontal: theme.spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface } }); }
+function makeStyles(theme: AppTheme) { return StyleSheet.create({ root: { flex: 1, backgroundColor: theme.colors.background }, grow: { flex: 1 }, listHeader: { gap: theme.spacing.md }, content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.huge, gap: theme.spacing.md }, modal: { flex: 1, backgroundColor: theme.colors.background }, modalHeader: { minHeight: 64, paddingHorizontal: theme.spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface } }); }

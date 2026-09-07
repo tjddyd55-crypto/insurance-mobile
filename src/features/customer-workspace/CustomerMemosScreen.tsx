@@ -19,6 +19,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { getCustomer, updateCustomer } from '../customers/customersApi';
+import { customerQueryKeys } from '../customers/queryKeys';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import type { CustomerNote } from '../customers/types';
 import { newCustomerNoteId } from './customerWorkspaceModel';
@@ -39,7 +40,7 @@ export function CustomerMemosScreen({ customerId }: { customerId: number }) {
   const [draft, setDraft] = useState('');
   const [editor, setEditor] = useState<MemoEditorState>(CLOSED_EDITOR);
   const [deleting, setDeleting] = useState<CustomerNote | null>(null);
-  const queryKey = ['customer', customerId] as const;
+  const queryKey = customerQueryKeys.workspace(customerId);
   const query = useQuery({
     queryKey,
     queryFn: () => getCustomer(token, customerId),

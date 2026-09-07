@@ -19,6 +19,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
+import { customerQueryKeys } from '../customers/queryKeys';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import {
   createConsultation,
@@ -46,7 +47,7 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
   const [deleting, setDeleting] = useState<Consultation | null>(null);
   const queryKey = ['customer-consultations', customerId] as const;
   const customer = useQuery({
-    queryKey: ['customer', customerId],
+    queryKey: customerQueryKeys.workspace(customerId),
     queryFn: () => getCustomer(token, customerId),
     enabled: Boolean(token && customerId),
   });

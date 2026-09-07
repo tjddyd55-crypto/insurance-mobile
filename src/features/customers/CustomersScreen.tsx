@@ -68,6 +68,7 @@ export function CustomersScreen() {
     queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
     enabled: Boolean(token),
+    staleTime: 60_000,
   });
   const favoriteMutation = useMutation({
     mutationFn: ({ customerId, isFavorite }: { customerId: number; isFavorite: boolean }) =>
