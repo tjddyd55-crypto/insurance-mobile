@@ -11,9 +11,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import {
   AppText,
-  Badge,
   Button,
-  Card,
   Inline,
   Screen,
   Stack,
@@ -169,6 +167,40 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
         showMenu={false}
         showBack
         onBackPress={onBackFromDetail}
+        rightAction={
+          customer ? (
+            <Inline gap="xs" align="center">
+              <Button
+                accessibilityLabel={customer.isFavorite ? "중요 고객 해제" : "중요 고객"}
+                label={customer.isFavorite ? "★" : "☆"}
+                size="sm"
+                variant="ghost"
+                disabled={favoriteMutation.isPending}
+                onPress={() => favoriteMutation.mutate(!customer.isFavorite)}
+              />
+              <Button
+                accessibilityLabel={`${customer.name} 고객에게 전화`}
+                label="전화"
+                size="sm"
+                variant="ghost"
+                disabled={!telUrl}
+                onPress={() => telUrl && void Linking.openURL(telUrl)}
+              />
+              <Button
+                accessibilityLabel={
+                  customer.smsOptOut
+                    ? `${customer.name} 고객 문자 수신 거부`
+                    : `${customer.name} 고객에게 문자`
+                }
+                label={customer.smsOptOut ? "문자거부" : "문자"}
+                size="sm"
+                variant="ghost"
+                disabled={!smsUrl || customer.smsOptOut}
+                onPress={() => smsUrl && void Linking.openURL(smsUrl)}
+              />
+            </Inline>
+          ) : null
+        }
       />
       {query.isLoading ? (
         <LoadingState message="고객 정보를 불러오는 중…" />
@@ -210,62 +242,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               />
             }
           >
-            <Card variant="outlined" padding="sm" testID="customer-detail-identity">
-              <Stack gap="sm">
-                <Inline justify="space-between" align="flex-start">
-                  <Stack gap="xs" style={styles.grow}>
-                    <Inline gap="xs" wrap>
-                      <AppText variant="title" style={styles.customerName}>
-                        {customer.name}
-                      </AppText>
-                      {customer.customerCode ? <Badge label={customer.customerCode} /> : null}
-                    </Inline>
-                    <AppText color="textSecondary">
-                      {customer.phone ? formatCustomerPhone(customer.phone) : "연락처 없음"}
-                    </AppText>
-                    <Inline gap="xs" wrap>
-                      <AppText variant="helper">
-                        {customerGenderLabel(customer.gender)}
-                        {customer.insuranceAge != null ? ` · 보험나이 ${customer.insuranceAge}세` : ""}
-                      </AppText>
-                      {customer.isFavorite ? <Badge label="중요 고객" tone="warning" /> : null}
-                    </Inline>
-                  </Stack>
-                  <Button
-                    accessibilityLabel={customer.isFavorite ? "중요 고객 해제" : "중요 고객"}
-                    label={customer.isFavorite ? "★" : "☆"}
-                    size="sm"
-                    variant="ghost"
-                    disabled={favoriteMutation.isPending}
-                    onPress={() => favoriteMutation.mutate(!customer.isFavorite)}
-                  />
-                </Inline>
-                <Inline>
-                  <Button
-                    accessibilityLabel={`${customer.name} 고객에게 전화`}
-                    label="전화"
-                    size="sm"
-                    variant="secondary"
-                    disabled={!telUrl}
-                    onPress={() => telUrl && void Linking.openURL(telUrl)}
-                    style={styles.grow}
-                  />
-                  <Button
-                    accessibilityLabel={
-                      customer.smsOptOut
-                        ? `${customer.name} 고객 문자 수신 거부`
-                        : `${customer.name} 고객에게 문자`
-                    }
-                    label={customer.smsOptOut ? "문자 수신거부" : "문자"}
-                    size="sm"
-                    variant="secondary"
-                    disabled={!smsUrl || customer.smsOptOut}
-                    onPress={() => smsUrl && void Linking.openURL(smsUrl)}
-                    style={styles.grow}
-                  />
-                </Inline>
-              </Stack>
-            </Card>
 
             <CustomerAppLinkSection
               customerId={customer.id}
@@ -538,13 +514,12 @@ function createStyles(theme: AppTheme) {
     root: { flex: 1, backgroundColor: theme.colors.background },
     scroll: { flex: 1 },
     content: {
-      paddingHorizontal: theme.layout.screenPaddingHorizontal,
-      paddingTop: theme.layout.screenPaddingTop,
+      paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.md,
       paddingBottom: theme.layout.contentBottomInset,
-      gap: theme.layout.compactListGap,
+      gap: theme.spacing.sm,
     },
     grow: { flex: 1 },
-    customerName: { flexShrink: 1 },
     fullWidthAction: { alignSelf: "stretch", marginTop: theme.spacing.sm },
     bottomActions: {
       marginTop: theme.spacing.sm,

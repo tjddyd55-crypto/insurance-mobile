@@ -1,5 +1,5 @@
 import { AddressSearchField } from "../../components/AddressSearchField";
-import { AppText, Button, Stack, TextField } from "../../design-system";
+import { AppText, Button, Inline, Stack, TextField } from "../../design-system";
 import {
   formatAddressForSave,
   parseAddressFromSave,
@@ -36,18 +36,23 @@ export function CustomerFireInsuranceLocationsEditor({
   };
 
   return (
-    <Stack gap="lg">
+    <Stack gap="md">
       {items.map((item, index) => (
-        <Stack key={item.id != null ? `id-${item.id}` : `idx-${index}`} gap="md">
-          <Stack gap="xs">
+        <Stack
+          key={item.id != null ? `id-${item.id}` : `idx-${index}`}
+          gap="sm"
+          style={{ alignSelf: "stretch" }}
+        >
+          <Inline justify="space-between" align="center">
             <AppText variant="bodyStrong">소재지 {index + 1}</AppText>
             <Button
               label="삭제"
+              size="sm"
               variant="ghost"
               disabled={disabled}
               onPress={() => removeAt(index)}
             />
-          </Stack>
+          </Inline>
           <AddressSearchField
             value={parseAddressFromSave(item.address)}
             onChange={(address) =>
@@ -65,7 +70,7 @@ export function CustomerFireInsuranceLocationsEditor({
         </Stack>
       ))}
       <Button
-        label="소재지 추가"
+        label="+ 소재지 추가"
         variant="secondary"
         disabled={disabled}
         onPress={addItem}

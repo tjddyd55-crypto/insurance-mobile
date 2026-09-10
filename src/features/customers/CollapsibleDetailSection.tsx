@@ -27,7 +27,7 @@ export function CollapsibleDetailSection({
         onPress={() => setExpanded((value) => !value)}
         style={styles.sectionHeader}
       >
-        <AppText variant="sectionTitle">{title}</AppText>
+        <AppText variant="heading" numberOfLines={1}>{title}</AppText>
         <AppText variant="caption" color="textSecondary">
           {expanded ? "접기 ▲" : "펼치기 ▼"}
         </AppText>
@@ -44,7 +44,7 @@ export function CollapsibleDetailSection({
   );
 }
 
-const DETAIL_LABEL_WIDTH = 92;
+const DETAIL_LABEL_WIDTH = 88;
 
 export function DetailRow({ label, value }: { label: string; value: string }) {
   const theme = useAppTheme();
@@ -55,10 +55,10 @@ export function DetailRow({ label, value }: { label: string; value: string }) {
       accessible
       accessibilityLabel={`${label}, ${value}`}
     >
-      <AppText variant="label" style={styles.label}>
+      <AppText variant="body" color="textSecondary" style={styles.label}>
         {label}
       </AppText>
-      <AppText style={styles.value}>{value}</AppText>
+      <AppText variant="bodyStrong" style={styles.value}>{value}</AppText>
     </View>
   );
 }
@@ -80,15 +80,15 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     sectionHeader: {
       minHeight: 44,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm + theme.spacing.xxs,
+      paddingHorizontal: theme.spacing.sm + theme.spacing.xs,
+      paddingVertical: theme.spacing.sm,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: theme.spacing.sm,
     },
     sectionBody: {
-      paddingHorizontal: theme.spacing.md,
+      paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xs,
     },
     subsection: {

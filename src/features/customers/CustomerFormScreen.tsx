@@ -492,12 +492,12 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Card variant="outlined">
-      <Stack gap="lg">
-        <AppText variant="heading">{title}</AppText>
-        {children}
-      </Stack>
-    </Card>
+    <Stack gap="md" style={{ alignSelf: "stretch" }}>
+      <AppText variant="heading" numberOfLines={1}>
+        {title}
+      </AppText>
+      <Stack gap="md">{children}</Stack>
+    </Stack>
   );
 }
 
@@ -637,7 +637,8 @@ function createStyles(theme: AppTheme) {
     root: { flex: 1, backgroundColor: theme.colors.background },
     scroll: { flex: 1 },
     content: {
-      padding: theme.spacing.lg,
+      paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.md,
       paddingBottom: theme.spacing.xl,
       gap: theme.spacing.md,
     },
