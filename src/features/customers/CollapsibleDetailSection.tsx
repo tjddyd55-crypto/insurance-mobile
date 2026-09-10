@@ -44,7 +44,7 @@ export function CollapsibleDetailSection({
   );
 }
 
-const DETAIL_LABEL_WIDTH = 88;
+const DETAIL_LABEL_WIDTH = 96;
 
 export function DetailRow({ label, value }: { label: string; value: string }) {
   const theme = useAppTheme();
