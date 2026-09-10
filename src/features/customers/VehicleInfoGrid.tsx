@@ -33,7 +33,7 @@ export function VehicleInfoGrid({ values }: { values: VehicleInfoValues }) {
     <View style={styles.grid}>
       {FIELDS.map((field) => (
         <View key={field.key} style={styles.cell}>
-          <AppText variant="caption" color="textSecondary">
+          <AppText variant="body" color="textSecondary">
             {field.label}
           </AppText>
           <AppText variant="bodyStrong" numberOfLines={2}>

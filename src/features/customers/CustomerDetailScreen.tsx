@@ -270,8 +270,23 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               testID="customer-detail-section-basic"
               defaultExpanded
             >
+              <DetailRow label="이름" value={formatCustomerDetailValue(customer.name)} />
+              <DetailRow
+                label="연락처"
+                value={formatCustomerDetailValue(
+                  customer.phone ? formatCustomerPhone(customer.phone) : "",
+                )}
+              />
               <DetailRow label="주민번호" value={formatCustomerSsn(customer.ssn)} />
               <DetailRow label="상령일" value={formatCustomerDetailDate(customer.nextAgeDate)} />
+              <DetailRow
+                label="보험나이"
+                value={
+                  customer.insuranceAge != null
+                    ? `${customer.insuranceAge}세`
+                    : formatCustomerDetailValue("")
+                }
+              />
               <DetailRow label="문자 수신" value={customer.smsOptOut ? "수신 거부" : "수신 허용"} />
               <DetailRow
                 label="통신사"

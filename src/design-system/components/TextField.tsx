@@ -56,7 +56,7 @@ export function TextField({
   return (
     <View style={[styles.wrap, containerStyle]}>
       {label ? (
-        <AppText variant="label">
+        <AppText variant="body" color="textSecondary">
           {label}
           {required ? <AppText color="danger"> *</AppText> : null}
         </AppText>

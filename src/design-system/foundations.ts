@@ -121,8 +121,8 @@ export const typeScale = {
   title: 24,
   heading: 20,
   subheading: 17,
-  body: 15,
-  label: 13,
+  body: 16,
+  label: 14,
   caption: 12,
 } as const;
 
@@ -139,8 +139,8 @@ export const lineHeight = {
   title: 32,
   heading: 28,
   subheading: 24,
-  body: 22,
-  label: 18,
+  body: 24,
+  label: 20,
   caption: 17,
 } as const;
 
