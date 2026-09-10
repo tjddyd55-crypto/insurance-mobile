@@ -21,6 +21,28 @@ describe('customer form', () => {
     ).toBeUndefined();
   });
 
+  it('requires driver to be yes or no', () => {
+    expect(validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'male' }).driver).toBe(
+      '운전 여부를 선택해 주세요.',
+    );
+    expect(
+      validateCustomerForm({
+        ...EMPTY_CUSTOMER_FORM,
+        name: '홍길동',
+        gender: 'male',
+        driver: 'yes',
+      }).driver,
+    ).toBeUndefined();
+    expect(
+      validateCustomerForm({
+        ...EMPTY_CUSTOMER_FORM,
+        name: '홍길동',
+        gender: 'female',
+        driver: 'no',
+      }).driver,
+    ).toBeUndefined();
+  });
+
   it('validates optional phone, date, resident number and car year formats', () => {
     const errors = validateCustomerForm({
       ...EMPTY_CUSTOMER_FORM,

@@ -291,11 +291,12 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
           <SegmentedChoice
             label="운전 여부"
+            required
             value={form.driver}
+            error={errors.driver}
             options={[
-              { value: '', label: '미선택' },
               { value: 'yes', label: '운전함' },
-              { value: 'no', label: '안 함' },
+              { value: 'no', label: '운전안함' },
             ]}
             onChange={(value) => updateField('driver', value as CustomerFormState['driver'])}
           />

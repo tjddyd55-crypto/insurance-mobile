@@ -34,7 +34,7 @@ export function buildKakaoCustomerCopyText(
     isDriver === true
       ? "운전함"
       : isDriver === false
-        ? "운전 안함"
+        ? "운전안함"
         : String(customer.driving ?? "").trim() || "—";
   const heightWeight =
     height || weight ? `${height || "—"}/${weight || "—"}` : "—";

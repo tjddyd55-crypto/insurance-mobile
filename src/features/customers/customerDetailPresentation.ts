@@ -42,7 +42,7 @@ export function formatCustomerDriver(customer: CustomerRecord): string {
     return '운전함';
   }
   if (customer.isDriver === false) {
-    return '운전 안 함';
+    return '운전안함';
   }
   return formatCustomerDetailValue(customer.driving);
 }

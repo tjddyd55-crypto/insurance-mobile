@@ -33,7 +33,7 @@ describe('customer detail presentation', () => {
   test('describes body size and driving without hiding partial data', () => {
     expect(formatCustomerBodySize(customer({ height: '175cm' }))).toBe('175cm / —');
     expect(formatCustomerDriver(customer({ isDriver: true }))).toBe('운전함');
-    expect(formatCustomerDriver(customer({ isDriver: false }))).toBe('운전 안 함');
+    expect(formatCustomerDriver(customer({ isDriver: false }))).toBe('운전안함');
   });
 
   test('prioritizes overdue and today follow-up states', () => {
