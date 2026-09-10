@@ -206,6 +206,9 @@ export function validateCustomerForm(form: CustomerFormState): CustomerFormError
   if (form.gender !== "male" && form.gender !== "female") {
     errors.gender = "성별을 선택해 주세요.";
   }
+  if (form.driver !== "yes" && form.driver !== "no") {
+    errors.driver = "운전 여부를 선택해 주세요.";
+  }
   if (form.renewalDate && !isValidYmd(form.renewalDate)) {
     errors.renewalDate = "갱신 예정일을 YYYY-MM-DD 형식으로 입력해 주세요.";
   }
