@@ -35,7 +35,9 @@ import {
   CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS,
   listCustomerSpecialDates,
 } from "./customerSpecialDatesApi";
+import { formatBusinessNumberDisplay } from "./customerBusinessInfo";
 import { formatCustomerInflowSourceDisplay } from "./customerInflowSource";
+import { listCustomerFireInsuranceLocations } from "./customerFireInsuranceLocationsApi";
 import { deleteCustomer, getCustomer, setCustomerFavorite } from "./customersApi";
 import { customerQueryKeys } from "./queryKeys";
 import type { ListCustomersResult } from "./types";
@@ -92,6 +94,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const specialDatesQuery = useQuery({
     queryKey: ["customer-special-dates", customerId],
     queryFn: () => listCustomerSpecialDates(token, customerId),
+    enabled: Boolean(token) && Boolean(query.data),
+  });
+  const fireLocationsQuery = useQuery({
+    queryKey: ["customer-fire-insurance-locations", customerId],
+    queryFn: () => listCustomerFireInsuranceLocations(token, customerId),
     enabled: Boolean(token) && Boolean(query.data),
   });
   const consultationsQuery = useQuery({
@@ -184,6 +191,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   void Promise.all([
                     query.refetch(),
                     carsQuery.refetch(),
+                    fireLocationsQuery.refetch(),
                     specialDatesQuery.refetch(),
                     consultationsQuery.refetch(),
                     queryClient.invalidateQueries({
@@ -282,9 +290,9 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             </CollapsibleDetailSection>
 
             <CollapsibleDetailSection
-              title="차량 정보"
+              title="자동차 정보"
               testID="customer-detail-section-vehicle"
-              defaultExpanded
+              defaultExpanded={false}
             >
               {carsQuery.isLoading ? (
                 <AppText variant="caption">차량 정보를 불러오는 중…</AppText>
@@ -313,6 +321,57 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     renewalDate: customer.renewalDate,
                   }}
                 />
+              )}
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection
+              title="사업자 정보"
+              testID="customer-detail-section-business"
+              defaultExpanded={false}
+            >
+              {customer.businessInfo ? (
+                <>
+                  <DetailRow
+                    label="대표자명"
+                    value={formatCustomerDetailValue(customer.businessInfo.representativeName)}
+                  />
+                  <DetailRow
+                    label="사업자번호"
+                    value={formatCustomerDetailValue(
+                      formatBusinessNumberDisplay(customer.businessInfo.businessNumber),
+                    )}
+                  />
+                  <DetailRow
+                    label="사업장 주소"
+                    value={formatCustomerDetailValue(customer.businessInfo.businessAddress)}
+                  />
+                  <DetailRow
+                    label="메모"
+                    value={formatCustomerDetailValue(customer.businessInfo.memo)}
+                  />
+                </>
+              ) : (
+                <AppText variant="caption" color="textSecondary">등록된 사업자 정보가 없습니다.</AppText>
+              )}
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection
+              title="화재보험 정보"
+              testID="customer-detail-section-fire-insurance"
+              defaultExpanded={false}
+            >
+              {fireLocationsQuery.isLoading ? (
+                <AppText variant="caption">화재보험 소재지를 불러오는 중…</AppText>
+              ) : (fireLocationsQuery.data ?? []).length > 0 ? (
+                (fireLocationsQuery.data ?? []).map((location, index) => (
+                  <Stack key={location.id} gap="xs" style={styles.subBlock}>
+                    <DetailSubsectionLabel label={`소재지 ${index + 1}`} />
+                    <DetailRow label="주소" value={formatCustomerDetailValue(location.address)} />
+                    <DetailRow label="메모" value={formatCustomerDetailValue(location.memo)} />
+                  </Stack>
+                ))
+              ) : (
+                <AppText variant="caption" color="textSecondary">등록된 화재보험 소재지가 없습니다.</AppText>
               )}
             </CollapsibleDetailSection>
 

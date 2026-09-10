@@ -1,4 +1,5 @@
 import { ApiError, apiRequest } from '../../api/client';
+import type { CustomerBusinessInfo } from './customerBusinessInfo';
 import { normalizeCustomer, normalizeCustomerListResponse } from './customerModel';
 import type { CustomerRecord, ListCustomersResult } from './types';
 
@@ -24,6 +25,7 @@ export type SaveCustomerPayload = {
   smsOptOut?: boolean;
   inflowSource?: string | null;
   referrerName?: string | null;
+  businessInfo?: CustomerBusinessInfo | null;
 };
 
 function requireToken(token: string | null): string {
