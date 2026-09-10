@@ -15,8 +15,12 @@ import {
   isCustomerBusinessInfoEmpty,
   type CustomerBusinessInfo,
 } from "./customerBusinessInfo";
-import type { CustomerFireInsuranceLocationFormItem } from "./customerFireInsuranceLocationsApi";
-import { createEmptyFireInsuranceLocation } from "./customerFireInsuranceLocationsApi";
+import {
+  createEmptyFireInsuranceLocation,
+  ensureFireInsuranceLocationFormItems,
+  customerFireInsuranceLocationRecordToFormItem,
+  type CustomerFireInsuranceLocationFormItem,
+} from "./customerFireInsuranceLocationsApi";
 import type { CustomerSpecialDateFormItem } from "./customerSpecialDatesApi";
 import type { CustomerRecord } from "./types";
 import {
@@ -149,7 +153,16 @@ export function customerToForm(customer: CustomerRecord): CustomerFormState {
     renewalDate: ymd(customer.renewalDate),
     cars: customerRecordToCarFormItems(customer),
     businessInfo: customerBusinessInfoToForm(customer.businessInfo),
-    fireInsuranceLocations: [createEmptyFireInsuranceLocation()],
+    fireInsuranceLocations: ensureFireInsuranceLocationFormItems(
+      (customer.fireInsuranceLocations ?? []).map((item) =>
+        customerFireInsuranceLocationRecordToFormItem({
+          id: item.id,
+          address: item.address,
+          memo: item.memo,
+          sortOrder: item.sortOrder ?? 0,
+        }),
+      ),
+    ),
     specialDates: [],
     inflowSource: customer.inflowSource ?? "",
     referrerName: customer.referrerName ?? "",
