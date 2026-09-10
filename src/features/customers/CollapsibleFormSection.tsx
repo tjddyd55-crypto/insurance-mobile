@@ -34,7 +34,7 @@ export function CollapsibleFormSection({
         onPress={() => setExpanded((value) => !value)}
         style={styles.sectionHeader}
       >
-        <AppText variant="heading">{title}</AppText>
+        <AppText variant="heading" numberOfLines={1}>{title}</AppText>
         <AppText variant="caption" color="textSecondary">
           {expanded ? "접기 ▲" : "펼치기 ▼"}
         </AppText>
@@ -55,16 +55,16 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     sectionHeader: {
       minHeight: 44,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm + theme.spacing.xxs,
+      paddingHorizontal: theme.spacing.sm + theme.spacing.xs,
+      paddingVertical: theme.spacing.sm,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: theme.spacing.sm,
     },
     sectionBody: {
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.sm + theme.spacing.xs,
     },
   });
 }
