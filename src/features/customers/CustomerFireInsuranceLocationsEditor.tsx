@@ -1,4 +1,9 @@
+import { AddressSearchField } from "../../components/AddressSearchField";
 import { AppText, Button, Stack, TextField } from "../../design-system";
+import {
+  formatAddressForSave,
+  parseAddressFromSave,
+} from "./customerAddressSearch";
 import {
   createEmptyFireInsuranceLocation,
   type CustomerFireInsuranceLocationFormItem,
@@ -43,11 +48,12 @@ export function CustomerFireInsuranceLocationsEditor({
               onPress={() => removeAt(index)}
             />
           </Stack>
-          <TextField
-            label="주소"
-            value={item.address}
-            editable={!disabled}
-            onChangeText={(value) => updateAt(index, { ...item, address: value })}
+          <AddressSearchField
+            value={parseAddressFromSave(item.address)}
+            onChange={(address) =>
+              updateAt(index, { ...item, address: formatAddressForSave(address) })
+            }
+            disabled={disabled}
           />
           <TextField
             label="메모"

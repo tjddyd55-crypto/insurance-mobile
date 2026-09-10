@@ -29,6 +29,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { AddressSearchField } from '../../components/AddressSearchField';
+import { formatAddressForSave, parseAddressFromSave } from './customerAddressSearch';
 import {
   EMPTY_CUSTOMER_FORM,
   customerFormToPayload,
@@ -290,6 +291,16 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             />
           </Inline>
           <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
+          <SegmentedChoice
+            label="운전 여부"
+            value={form.driver}
+            options={[
+              { value: '', label: '미선택' },
+              { value: 'yes', label: '운전함' },
+              { value: 'no', label: '안 함' },
+            ]}
+            onChange={(value) => updateField('driver', value as CustomerFormState['driver'])}
+          />
           <AddressSearchField
             value={form.address}
             onChange={(address) => updateField('address', address)}
@@ -340,16 +351,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         </FormSection>
 
         <CollapsibleFormSection title="자동차 정보" testID="customer-form-section-vehicle">
-          <SegmentedChoice
-            label="운전 여부"
-            value={form.driver}
-            options={[
-              { value: '', label: '미선택' },
-              { value: 'yes', label: '운전함' },
-              { value: 'no', label: '안 함' },
-            ]}
-            onChange={(value) => updateField('driver', value as CustomerFormState['driver'])}
-          />
           <CustomerCarsEditor
             cars={form.cars}
             onChange={(cars) => updateField('cars', cars)}
@@ -374,13 +375,15 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
               updateField('businessInfo', { ...form.businessInfo, businessNumber: value })
             }
           />
-          <TextField
-            label="사업장 주소"
-            value={form.businessInfo.businessAddress}
-            editable={!saveMutation.isPending}
-            onChangeText={(value) =>
-              updateField('businessInfo', { ...form.businessInfo, businessAddress: value })
+          <AddressSearchField
+            value={parseAddressFromSave(form.businessInfo.businessAddress)}
+            onChange={(address) =>
+              updateField('businessInfo', {
+                ...form.businessInfo,
+                businessAddress: formatAddressForSave(address),
+              })
             }
+            disabled={saveMutation.isPending}
           />
           <TextField
             label="메모"
