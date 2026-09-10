@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Modal, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import {
@@ -128,7 +129,7 @@ export function AddressSearchField({
         onChangeText={(detailAddress) => onChange({ ...value, detailAddress })}
       />
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
-        <View style={styles.modal}>
+        <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
           <View style={styles.modalHeader}>
             <AppText variant="heading">주소 검색</AppText>
             <Button label="닫기" size="sm" variant="ghost" onPress={() => setOpen(false)} />
@@ -141,7 +142,7 @@ export function AddressSearchField({
             domStorageEnabled
             style={styles.webview}
           />
-        </View>
+        </SafeAreaView>
       </Modal>
     </Stack>
   );
