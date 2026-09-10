@@ -290,6 +290,55 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             </CollapsibleDetailSection>
 
             <CollapsibleDetailSection
+              title="기본 정보"
+              testID="customer-detail-section-basic"
+              defaultExpanded
+            >
+              <DetailRow label="주민번호" value={formatCustomerSsn(customer.ssn)} />
+              <DetailRow label="상령일" value={formatCustomerDetailDate(customer.nextAgeDate)} />
+              <DetailRow label="문자 수신" value={customer.smsOptOut ? "수신 거부" : "수신 허용"} />
+              <DetailRow
+                label="통신사"
+                value={formatCustomerDetailValue(
+                  formatCustomerMobileCarrierDisplay(customer.carrier),
+                )}
+              />
+              <DetailRow label="주소" value={formatCustomerDetailValue(customer.address)} />
+              <DetailRow label="키 / 몸무게" value={formatCustomerBodySize(customer)} />
+              <DetailRow label="직업·회사·지역" value={formatCustomerDetailValue(customer.job)} />
+              <DetailRow label="운전 여부" value={formatCustomerDriver(customer)} />
+              <DetailRow
+                label="유입 경로"
+                value={formatCustomerInflowSourceDisplay(
+                  customer.inflowSource,
+                  customer.referrerName,
+                )}
+              />
+
+              <DetailSubsectionLabel label="건강/보험 참고" />
+              <DetailRow
+                label="수술·치료 관련"
+                value={formatCustomerDetailValue(customer.notes.treatmentHistoryNote)}
+              />
+              <DetailRow
+                label="약 복용 관련"
+                value={formatCustomerDetailValue(customer.notes.medicationHistoryNote)}
+              />
+
+              <DetailSubsectionLabel label="보험 가입" />
+              <DetailRow
+                label="보험 가입 내역"
+                value={formatCustomerDetailValue(customer.notes.insuranceHistory)}
+              />
+
+              <DetailSubsectionLabel label="계좌" />
+              <DetailRow
+                label="계좌 정보"
+                value={formatCustomerDetailValue(customer.notes.accountNumber)}
+              />
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection
               title="자동차 정보"
               testID="customer-detail-section-vehicle"
               defaultExpanded={false}
@@ -323,6 +372,8 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 />
               )}
             </CollapsibleDetailSection>
+
+            <CustomerRelationsPanel customerId={customer.id} />
 
             <CollapsibleDetailSection
               title="사업자 정보"
@@ -376,52 +427,25 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             </CollapsibleDetailSection>
 
             <CollapsibleDetailSection
-              title="기본 정보"
-              testID="customer-detail-section-basic"
-              defaultExpanded
+              title="기념일"
+              testID="customer-detail-section-special-dates"
+              defaultExpanded={false}
             >
-              <DetailRow label="주민번호" value={formatCustomerSsn(customer.ssn)} />
-              <DetailRow label="상령일" value={formatCustomerDetailDate(customer.nextAgeDate)} />
-              <DetailRow label="문자 수신" value={customer.smsOptOut ? "수신 거부" : "수신 허용"} />
-              <DetailRow
-                label="통신사"
-                value={formatCustomerDetailValue(
-                  formatCustomerMobileCarrierDisplay(customer.carrier),
-                )}
-              />
-              <DetailRow label="주소" value={formatCustomerDetailValue(customer.address)} />
-              <DetailRow label="키 / 몸무게" value={formatCustomerBodySize(customer)} />
-              <DetailRow label="직업·회사·지역" value={formatCustomerDetailValue(customer.job)} />
-              <DetailRow label="운전 여부" value={formatCustomerDriver(customer)} />
-              <DetailRow
-                label="유입 경로"
-                value={formatCustomerInflowSourceDisplay(
-                  customer.inflowSource,
-                  customer.referrerName,
-                )}
-              />
-
-              <DetailSubsectionLabel label="건강/보험 참고" />
-              <DetailRow
-                label="수술·치료 관련"
-                value={formatCustomerDetailValue(customer.notes.treatmentHistoryNote)}
-              />
-              <DetailRow
-                label="약 복용 관련"
-                value={formatCustomerDetailValue(customer.notes.medicationHistoryNote)}
-              />
-
-              <DetailSubsectionLabel label="보험 가입" />
-              <DetailRow
-                label="보험 가입 내역"
-                value={formatCustomerDetailValue(customer.notes.insuranceHistory)}
-              />
-
-              <DetailSubsectionLabel label="계좌" />
-              <DetailRow
-                label="계좌 정보"
-                value={formatCustomerDetailValue(customer.notes.accountNumber)}
-              />
+              {specialDatesQuery.isLoading ? (
+                <AppText variant="caption">기념일을 불러오는 중…</AppText>
+              ) : specialDatesQuery.data?.length ? (
+                specialDatesQuery.data.map((item) => (
+                  <DetailRow
+                    key={item.id}
+                    label={`${CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS[item.purposeType]} · ${item.title}`}
+                    value={formatCustomerDetailDate(item.dateValue)}
+                  />
+                ))
+              ) : (
+                <AppText variant="caption" color="textSecondary">
+                  등록된 기념일이 없습니다.
+                </AppText>
+              )}
             </CollapsibleDetailSection>
 
             <CollapsibleDetailSection
@@ -459,30 +483,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 style={styles.fullWidthAction}
               />
             </CollapsibleDetailSection>
-
-            <CollapsibleDetailSection
-              title="기념일"
-              testID="customer-detail-section-special-dates"
-              defaultExpanded={false}
-            >
-              {specialDatesQuery.isLoading ? (
-                <AppText variant="caption">기념일을 불러오는 중…</AppText>
-              ) : specialDatesQuery.data?.length ? (
-                specialDatesQuery.data.map((item) => (
-                  <DetailRow
-                    key={item.id}
-                    label={`${CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS[item.purposeType]} · ${item.title}`}
-                    value={formatCustomerDetailDate(item.dateValue)}
-                  />
-                ))
-              ) : (
-                <AppText variant="caption" color="textSecondary">
-                  등록된 기념일이 없습니다.
-                </AppText>
-              )}
-            </CollapsibleDetailSection>
-
-            <CustomerRelationsPanel customerId={customer.id} />
 
             <Stack gap="sm" style={styles.bottomActions} testID="customer-detail-bottom-actions">
               <Button
