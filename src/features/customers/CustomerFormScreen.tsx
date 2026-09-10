@@ -50,6 +50,7 @@ import { CustomerFireInsuranceLocationsEditor } from './CustomerFireInsuranceLoc
 import { loadCustomerCarFormItems, saveCustomerCarsForCustomer } from './customerCarsSave';
 import {
   ensureFireInsuranceLocationFormItems,
+  customerFireInsuranceLocationRecordToFormItem,
   listCustomerFireInsuranceLocations,
   saveCustomerFireInsuranceLocationsForCustomer,
 } from './customerFireInsuranceLocationsApi';
@@ -109,11 +110,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           memo: item.memo,
         })),
         fireInsuranceLocations: ensureFireInsuranceLocationFormItems(
-          fireLocations.map((item) => ({
-            id: item.id,
-            address: item.address,
-            memo: item.memo,
-          })),
+          fireLocations.map(customerFireInsuranceLocationRecordToFormItem),
         ),
       };
       setForm(hydrated);
@@ -193,6 +190,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   };
 
   const submit = () => {
+    if (mode === 'edit' && !initialized) return;
     const nextErrors = validateCustomerForm(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -463,6 +461,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             label={mode === 'create' ? '고객 등록' : '변경 저장'}
             variant="actionEmphasis"
             loading={saveMutation.isPending}
+            disabled={mode === 'edit' && !initialized}
             onPress={submit}
             style={styles.grow}
           />

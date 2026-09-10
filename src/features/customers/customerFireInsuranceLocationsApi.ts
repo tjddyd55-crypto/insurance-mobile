@@ -19,6 +19,7 @@ export type CustomerFireInsuranceLocationFormItem = {
   id?: number;
   address: string;
   memo: string;
+  sortOrder?: number;
 };
 
 function requireToken(token: string | null): string {
@@ -31,15 +32,23 @@ function trim(value: string | undefined): string {
   return String(value ?? "").trim();
 }
 
+/** Coerce form/record ids so string "14" still PATCH-updates instead of recreate. */
+export function resolveFireInsuranceLocationId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const id = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(id) || !Number.isInteger(id) || id <= 0) return null;
+  return id;
+}
+
 function mapLocation(raw: Record<string, unknown>): CustomerFireInsuranceLocationRecord {
   return {
     id: Number(raw.id),
-    customerId: Number(raw.customerId),
+    customerId: Number(raw.customerId ?? raw.customer_id),
     address: String(raw.address ?? ""),
     memo: String(raw.memo ?? ""),
-    sortOrder: Number(raw.sortOrder ?? 0),
-    createdAt: String(raw.createdAt ?? ""),
-    updatedAt: String(raw.updatedAt ?? ""),
+    sortOrder: Number(raw.sortOrder ?? raw.sort_order ?? 0),
+    createdAt: String(raw.createdAt ?? raw.created_at ?? ""),
+    updatedAt: String(raw.updatedAt ?? raw.updated_at ?? ""),
   };
 }
 
@@ -53,14 +62,26 @@ export function ensureFireInsuranceLocationFormItems(
   return items.length > 0 ? items : [createEmptyFireInsuranceLocation()];
 }
 
-function normalizeForSave(
+export function customerFireInsuranceLocationRecordToFormItem(
+  record: Pick<CustomerFireInsuranceLocationRecord, "id" | "address" | "memo" | "sortOrder">,
+): CustomerFireInsuranceLocationFormItem {
+  return {
+    id: record.id,
+    address: record.address ?? "",
+    memo: record.memo ?? "",
+    sortOrder: record.sortOrder,
+  };
+}
+
+export function normalizeFireInsuranceLocationsForSave(
   items: CustomerFireInsuranceLocationFormItem[],
 ): CustomerFireInsuranceLocationFormItem[] {
   return items
     .map((item) => ({
-      id: item.id,
+      id: resolveFireInsuranceLocationId(item.id) ?? undefined,
       address: trim(item.address),
       memo: trim(item.memo),
+      sortOrder: item.sortOrder,
     }))
     .filter((item) => item.address || item.memo);
 }
@@ -137,46 +158,70 @@ function recordEqualsForm(
   return trim(rec.address) === trim(item.address) && trim(rec.memo) === trim(item.memo);
 }
 
+export type FireInsuranceLocationSyncPlan = {
+  toUpdate: Array<{ id: number; payload: CustomerFireInsuranceLocationInput }>;
+  toCreate: CustomerFireInsuranceLocationInput[];
+  toDelete: number[];
+};
+
+/**
+ * Pure diff used by save + unit tests.
+ * Existing rows with a resolvable id are PATCH/updated; new rows POST; removed ids soft-delete.
+ */
+export function planFireInsuranceLocationSync(
+  formItems: CustomerFireInsuranceLocationFormItem[],
+  current: CustomerFireInsuranceLocationRecord[],
+): FireInsuranceLocationSyncPlan {
+  const norm = normalizeFireInsuranceLocationsForSave(formItems);
+  const toUpdate: FireInsuranceLocationSyncPlan["toUpdate"] = [];
+  const toCreate: FireInsuranceLocationSyncPlan["toCreate"] = [];
+  const matched = new Set<number>();
+
+  if (norm.length === 0) {
+    return {
+      toUpdate: [],
+      toCreate: [],
+      toDelete: current.map((row) => row.id),
+    };
+  }
+
+  const currentById = new Map(current.map((row) => [row.id, row]));
+
+  for (const item of norm) {
+    const payload = { address: trim(item.address), memo: trim(item.memo) };
+    const id = resolveFireInsuranceLocationId(item.id);
+    if (id != null && currentById.has(id)) {
+      matched.add(id);
+      const rec = currentById.get(id)!;
+      if (!recordEqualsForm(rec, item)) {
+        toUpdate.push({ id, payload });
+      }
+      continue;
+    }
+    toCreate.push(payload);
+  }
+
+  const toDelete = current.filter((row) => !matched.has(row.id)).map((row) => row.id);
+  return { toUpdate, toCreate, toDelete };
+}
+
 export async function saveCustomerFireInsuranceLocationsForCustomer(params: {
   token: string | null;
   customerId: number;
   formItems: CustomerFireInsuranceLocationFormItem[];
 }): Promise<void> {
   const auth = requireToken(params.token);
-  const norm = normalizeForSave(params.formItems);
   const current = await listCustomerFireInsuranceLocations(auth, params.customerId);
+  const plan = planFireInsuranceLocationSync(params.formItems, current);
 
-  if (norm.length === 0) {
-    for (const row of current) {
-      await deleteCustomerFireInsuranceLocation(auth, params.customerId, row.id);
-    }
-    return;
+  // Update + create first (Web/special-dates parity), then soft-delete removed ids.
+  for (const row of plan.toUpdate) {
+    await updateCustomerFireInsuranceLocation(auth, params.customerId, row.id, row.payload);
   }
-
-  const formIds = new Set(
-    norm
-      .map((item) => item.id)
-      .filter((id): id is number => id != null && Number.isInteger(id) && id > 0),
-  );
-
-  for (const row of current) {
-    if (!formIds.has(row.id)) {
-      await deleteCustomerFireInsuranceLocation(auth, params.customerId, row.id);
-    }
-  }
-
-  const afterDelete = await listCustomerFireInsuranceLocations(auth, params.customerId);
-  const freshById = new Map(afterDelete.map((row) => [row.id, row]));
-
-  for (const item of norm) {
-    const payload = { address: trim(item.address), memo: trim(item.memo) };
-    if (item.id != null && freshById.has(item.id)) {
-      const rec = freshById.get(item.id)!;
-      if (!recordEqualsForm(rec, item)) {
-        await updateCustomerFireInsuranceLocation(auth, params.customerId, item.id, payload);
-      }
-      continue;
-    }
+  for (const payload of plan.toCreate) {
     await createCustomerFireInsuranceLocation(auth, params.customerId, payload);
+  }
+  for (const locationId of plan.toDelete) {
+    await deleteCustomerFireInsuranceLocation(auth, params.customerId, locationId);
   }
 }
