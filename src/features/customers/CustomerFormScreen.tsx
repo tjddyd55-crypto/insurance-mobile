@@ -43,8 +43,15 @@ import {
   getInflowSourceDetailFieldMeta,
   requiresInflowSourceDetail,
 } from './customerInflowSource';
+import { CollapsibleFormSection } from './CollapsibleFormSection';
 import { CustomerCarsEditor } from './CustomerCarsEditor';
+import { CustomerFireInsuranceLocationsEditor } from './CustomerFireInsuranceLocationsEditor';
 import { loadCustomerCarFormItems, saveCustomerCarsForCustomer } from './customerCarsSave';
+import {
+  ensureFireInsuranceLocationFormItems,
+  listCustomerFireInsuranceLocations,
+  saveCustomerFireInsuranceLocationsForCustomer,
+} from './customerFireInsuranceLocationsApi';
 import {
   listCustomerSpecialDates,
   saveCustomerSpecialDatesForCustomer,
@@ -85,9 +92,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     if (mode !== 'edit' || !customerQuery.data || initialized) return;
     void (async () => {
       const next = customerToForm(customerQuery.data);
-      const [cars, specialDates] = await Promise.all([
+      const [cars, specialDates, fireLocations] = await Promise.all([
         loadCustomerCarFormItems(token, customerQuery.data.id, next.cars),
         listCustomerSpecialDates(token, customerQuery.data.id),
+        listCustomerFireInsuranceLocations(token, customerQuery.data.id),
       ]);
       const hydrated: CustomerFormState = {
         ...next,
@@ -99,6 +107,13 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           dateValue: item.dateValue,
           memo: item.memo,
         })),
+        fireInsuranceLocations: ensureFireInsuranceLocationFormItems(
+          fireLocations.map((item) => ({
+            id: item.id,
+            address: item.address,
+            memo: item.memo,
+          })),
+        ),
       };
       setForm(hydrated);
       setInitialSnapshot(JSON.stringify(hydrated));
@@ -119,6 +134,11 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         token,
         customerId: saved.id,
         formCars: form.cars,
+      });
+      await saveCustomerFireInsuranceLocationsForCustomer({
+        token,
+        customerId: saved.id,
+        formItems: form.fireInsuranceLocations,
       });
       await saveCustomerSpecialDatesForCustomer({
         token,
@@ -319,7 +339,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           </Inline>
         </FormSection>
 
-        <FormSection title="차량 정보">
+        <CollapsibleFormSection title="자동차 정보" testID="customer-form-section-vehicle">
           <SegmentedChoice
             label="운전 여부"
             value={form.driver}
@@ -335,7 +355,53 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             onChange={(cars) => updateField('cars', cars)}
             disabled={saveMutation.isPending}
           />
-        </FormSection>
+        </CollapsibleFormSection>
+
+        <CollapsibleFormSection title="사업자 정보" testID="customer-form-section-business">
+          <TextField
+            label="대표자명"
+            value={form.businessInfo.representativeName}
+            editable={!saveMutation.isPending}
+            onChangeText={(value) =>
+              updateField('businessInfo', { ...form.businessInfo, representativeName: value })
+            }
+          />
+          <TextField
+            label="사업자번호"
+            value={form.businessInfo.businessNumber}
+            editable={!saveMutation.isPending}
+            onChangeText={(value) =>
+              updateField('businessInfo', { ...form.businessInfo, businessNumber: value })
+            }
+          />
+          <TextField
+            label="사업장 주소"
+            value={form.businessInfo.businessAddress}
+            editable={!saveMutation.isPending}
+            onChangeText={(value) =>
+              updateField('businessInfo', { ...form.businessInfo, businessAddress: value })
+            }
+          />
+          <TextField
+            label="메모"
+            multiline
+            value={form.businessInfo.memo}
+            editable={!saveMutation.isPending}
+            onChangeText={(value) =>
+              updateField('businessInfo', { ...form.businessInfo, memo: value })
+            }
+          />
+        </CollapsibleFormSection>
+
+        <CollapsibleFormSection title="화재보험 정보" testID="customer-form-section-fire-insurance">
+          <CustomerFireInsuranceLocationsEditor
+            items={form.fireInsuranceLocations}
+            onChange={(fireInsuranceLocations) =>
+              updateField('fireInsuranceLocations', fireInsuranceLocations)
+            }
+            disabled={saveMutation.isPending}
+          />
+        </CollapsibleFormSection>
 
         <FormSection title="기념일">
           <CustomerSpecialDatesEditor

@@ -9,6 +9,14 @@ import { resolveReferrerNameForSave } from "./customerInflowSource";
 import type { SaveCustomerPayload } from "./customersApi";
 import type { CustomerCarFormItem } from "./customerCarsModel";
 import { customerRecordToCarFormItems } from "./customerCarsModel";
+import {
+  customerBusinessInfoToForm,
+  emptyCustomerBusinessInfo,
+  isCustomerBusinessInfoEmpty,
+  type CustomerBusinessInfo,
+} from "./customerBusinessInfo";
+import type { CustomerFireInsuranceLocationFormItem } from "./customerFireInsuranceLocationsApi";
+import { createEmptyFireInsuranceLocation } from "./customerFireInsuranceLocationsApi";
 import type { CustomerSpecialDateFormItem } from "./customerSpecialDatesApi";
 import type { CustomerRecord } from "./types";
 import {
@@ -36,6 +44,8 @@ export type CustomerFormState = {
   carYear: string;
   renewalDate: string;
   cars: CustomerCarFormItem[];
+  businessInfo: CustomerBusinessInfo;
+  fireInsuranceLocations: CustomerFireInsuranceLocationFormItem[];
   specialDates: CustomerSpecialDateFormItem[];
   inflowSource: string;
   referrerName: string;
@@ -66,6 +76,8 @@ export const EMPTY_CUSTOMER_FORM: CustomerFormState = {
   carModel: "",
   carYear: "",
   renewalDate: "",
+  businessInfo: emptyCustomerBusinessInfo(),
+  fireInsuranceLocations: [createEmptyFireInsuranceLocation()],
   cars: customerRecordToCarFormItems({
     id: 0,
     userId: "",
@@ -136,6 +148,8 @@ export function customerToForm(customer: CustomerRecord): CustomerFormState {
     carYear: customer.carYear,
     renewalDate: ymd(customer.renewalDate),
     cars: customerRecordToCarFormItems(customer),
+    businessInfo: customerBusinessInfoToForm(customer.businessInfo),
+    fireInsuranceLocations: [createEmptyFireInsuranceLocation()],
     specialDates: [],
     inflowSource: customer.inflowSource ?? "",
     referrerName: customer.referrerName ?? "",
@@ -222,5 +236,6 @@ export function customerFormToPayload(
     },
     isFavorite: form.isFavorite,
     smsOptOut: form.smsOptOut,
+    businessInfo: isCustomerBusinessInfoEmpty(form.businessInfo) ? null : form.businessInfo,
   };
 }

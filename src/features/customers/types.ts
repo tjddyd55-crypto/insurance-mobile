@@ -1,3 +1,5 @@
+import type { CustomerBusinessInfo } from './customerBusinessInfo';
+
 export type CustomerGender = 'male' | 'female' | null;
 
 export type CustomerNote = {
@@ -12,6 +14,13 @@ export type CustomerNotesBag = {
   accountNumber: string;
   treatmentHistoryNote: string;
   medicationHistoryNote: string;
+};
+
+export type CustomerFireInsuranceLocation = {
+  id: number;
+  address: string;
+  memo: string;
+  sortOrder?: number;
 };
 
 export type CustomerRecord = {
@@ -56,6 +65,8 @@ export type CustomerRecord = {
   todayFollowUp?: boolean;
   isFavorite: boolean;
   smsOptOut: boolean;
+  businessInfo?: CustomerBusinessInfo | null;
+  fireInsuranceLocations?: CustomerFireInsuranceLocation[];
   createdAt: string;
 };
 

@@ -1,5 +1,7 @@
 import { ApiError } from '../../api/client';
+import { normalizeCustomerBusinessInfo } from './customerBusinessInfo';
 import type {
+  CustomerFireInsuranceLocation,
   CustomerGender,
   CustomerNotesBag,
   CustomerRecord,
@@ -102,8 +104,32 @@ export function normalizeCustomer(value: unknown, context = '고객 데이터'):
     todayFollowUp: row.todayFollowUp === true,
     isFavorite: row.isFavorite === true || row.is_favorite === true,
     smsOptOut: row.smsOptOut === true || row.sms_opt_out === true,
+    businessInfo: normalizeCustomerBusinessInfo(row.businessInfo ?? row.business_info),
+    fireInsuranceLocations: normalizeFireInsuranceLocations(
+      row.fireInsuranceLocations ?? row.fire_insurance_locations,
+    ),
     createdAt: text(row.createdAt ?? row.created_at),
   };
+}
+
+function normalizeFireInsuranceLocations(raw: unknown): CustomerFireInsuranceLocation[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const out: CustomerFireInsuranceLocation[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const id = Number(row.id);
+    if (!Number.isFinite(id)) continue;
+    out.push({
+      id,
+      address: text(row.address),
+      memo: text(row.memo),
+      sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : undefined,
+    });
+  }
+  return out;
 }
 
 export function normalizeCustomerListResponse(value: unknown): ListCustomersResult {
