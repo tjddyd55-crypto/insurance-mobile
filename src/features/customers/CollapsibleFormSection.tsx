@@ -45,10 +45,7 @@ export function CollapsibleFormSection({
         style={styles.sectionHeader}
       >
         {sectionTheme ? (
-          <>
-            <View style={[styles.accentBar, { backgroundColor: sectionTheme.accent }]} />
-            <View style={[styles.iconDot, { backgroundColor: sectionTheme.accent }]} />
-          </>
+          <View style={[styles.accentBar, { backgroundColor: sectionTheme.accent }]} />
         ) : null}
         <AppText variant="heading" numberOfLines={1} style={styles.title}>
           {title}
@@ -89,13 +86,6 @@ function createStyles(theme: AppTheme, accent?: string, tint?: string) {
       width: 3,
       height: 20,
       borderRadius: 2,
-      flexShrink: 0,
-      backgroundColor: accent ?? theme.colors.textSecondary,
-    },
-    iconDot: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
       flexShrink: 0,
       backgroundColor: accent ?? theme.colors.textSecondary,
     },
