@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   KeyboardAvoidingView,
@@ -8,7 +8,7 @@ import {
   Switch,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,6 +38,13 @@ import {
   type CustomerFormErrors,
   type CustomerFormState,
 } from './customerForm';
+import {
+  cloneCustomerFormState,
+  createCustomerFormSnapshot,
+  decideCloseEdit,
+  isCustomerFormDirty,
+  shouldEnableCustomerEditSave,
+} from './customerFormDraft';
 import { CUSTOMER_MOBILE_CARRIER_OPTIONS } from './customerCarrier';
 import {
   CUSTOMER_INFLOW_SOURCE_OPTIONS,
@@ -78,11 +85,18 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [form, setForm] = useState<CustomerFormState>({ ...EMPTY_CUSTOMER_FORM });
+  const [form, setForm] = useState<CustomerFormState>(() => cloneCustomerFormState(EMPTY_CUSTOMER_FORM));
   const [errors, setErrors] = useState<CustomerFormErrors>({});
   const [initialized, setInitialized] = useState(mode === 'create');
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [initialSnapshot, setInitialSnapshot] = useState(JSON.stringify(EMPTY_CUSTOMER_FORM));
+  /** Immutable original snapshot for this edit session (string). */
+  const originalSnapshotRef = useRef<string | null>(
+    mode === 'create' ? createCustomerFormSnapshot(EMPTY_CUSTOMER_FORM) : null,
+  );
+  const originalFormRef = useRef<CustomerFormState | null>(
+    mode === 'create' ? cloneCustomerFormState(EMPTY_CUSTOMER_FORM) : null,
+  );
+  const hydrateEpochRef = useRef(0);
 
   const customerQuery = useQuery({
     queryKey: customerQueryKeys.detail(customerId ?? 0),
@@ -92,34 +106,58 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
 
   useEffect(() => {
     if (mode !== 'edit' || !customerQuery.data || initialized) return;
+    const epoch = ++hydrateEpochRef.current;
+    let cancelled = false;
+    const customer = customerQuery.data;
     void (async () => {
-      const next = customerToForm(customerQuery.data);
-      const [cars, specialDates, fireLocations] = await Promise.all([
-        loadCustomerCarFormItems(token, customerQuery.data.id, next.cars),
-        listCustomerSpecialDates(token, customerQuery.data.id),
-        listCustomerFireInsuranceLocations(token, customerQuery.data.id),
-      ]);
-      const hydrated: CustomerFormState = {
-        ...next,
-        cars,
-        specialDates: specialDates.map((item) => ({
+      const next = customerToForm(customer);
+      let cars = next.cars;
+      let specialDates: CustomerSpecialDateFormItem[] = [];
+      let fireLocationsRaw: Awaited<
+        ReturnType<typeof listCustomerFireInsuranceLocations>
+      > = [];
+      try {
+        const loaded = await Promise.all([
+          loadCustomerCarFormItems(token, customer.id, next.cars),
+          listCustomerSpecialDates(token, customer.id),
+          listCustomerFireInsuranceLocations(token, customer.id),
+        ]);
+        cars = loaded[0];
+        specialDates = loaded[1].map((item) => ({
           id: item.id,
           purposeType: item.purposeType,
           title: item.title,
           dateValue: item.dateValue,
           memo: item.memo,
-        })),
+        }));
+        fireLocationsRaw = loaded[2];
+      } catch {
+        // Secondary collections failed — still hydrate core customer fields so edit session can start.
+        specialDates = [];
+        fireLocationsRaw = [];
+      }
+      if (cancelled || epoch !== hydrateEpochRef.current) return;
+      const hydrated: CustomerFormState = cloneCustomerFormState({
+        ...next,
+        cars,
+        specialDates,
         fireInsuranceLocations: ensureFireInsuranceLocationFormItems(
-          fireLocations.map(customerFireInsuranceLocationRecordToFormItem),
+          fireLocationsRaw.map(customerFireInsuranceLocationRecordToFormItem),
         ),
-      };
-      setForm(hydrated);
-      setInitialSnapshot(JSON.stringify(hydrated));
+      });
+      // Separate clones: original stays immutable; draft is editable.
+      originalFormRef.current = cloneCustomerFormState(hydrated);
+      originalSnapshotRef.current = createCustomerFormSnapshot(hydrated);
+      setForm(cloneCustomerFormState(hydrated));
       setInitialized(true);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [customerQuery.data, initialized, mode, token]);
 
-  const dirty = initialized && JSON.stringify(form) !== initialSnapshot;
+  const dirty =
+    initialized && isCustomerFormDirty(form, originalSnapshotRef.current);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -146,7 +184,8 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       return saved;
     },
     onSuccess: (saved) => {
-      setInitialSnapshot(JSON.stringify(form));
+      originalFormRef.current = cloneCustomerFormState(form);
+      originalSnapshotRef.current = createCustomerFormSnapshot(form);
       queryClient.setQueryData(customerQueryKeys.detail(saved.id), saved);
       queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) => {
         if (!previous) return previous;
@@ -162,29 +201,46 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     },
   });
 
-  const leaveWithoutSave = () => {
+  const leaveWithoutSave = useCallback(() => {
     if (mode === 'edit' && customerId) {
+      // Ensure detail re-reads server/cache original — never treat draft as persisted.
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(customerId) });
       navigateToCustomerDetail(router, customerId);
       return;
     }
     router.back();
-  };
+  }, [customerId, mode, queryClient, router]);
 
-  const requestBack = () => {
-    if (dirty && !saveMutation.isPending) {
+  const discardDraftAndLeave = useCallback(() => {
+    if (originalFormRef.current) {
+      setForm(cloneCustomerFormState(originalFormRef.current));
+    }
+    setDiscardOpen(false);
+    leaveWithoutSave();
+  }, [leaveWithoutSave]);
+
+  const attemptCloseEdit = useCallback(() => {
+    const decision = decideCloseEdit({
+      dirty,
+      saving: saveMutation.isPending,
+    });
+    if (decision === 'block') return;
+    if (decision === 'confirm') {
       setDiscardOpen(true);
       return;
     }
     leaveWithoutSave();
-  };
+  }, [dirty, leaveWithoutSave, saveMutation.isPending]);
 
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      requestBack();
-      return true;
-    });
-    return () => subscription.remove();
-  });
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        attemptCloseEdit();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [attemptCloseEdit]),
+  );
 
   const updateField = <K extends keyof CustomerFormState>(key: K, value: CustomerFormState[K]) => {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -201,7 +257,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     saveMutation.mutate();
   };
 
-  if (mode === 'edit' && customerQuery.isLoading) {
+  if (mode === 'edit' && (customerQuery.isLoading || !initialized)) {
     return <LoadingState message="고객 정보를 불러오는 중…" />;
   }
   if (mode === 'edit' && (customerQuery.isError || !customerQuery.data)) {
@@ -217,18 +273,21 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <AppHeader
         title={mode === 'create' ? '고객 등록' : '고객 정보 수정'}
         showMenu={false}
         showBack
-        onBackPress={requestBack}
+        onBackPress={attemptCloseEdit}
       />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
         <FormSection title="기본 정보">
           <TextField
@@ -367,7 +426,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             value={form.businessInfo.representativeName}
             editable={!saveMutation.isPending}
             onChangeText={(value) =>
-              updateField('businessInfo', { ...form.businessInfo, representativeName: value })
+              setForm((previous) => ({
+                ...previous,
+                businessInfo: { ...previous.businessInfo, representativeName: value },
+              }))
             }
           />
           <TextField
@@ -375,16 +437,22 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             value={form.businessInfo.businessNumber}
             editable={!saveMutation.isPending}
             onChangeText={(value) =>
-              updateField('businessInfo', { ...form.businessInfo, businessNumber: value })
+              setForm((previous) => ({
+                ...previous,
+                businessInfo: { ...previous.businessInfo, businessNumber: value },
+              }))
             }
           />
           <AddressSearchField
             value={parseAddressFromSave(form.businessInfo.businessAddress)}
             onChange={(address) =>
-              updateField('businessInfo', {
-                ...form.businessInfo,
-                businessAddress: formatAddressForSave(address),
-              })
+              setForm((previous) => ({
+                ...previous,
+                businessInfo: {
+                  ...previous.businessInfo,
+                  businessAddress: formatAddressForSave(address),
+                },
+              }))
             }
             disabled={saveMutation.isPending}
           />
@@ -394,7 +462,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             value={form.businessInfo.memo}
             editable={!saveMutation.isPending}
             onChangeText={(value) =>
-              updateField('businessInfo', { ...form.businessInfo, memo: value })
+              setForm((previous) => ({
+                ...previous,
+                businessInfo: { ...previous.businessInfo, memo: value },
+              }))
             }
           />
         </CollapsibleFormSection>
@@ -459,14 +530,14 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             label="취소"
             variant="secondary"
             disabled={saveMutation.isPending}
-            onPress={requestBack}
+            onPress={attemptCloseEdit}
             style={styles.grow}
           />
           <Button
             label={mode === 'create' ? '고객 등록' : '변경 저장'}
             variant="actionEmphasis"
             loading={saveMutation.isPending}
-            disabled={mode === 'edit' && (!initialized || !dirty)}
+            disabled={mode === 'edit' ? !shouldEnableCustomerEditSave({ initialized, dirty, saving: saveMutation.isPending }) : saveMutation.isPending}
             onPress={submit}
             style={styles.grow}
           />
@@ -477,10 +548,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         open={discardOpen}
         busy={saveMutation.isPending}
         onCancel={() => setDiscardOpen(false)}
-        onDiscard={() => {
-          setDiscardOpen(false);
-          leaveWithoutSave();
-        }}
+        onDiscard={discardDraftAndLeave}
         onSave={() => {
           setDiscardOpen(false);
           submit();
@@ -639,7 +707,7 @@ function createStyles(theme: AppTheme) {
     content: {
       paddingHorizontal: theme.spacing.md,
       paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.xl,
+      paddingBottom: theme.spacing.xl + theme.spacing.xl,
       gap: theme.spacing.md,
     },
     footerSafe: {
