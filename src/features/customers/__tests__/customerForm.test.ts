@@ -21,6 +21,20 @@ describe('customer form', () => {
     ).toBeUndefined();
   });
 
+  it('allows legacy unset driver on edit when unchanged from original', () => {
+    const original = {
+      ...EMPTY_CUSTOMER_FORM,
+      name: '고객사업자화재QA',
+      gender: 'male' as const,
+      driver: '' as const,
+    };
+    const draft = { ...original, name: '고객사업자화재QA 수정' };
+    expect(validateCustomerForm(draft, { mode: 'edit', original }).driver).toBeUndefined();
+    expect(
+      validateCustomerForm({ ...draft, driver: '' }, { mode: 'create' }).driver,
+    ).toBeTruthy();
+  });
+
   it('requires driver to be yes or no', () => {
     expect(validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'male' }).driver).toBe(
       '운전 여부를 선택해 주세요.',

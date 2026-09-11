@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
-import { CustomerUnsavedChangesDialog } from './CustomerUnsavedChangesDialog';
+import { CustomerDiscardChangesDialog } from './CustomerDiscardChangesDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
@@ -91,6 +91,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const [errors, setErrors] = useState<CustomerFormErrors>({});
   const [initialized, setInitialized] = useState(mode === 'create');
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [kbHeight, setKbHeight] = useState(0);
 
@@ -179,33 +180,48 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const dirty =
     initialized && isCustomerFormDirty(form, originalSnapshotRef.current);
 
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  const persistSecondaryCollections = useCallback(
+    async (savedCustomerId: number, draft: CustomerFormState) => {
+      await saveCustomerCarsForCustomer({
+        token,
+        customerId: savedCustomerId,
+        formCars: draft.cars,
+      });
+      await saveCustomerFireInsuranceLocationsForCustomer({
+        token,
+        customerId: savedCustomerId,
+        formItems: draft.fireInsuranceLocations,
+      });
+      await saveCustomerSpecialDatesForCustomer({
+        token,
+        customerId: savedCustomerId,
+        formItems: draft.specialDates,
+      });
+      void queryClient.invalidateQueries({ queryKey: ['customer-cars', savedCustomerId] });
+      void queryClient.invalidateQueries({ queryKey: ['customer-special-dates', savedCustomerId] });
+      void queryClient.invalidateQueries({
+        queryKey: ['customer-fire-insurance-locations', savedCustomerId],
+      });
+    },
+    [queryClient, token],
+  );
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = customerFormToPayload(form, customerQuery.data);
+      const draft = formRef.current;
+      const payload = customerFormToPayload(draft, customerQuery.data);
       const saved =
         mode === 'create'
           ? await createCustomer(token, payload)
           : await updateCustomer(token, customerId, payload);
-      await saveCustomerCarsForCustomer({
-        token,
-        customerId: saved.id,
-        formCars: form.cars,
-      });
-      await saveCustomerFireInsuranceLocationsForCustomer({
-        token,
-        customerId: saved.id,
-        formItems: form.fireInsuranceLocations,
-      });
-      await saveCustomerSpecialDatesForCustomer({
-        token,
-        customerId: saved.id,
-        formItems: form.specialDates,
-      });
-      return saved;
+      return { saved, draft: cloneCustomerFormState(draft) };
     },
-    onSuccess: (saved) => {
-      originalFormRef.current = cloneCustomerFormState(form);
-      originalSnapshotRef.current = createCustomerFormSnapshot(form);
+    onSuccess: ({ saved, draft }) => {
+      originalFormRef.current = cloneCustomerFormState(draft);
+      originalSnapshotRef.current = createCustomerFormSnapshot(draft);
       queryClient.setQueryData(customerQueryKeys.detail(saved.id), saved);
       queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) => {
         if (!previous) return previous;
@@ -217,7 +233,11 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             : [saved, ...previous.customers],
         };
       });
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(saved.id) });
       router.replace({ pathname: '/customers/[customerId]', params: { customerId: String(saved.id) } });
+      void persistSecondaryCollections(saved.id, draft).catch(() => {
+        // Core customer saved — detail screen shows latest PUT; collections refresh on invalidate.
+      });
     },
   });
 
@@ -255,27 +275,47 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        // First back dismisses keyboard; second back follows the same discard policy as header/cancel.
+        if (kbHeight > 0) {
+          Keyboard.dismiss();
+          return true;
+        }
         attemptCloseEdit();
         return true;
       });
       return () => subscription.remove();
-    }, [attemptCloseEdit]),
+    }, [attemptCloseEdit, kbHeight]),
   );
 
   const updateField = <K extends keyof CustomerFormState>(key: K, value: CustomerFormState[K]) => {
     setForm((previous) => ({ ...previous, [key]: value }));
+    if (validationMessage) {
+      setValidationMessage(null);
+    }
     if (errors[key]) {
       setErrors((previous) => ({ ...previous, [key]: undefined }));
     }
   };
 
-  const submit = () => {
+  const submit = useCallback(() => {
     if (mode === 'edit' && !initialized) return;
-    const nextErrors = validateCustomerForm(form);
+    if (saveMutation.isPending) return;
+    if (mode === 'edit' && !shouldEnableCustomerEditSave({ initialized, dirty, saving: false })) {
+      return;
+    }
+    const nextErrors = validateCustomerForm(form, {
+      mode,
+      original: mode === 'edit' ? originalFormRef.current ?? undefined : undefined,
+    });
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      setValidationMessage('입력 내용을 확인해 주세요.');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    setValidationMessage(null);
     saveMutation.mutate();
-  };
+  }, [dirty, form, initialized, mode, saveMutation]);
 
   if (mode === 'edit' && (customerQuery.isLoading || !initialized)) {
     return <LoadingState message="고객 정보를 불러오는 중…" />;
@@ -560,8 +600,13 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           />
         </FormSection>
 
+        {validationMessage ? (
+          <AppText color="danger" accessibilityRole="alert">
+            {validationMessage}
+          </AppText>
+        ) : null}
         {saveMutation.isError ? (
-          <AppText color="danger">
+          <AppText color="danger" accessibilityRole="alert">
             {saveMutation.error instanceof Error
               ? saveMutation.error.message
               : '고객 정보를 저장하지 못했습니다.'}
@@ -579,25 +624,34 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             style={styles.grow}
           />
           <Button
-            label={mode === 'create' ? '고객 등록' : '변경 저장'}
+            label={
+              saveMutation.isPending
+                ? '저장 중...'
+                : mode === 'create'
+                  ? '고객 등록'
+                  : '변경 저장'
+            }
             variant="actionEmphasis"
             loading={saveMutation.isPending}
-            disabled={mode === 'edit' ? !shouldEnableCustomerEditSave({ initialized, dirty, saving: saveMutation.isPending }) : saveMutation.isPending}
+            disabled={
+              mode === 'edit'
+                ? !shouldEnableCustomerEditSave({
+                    initialized,
+                    dirty,
+                    saving: saveMutation.isPending,
+                  })
+                : saveMutation.isPending
+            }
             onPress={submit}
             style={styles.grow}
           />
         </View>
       </SafeAreaView>
 
-      <CustomerUnsavedChangesDialog
+      <CustomerDiscardChangesDialog
         open={discardOpen}
-        busy={saveMutation.isPending}
-        onCancel={() => setDiscardOpen(false)}
+        onContinueEditing={() => setDiscardOpen(false)}
         onDiscard={discardDraftAndLeave}
-        onSave={() => {
-          setDiscardOpen(false);
-          submit();
-        }}
       />
     </KeyboardAvoidingView>
   );
