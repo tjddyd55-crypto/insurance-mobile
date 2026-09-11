@@ -307,28 +307,31 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
         testID="customer-detail-section-linked-customers"
         defaultExpanded={false}
       >
-        <DetailSubsectionLabel label="그룹" />
-        <Inline justify="space-between" align="center">
-          <AppText variant="caption" color="textSecondary">
-            {groups.length ? `${groups.length}개 그룹` : "등록된 그룹이 없습니다."}
-          </AppText>
-          <Button
-            label="그룹 만들기"
-            size="sm"
-            variant="secondary"
-            onPress={() => {
-              setGroupName("");
-              setLabelOption("배우자");
-              setLabelCustom("");
-              setPicker({ kind: "family-create" });
-            }}
-          />
-        </Inline>
         {groupsQuery.isLoading ? (
           <AppText variant="caption">그룹을 불러오는 중…</AppText>
         ) : groups.length ? (
           groups.map(renderGroup)
-        ) : null}
+        ) : (
+          <>
+            <DetailSubsectionLabel label="그룹" />
+            <Inline justify="space-between" align="center">
+              <AppText variant="caption" color="textSecondary">
+                등록된 그룹이 없습니다.
+              </AppText>
+              <Button
+                label="그룹 만들기"
+                size="sm"
+                variant="secondary"
+                onPress={() => {
+                  setGroupName("");
+                  setLabelOption("배우자");
+                  setLabelCustom("");
+                  setPicker({ kind: "family-create" });
+                }}
+              />
+            </Inline>
+          </>
+        )}
 
         <DetailSubsectionLabel label="개별 연결" />
         <Inline justify="flex-end">
