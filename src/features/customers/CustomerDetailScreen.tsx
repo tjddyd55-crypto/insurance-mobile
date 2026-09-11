@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +18,7 @@ import {
   useAppTheme,
   type AppTheme,
 } from "../../design-system";
-import { customerGenderLabel, formatCustomerPhone } from "./customerModel";
+import { formatCustomerPhone } from "./customerModel";
 import {
   formatCustomerBodySize,
   formatCustomerDetailDate,
@@ -49,6 +49,10 @@ import {
   DetailRow,
   DetailSubsectionLabel,
 } from "./CollapsibleDetailSection";
+import {
+  CustomerContactIconButton,
+  openPhoneUrl,
+} from "./CustomerContactIconButton";
 import { useGoBackFromCustomerDetail } from "./customerWorkspaceNavigation";
 import {
   buildCustomerWorkspaceActions,
@@ -178,25 +182,21 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 disabled={favoriteMutation.isPending}
                 onPress={() => favoriteMutation.mutate(!customer.isFavorite)}
               />
-              <Button
-                accessibilityLabel={`${customer.name} 고객에게 전화`}
-                label="전화"
-                size="sm"
-                variant="ghost"
-                disabled={!telUrl}
-                onPress={() => telUrl && void Linking.openURL(telUrl)}
-              />
-              <Button
+              <CustomerContactIconButton
+                kind="sms"
+                disabled={!smsUrl || customer.smsOptOut}
                 accessibilityLabel={
                   customer.smsOptOut
                     ? `${customer.name} 고객 문자 수신 거부`
                     : `${customer.name} 고객에게 문자`
                 }
-                label={customer.smsOptOut ? "문자거부" : "문자"}
-                size="sm"
-                variant="ghost"
-                disabled={!smsUrl || customer.smsOptOut}
-                onPress={() => smsUrl && void Linking.openURL(smsUrl)}
+                onPress={() => openPhoneUrl(smsUrl)}
+              />
+              <CustomerContactIconButton
+                kind="tel"
+                disabled={!telUrl}
+                accessibilityLabel={`${customer.name} 고객에게 전화`}
+                onPress={() => openPhoneUrl(telUrl)}
               />
             </Inline>
           ) : null
@@ -252,6 +252,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="고객 업무"
               testID="customer-detail-section-actions"
+              sectionId="actions"
               defaultExpanded
             >
               <CustomerWorkspaceActionGrid
@@ -268,6 +269,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="기본 정보"
               testID="customer-detail-section-basic"
+              sectionId="basic"
               defaultExpanded
             >
               <DetailRow label="이름" value={formatCustomerDetailValue(customer.name)} />
@@ -332,6 +334,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="자동차 정보"
               testID="customer-detail-section-vehicle"
+              sectionId="car"
               defaultExpanded={false}
             >
               {carsQuery.isLoading ? (
@@ -369,6 +372,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="사업자 정보"
               testID="customer-detail-section-business"
+              sectionId="business"
               defaultExpanded={false}
             >
               {customer.businessInfo ? (
@@ -400,6 +404,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="화재보험 정보"
               testID="customer-detail-section-fire-insurance"
+              sectionId="fire"
               defaultExpanded={false}
             >
               {fireLocationsQuery.isLoading ? (
@@ -420,6 +425,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="기념일"
               testID="customer-detail-section-special-dates"
+              sectionId="anniversary"
               defaultExpanded={false}
             >
               {specialDatesQuery.isLoading ? (
@@ -440,6 +446,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             <CollapsibleDetailSection
               title="상담"
               testID="customer-detail-section-consultation"
+              sectionId="consultation"
               defaultExpanded={false}
             >
               {consultationsQuery.isLoading ? (
