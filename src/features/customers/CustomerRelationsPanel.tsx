@@ -263,7 +263,7 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
           />
         </Inline>
       </Inline>
-      {group.members.map((member) => (
+      {group.members.filter((member) => !member.isCurrentCustomer).map((member) => (
         <Pressable
           key={`${group.id}-${member.customerId}`}
           accessibilityRole="button"
