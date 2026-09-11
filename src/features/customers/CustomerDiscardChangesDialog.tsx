@@ -3,23 +3,31 @@ import { BackHandler, Modal, StyleSheet, View } from 'react-native';
 
 import { AppText, Button, useAppTheme, type AppTheme } from '../../design-system';
 
-export type CustomerUnsavedChangesChoice = 'save' | 'discard' | 'cancel';
+/** Discard-only confirm copy — no save action in this dialog. */
+export const CUSTOMER_DISCARD_CHANGES_DIALOG_COPY = {
+  title: '수정을 취소할까요?',
+  body: '변경한 내용은 저장되지 않습니다.',
+  continueEditing: '계속 수정',
+  discard: '저장하지 않고 나가기',
+} as const;
 
-type CustomerUnsavedChangesDialogProps = {
+export type CustomerDiscardChangesDialogProps = {
   open: boolean;
-  busy?: boolean;
-  onSave: () => void | Promise<void>;
+  /** 계속 수정 */
+  onContinueEditing: () => void;
+  /** 저장하지 않고 나가기 — API 호출 없음 */
   onDiscard: () => void;
-  onCancel: () => void;
 };
 
-export function CustomerUnsavedChangesDialog({
+/**
+ * 수정 취소 / back 시 draft 폐기 확인.
+ * 저장 action은 제공하지 않는다 — 저장은 `변경 저장` 버튼만.
+ */
+export function CustomerDiscardChangesDialog({
   open,
-  busy = false,
-  onSave,
+  onContinueEditing,
   onDiscard,
-  onCancel,
-}: CustomerUnsavedChangesDialogProps) {
+}: CustomerDiscardChangesDialogProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -28,47 +36,34 @@ export function CustomerUnsavedChangesDialog({
       return;
     }
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!busy) {
-        onCancel();
-      }
+      onContinueEditing();
       return true;
     });
     return () => sub.remove();
-  }, [busy, onCancel, open]);
+  }, [onContinueEditing, open]);
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={() => {
-      if (!busy) {
-        onCancel();
-      }
-    }}>
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      onRequestClose={onContinueEditing}
+    >
       <View style={styles.overlay}>
         <View style={styles.panel}>
-          <AppText variant="heading">변경사항 닫기</AppText>
-          <AppText color="textSecondary">
-            변경사항이 저장되지 않았습니다. 어떻게 하시겠습니까?
-          </AppText>
+          <AppText variant="heading">{CUSTOMER_DISCARD_CHANGES_DIALOG_COPY.title}</AppText>
+          <AppText color="textSecondary">{CUSTOMER_DISCARD_CHANGES_DIALOG_COPY.body}</AppText>
           <View style={styles.actions}>
             <Button
-              label="취소"
+              label={CUSTOMER_DISCARD_CHANGES_DIALOG_COPY.continueEditing}
               variant="secondary"
-              disabled={busy}
-              onPress={onCancel}
+              onPress={onContinueEditing}
               style={styles.actionBtn}
             />
             <Button
-              label="저장안함"
+              label={CUSTOMER_DISCARD_CHANGES_DIALOG_COPY.discard}
               variant="danger"
-              disabled={busy}
               onPress={onDiscard}
-              style={styles.actionBtn}
-            />
-            <Button
-              label="저장"
-              variant="actionEmphasis"
-              loading={busy}
-              disabled={busy}
-              onPress={() => void onSave()}
               style={styles.actionBtn}
             />
           </View>
@@ -93,14 +88,12 @@ function createStyles(theme: AppTheme) {
       gap: theme.spacing.md,
     },
     actions: {
-      flexDirection: 'row',
-      flexWrap: 'nowrap',
+      flexDirection: 'column',
       gap: theme.spacing.sm,
       marginTop: theme.spacing.sm,
     },
     actionBtn: {
-      flex: 1,
-      minWidth: 0,
+      alignSelf: 'stretch',
     },
   });
 }

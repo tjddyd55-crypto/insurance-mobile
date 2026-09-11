@@ -186,7 +186,24 @@ function isValidYmd(value: string): boolean {
   );
 }
 
-export function validateCustomerForm(form: CustomerFormState): CustomerFormErrors {
+export type ValidateCustomerFormOptions = {
+  mode?: "create" | "edit";
+  /** Edit session original — preserves legacy unset fields that were never stored. */
+  original?: CustomerFormState;
+};
+
+function isUnsetDriver(value: CustomerFormState["driver"]): boolean {
+  return value !== "yes" && value !== "no";
+}
+
+function isUnsetGender(value: CustomerFormState["gender"]): boolean {
+  return value !== "male" && value !== "female";
+}
+
+export function validateCustomerForm(
+  form: CustomerFormState,
+  options?: ValidateCustomerFormOptions,
+): CustomerFormErrors {
   const errors: CustomerFormErrors = {};
   if (!form.name.trim()) {
     errors.name = "고객명을 입력해 주세요.";
@@ -203,11 +220,25 @@ export function validateCustomerForm(form: CustomerFormState): CustomerFormError
   if (form.birthDate && !isValidYmd(form.birthDate)) {
     errors.birthDate = "생년월일을 YYYY-MM-DD 형식으로 입력해 주세요.";
   }
-  if (form.gender !== "male" && form.gender !== "female") {
-    errors.gender = "성별을 선택해 주세요.";
+  if (isUnsetGender(form.gender)) {
+    const legacyUnsetOnEdit =
+      options?.mode === "edit" &&
+      options.original &&
+      isUnsetGender(options.original.gender) &&
+      form.gender === options.original.gender;
+    if (!legacyUnsetOnEdit) {
+      errors.gender = "성별을 선택해 주세요.";
+    }
   }
-  if (form.driver !== "yes" && form.driver !== "no") {
-    errors.driver = "운전 여부를 선택해 주세요.";
+  if (isUnsetDriver(form.driver)) {
+    const legacyUnsetOnEdit =
+      options?.mode === "edit" &&
+      options.original &&
+      isUnsetDriver(options.original.driver) &&
+      form.driver === options.original.driver;
+    if (!legacyUnsetOnEdit) {
+      errors.driver = "운전 여부를 선택해 주세요.";
+    }
   }
   if (form.renewalDate && !isValidYmd(form.renewalDate)) {
     errors.renewalDate = "갱신 예정일을 YYYY-MM-DD 형식으로 입력해 주세요.";

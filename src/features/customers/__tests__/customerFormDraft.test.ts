@@ -54,6 +54,11 @@ describe('customerFormDraft', () => {
     expect(decideCloseEdit({ dirty: false, saving: true })).toBe('block');
   });
 
+  it('close confirm path never implies save — only leave or confirm discard', () => {
+    expect(decideCloseEdit({ dirty: true, saving: false })).toBe('confirm');
+    expect(decideCloseEdit({ dirty: false, saving: false })).toBe('leave');
+  });
+
   it('discard model: restoring clone of original clears dirty without needing API', () => {
     const original = cloneCustomerFormState({
       ...EMPTY_CUSTOMER_FORM,
