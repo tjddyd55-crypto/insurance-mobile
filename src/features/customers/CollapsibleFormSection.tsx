@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import {
   AppText,
-  Button,
   Card,
   Divider,
   Stack,
@@ -25,22 +24,23 @@ export function CollapsibleFormSection({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const toggleLabel = expanded ? "최소" : "펼치기";
 
   return (
     <Card variant="outlined" padding="none" testID={testID}>
-      <View style={styles.sectionHeader}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${title} ${expanded ? "접기" : "펼치기"}`}
+        onPress={() => setExpanded((value) => !value)}
+        style={styles.sectionHeader}
+      >
         <AppText variant="heading" numberOfLines={1} style={styles.title}>
           {title}
         </AppText>
-        <Button
-          label={toggleLabel}
-          size="sm"
-          variant="secondary"
-          accessibilityLabel={`${title} ${toggleLabel}`}
-          onPress={() => setExpanded((value) => !value)}
-        />
-      </View>
+        <AppText variant="caption" color="textSecondary" style={styles.chevron}>
+          {expanded ? "▲" : "▼"}
+        </AppText>
+      </Pressable>
       {expanded ? (
         <>
           <Divider />
@@ -67,6 +67,10 @@ function createStyles(theme: AppTheme) {
     title: {
       flex: 1,
       minWidth: 0,
+    },
+    chevron: {
+      flexShrink: 0,
+      paddingHorizontal: theme.spacing.xs,
     },
     sectionBody: {
       paddingHorizontal: theme.spacing.sm,
