@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { CustomerUnsavedChangesDialog } from './CustomerUnsavedChangesDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
@@ -162,16 +162,20 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     },
   });
 
-  const requestBack = () => {
-    if (dirty && !saveMutation.isPending) {
-      setDiscardOpen(true);
-      return;
-    }
+  const leaveWithoutSave = () => {
     if (mode === 'edit' && customerId) {
       navigateToCustomerDetail(router, customerId);
       return;
     }
     router.back();
+  };
+
+  const requestBack = () => {
+    if (dirty && !saveMutation.isPending) {
+      setDiscardOpen(true);
+      return;
+    }
+    leaveWithoutSave();
   };
 
   useEffect(() => {
@@ -453,7 +457,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         <View style={styles.footer}>
           <Button
             label="취소"
-            variant="ghost"
+            variant="secondary"
             disabled={saveMutation.isPending}
             onPress={requestBack}
             style={styles.grow}
@@ -462,28 +466,24 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             label={mode === 'create' ? '고객 등록' : '변경 저장'}
             variant="actionEmphasis"
             loading={saveMutation.isPending}
-            disabled={mode === 'edit' && !initialized}
+            disabled={mode === 'edit' && (!initialized || !dirty)}
             onPress={submit}
             style={styles.grow}
           />
         </View>
       </SafeAreaView>
 
-      <ConfirmDialog
+      <CustomerUnsavedChangesDialog
         open={discardOpen}
-        title="변경사항 닫기"
-        message="변경사항이 저장되지 않았습니다. 닫으시겠습니까?"
-        confirmLabel="저장안함"
-        tone="danger"
+        busy={saveMutation.isPending}
         onCancel={() => setDiscardOpen(false)}
-        onConfirm={() => {
+        onDiscard={() => {
           setDiscardOpen(false);
-          setInitialSnapshot(JSON.stringify(form));
-          if (mode === 'edit' && customerId) {
-            navigateToCustomerDetail(router, customerId);
-            return;
-          }
-          router.back();
+          leaveWithoutSave();
+        }}
+        onSave={() => {
+          setDiscardOpen(false);
+          submit();
         }}
       />
     </KeyboardAvoidingView>
