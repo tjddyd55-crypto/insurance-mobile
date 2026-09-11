@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Switch,
   View,
+  type KeyboardEvent,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -89,6 +91,24 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const [errors, setErrors] = useState<CustomerFormErrors>({});
   const [initialized, setInitialized] = useState(mode === 'create');
   const [discardOpen, setDiscardOpen] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const [kbHeight, setKbHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (event: KeyboardEvent) => {
+      setKbHeight(event.endCoordinates.height);
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      });
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKbHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   /** Immutable original snapshot for this edit session (string). */
   const originalSnapshotRef = useRef<string | null>(
     mode === 'create' ? createCustomerFormSnapshot(EMPTY_CUSTOMER_FORM) : null,
@@ -273,7 +293,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
       keyboardVerticalOffset={0}
     >
       <AppHeader
@@ -283,11 +303,12 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         onBackPress={attemptCloseEdit}
       />
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, kbHeight > 0 ? { paddingBottom: theme.spacing.xl + theme.spacing.xl + kbHeight } : null]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        automaticallyAdjustKeyboardInsets
       >
         <FormSection title="기본 정보">
           <TextField
@@ -494,24 +515,48 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             multiline
             value={form.treatmentHistoryNote}
             onChangeText={(value) => updateField('treatmentHistoryNote', value)}
+            onFocus={() => {
+              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
+              requestAnimationFrame(() => {
+                scrollRef.current?.scrollToEnd({ animated: true });
+              });
+            }}
           />
           <TextField
             label="약 복용 관련"
             multiline
             value={form.medicationHistoryNote}
             onChangeText={(value) => updateField('medicationHistoryNote', value)}
+            onFocus={() => {
+              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
+              requestAnimationFrame(() => {
+                scrollRef.current?.scrollToEnd({ animated: true });
+              });
+            }}
           />
           <TextField
             label="보험가입내역"
             multiline
             value={form.insuranceHistory}
             onChangeText={(value) => updateField('insuranceHistory', value)}
+            onFocus={() => {
+              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
+              requestAnimationFrame(() => {
+                scrollRef.current?.scrollToEnd({ animated: true });
+              });
+            }}
           />
           <TextField
             label="계좌정보"
             multiline
             value={form.accountNumber}
             onChangeText={(value) => updateField('accountNumber', value)}
+            onFocus={() => {
+              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
+              requestAnimationFrame(() => {
+                scrollRef.current?.scrollToEnd({ animated: true });
+              });
+            }}
           />
         </FormSection>
 
