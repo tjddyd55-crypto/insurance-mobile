@@ -259,7 +259,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 onAction={(actionId) => void handleAction(actionId)}
               />
               {copyNotice ? (
-                <AppText variant="caption" color="success">
+                <AppText variant="body" color="success">
                   {copyNotice}
                 </AppText>
               ) : null}
@@ -335,7 +335,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               defaultExpanded={false}
             >
               {carsQuery.isLoading ? (
-                <AppText variant="caption">차량 정보를 불러오는 중…</AppText>
+                <AppText variant="body" color="textSecondary">차량 정보를 불러오는 중…</AppText>
               ) : carsQuery.data?.length ? (
                 carsQuery.data.map((car, index) => (
                   <Stack key={car.id} gap="xs" style={styles.subBlock}>
@@ -393,7 +393,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   />
                 </>
               ) : (
-                <AppText variant="caption" color="textSecondary">등록된 사업자 정보가 없습니다.</AppText>
+                <AppText variant="body" color="textSecondary">등록된 사업자 정보가 없습니다.</AppText>
               )}
             </CollapsibleDetailSection>
 
@@ -403,7 +403,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               defaultExpanded={false}
             >
               {fireLocationsQuery.isLoading ? (
-                <AppText variant="caption">화재보험 소재지를 불러오는 중…</AppText>
+                <AppText variant="body" color="textSecondary">화재보험 소재지를 불러오는 중…</AppText>
               ) : (fireLocationsQuery.data ?? []).length > 0 ? (
                 (fireLocationsQuery.data ?? []).map((location, index) => (
                   <Stack key={location.id} gap="xs" style={styles.subBlock}>
@@ -413,7 +413,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   </Stack>
                 ))
               ) : (
-                <AppText variant="caption" color="textSecondary">등록된 화재보험 소재지가 없습니다.</AppText>
+                <AppText variant="body" color="textSecondary">등록된 화재보험 소재지가 없습니다.</AppText>
               )}
             </CollapsibleDetailSection>
 
@@ -423,7 +423,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               defaultExpanded={false}
             >
               {specialDatesQuery.isLoading ? (
-                <AppText variant="caption">기념일을 불러오는 중…</AppText>
+                <AppText variant="body" color="textSecondary">기념일을 불러오는 중…</AppText>
               ) : specialDatesQuery.data?.length ? (
                 specialDatesQuery.data.map((item) => (
                   <DetailRow
@@ -433,9 +433,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   />
                 ))
               ) : (
-                <AppText variant="caption" color="textSecondary">
-                  등록된 기념일이 없습니다.
-                </AppText>
+                <AppText variant="body" color="textSecondary">등록된 기념일이 없습니다.</AppText>
               )}
             </CollapsibleDetailSection>
 
@@ -445,7 +443,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               defaultExpanded={false}
             >
               {consultationsQuery.isLoading ? (
-                <AppText variant="caption">상담 기록을 불러오는 중…</AppText>
+                <AppText variant="body" color="textSecondary">상담 기록을 불러오는 중…</AppText>
               ) : recentConsultations.length ? (
                 recentConsultations.map((row) => (
                   <Stack key={row.id} gap="xs" style={styles.subBlock}>
@@ -456,9 +454,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   </Stack>
                 ))
               ) : (
-                <AppText variant="caption" color="textSecondary">
-                  등록된 상담 기록이 없습니다.
-                </AppText>
+                <AppText variant="body" color="textSecondary">등록된 상담 기록이 없습니다.</AppText>
               )}
               <Button
                 accessibilityLabel={`${customer.name} 전체 상담 보기`}

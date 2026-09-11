@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { AppText, Card, Divider, Stack, useAppTheme, type AppTheme } from "../../design-system";
+import { AppText, Button, Card, Divider, Stack, useAppTheme, type AppTheme } from "../../design-system";
 
 export function CollapsibleDetailSection({
   title,
@@ -17,21 +17,22 @@ export function CollapsibleDetailSection({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const toggleLabel = expanded ? "최소" : "펼치기";
 
   return (
     <Card variant="outlined" padding="none" testID={testID}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={`${title} ${expanded ? "접기" : "펼치기"}`}
-        onPress={() => setExpanded((value) => !value)}
-        style={styles.sectionHeader}
-      >
-        <AppText variant="heading" numberOfLines={1}>{title}</AppText>
-        <AppText variant="caption" color="textSecondary">
-          {expanded ? "접기 ▲" : "펼치기 ▼"}
+      <View style={styles.sectionHeader}>
+        <AppText variant="heading" numberOfLines={1} style={styles.title}>
+          {title}
         </AppText>
-      </Pressable>
+        <Button
+          label={toggleLabel}
+          size="sm"
+          variant="secondary"
+          accessibilityLabel={`${title} ${toggleLabel}`}
+          onPress={() => setExpanded((value) => !value)}
+        />
+      </View>
       {expanded ? (
         <>
           <Divider />
@@ -69,7 +70,7 @@ export function DetailSubsectionLabel({ label }: { label: string }) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.subsection}>
-      <AppText variant="caption" color="textSecondary">
+      <AppText variant="label" color="textSecondary">
         {label}
       </AppText>
     </View>
@@ -86,6 +87,10 @@ function createStyles(theme: AppTheme) {
       alignItems: "center",
       justifyContent: "space-between",
       gap: theme.spacing.sm,
+    },
+    title: {
+      flex: 1,
+      minWidth: 0,
     },
     sectionBody: {
       paddingHorizontal: theme.spacing.sm,
