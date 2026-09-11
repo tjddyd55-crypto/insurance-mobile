@@ -305,6 +305,7 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
       <CollapsibleDetailSection
         title="연계 고객"
         testID="customer-detail-section-linked-customers"
+        sectionId="linked"
         defaultExpanded={false}
       >
         {groupsQuery.isLoading ? (

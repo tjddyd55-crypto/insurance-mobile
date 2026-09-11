@@ -349,7 +349,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           </Inline>
         </FormSection>
 
-        <CollapsibleFormSection title="자동차 정보" testID="customer-form-section-vehicle">
+        <CollapsibleFormSection title="자동차 정보" sectionId="car" testID="customer-form-section-vehicle">
           <CustomerCarsEditor
             cars={form.cars}
             onChange={(cars) => updateField('cars', cars)}
@@ -357,7 +357,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           />
         </CollapsibleFormSection>
 
-        <CollapsibleFormSection title="사업자 정보" testID="customer-form-section-business">
+        <CollapsibleFormSection title="사업자 정보" sectionId="business" testID="customer-form-section-business">
           <TextField
             label="대표자명"
             value={form.businessInfo.representativeName}
@@ -395,7 +395,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           />
         </CollapsibleFormSection>
 
-        <CollapsibleFormSection title="화재보험 정보" testID="customer-form-section-fire-insurance">
+        <CollapsibleFormSection title="화재보험 정보" sectionId="fire" testID="customer-form-section-fire-insurance">
           <CustomerFireInsuranceLocationsEditor
             items={form.fireInsuranceLocations}
             onChange={(fireInsuranceLocations) =>

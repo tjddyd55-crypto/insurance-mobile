@@ -2,24 +2,34 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { AppText, Card, Divider, Stack, useAppTheme, type AppTheme } from "../../design-system";
+import {
+  customerSectionTheme,
+  type CustomerSectionId,
+} from "./customerSectionTheme";
 
 export function CollapsibleDetailSection({
   title,
   children,
   testID,
   defaultExpanded = true,
+  sectionId,
 }: {
   title: string;
   children: React.ReactNode;
   testID?: string;
   defaultExpanded?: boolean;
+  sectionId?: CustomerSectionId;
 }) {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const sectionTheme = sectionId ? customerSectionTheme(sectionId) : null;
+  const styles = useMemo(
+    () => createStyles(theme, sectionTheme?.accent, sectionTheme?.tint),
+    [theme, sectionTheme?.accent, sectionTheme?.tint],
+  );
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <Card variant="outlined" padding="none" testID={testID}>
+    <Card variant="outlined" padding="none" testID={testID} style={styles.card}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded }}
@@ -27,11 +37,17 @@ export function CollapsibleDetailSection({
         onPress={() => setExpanded((value) => !value)}
         style={styles.sectionHeader}
       >
+        {sectionTheme ? (
+          <>
+            <View style={[styles.accentBar, { backgroundColor: sectionTheme.accent }]} />
+            <View style={[styles.iconDot, { backgroundColor: sectionTheme.accent }]} />
+          </>
+        ) : null}
         <AppText variant="heading" numberOfLines={1} style={styles.title}>
           {title}
         </AppText>
-        <AppText variant="caption" color="textSecondary" style={styles.chevron}>
-          {expanded ? "▲" : "▼"}
+        <AppText variant="caption" color="textSecondary" style={styles.toggle}>
+          {expanded ? "최소 ˄" : "펼치기 ˅"}
         </AppText>
       </Pressable>
       {expanded ? (
@@ -46,7 +62,7 @@ export function CollapsibleDetailSection({
   );
 }
 
-const DETAIL_LABEL_WIDTH = 96;
+const DETAIL_LABEL_WIDTH = 88;
 
 export function DetailRow({ label, value }: { label: string; value: string }) {
   const theme = useAppTheme();
@@ -78,28 +94,50 @@ export function DetailSubsectionLabel({ label }: { label: string }) {
   );
 }
 
-function createStyles(theme: AppTheme) {
+function createStyles(theme: AppTheme, accent?: string, tint?: string) {
   return StyleSheet.create({
+    card: {
+      overflow: "hidden",
+      borderRadius: 12,
+    },
     sectionHeader: {
       minHeight: 44,
-      paddingHorizontal: theme.spacing.sm + theme.spacing.xs,
-      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + theme.spacing.xs,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: theme.spacing.sm,
+      backgroundColor: tint ?? theme.colors.surface,
+    },
+    accentBar: {
+      width: 3,
+      height: 20,
+      borderRadius: 2,
+      flexShrink: 0,
+      backgroundColor: accent ?? theme.colors.textSecondary,
+    },
+    iconDot: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      flexShrink: 0,
+      backgroundColor: accent ?? theme.colors.textSecondary,
     },
     title: {
       flex: 1,
       minWidth: 0,
+      fontSize: 17,
+      fontWeight: "700",
     },
-    chevron: {
+    toggle: {
       flexShrink: 0,
-      paddingHorizontal: theme.spacing.xs,
+      fontSize: 14,
+      fontWeight: "500",
     },
     sectionBody: {
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + theme.spacing.xs,
     },
     subsection: {
       paddingTop: theme.spacing.md,
@@ -116,10 +154,12 @@ function createStyles(theme: AppTheme) {
     label: {
       width: DETAIL_LABEL_WIDTH,
       flexShrink: 0,
+      fontSize: 15,
     },
     value: {
       flex: 1,
       minWidth: 0,
+      fontSize: 16,
     },
   });
 }
