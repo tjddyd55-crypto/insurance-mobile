@@ -30,7 +30,10 @@ export function CustomerNewsScreen({
   const onBackPress = useCustomerDetailBack(initialCustomerId ?? 0);
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [scope, setScope] = useState<'all' | 'personal'>(initialScope);
+  /** Customer-detail entry: personal-only to the already-selected customer (no all-news toggle / recipient picker). */
+  const lockedPersonal =
+    initialScope === 'personal' && typeof initialCustomerId === 'number' && initialCustomerId > 0;
+  const [scope, setScope] = useState<'all' | 'personal'>(lockedPersonal ? 'personal' : initialScope);
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -40,7 +43,14 @@ export function CustomerNewsScreen({
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [notice, setNotice] = useState('');
   const linked = useQuery({ queryKey: ['customer-news', 'linked-customers'], queryFn: () => listLinkedCustomers(token), enabled: Boolean(token) });
-  useEffect(() => { if (!customerId && linked.data?.[0]) setCustomerId(linked.data[0].customerId); }, [customerId, linked.data]);
+  useEffect(() => {
+    if (lockedPersonal) {
+      setScope('personal');
+      setCustomerId(initialCustomerId);
+      return;
+    }
+    if (!customerId && linked.data?.[0]) setCustomerId(linked.data[0].customerId);
+  }, [customerId, initialCustomerId, linked.data, lockedPersonal]);
   const listKey = ['customer-news', scope, scope === 'personal' ? customerId : null] as const;
   const news = useQuery({ queryKey: listKey, queryFn: () => listCustomerNews(token, scope, scope === 'personal' ? customerId : null), enabled: Boolean(token && (scope === 'all' || customerId)) });
   const rows = useMemo(
@@ -95,10 +105,23 @@ export function CustomerNewsScreen({
       <View style={styles.listHeader}>
         <Card>
           <Stack gap="md">
-            <AppText variant="heading">고객 앱 소식지</AppText>
-            <AppText variant="caption">전체 공지와 연결 고객 개인메시지를 게시하고 고객 댓글을 확인합니다.</AppText>
-            <Inline><Button label="전체소식지" style={styles.grow} variant={scope === 'all' ? 'selected' : 'secondary'} onPress={() => setScope('all')} /><Button label="개인메시지" style={styles.grow} variant={scope === 'personal' ? 'selected' : 'secondary'} onPress={() => setScope('personal')} /></Inline>
-            {scope === 'personal' ? <LinkedCustomerPicker rows={linked.data ?? []} selectedId={customerId} onSelect={setCustomerId} /> : null}
+            <AppText variant="heading">{lockedPersonal ? '개인메시지' : '고객 앱 소식지'}</AppText>
+            <AppText variant="caption">
+              {lockedPersonal
+                ? '선택한 고객에게만 개인메시지를 작성하고 댓글을 확인합니다.'
+                : '전체 공지와 연결 고객 개인메시지를 게시하고 고객 댓글을 확인합니다.'}
+            </AppText>
+            {lockedPersonal ? null : (
+              <Inline>
+                <Button label="전체소식지" style={styles.grow} variant={scope === 'all' ? 'selected' : 'secondary'} onPress={() => setScope('all')} />
+                <Button label="개인메시지" style={styles.grow} variant={scope === 'personal' ? 'selected' : 'secondary'} onPress={() => setScope('personal')} />
+              </Inline>
+            )}
+            {lockedPersonal ? (
+              audience ? <Badge label={`${audience.customerName} · 기기 ${audience.deviceCount}`} tone="info" /> : null
+            ) : scope === 'personal' ? (
+              <LinkedCustomerPicker rows={linked.data ?? []} selectedId={customerId} onSelect={setCustomerId} />
+            ) : null}
             <Inline align="flex-end"><TextField label="검색" placeholder="제목 · 내용 검색" value={search} onChangeText={setSearch} containerStyle={styles.grow} /><Button label="+ 작성" onPress={openCreate} disabled={scope === 'personal' && !customerId} /></Inline>
           </Stack>
         </Card>
@@ -108,9 +131,10 @@ export function CustomerNewsScreen({
       </View>
     ),
     [
-      audience?.customerName,
+      audience,
       customerId,
       linked,
+      lockedPersonal,
       news,
       notice,
       openCreate,
@@ -133,7 +157,7 @@ export function CustomerNewsScreen({
   return (
     <View style={styles.root}>
       <AppHeader
-        title="고객소식지"
+        title={lockedPersonal ? '개인메시지' : '고객소식지'}
         showMenu={!showBack}
         showBack={showBack}
         onBackPress={showBack && initialCustomerId ? onBackPress : undefined}
