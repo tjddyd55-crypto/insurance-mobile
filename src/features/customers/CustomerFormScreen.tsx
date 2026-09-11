@@ -473,7 +473,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         open={discardOpen}
         title="변경사항 닫기"
         message="변경사항이 저장되지 않았습니다. 닫으시겠습니까?"
-        confirmLabel="저장하지 않고 닫기"
+        confirmLabel="저장안함"
         tone="danger"
         onCancel={() => setDiscardOpen(false)}
         onConfirm={() => {
@@ -519,7 +519,7 @@ function CustomerSpecialDatesEditor({
   return (
     <Stack gap="md">
       <Inline justify="space-between">
-        <AppText variant="caption">고객 기념일·안내일을 등록합니다.</AppText>
+        <AppText variant="body" color="textSecondary">고객 기념일·안내일을 등록합니다.</AppText>
         <Button
           label="기념일 추가"
           size="sm"
@@ -539,7 +539,7 @@ function CustomerSpecialDatesEditor({
         />
       </Inline>
       {!items.length ? (
-        <AppText variant="caption" color="textSecondary">
+        <AppText variant="body" color="textSecondary">
           등록된 기념일이 없습니다.
         </AppText>
       ) : null}
