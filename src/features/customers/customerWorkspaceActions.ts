@@ -18,61 +18,54 @@ export type CustomerWorkspaceAction = {
   accessibilityLabel: string;
 };
 
+/** Native 고객 상세에서 숨기는 action (route/handler는 유지). */
+export const CUSTOMER_WORKSPACE_ACTIONS_HIDDEN_ON_MOBILE: CustomerWorkspaceActionId[] = [
+  "map",
+  "premiumPayments",
+];
+
+type CustomerWorkspaceActionTemplate = {
+  id: CustomerWorkspaceActionId;
+  label: string;
+  accessibilitySuffix: string;
+};
+
+const CUSTOMER_WORKSPACE_ACTION_TEMPLATES: CustomerWorkspaceActionTemplate[] = [
+  { id: "map", label: "지도에서 보기", accessibilitySuffix: "지도에서 보기" },
+  { id: "files", label: "고객 파일", accessibilitySuffix: "고객 파일" },
+  { id: "consultations", label: "상담 내역", accessibilitySuffix: "상담 내역" },
+  { id: "applications", label: "신청서", accessibilitySuffix: "신청서" },
+  { id: "gaData", label: "GA 데이터 보기", accessibilitySuffix: "GA 데이터 보기" },
+  { id: "personalMessage", label: "개인메시지", accessibilitySuffix: "개인메시지" },
+  { id: "claims", label: "청구", accessibilitySuffix: "청구" },
+  { id: "memos", label: "메모", accessibilitySuffix: "메모" },
+  { id: "copy", label: "복사", accessibilitySuffix: "정보 복사" },
+  { id: "premiumPayments", label: "카드 수납", accessibilitySuffix: "카드 수납" },
+];
+
+function buildAction(
+  customerName: string,
+  template: CustomerWorkspaceActionTemplate,
+): CustomerWorkspaceAction {
+  return {
+    id: template.id,
+    label: template.label,
+    accessibilityLabel: `${customerName} 고객 ${template.accessibilitySuffix}`,
+  };
+}
+
 export function buildCustomerWorkspaceActions(
   customerName: string,
+  options?: { includeMobileHidden?: boolean },
 ): CustomerWorkspaceAction[] {
-  return [
-    {
-      id: "map",
-      label: "지도에서 보기",
-      accessibilityLabel: `${customerName} 고객 지도에서 보기`,
-    },
-    {
-      id: "files",
-      label: "고객 파일",
-      accessibilityLabel: `${customerName} 고객 파일`,
-    },
-    {
-      id: "consultations",
-      label: "상담 내역",
-      accessibilityLabel: `${customerName} 고객 상담 내역`,
-    },
-    {
-      id: "applications",
-      label: "신청서",
-      accessibilityLabel: `${customerName} 고객 신청서`,
-    },
-    {
-      id: "gaData",
-      label: "GA 데이터 보기",
-      accessibilityLabel: `${customerName} 고객 GA 데이터 보기`,
-    },
-    {
-      id: "personalMessage",
-      label: "개인메시지",
-      accessibilityLabel: `${customerName} 고객 개인메시지`,
-    },
-    {
-      id: "claims",
-      label: "청구",
-      accessibilityLabel: `${customerName} 고객 청구`,
-    },
-    {
-      id: "memos",
-      label: "메모",
-      accessibilityLabel: `${customerName} 고객 메모`,
-    },
-    {
-      id: "copy",
-      label: "복사",
-      accessibilityLabel: `${customerName} 고객 정보 복사`,
-    },
-    {
-      id: "premiumPayments",
-      label: "카드 수납",
-      accessibilityLabel: `${customerName} 고객 카드 수납`,
-    },
-  ];
+  const includeMobileHidden = options?.includeMobileHidden ?? false;
+  const hidden = new Set(
+    includeMobileHidden ? [] : CUSTOMER_WORKSPACE_ACTIONS_HIDDEN_ON_MOBILE,
+  );
+
+  return CUSTOMER_WORKSPACE_ACTION_TEMPLATES.filter((template) => !hidden.has(template.id)).map(
+    (template) => buildAction(customerName, template),
+  );
 }
 
 export function resolveCustomerWorkspaceActionHref(
