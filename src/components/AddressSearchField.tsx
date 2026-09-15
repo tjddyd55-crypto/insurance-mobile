@@ -103,6 +103,7 @@ export function AddressSearchField({
           size="sm"
           variant="secondary"
           disabled={disabled}
+          testID="address-search-open"
           onPress={() => setOpen(true)}
         />
         {value.zonecode ? (
@@ -141,14 +142,15 @@ export function AddressSearchField({
           />
         }
       >
-        <View style={[styles.webviewWrap, { height: modalHeight }]}>
+        <View style={[styles.webviewWrap, { height: modalHeight }]} collapsable={false}>
           <WebView
             originWhitelist={["https://*"]}
             source={{ html: POSTCODE_HTML, baseUrl: "https://onefc.native" }}
             onMessage={handleMessage}
             javaScriptEnabled
             domStorageEnabled
-            style={styles.webview}
+            nestedScrollEnabled
+            style={[styles.webview, { height: modalHeight }]}
           />
         </View>
       </ModalShell>

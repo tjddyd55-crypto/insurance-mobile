@@ -65,7 +65,7 @@ export function ModalShell({
       {children}
     </ScrollView>
   ) : (
-    <View style={styles.body}>{children}</View>
+    <View style={[styles.body, isDialog ? styles.dialogBody : styles.bodyFill]}>{children}</View>
   );
 
   return (
@@ -73,6 +73,7 @@ export function ModalShell({
       visible={open}
       animationType={isDialog ? 'fade' : 'slide'}
       transparent={isDialog}
+      statusBarTranslucent={isDialog}
       onRequestClose={requestClose}
     >
       <View style={[styles.modalRoot, isDialog && styles.dialogOverlay]}>
@@ -89,7 +90,7 @@ export function ModalShell({
           />
         ) : null}
         <SafeAreaView
-          edges={['top', 'left', 'right', 'bottom']}
+          edges={isDialog ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}
           style={[styles.safe, isDialog && styles.dialogPanel]}
         >
           <KeyboardAvoidingView
@@ -136,10 +137,12 @@ function createStyles(theme: AppTheme) {
     },
     dialogPanel: {
       flex: 0,
+      width: '100%',
       maxHeight: '90%',
       borderRadius: theme.radius.lg,
       overflow: 'hidden',
       backgroundColor: theme.colors.surfaceElevated,
+      zIndex: 1,
     },
     keyboard: {
       flex: 1,
@@ -166,8 +169,14 @@ function createStyles(theme: AppTheme) {
       gap: theme.spacing.xxs,
     },
     body: {
-      flex: 1,
       padding: theme.layout.modalPadding,
+    },
+    bodyFill: {
+      flex: 1,
+    },
+    dialogBody: {
+      flexGrow: 0,
+      flexShrink: 1,
     },
     scrollContent: {
       flexGrow: 1,

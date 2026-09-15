@@ -2,8 +2,16 @@ import { Dimensions } from "react-native";
 
 import type { AddressSearchValue } from "../features/customers/customerAddressSearch";
 
+const ADDRESS_MODAL_HEADER_CHROME = 96;
+const ADDRESS_MODAL_MIN_WEBVIEW_HEIGHT = 320;
+
 export function resolveAddressSearchModalHeight(windowHeight = Dimensions.get("window").height): number {
-  return Math.round(windowHeight * 0.82);
+  const dialogContentCap = Math.round(windowHeight * 0.9 - ADDRESS_MODAL_HEADER_CHROME);
+  const preferred = Math.round(windowHeight * 0.62);
+  return Math.max(
+    ADDRESS_MODAL_MIN_WEBVIEW_HEIGHT,
+    Math.min(preferred, dialogContentCap),
+  );
 }
 
 export function parseAddressSearchWebViewMessage(

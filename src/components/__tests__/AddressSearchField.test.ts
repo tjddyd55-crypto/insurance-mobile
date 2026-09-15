@@ -4,9 +4,9 @@ import {
 } from "../addressSearchModal";
 
 describe("AddressSearchField modal helpers", () => {
-  it("uses a large dialog height around 82% of the screen", () => {
-    expect(resolveAddressSearchModalHeight(800)).toBe(656);
-    expect(resolveAddressSearchModalHeight(360)).toBe(295);
+  it("fits WebView height inside dialog panel without exceeding 90% window", () => {
+    expect(resolveAddressSearchModalHeight(800)).toBe(496);
+    expect(resolveAddressSearchModalHeight(360)).toBe(320);
   });
 
   it("parses postcode completion without changing detail address", () => {
