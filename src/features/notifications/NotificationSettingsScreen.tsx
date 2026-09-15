@@ -166,7 +166,7 @@ export function NotificationSettingsScreen() {
         />
         <ToggleSettingCard
           title="업무 알림"
-          description="상령일·자동차 만기·지정일 알림센터 표시를 제어합니다."
+          description="상령일·자동차 만기·알림일 알림센터 표시를 제어합니다."
           enabled={draft.workAlert.enabled}
           onEnabled={(enabled) => setToggle('workAlert', enabled)}
         />
@@ -185,7 +185,7 @@ export function NotificationSettingsScreen() {
           onDays={(daysBefore) => setWindowed('carExpiry', { daysBefore })}
         />
         <WindowedSettingCard
-          title="지정일 알림"
+          title="알림일"
           setting={draft.specialDate}
           onEnabled={(enabled) => setWindowed('specialDate', { enabled })}
           onDays={(daysBefore) => setWindowed('specialDate', { daysBefore })}
