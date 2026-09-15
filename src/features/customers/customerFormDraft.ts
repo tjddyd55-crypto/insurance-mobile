@@ -20,6 +20,18 @@ export function isCustomerFormDirty(
 
 export type CloseEditDecision = 'leave' | 'confirm' | 'block';
 
+export type CustomerEditHardwareBackAction = 'dismiss-keyboard' | 'defer-to-dialog' | 'close-edit';
+
+/** Hardware back priority: dialog → keyboard dismiss → close-edit policy. */
+export function resolveCustomerEditHardwareBack(options: {
+  keyboardVisible: boolean;
+  discardDialogOpen: boolean;
+}): CustomerEditHardwareBackAction {
+  if (options.discardDialogOpen) return 'defer-to-dialog';
+  if (options.keyboardVisible) return 'dismiss-keyboard';
+  return 'close-edit';
+}
+
 /** SSOT for cancel / header back / hardware back. Never auto-save. */
 export function decideCloseEdit(options: {
   dirty: boolean;

@@ -45,6 +45,7 @@ import {
   createCustomerFormSnapshot,
   decideCloseEdit,
   isCustomerFormDirty,
+  resolveCustomerEditHardwareBack,
   shouldEnableCustomerEditSave,
 } from './customerFormDraft';
 import { CUSTOMER_MOBILE_CARRIER_OPTIONS } from './customerCarrier';
@@ -94,15 +95,27 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [kbHeight, setKbHeight] = useState(0);
+  const kbHeightRef = useRef(0);
+  const discardOpenRef = useRef(false);
+
+  useEffect(() => {
+    kbHeightRef.current = kbHeight;
+  }, [kbHeight]);
+
+  useEffect(() => {
+    discardOpenRef.current = discardOpen;
+  }, [discardOpen]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', (event: KeyboardEvent) => {
+      kbHeightRef.current = event.endCoordinates.height;
       setKbHeight(event.endCoordinates.height);
       requestAnimationFrame(() => {
         scrollRef.current?.scrollToEnd({ animated: true });
       });
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      kbHeightRef.current = 0;
       setKbHeight(0);
     });
     return () => {
@@ -275,16 +288,23 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-        // First back dismisses keyboard; second back follows the same discard policy as header/cancel.
-        if (kbHeight > 0) {
+        const action = resolveCustomerEditHardwareBack({
+          keyboardVisible: kbHeightRef.current > 0,
+          discardDialogOpen: discardOpenRef.current,
+        });
+        if (action === 'defer-to-dialog') {
+          return false;
+        }
+        if (action === 'dismiss-keyboard') {
           Keyboard.dismiss();
+          kbHeightRef.current = 0;
           return true;
         }
         attemptCloseEdit();
         return true;
       });
       return () => subscription.remove();
-    }, [attemptCloseEdit, kbHeight]),
+    }, [attemptCloseEdit]),
   );
 
   const updateField = <K extends keyof CustomerFormState>(key: K, value: CustomerFormState[K]) => {
