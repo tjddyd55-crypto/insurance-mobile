@@ -1,18 +1,22 @@
 import { useMemo, useState } from "react";
-import { Modal, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import {
   AppText,
   Button,
   Inline,
+  ModalShell,
   Stack,
   TextField,
   useAppTheme,
   type AppTheme,
 } from "../design-system";
 import type { AddressSearchValue } from "../features/customers/customerAddressSearch";
+import {
+  parseAddressSearchWebViewMessage,
+  resolveAddressSearchModalHeight,
+} from "./addressSearchModal";
 
 const POSTCODE_HTML = `<!DOCTYPE html>
 <html>
@@ -77,26 +81,16 @@ export function AddressSearchField({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
+  const modalHeight = useMemo(() => resolveAddressSearchModalHeight(), []);
 
   const handleMessage = (event: WebViewMessageEvent) => {
-    try {
-      const payload = JSON.parse(event.nativeEvent.data) as {
-        type?: string;
-        zonecode?: string;
-        baseAddress?: string;
-      };
-      if (payload.type === "complete") {
-        onChange({
-          zonecode: String(payload.zonecode ?? ""),
-          baseAddress: String(payload.baseAddress ?? ""),
-          detailAddress: value.detailAddress,
-        });
-        setOpen(false);
-      }
-      if (payload.type === "close") {
-        setOpen(false);
-      }
-    } catch {
+    const result = parseAddressSearchWebViewMessage(event.nativeEvent.data, value.detailAddress);
+    if (result.action === "complete" && result.value) {
+      onChange(result.value);
+      setOpen(false);
+      return;
+    }
+    if (result.action === "close") {
       setOpen(false);
     }
   };
@@ -128,12 +122,26 @@ export function AddressSearchField({
         placeholder="동/호수 등"
         onChangeText={(detailAddress) => onChange({ ...value, detailAddress })}
       />
-      <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
-        <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
-          <View style={styles.modalHeader}>
-            <AppText variant="heading">주소 검색</AppText>
-            <Button label="닫기" size="sm" variant="ghost" onPress={() => setOpen(false)} />
-          </View>
+      <ModalShell
+        open={open}
+        title="주소 검색"
+        presentation="dialog"
+        scroll={false}
+        keyboardAvoiding={false}
+        closeOnBackdrop={false}
+        dismissOnAndroidBack
+        onRequestClose={() => setOpen(false)}
+        headerAction={
+          <Button
+            label="닫기"
+            size="sm"
+            variant="ghost"
+            accessibilityLabel="주소 검색 닫기"
+            onPress={() => setOpen(false)}
+          />
+        }
+      >
+        <View style={[styles.webviewWrap, { height: modalHeight }]}>
           <WebView
             originWhitelist={["https://*"]}
             source={{ html: POSTCODE_HTML, baseUrl: "https://onefc.native" }}
@@ -142,25 +150,25 @@ export function AddressSearchField({
             domStorageEnabled
             style={styles.webview}
           />
-        </SafeAreaView>
-      </Modal>
+        </View>
+      </ModalShell>
     </Stack>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    modal: { flex: 1, backgroundColor: theme.colors.background },
-    modalHeader: {
-      minHeight: 56,
-      paddingHorizontal: theme.spacing.lg,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
+    webviewWrap: {
+      width: "100%",
+      borderRadius: theme.radius.md,
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.surface,
     },
-    webview: { flex: 1 },
+    webview: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+    },
   });
 }
