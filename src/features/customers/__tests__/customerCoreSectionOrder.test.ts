@@ -9,7 +9,6 @@ describe('customerCoreSectionOrder', () => {
       'customer-detail-section-business',
       'customer-detail-section-fire-insurance',
       'customer-detail-section-special-dates',
-      'customer-detail-section-consultation',
     ])
   })
 })

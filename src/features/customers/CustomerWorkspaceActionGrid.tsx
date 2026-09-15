@@ -54,12 +54,12 @@ function createStyles(theme: AppTheme) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.sm,
-      paddingBottom: theme.spacing.sm,
     },
     actionButton: {
       flexGrow: 1,
       flexBasis: '46%',
-      minHeight: 44,
+      minHeight: 48,
+      borderRadius: theme.radius.lg,
     },
   });
 }

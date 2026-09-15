@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
 import {
   AppText,
   Card,
-  IconButton,
   Stack,
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
+import { CustomerActionIcon, openPhoneUrl } from './CustomerActionIcon';
 import { customerGenderLabel, formatCustomerPhone } from './customerModel';
 import { customerDetailPath } from './customerWorkspaceNavigation';
 import type { CustomerRecord } from './types';
@@ -70,68 +70,35 @@ export function CustomerListCard({
           </Stack>
 
           <View style={styles.actions}>
-            <IconButton
-              accessibilityLabel={customer.isFavorite ? '중요 고객 해제' : '중요 고객'}
-              variant="ghost"
+            <CustomerActionIcon
+              kind="star"
+              active={customer.isFavorite}
               disabled={favoriteBusy}
-              hitSlop={styles.actionHitSlop}
-              style={styles.actionButton}
+              accessibilityLabel={customer.isFavorite ? '중요 고객 해제' : '중요 고객'}
               onPress={(event) => {
                 event.stopPropagation();
                 onToggleFavorite(customer);
               }}
-              icon={(color) => (
-                <AppText
-                  accessibilityElementsHidden
-                  style={[
-                    styles.actionIcon,
-                    { color: customer.isFavorite ? theme.colors.warning : color },
-                  ]}
-                >
-                  {customer.isFavorite ? '★' : '☆'}
-                </AppText>
-              )}
             />
-            <IconButton
+            <CustomerActionIcon
+              kind="sms"
+              disabled={!smsUrl || customer.smsOptOut}
               accessibilityLabel={
                 customer.smsOptOut ? '문자 수신 거부 고객' : '문자 보내기'
               }
-              variant="ghost"
-              disabled={!smsUrl || customer.smsOptOut}
-              hitSlop={styles.actionHitSlop}
-              style={styles.actionButton}
               onPress={(event) => {
                 event.stopPropagation();
-                if (smsUrl) void Linking.openURL(smsUrl);
+                openPhoneUrl(smsUrl);
               }}
-              icon={(color) => (
-                <AppText
-                  accessibilityElementsHidden
-                  style={[styles.actionIcon, { color }]}
-                >
-                  ✉
-                </AppText>
-              )}
             />
-            <IconButton
-              accessibilityLabel="전화 걸기"
-              variant="ghost"
-              tone="primary"
+            <CustomerActionIcon
+              kind="tel"
               disabled={!telUrl}
-              hitSlop={styles.actionHitSlop}
-              style={styles.actionButton}
+              accessibilityLabel="전화 걸기"
               onPress={(event) => {
                 event.stopPropagation();
-                if (telUrl) void Linking.openURL(telUrl);
+                openPhoneUrl(telUrl);
               }}
-              icon={(color) => (
-                <AppText
-                  accessibilityElementsHidden
-                  style={[styles.actionIcon, { color }]}
-                >
-                  ☎
-                </AppText>
-              )}
             />
           </View>
         </View>
@@ -141,8 +108,7 @@ export function CustomerListCard({
 }
 
 function createStyles(theme: AppTheme) {
-  const actionHitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
-  const styles = StyleSheet.create({
+  return StyleSheet.create({
     summary: {
       paddingHorizontal: theme.spacing.sm + theme.spacing.xxs,
       paddingVertical: theme.spacing.sm + theme.spacing.xxs,
@@ -163,14 +129,7 @@ function createStyles(theme: AppTheme) {
     actions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.xxs + 2,
-      marginRight: -(theme.spacing.xxs + 2),
+      marginRight: -theme.spacing.xxs,
     },
-    actionButton: {
-      width: 44,
-      height: 44,
-    },
-    actionIcon: { fontSize: 16, lineHeight: 18 },
   });
-  return { ...styles, actionHitSlop };
 }

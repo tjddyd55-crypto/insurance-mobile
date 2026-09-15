@@ -6,5 +6,4 @@ export const CUSTOMER_DETAIL_CORE_SECTION_TEST_IDS = [
   'customer-detail-section-business',
   'customer-detail-section-fire-insurance',
   'customer-detail-section-special-dates',
-  'customer-detail-section-consultation',
 ] as const

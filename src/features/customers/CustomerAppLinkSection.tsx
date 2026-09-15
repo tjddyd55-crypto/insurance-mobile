@@ -7,7 +7,6 @@ import { useAuth } from "../../auth/AuthProvider";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import {
   AppText,
-  Badge,
   Button,
   Inline,
   useAppTheme,
@@ -18,13 +17,12 @@ import {
   getCustomerAppLink,
   sendCustomerAppAlimtalk,
 } from "../claims/claimsApi";
-import { listCustomerAppCompactActions } from "./customerAppActions";
 
 /**
- * Customer Workspace 전용 compact 고객앱 row.
- * 노출 액션: 링크 복사 · 알림톡 (생성/공유 CTA 없음 — 필요 시 내부 ensure).
+ * 고객 상세 업무 패널 상단 — 고객앱 상태 row.
+ * 상태 텍스트 + 링크 복사 · 고객앱 발송.
  */
-export function CustomerAppLinkSection({
+export function CustomerAppLinkStatusRow({
   customerId,
   customerName,
   customerPhone,
@@ -40,7 +38,6 @@ export function CustomerAppLinkSection({
   const [sendConfirm, setSendConfirm] = useState(false);
   const [notice, setNotice] = useState("");
   const [busyAction, setBusyAction] = useState<"copy" | "send" | null>(null);
-  const actionLabels = listCustomerAppCompactActions();
 
   const link = useQuery({
     queryKey: ["customer-app-link", customerId],
@@ -59,6 +56,12 @@ export function CustomerAppLinkSection({
   const linkValue = link.data?.universalUrl || link.data?.connectUrl || "";
   const connected = Boolean(linkValue);
   const phoneReady = Boolean(customerPhone.trim());
+
+  const statusLabel = link.isLoading
+    ? "확인 중…"
+    : connected
+      ? "고객앱 연결됨"
+      : "고객앱 미생성";
 
   const ensureLinkValue = async (): Promise<string> => {
     if (linkValue) return linkValue;
@@ -106,18 +109,12 @@ export function CustomerAppLinkSection({
   return (
     <View style={styles.wrap} testID="customer-app-compact-row">
       <Inline align="center" gap="sm" style={styles.row}>
-        <Inline align="center" gap="xs" style={styles.labelBlock}>
-          <AppText variant="bodyStrong">고객앱</AppText>
-          <Badge
-            label={
-              link.isLoading ? "확인 중" : connected ? "연결됨" : "미연결"
-            }
-            tone={connected ? "success" : "default"}
-          />
-        </Inline>
+        <AppText variant="bodyStrong" numberOfLines={1} style={styles.status}>
+          {statusLabel}
+        </AppText>
         <Inline gap="xs" style={styles.actions}>
           <Button
-            label={actionLabels[0]}
+            label="링크 복사"
             size="sm"
             variant="secondary"
             loading={busyAction === "copy"}
@@ -126,12 +123,10 @@ export function CustomerAppLinkSection({
             style={styles.actionBtn}
           />
           <Button
-            label={actionLabels[1]}
+            label="고객앱 발송"
             size="sm"
-            variant="secondary"
-            disabled={
-              busyAction != null || link.isLoading || !phoneReady
-            }
+            variant="action"
+            disabled={busyAction != null || link.isLoading || !phoneReady}
             onPress={() => setSendConfirm(true)}
             style={styles.actionBtn}
           />
@@ -144,7 +139,7 @@ export function CustomerAppLinkSection({
       ) : null}
       {!phoneReady ? (
         <AppText variant="caption" color="textSecondary">
-          연락처가 없으면 알림톡 발송이 제한됩니다.
+          연락처가 없으면 고객앱 발송이 제한됩니다.
         </AppText>
       ) : null}
       <ConfirmDialog
@@ -160,6 +155,15 @@ export function CustomerAppLinkSection({
   );
 }
 
+/** @deprecated CustomerAppLinkStatusRow 또는 CustomerDetailTaskPanel 사용 */
+export function CustomerAppLinkSection(props: {
+  customerId: number;
+  customerName: string;
+  customerPhone: string;
+}) {
+  return <CustomerAppLinkStatusRow {...props} />;
+}
+
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     wrap: { gap: theme.spacing.xs },
@@ -167,7 +171,7 @@ function createStyles(theme: AppTheme) {
       minHeight: theme.controlSize.md,
       flexWrap: "nowrap",
     },
-    labelBlock: { flexShrink: 1, minWidth: 0 },
+    status: { flexShrink: 1, minWidth: 0 },
     actions: { marginLeft: "auto", flexShrink: 0 },
     actionBtn: { minWidth: 88 },
   });

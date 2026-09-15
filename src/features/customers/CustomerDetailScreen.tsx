@@ -35,10 +35,10 @@ import { listCustomerFireInsuranceLocations } from "./customerFireInsuranceLocat
 import { deleteCustomer, getCustomer, setCustomerFavorite } from "./customersApi";
 import { customerQueryKeys } from "./queryKeys";
 import type { ListCustomersResult } from "./types";
-import { CustomerAppLinkSection } from "./CustomerAppLinkSection";
+import { CustomerActionIcon } from "./CustomerActionIcon";
+import { CustomerDetailTaskPanel } from "./CustomerDetailTaskPanel";
 import { CustomerGaDataModal } from "./CustomerGaDataModal";
 import { CustomerRelationsPanel } from "./CustomerRelationsPanel";
-import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
 import {
   CollapsibleDetailSection,
   DetailRow,
@@ -59,12 +59,6 @@ import {
   resolveCustomerWorkspaceActionHref,
   type CustomerWorkspaceActionId,
 } from "./customerWorkspaceActions";
-import { listConsultations } from "../customer-workspace/customerWorkspaceApi";
-import {
-  consultationPreviewDate,
-  selectRecentConsultations,
-} from "../customer-workspace/customerWorkspaceModel";
-
 type CustomerDetailScreenProps = { customerId: number };
 
 function phoneUrl(phone: string, scheme: "tel" | "sms"): string | null {
@@ -111,11 +105,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
     queryFn: () => listCustomerFireInsuranceLocations(token, customerId),
     enabled: Boolean(token) && Boolean(query.data),
   });
-  const consultationsQuery = useQuery({
-    queryKey: ["customer-consultations", customerId],
-    queryFn: () => listConsultations(token, customerId),
-    enabled: Boolean(token) && Boolean(query.data),
-  });
   const favoriteMutation = useMutation({
     mutationFn: (isFavorite: boolean) => setCustomerFavorite(token, customerId, isFavorite),
     onSuccess: (updated) => {
@@ -152,10 +141,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const telUrl = customer ? phoneUrl(customer.phone, "tel") : null;
   const smsUrl = customer ? phoneUrl(customer.phone, "sms") : null;
   const actions = customer ? buildCustomerWorkspaceActions(customer.name) : [];
-  const recentConsultations = useMemo(
-    () => selectRecentConsultations(consultationsQuery.data ?? []),
-    [consultationsQuery.data],
-  );
 
   const handleAction = async (actionId: CustomerWorkspaceActionId) => {
     if (!customer) return;
@@ -181,13 +166,12 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
         onBackPress={onBackFromDetail}
         rightAction={
           customer ? (
-            <Inline gap="xs" align="center">
-              <Button
-                accessibilityLabel={customer.isFavorite ? "중요 고객 해제" : "중요 고객"}
-                label={customer.isFavorite ? "★" : "☆"}
-                size="sm"
-                variant="ghost"
+            <Inline gap="none" align="center">
+              <CustomerActionIcon
+                kind="star"
+                active={customer.isFavorite}
                 disabled={favoriteMutation.isPending}
+                accessibilityLabel={customer.isFavorite ? "중요 고객 해제" : "중요 고객"}
                 onPress={() => favoriteMutation.mutate(!customer.isFavorite)}
               />
               <CustomerContactIconButton
@@ -233,15 +217,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     carsQuery.refetch(),
                     fireLocationsQuery.refetch(),
                     specialDatesQuery.refetch(),
-                    consultationsQuery.refetch(),
                     queryClient.invalidateQueries({
                       queryKey: ["customer-relation-groups", customerId],
                     }),
                     queryClient.invalidateQueries({
                       queryKey: ["customer-relations", customerId],
-                    }),
-                    queryClient.invalidateQueries({
-                      queryKey: ["customer-consultations", customerId],
                     }),
                   ]);
                 }}
@@ -251,28 +231,14 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             }
           >
 
-            <CustomerAppLinkSection
+            <CustomerDetailTaskPanel
               customerId={customer.id}
               customerName={customer.name}
               customerPhone={customer.phone}
+              actions={actions}
+              onAction={(actionId) => void handleAction(actionId)}
+              copyNotice={copyNotice}
             />
-
-            <CollapsibleDetailSection
-              title="고객 업무"
-              testID="customer-detail-section-actions"
-              sectionId="actions"
-              defaultExpanded
-            >
-              <CustomerWorkspaceActionGrid
-                actions={actions}
-                onAction={(actionId) => void handleAction(actionId)}
-              />
-              {copyNotice ? (
-                <AppText variant="body" color="success">
-                  {copyNotice}
-                </AppText>
-              ) : null}
-            </CollapsibleDetailSection>
 
             <CollapsibleDetailSection
               title="기본 정보"
@@ -371,41 +337,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               onExpandedChange={(expanded) => setSectionExpandedState("anniversary", expanded)}
             />
 
-            <CollapsibleDetailSection
-              title="상담"
-              testID="customer-detail-section-consultation"
-              sectionId="consultation"
-              defaultExpanded={false}
-            >
-              {consultationsQuery.isLoading ? (
-                <AppText variant="body" color="textSecondary">상담 기록을 불러오는 중…</AppText>
-              ) : recentConsultations.length ? (
-                recentConsultations.map((row) => (
-                  <Stack key={row.id} gap="xs" style={styles.subBlock}>
-                    <AppText variant="bodyStrong">{consultationPreviewDate(row)}</AppText>
-                    <AppText color="textSecondary">
-                      {formatCustomerDetailValue(row.body)}
-                    </AppText>
-                  </Stack>
-                ))
-              ) : (
-                <AppText variant="body" color="textSecondary">등록된 상담 기록이 없습니다.</AppText>
-              )}
-              <Button
-                accessibilityLabel={`${customer.name} 전체 상담 보기`}
-                label="전체 상담 보기"
-                size="sm"
-                variant="secondary"
-                onPress={() =>
-                  router.push({
-                    pathname: "/customers/[customerId]/consultations",
-                    params: { customerId: String(customer.id) },
-                  })
-                }
-                style={styles.fullWidthAction}
-              />
-            </CollapsibleDetailSection>
-
             <Stack gap="sm" style={styles.bottomActions} testID="customer-detail-bottom-actions">
               <Button
                 accessibilityLabel={`${customer.name} 고객 정보 수정`}
@@ -465,16 +396,9 @@ function createStyles(theme: AppTheme) {
       paddingBottom: theme.layout.contentBottomInset,
       gap: theme.spacing.sm,
     },
-    grow: { flex: 1 },
-    fullWidthAction: { alignSelf: "stretch", marginTop: theme.spacing.sm },
     bottomActions: {
       marginTop: theme.spacing.sm,
       marginBottom: theme.spacing.md,
-    },
-    subBlock: {
-      paddingVertical: theme.spacing.sm,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
     },
   });
 }
