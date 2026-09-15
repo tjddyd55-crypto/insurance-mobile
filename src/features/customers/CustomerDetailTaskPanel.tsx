@@ -39,11 +39,7 @@ export function CustomerDetailTaskPanel({
         customerPhone={customerPhone}
       />
       <View style={styles.divider} accessibilityElementsHidden />
-      <CustomerWorkspaceActionGrid
-        actions={actions}
-        onAction={onAction}
-        accentTheme={panelTheme}
-      />
+      <CustomerWorkspaceActionGrid actions={actions} onAction={onAction} />
       {copyNotice ? (
         <AppText variant="body" color="success">
           {copyNotice}
@@ -56,7 +52,7 @@ export function CustomerDetailTaskPanel({
 function createStyles(theme: AppTheme, panelTheme: ReturnType<typeof customerTaskPanelTheme>) {
   return StyleSheet.create({
     panel: {
-      backgroundColor: panelTheme.tint,
+      backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.lg,
       borderWidth: 1.5,
       borderColor: panelTheme.accent,

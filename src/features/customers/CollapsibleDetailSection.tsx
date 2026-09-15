@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
+import { SymbolView } from "expo-symbols";
 
 import { AppText, Card, Divider, Stack, useAppTheme, type AppTheme } from "../../design-system";
 import {
@@ -7,6 +8,11 @@ import {
   customerSectionTheme,
   type CustomerSectionId,
 } from "./customerSectionTheme";
+
+const CHEVRON_NAMES = {
+  down: { ios: "chevron.down" as const, android: "expand_more" as const },
+  up: { ios: "chevron.up" as const, android: "expand_less" as const },
+};
 
 export function CollapsibleDetailSection({
   title,
@@ -40,10 +46,7 @@ export function CollapsibleDetailSection({
     expanded,
     theme.colors.border,
   );
-  const styles = useMemo(
-    () => createStyles(theme, sectionTheme, expanded),
-    [theme, sectionTheme, expanded],
-  );
+  const styles = useMemo(() => createStyles(theme, sectionTheme), [theme, sectionTheme]);
 
   return (
     <Card
@@ -65,9 +68,18 @@ export function CollapsibleDetailSection({
         <AppText variant="heading" numberOfLines={1} style={styles.title}>
           {title}
         </AppText>
-        <AppText variant="caption" color="textSecondary" style={styles.toggle}>
-          {expanded ? "최소 ˄" : "펼치기 ˅"}
-        </AppText>
+        <View style={styles.toggleIconWrap} accessibilityElementsHidden importantForAccessibility="no">
+          <SymbolView
+            name={expanded ? CHEVRON_NAMES.up : CHEVRON_NAMES.down}
+            size={20}
+            tintColor={theme.colors.textSecondary}
+            fallback={
+              <AppText variant="body" color="textSecondary" style={styles.toggleFallback}>
+                {expanded ? "˄" : "˅"}
+              </AppText>
+            }
+          />
+        </View>
       </Pressable>
       {expanded ? (
         <>
@@ -116,14 +128,12 @@ export function DetailSubsectionLabel({ label }: { label: string }) {
 function createStyles(
   theme: AppTheme,
   sectionTheme: ReturnType<typeof customerSectionTheme> | null,
-  expanded: boolean,
 ) {
-  const surfaceTint = expanded && sectionTheme ? sectionTheme.tint : theme.colors.surface;
   return StyleSheet.create({
     card: {
       overflow: "hidden",
       borderRadius: 12,
-      backgroundColor: surfaceTint,
+      backgroundColor: theme.colors.surface,
     },
     sectionHeader: {
       minHeight: 44,
@@ -131,9 +141,8 @@ function createStyles(
       paddingVertical: theme.spacing.sm + theme.spacing.xs,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       gap: theme.spacing.sm,
-      backgroundColor: surfaceTint,
+      backgroundColor: theme.colors.surface,
     },
     accentBar: {
       width: 3,
@@ -148,15 +157,23 @@ function createStyles(
       fontSize: 17,
       fontWeight: "700",
     },
-    toggle: {
+    toggleIconWrap: {
+      width: 48,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
       flexShrink: 0,
-      fontSize: 14,
-      fontWeight: "500",
+      marginRight: -theme.spacing.xs,
+    },
+    toggleFallback: {
+      fontSize: 18,
+      lineHeight: 20,
+      fontWeight: "600",
     },
     sectionBody: {
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.sm + theme.spacing.xs,
-      backgroundColor: surfaceTint,
+      backgroundColor: theme.colors.surface,
     },
   });
 }

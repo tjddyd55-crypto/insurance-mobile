@@ -1,17 +1,25 @@
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, useAppTheme, type AppTheme } from '../../design-system';
-import type { CustomerSectionTheme } from './customerSectionTheme';
+import { AppText, useAppTheme, type AppTheme } from '../../design-system';
 import type {
   CustomerWorkspaceAction,
   CustomerWorkspaceActionId,
 } from './customerWorkspaceActions';
 
+/** Native 고객 업무 grid — 메인 초록 채움 버튼 SSOT. */
+export function workspaceActionButtonSurface(theme: AppTheme) {
+  return {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+    color: theme.colors.onPrimary,
+  };
+}
+
 export function resolveWorkspaceActionButtonVariant(
   _actionId: CustomerWorkspaceActionId,
-): 'secondary' {
-  return 'secondary';
+): 'filledGreen' {
+  return 'filledGreen';
 }
 
 export function countEmphasizedWorkspaceActions(
@@ -23,40 +31,47 @@ export function countEmphasizedWorkspaceActions(
 type CustomerWorkspaceActionGridProps = {
   actions: CustomerWorkspaceAction[];
   onAction: (actionId: CustomerWorkspaceActionId) => void;
-  accentTheme?: CustomerSectionTheme;
 };
 
 export function CustomerWorkspaceActionGrid({
   actions,
   onAction,
-  accentTheme,
 }: CustomerWorkspaceActionGridProps) {
   const theme = useAppTheme();
-  const styles = useMemo(
-    () => createStyles(theme, accentTheme),
-    [theme, accentTheme],
-  );
+  const surface = workspaceActionButtonSurface(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.actionGrid} testID="customer-workspace-action-grid">
       {actions.map((action) => (
-        <Button
+        <Pressable
           key={action.id}
           testID={`customer-workspace-action-${action.id}`}
+          accessibilityRole="button"
           accessibilityLabel={action.accessibilityLabel}
-          label={action.label}
-          size="sm"
-          variant={resolveWorkspaceActionButtonVariant(action.id)}
           onPress={() => void onAction(action.id)}
-          style={styles.actionButton}
-        />
+          style={({ pressed }) => [
+            styles.actionButton,
+            {
+              backgroundColor: pressed ? theme.colors.primaryPressed : surface.backgroundColor,
+              borderColor: surface.borderColor,
+            },
+          ]}
+        >
+          <AppText
+            variant="button"
+            numberOfLines={1}
+            style={[styles.actionLabel, { color: surface.color }]}
+          >
+            {action.label}
+          </AppText>
+        </Pressable>
       ))}
     </View>
   );
 }
 
-function createStyles(theme: AppTheme, accentTheme?: CustomerSectionTheme) {
-  const greenAccent = accentTheme != null;
+function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     actionGrid: {
       flexDirection: 'row',
@@ -68,12 +83,14 @@ function createStyles(theme: AppTheme, accentTheme?: CustomerSectionTheme) {
       flexBasis: '46%',
       minHeight: 44,
       borderRadius: theme.radius.lg,
-      ...(greenAccent
-        ? {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.primaryBorder,
-          }
-        : null),
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.sm,
+    },
+    actionLabel: {
+      fontWeight: '600',
+      textAlign: 'center',
     },
   });
 }
