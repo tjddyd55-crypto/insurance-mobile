@@ -111,9 +111,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     const showSub = Keyboard.addListener('keyboardDidShow', (event: KeyboardEvent) => {
       kbHeightRef.current = event.endCoordinates.height;
       setKbHeight(event.endCoordinates.height);
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      });
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       kbHeightRef.current = 0;
@@ -124,6 +121,14 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       hideSub.remove();
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (mode !== 'create') return undefined;
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      return undefined;
+    }, [mode]),
+  );
   /** Immutable original snapshot for this edit session (string). */
   const originalSnapshotRef = useRef<string | null>(
     mode === 'create' ? createCustomerFormSnapshot(EMPTY_CUSTOMER_FORM) : null,

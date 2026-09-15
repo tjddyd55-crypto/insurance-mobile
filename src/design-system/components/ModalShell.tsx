@@ -27,6 +27,13 @@ export type ModalShellProps = {
   busy?: boolean;
   closeOnBackdrop?: boolean;
   dismissOnAndroidBack?: boolean;
+  /** Dialog-only sizing overrides. Defaults preserve existing modal behavior. */
+  dialogMaxHeight?: `${number}%`;
+  dialogWidth?: `${number}%`;
+  dialogBodyPadding?: number;
+  dialogOverlayPaddingVertical?: number;
+  dialogOverlayPaddingHorizontal?: number;
+  dialogHeaderCompact?: boolean;
   onRequestClose: () => void;
 };
 
@@ -47,11 +54,18 @@ export function ModalShell({
   busy = false,
   closeOnBackdrop = false,
   dismissOnAndroidBack = true,
+  dialogMaxHeight,
+  dialogWidth,
+  dialogBodyPadding,
+  dialogOverlayPaddingVertical,
+  dialogOverlayPaddingHorizontal,
+  dialogHeaderCompact = false,
   onRequestClose,
 }: ModalShellProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const isDialog = presentation === 'dialog';
+  const resolvedBodyPadding = dialogBodyPadding ?? theme.layout.modalPadding;
   const requestClose = () => {
     if (!busy && dismissOnAndroidBack) {
       onRequestClose();
@@ -59,13 +73,21 @@ export function ModalShell({
   };
   const body = scroll ? (
     <ScrollView
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { padding: resolvedBodyPadding }]}
       keyboardShouldPersistTaps="handled"
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.body, isDialog ? styles.dialogBody : styles.bodyFill]}>{children}</View>
+    <View
+      style={[
+        styles.body,
+        { padding: resolvedBodyPadding },
+        isDialog ? styles.dialogBody : styles.bodyFill,
+      ]}
+    >
+      {children}
+    </View>
   );
 
   return (
@@ -76,7 +98,16 @@ export function ModalShell({
       statusBarTranslucent={isDialog}
       onRequestClose={requestClose}
     >
-      <View style={[styles.modalRoot, isDialog && styles.dialogOverlay]}>
+      <View
+        style={[
+          styles.modalRoot,
+          isDialog && styles.dialogOverlay,
+          isDialog && {
+            paddingVertical: dialogOverlayPaddingVertical ?? theme.spacing.xl,
+            paddingHorizontal: dialogOverlayPaddingHorizontal ?? theme.spacing.xl,
+          },
+        ]}
+      >
         {isDialog ? (
           <Pressable
             accessibilityRole="button"
@@ -91,16 +122,24 @@ export function ModalShell({
         ) : null}
         <SafeAreaView
           edges={isDialog ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}
-          style={[styles.safe, isDialog && styles.dialogPanel]}
+          style={[
+            styles.safe,
+            isDialog && styles.dialogPanel,
+            isDialog && dialogMaxHeight ? { maxHeight: dialogMaxHeight } : null,
+            isDialog && dialogWidth ? { width: dialogWidth, alignSelf: 'center' } : null,
+          ]}
         >
           <KeyboardAvoidingView
             enabled={keyboardAvoiding}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={isDialog ? styles.dialogKeyboard : styles.keyboard}
           >
-            <View style={styles.header}>
+            <View style={[styles.header, dialogHeaderCompact && styles.headerCompact]}>
               <View style={styles.titleBlock}>
-                <AppText variant="sectionTitle" numberOfLines={1}>
+                <AppText
+                  variant={dialogHeaderCompact ? 'bodyStrong' : 'sectionTitle'}
+                  numberOfLines={1}
+                >
                   {title}
                 </AppText>
                 {subtitle ? (
@@ -127,7 +166,6 @@ function createStyles(theme: AppTheme) {
       backgroundColor: theme.colors.background,
     },
     dialogOverlay: {
-      padding: theme.spacing.xl,
       justifyContent: 'center',
       backgroundColor: theme.colors.overlay,
     },
@@ -163,14 +201,16 @@ function createStyles(theme: AppTheme) {
       borderBottomColor: theme.colors.border,
       backgroundColor: theme.colors.surface,
     },
+    headerCompact: {
+      minHeight: 52,
+      paddingHorizontal: theme.spacing.md,
+    },
     titleBlock: {
       flex: 1,
       minWidth: 0,
       gap: theme.spacing.xxs,
     },
-    body: {
-      padding: theme.layout.modalPadding,
-    },
+    body: {},
     bodyFill: {
       flex: 1,
     },
@@ -180,7 +220,6 @@ function createStyles(theme: AppTheme) {
     },
     scrollContent: {
       flexGrow: 1,
-      padding: theme.layout.modalPadding,
       gap: theme.layout.sectionGap,
     },
     footer: {
