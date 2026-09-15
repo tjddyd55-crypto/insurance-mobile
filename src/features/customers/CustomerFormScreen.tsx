@@ -54,6 +54,7 @@ import {
   getInflowSourceDetailFieldMeta,
   requiresInflowSourceDetail,
 } from './customerInflowSource';
+import { CustomerAlertDatesEditor } from './CustomerAlertDatesEditor';
 import { CollapsibleFormSection } from './CollapsibleFormSection';
 import { CustomerCarsEditor } from './CustomerCarsEditor';
 import { CustomerFireInsuranceLocationsEditor } from './CustomerFireInsuranceLocationsEditor';
@@ -561,8 +562,8 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           />
         </CollapsibleFormSection>
 
-        <FormSection title="기념일">
-          <CustomerSpecialDatesEditor
+        <FormSection title="알림일">
+          <CustomerAlertDatesEditor
             items={form.specialDates}
             onChange={(specialDates) => updateField('specialDates', specialDates)}
             disabled={saveMutation.isPending}
@@ -684,95 +685,6 @@ function FormSection({ title, children }: { title: string; children: React.React
         {title}
       </AppText>
       <Stack gap="md">{children}</Stack>
-    </Stack>
-  );
-}
-
-function CustomerSpecialDatesEditor({
-  items,
-  onChange,
-  disabled = false,
-}: {
-  items: CustomerSpecialDateFormItem[];
-  onChange: (next: CustomerSpecialDateFormItem[]) => void;
-  disabled?: boolean;
-}) {
-  const updateAt = (index: number, next: CustomerSpecialDateFormItem) => {
-    const copy = [...items];
-    copy[index] = next;
-    onChange(copy);
-  };
-
-  return (
-    <Stack gap="md">
-      <Inline justify="space-between">
-        <AppText variant="body" color="textSecondary">고객 기념일·안내일을 등록합니다.</AppText>
-        <Button
-          label="기념일 추가"
-          size="sm"
-          variant="secondary"
-          disabled={disabled}
-          onPress={() =>
-            onChange([
-              ...items,
-              {
-                purposeType: 'CELEBRATION',
-                title: '',
-                dateValue: '',
-                memo: '',
-              },
-            ])
-          }
-        />
-      </Inline>
-      {!items.length ? (
-        <AppText variant="body" color="textSecondary">
-          등록된 기념일이 없습니다.
-        </AppText>
-      ) : null}
-      {items.map((item, index) => (
-        <Card key={item.id ?? `special-${index}`} variant="outlined">
-          <Stack gap="sm">
-            <Inline wrap>
-              {(['CELEBRATION', 'THANKS', 'NOTICE', 'CHECKUP'] as const).map((purpose) => (
-                <Button
-                  key={purpose}
-                  label={purpose}
-                  size="sm"
-                  variant={item.purposeType === purpose ? 'selected' : 'secondary'}
-                  onPress={() => updateAt(index, { ...item, purposeType: purpose })}
-                />
-              ))}
-            </Inline>
-            <TextField
-              label="제목"
-              value={item.title}
-              onChangeText={(value) => updateAt(index, { ...item, title: value })}
-              editable={!disabled}
-            />
-            <TextField
-              label="날짜"
-              value={item.dateValue}
-              onChangeText={(value) => updateAt(index, { ...item, dateValue: value })}
-              placeholder="YYYY-MM-DD"
-              editable={!disabled}
-            />
-            <TextField
-              label="메모"
-              value={item.memo}
-              onChangeText={(value) => updateAt(index, { ...item, memo: value })}
-              editable={!disabled}
-            />
-            <Button
-              label="삭제"
-              size="sm"
-              variant="danger"
-              disabled={disabled}
-              onPress={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
-            />
-          </Stack>
-        </Card>
-      ))}
     </Stack>
   );
 }

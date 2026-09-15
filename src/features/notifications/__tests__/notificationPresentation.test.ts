@@ -11,7 +11,7 @@ describe('notificationPresentation', () => {
   test('keeps web date column labels', () => {
     expect(notificationSectionDateLabel('insurance_age_date')).toBe('상령일');
     expect(notificationSectionDateLabel('car_expiry')).toBe('만기일');
-    expect(notificationSectionDateLabel('special_date')).toBe('지정일');
+    expect(notificationSectionDateLabel('special_date')).toBe('알림일');
     expect(notificationSectionDateLabel('claim_request_received')).toBe('접수일');
   });
 });

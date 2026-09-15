@@ -12,12 +12,16 @@ export function CollapsibleDetailSection({
   children,
   testID,
   defaultExpanded = true,
+  expanded: expandedProp,
+  onExpandedChange,
   sectionId,
 }: {
   title: string;
   children: React.ReactNode;
   testID?: string;
   defaultExpanded?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   sectionId?: CustomerSectionId;
 }) {
   const theme = useAppTheme();
@@ -26,7 +30,14 @@ export function CollapsibleDetailSection({
     () => createStyles(theme, sectionTheme?.accent, sectionTheme?.tint),
     [theme, sectionTheme?.accent, sectionTheme?.tint],
   );
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  const expanded = expandedProp ?? internalExpanded;
+  const setExpanded = (next: boolean) => {
+    if (expandedProp === undefined) {
+      setInternalExpanded(next);
+    }
+    onExpandedChange?.(next);
+  };
 
   return (
     <Card variant="outlined" padding="none" testID={testID} style={styles.card}>
@@ -34,7 +45,7 @@ export function CollapsibleDetailSection({
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         accessibilityLabel={`${title} ${expanded ? "접기" : "펼치기"}`}
-        onPress={() => setExpanded((value) => !value)}
+        onPress={() => setExpanded(!expanded)}
         style={styles.sectionHeader}
       >
         {sectionTheme ? (

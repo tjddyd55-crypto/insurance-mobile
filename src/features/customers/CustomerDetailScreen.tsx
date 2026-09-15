@@ -29,11 +29,7 @@ import {
 import { formatCustomerMobileCarrierDisplay } from "./customerCarrier";
 import { buildKakaoCustomerCopyText } from "./customerCopyText";
 import { listCustomerCars } from "./customerCarsApi";
-import {
-  CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS,
-  listCustomerSpecialDates,
-} from "./customerSpecialDatesApi";
-import { formatBusinessNumberDisplay } from "./customerBusinessInfo";
+import { listCustomerSpecialDates } from "./customerSpecialDatesApi";
 import { formatCustomerInflowSourceDisplay } from "./customerInflowSource";
 import { listCustomerFireInsuranceLocations } from "./customerFireInsuranceLocationsApi";
 import { deleteCustomer, getCustomer, setCustomerFavorite } from "./customersApi";
@@ -43,12 +39,16 @@ import { CustomerAppLinkSection } from "./CustomerAppLinkSection";
 import { CustomerGaDataModal } from "./CustomerGaDataModal";
 import { CustomerRelationsPanel } from "./CustomerRelationsPanel";
 import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
-import { VehicleInfoGrid } from "./VehicleInfoGrid";
 import {
   CollapsibleDetailSection,
   DetailRow,
   DetailSubsectionLabel,
 } from "./CollapsibleDetailSection";
+import { CustomerAlertDatesDetailSection } from "./detail-sections/CustomerAlertDatesDetailSection";
+import { CustomerBusinessDetailSection } from "./detail-sections/CustomerBusinessDetailSection";
+import { CustomerCarDetailSection } from "./detail-sections/CustomerCarDetailSection";
+import { CustomerFireInsuranceDetailSection } from "./detail-sections/CustomerFireInsuranceDetailSection";
+import type { CustomerSectionId } from "./customerSectionTheme";
 import {
   CustomerContactIconButton,
   openPhoneUrl,
@@ -83,6 +83,14 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [gaOpen, setGaOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState("");
+  const [sectionExpanded, setSectionExpanded] = useState<Partial<Record<CustomerSectionId, boolean>>>(
+    {},
+  );
+  const isSectionExpanded = (id: CustomerSectionId, defaultExpanded: boolean) =>
+    sectionExpanded[id] ?? defaultExpanded;
+  const setSectionExpandedState = (id: CustomerSectionId, expanded: boolean) => {
+    setSectionExpanded((previous) => ({ ...previous, [id]: expanded }));
+  };
   const query = useQuery({
     queryKey,
     queryFn: () => getCustomer(token, customerId),
@@ -331,117 +339,37 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               />
             </CollapsibleDetailSection>
 
-            <CollapsibleDetailSection
-              title="자동차 정보"
-              testID="customer-detail-section-vehicle"
-              sectionId="car"
-              defaultExpanded={false}
-            >
-              {carsQuery.isLoading ? (
-                <AppText variant="body" color="textSecondary">차량 정보를 불러오는 중…</AppText>
-              ) : carsQuery.data?.length ? (
-                carsQuery.data.map((car, index) => (
-                  <Stack key={car.id} gap="xs" style={styles.subBlock}>
-                    <AppText variant="bodyStrong">
-                      {car.isPrimary ? "대표 차량" : `차량 ${index + 1}`}
-                    </AppText>
-                    <VehicleInfoGrid
-                      values={{
-                        carNumber: car.carNumber,
-                        carType: car.carType,
-                        carYear: car.carYear,
-                        renewalDate: car.renewalDate,
-                      }}
-                    />
-                  </Stack>
-                ))
-              ) : (
-                <VehicleInfoGrid
-                  values={{
-                    carNumber: customer.carNumber,
-                    carType: customer.carType,
-                    carYear: customer.carYear,
-                    renewalDate: customer.renewalDate,
-                  }}
-                />
-              )}
-            </CollapsibleDetailSection>
+            <CustomerCarDetailSection
+              customer={customer}
+              cars={carsQuery.data}
+              loading={carsQuery.isLoading}
+              expanded={isSectionExpanded("car", false)}
+              onExpandedChange={(expanded) => setSectionExpandedState("car", expanded)}
+            />
 
             <CustomerRelationsPanel customerId={customer.id} />
 
-            <CollapsibleDetailSection
-              title="사업자 정보"
-              testID="customer-detail-section-business"
-              sectionId="business"
-              defaultExpanded={false}
-            >
-              {customer.businessInfo ? (
-                <>
-                  <DetailRow
-                    label="대표자명"
-                    value={formatCustomerDetailValue(customer.businessInfo.representativeName)}
-                  />
-                  <DetailRow
-                    label="사업자번호"
-                    value={formatCustomerDetailValue(
-                      formatBusinessNumberDisplay(customer.businessInfo.businessNumber),
-                    )}
-                  />
-                  <DetailRow
-                    label="사업장 주소"
-                    value={formatCustomerDetailValue(customer.businessInfo.businessAddress)}
-                  />
-                  <DetailRow
-                    label="메모"
-                    value={formatCustomerDetailValue(customer.businessInfo.memo)}
-                  />
-                </>
-              ) : (
-                <AppText variant="body" color="textSecondary">등록된 사업자 정보가 없습니다.</AppText>
-              )}
-            </CollapsibleDetailSection>
+            <CustomerBusinessDetailSection
+              customer={customer}
+              expanded={isSectionExpanded("business", false)}
+              onExpandedChange={(expanded) => setSectionExpandedState("business", expanded)}
+            />
 
-            <CollapsibleDetailSection
-              title="화재보험 정보"
-              testID="customer-detail-section-fire-insurance"
-              sectionId="fire"
-              defaultExpanded={false}
-            >
-              {fireLocationsQuery.isLoading ? (
-                <AppText variant="body" color="textSecondary">화재보험 소재지를 불러오는 중…</AppText>
-              ) : (fireLocationsQuery.data ?? []).length > 0 ? (
-                (fireLocationsQuery.data ?? []).map((location, index) => (
-                  <Stack key={location.id} gap="xs" style={styles.subBlock}>
-                    <DetailSubsectionLabel label={`소재지 ${index + 1}`} />
-                    <DetailRow label="주소" value={formatCustomerDetailValue(location.address)} />
-                    <DetailRow label="메모" value={formatCustomerDetailValue(location.memo)} />
-                  </Stack>
-                ))
-              ) : (
-                <AppText variant="body" color="textSecondary">등록된 화재보험 소재지가 없습니다.</AppText>
-              )}
-            </CollapsibleDetailSection>
+            <CustomerFireInsuranceDetailSection
+              customerId={customer.id}
+              locations={fireLocationsQuery.data}
+              loading={fireLocationsQuery.isLoading}
+              expanded={isSectionExpanded("fire", false)}
+              onExpandedChange={(expanded) => setSectionExpandedState("fire", expanded)}
+            />
 
-            <CollapsibleDetailSection
-              title="기념일"
-              testID="customer-detail-section-special-dates"
-              sectionId="anniversary"
-              defaultExpanded={false}
-            >
-              {specialDatesQuery.isLoading ? (
-                <AppText variant="body" color="textSecondary">기념일을 불러오는 중…</AppText>
-              ) : specialDatesQuery.data?.length ? (
-                specialDatesQuery.data.map((item) => (
-                  <DetailRow
-                    key={item.id}
-                    label={`${CUSTOMER_SPECIAL_DATE_PURPOSE_LABELS[item.purposeType]} · ${item.title}`}
-                    value={formatCustomerDetailDate(item.dateValue)}
-                  />
-                ))
-              ) : (
-                <AppText variant="body" color="textSecondary">등록된 기념일이 없습니다.</AppText>
-              )}
-            </CollapsibleDetailSection>
+            <CustomerAlertDatesDetailSection
+              customerId={customer.id}
+              items={specialDatesQuery.data}
+              loading={specialDatesQuery.isLoading}
+              expanded={isSectionExpanded("anniversary", false)}
+              onExpandedChange={(expanded) => setSectionExpandedState("anniversary", expanded)}
+            />
 
             <CollapsibleDetailSection
               title="상담"

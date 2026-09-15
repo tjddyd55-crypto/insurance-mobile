@@ -101,7 +101,7 @@ export async function listCustomerFireInsuranceLocations(
   return locations.map((row) => mapLocation(row as Record<string, unknown>));
 }
 
-async function createCustomerFireInsuranceLocation(
+export async function createCustomerFireInsuranceLocation(
   token: string,
   customerId: number,
   payload: CustomerFireInsuranceLocationInput,
@@ -120,7 +120,7 @@ async function createCustomerFireInsuranceLocation(
   return mapLocation(raw as Record<string, unknown>);
 }
 
-async function updateCustomerFireInsuranceLocation(
+export async function updateCustomerFireInsuranceLocation(
   token: string,
   customerId: number,
   locationId: number,
@@ -140,7 +140,7 @@ async function updateCustomerFireInsuranceLocation(
   return mapLocation(raw as Record<string, unknown>);
 }
 
-async function deleteCustomerFireInsuranceLocation(
+export async function deleteCustomerFireInsuranceLocation(
   token: string,
   customerId: number,
   locationId: number,

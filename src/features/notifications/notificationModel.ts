@@ -13,7 +13,7 @@ export const DEFAULT_ALERT_SETTINGS: UserAlertSettings = {
   workAlert: { enabled: true },
   insuranceAge: { enabled: true, daysBefore: 30 },
   carExpiry: { enabled: true, daysBefore: 30 },
-  specialDate: { enabled: true, daysBefore: 30 },
+  specialDate: { enabled: true, daysBefore: 0 },
   claimRequest: { enabled: true },
 };
 
@@ -24,7 +24,7 @@ export const NOTIFICATION_SECTIONS: { type: NotificationType; title: string; dat
   { type: 'claim_request_received', title: '청구요청', dateLabel: '접수일' },
   { type: 'insurance_age_date', title: '상령일', dateLabel: '상령일' },
   { type: 'car_expiry', title: '자동차만기', dateLabel: '만기일' },
-  { type: 'special_date', title: '지정일', dateLabel: '지정일' },
+  { type: 'special_date', title: '알림일', dateLabel: '알림일' },
 ];
 
 function text(value: unknown): string {
