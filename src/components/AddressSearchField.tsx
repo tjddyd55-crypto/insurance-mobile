@@ -68,7 +68,7 @@ export function AddressSearchField({
       <AddressSearchModal
         open={open}
         onClose={() => setOpen(false)}
-        onComplete={(selected) =>
+        onSelect={(selected) =>
           onChange({
             ...value,
             zonecode: selected.zonecode,

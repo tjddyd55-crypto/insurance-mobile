@@ -6,4 +6,7 @@ export {
   resolveAddressSearchEmbedHeight,
   resolveAddressSearchPanelWidth,
 } from "./addressSearchUi";
-export { parseAddressSearchWebViewMessage } from "./addressSearchPostcode";
+export {
+  parseAddressSearchWebViewMessage,
+  type AddressSearchSelection,
+} from "./addressSearchPostcode";

@@ -4,11 +4,13 @@ export const ADDRESS_SEARCH_POSTCODE_HTML = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <style>
-      html, body, #wrap { margin: 0; padding: 0; width: 100%; height: 100%; }
-      #wrap { height: 100%; }
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+      #wrap { margin: 0; padding: 0; width: 100%; height: 100%; }
+      #wrap iframe { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; }
     </style>
   </head>
   <body>
@@ -49,9 +51,11 @@ export const ADDRESS_SEARCH_POSTCODE_HTML = `<!DOCTYPE html>
   </body>
 </html>`;
 
+export type AddressSearchSelection = Pick<AddressSearchValue, "zonecode" | "baseAddress">;
+
 export function parseAddressSearchWebViewMessage(raw: string): {
   action: "complete" | "close" | "ignore";
-  value?: Pick<AddressSearchValue, "zonecode" | "baseAddress">;
+  value?: AddressSearchSelection;
 } {
   try {
     const payload = JSON.parse(raw) as {

@@ -10,9 +10,9 @@ import {
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { AppText, Button, useAppTheme, type AppTheme } from "../../design-system";
-import type { AddressSearchValue } from "../../features/customers/customerAddressSearch";
 import {
-  ADDRESS_SEARCH_PANEL_GAP,
+  ADDRESS_SEARCH_HEADER_PADDING_BOTTOM,
+  ADDRESS_SEARCH_PANEL_BORDER_RADIUS,
   ADDRESS_SEARCH_PANEL_PADDING,
   resolveAddressSearchEmbedHeight,
   resolveAddressSearchPanelWidth,
@@ -20,23 +20,26 @@ import {
 import {
   ADDRESS_SEARCH_POSTCODE_HTML,
   parseAddressSearchWebViewMessage,
+  type AddressSearchSelection,
 } from "./addressSearchPostcode";
 
 export type AddressSearchModalProps = {
   open: boolean;
   onClose: () => void;
-  onComplete: (next: Pick<AddressSearchValue, "zonecode" | "baseAddress">) => void;
+  onSelect: (address: AddressSearchSelection) => void;
   panelStyle?: StyleProp<ViewStyle>;
 };
 
 /**
- * 고객 등록 링크(public registration) 주소 검색 dialog 와 동일한 Native SSOT.
- * Platform `address-search-field__dialog` 구조: 패널 padding → 헤더+닫기 → embed(WebView).
+ * Native 주소검색 dialog SSOT.
+ * - card: outer margin + rounded panel
+ * - header: padded
+ * - WebView: card 내부 full-bleed width
  */
 export function AddressSearchModal({
   open,
   onClose,
-  onComplete,
+  onSelect,
   panelStyle,
 }: AddressSearchModalProps) {
   const theme = useAppTheme();
@@ -47,7 +50,7 @@ export function AddressSearchModal({
   const handleMessage = (event: WebViewMessageEvent) => {
     const result = parseAddressSearchWebViewMessage(event.nativeEvent.data);
     if (result.action === "complete" && result.value) {
-      onComplete(result.value);
+      onSelect(result.value);
       onClose();
       return;
     }
@@ -64,7 +67,7 @@ export function AddressSearchModal({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} pointerEvents="box-none">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="모달 배경"
@@ -86,6 +89,7 @@ export function AddressSearchModal({
               onPress={onClose}
             />
           </View>
+          <View style={styles.divider} />
           <View style={[styles.embed, { height: embedHeight }]} collapsable={false}>
             <WebView
               originWhitelist={["https://*"]}
@@ -94,6 +98,9 @@ export function AddressSearchModal({
               javaScriptEnabled
               domStorageEnabled
               nestedScrollEnabled
+              scrollEnabled
+              setBuiltInZoomControls={false}
+              showsHorizontalScrollIndicator={false}
               style={styles.webview}
             />
           </View>
@@ -114,17 +121,20 @@ function createStyles(theme: AppTheme) {
     },
     panel: {
       maxWidth: "100%",
-      padding: ADDRESS_SEARCH_PANEL_PADDING,
-      gap: ADDRESS_SEARCH_PANEL_GAP,
-      borderRadius: theme.radius.md,
+      overflow: "hidden",
+      borderRadius: ADDRESS_SEARCH_PANEL_BORDER_RADIUS,
       backgroundColor: theme.colors.surfaceElevated,
       zIndex: 1,
+      alignSelf: "center",
     },
     head: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: theme.spacing.md,
+      paddingHorizontal: ADDRESS_SEARCH_PANEL_PADDING,
+      paddingTop: ADDRESS_SEARCH_PANEL_PADDING,
+      paddingBottom: ADDRESS_SEARCH_HEADER_PADDING_BOTTOM,
     },
     title: {
       flex: 1,
@@ -132,16 +142,19 @@ function createStyles(theme: AppTheme) {
       fontWeight: "600",
       color: theme.colors.text,
     },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.border,
+    },
     embed: {
+      alignSelf: "stretch",
       width: "100%",
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.md,
       overflow: "hidden",
       backgroundColor: theme.colors.surface,
     },
     webview: {
       flex: 1,
+      width: "100%",
       backgroundColor: theme.colors.surface,
     },
   });

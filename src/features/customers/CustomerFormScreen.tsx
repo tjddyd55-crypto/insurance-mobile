@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -95,13 +95,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const [discardOpen, setDiscardOpen] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const [kbHeight, setKbHeight] = useState(0);
   const kbHeightRef = useRef(0);
   const discardOpenRef = useRef(false);
-
-  useEffect(() => {
-    kbHeightRef.current = kbHeight;
-  }, [kbHeight]);
+  const initialCreateFocusDoneRef = useRef(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     discardOpenRef.current = discardOpen;
@@ -110,11 +107,9 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', (event: KeyboardEvent) => {
       kbHeightRef.current = event.endCoordinates.height;
-      setKbHeight(event.endCoordinates.height);
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       kbHeightRef.current = 0;
-      setKbHeight(0);
     });
     return () => {
       showSub.remove();
@@ -124,7 +119,8 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
 
   useFocusEffect(
     useCallback(() => {
-      if (mode !== 'create') return undefined;
+      if (mode !== 'create' || initialCreateFocusDoneRef.current) return undefined;
+      initialCreateFocusDoneRef.current = true;
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       return undefined;
     }, [mode]),
@@ -371,7 +367,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.content, kbHeight > 0 ? { paddingBottom: theme.spacing.xl + theme.spacing.xl + kbHeight } : null]}
+        contentContainerStyle={[styles.content, { paddingBottom: theme.spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
@@ -638,9 +634,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
               : '고객 정보를 저장하지 못했습니다.'}
           </AppText>
         ) : null}
-      </ScrollView>
 
-      <SafeAreaView style={styles.footerSafe} edges={['bottom']}>
         <View style={styles.footer}>
           <Button
             label="취소"
@@ -672,7 +666,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             style={styles.grow}
           />
         </View>
-      </SafeAreaView>
+      </ScrollView>
 
       <CustomerDiscardChangesDialog
         open={discardOpen}
@@ -746,12 +740,11 @@ function createStyles(theme: AppTheme) {
       paddingBottom: theme.spacing.xl + theme.spacing.xl,
       gap: theme.spacing.md,
     },
-    footerSafe: {
-      backgroundColor: theme.colors.surface,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.border,
+    footer: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      paddingTop: theme.spacing.md,
     },
-    footer: { flexDirection: 'row', gap: theme.spacing.sm, padding: theme.spacing.md },
     grow: { flex: 1 },
     toggleRow: {
       minHeight: theme.controlSize.md,
