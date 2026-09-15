@@ -4,6 +4,7 @@ import {
   createCustomerFormSnapshot,
   decideCloseEdit,
   isCustomerFormDirty,
+  resolveCustomerEditHardwareBack,
   shouldEnableCustomerEditSave,
 } from '../customerFormDraft';
 
@@ -45,6 +46,21 @@ describe('customerFormDraft', () => {
     expect(
       shouldEnableCustomerEditSave({ initialized: true, dirty: true, saving: true }),
     ).toBe(false);
+  });
+
+  it('hardware back: dialog defers, keyboard dismisses first, else close-edit', () => {
+    expect(
+      resolveCustomerEditHardwareBack({ keyboardVisible: false, discardDialogOpen: true }),
+    ).toBe('defer-to-dialog');
+    expect(
+      resolveCustomerEditHardwareBack({ keyboardVisible: true, discardDialogOpen: false }),
+    ).toBe('dismiss-keyboard');
+    expect(
+      resolveCustomerEditHardwareBack({ keyboardVisible: true, discardDialogOpen: true }),
+    ).toBe('defer-to-dialog');
+    expect(
+      resolveCustomerEditHardwareBack({ keyboardVisible: false, discardDialogOpen: false }),
+    ).toBe('close-edit');
   });
 
   it('close decision: clean leaves, dirty confirms, saving blocks (no auto-save)', () => {
