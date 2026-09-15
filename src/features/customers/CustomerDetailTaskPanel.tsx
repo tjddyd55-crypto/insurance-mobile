@@ -4,6 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { AppText, useAppTheme, type AppTheme } from "../../design-system";
 import { CustomerAppLinkStatusRow } from "./CustomerAppLinkSection";
 import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
+import { customerTaskPanelTheme } from "./customerSectionTheme";
 import type {
   CustomerWorkspaceAction,
   CustomerWorkspaceActionId,
@@ -27,7 +28,8 @@ export function CustomerDetailTaskPanel({
   copyNotice,
 }: CustomerDetailTaskPanelProps) {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const panelTheme = customerTaskPanelTheme();
+  const styles = useMemo(() => createStyles(theme, panelTheme), [theme, panelTheme]);
 
   return (
     <View style={styles.panel} testID="customer-detail-task-panel">
@@ -37,7 +39,11 @@ export function CustomerDetailTaskPanel({
         customerPhone={customerPhone}
       />
       <View style={styles.divider} accessibilityElementsHidden />
-      <CustomerWorkspaceActionGrid actions={actions} onAction={onAction} />
+      <CustomerWorkspaceActionGrid
+        actions={actions}
+        onAction={onAction}
+        accentTheme={panelTheme}
+      />
       {copyNotice ? (
         <AppText variant="body" color="success">
           {copyNotice}
@@ -47,19 +53,20 @@ export function CustomerDetailTaskPanel({
   );
 }
 
-function createStyles(theme: AppTheme) {
+function createStyles(theme: AppTheme, panelTheme: ReturnType<typeof customerTaskPanelTheme>) {
   return StyleSheet.create({
     panel: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: panelTheme.tint,
       borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: theme.spacing.md,
-      gap: theme.spacing.md,
+      borderWidth: 1.5,
+      borderColor: panelTheme.accent,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + theme.spacing.xs,
+      gap: theme.spacing.sm,
     },
     divider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.colors.border,
+      backgroundColor: theme.colors.primaryBorder,
     },
   });
 }

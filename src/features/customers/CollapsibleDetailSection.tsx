@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { AppText, Card, Divider, Stack, useAppTheme, type AppTheme } from "../../design-system";
 import {
+  customerSectionBorderStyle,
   customerSectionTheme,
   type CustomerSectionId,
 } from "./customerSectionTheme";
@@ -26,10 +27,6 @@ export function CollapsibleDetailSection({
 }) {
   const theme = useAppTheme();
   const sectionTheme = sectionId ? customerSectionTheme(sectionId) : null;
-  const styles = useMemo(
-    () => createStyles(theme, sectionTheme?.accent, sectionTheme?.tint),
-    [theme, sectionTheme?.accent, sectionTheme?.tint],
-  );
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const expanded = expandedProp ?? internalExpanded;
   const setExpanded = (next: boolean) => {
@@ -38,9 +35,23 @@ export function CollapsibleDetailSection({
     }
     onExpandedChange?.(next);
   };
+  const borderStyle = customerSectionBorderStyle(
+    sectionId,
+    expanded,
+    theme.colors.border,
+  );
+  const styles = useMemo(
+    () => createStyles(theme, sectionTheme, expanded),
+    [theme, sectionTheme, expanded],
+  );
 
   return (
-    <Card variant="outlined" padding="none" testID={testID} style={styles.card}>
+    <Card
+      variant="outlined"
+      padding="none"
+      testID={testID}
+      style={[styles.card, borderStyle]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded }}
@@ -74,7 +85,7 @@ const DETAIL_LABEL_WIDTH = 88;
 
 export function DetailRow({ label, value }: { label: string; value: string }) {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createDetailStyles(theme), [theme]);
   return (
     <View
       style={styles.row}
@@ -92,7 +103,7 @@ export function DetailRow({ label, value }: { label: string; value: string }) {
 /** Lightweight in-section label — nested cards 금지. */
 export function DetailSubsectionLabel({ label }: { label: string }) {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createDetailStyles(theme), [theme]);
   return (
     <View style={styles.subsection}>
       <AppText variant="label" color="textSecondary">
@@ -102,11 +113,17 @@ export function DetailSubsectionLabel({ label }: { label: string }) {
   );
 }
 
-function createStyles(theme: AppTheme, accent?: string, tint?: string) {
+function createStyles(
+  theme: AppTheme,
+  sectionTheme: ReturnType<typeof customerSectionTheme> | null,
+  expanded: boolean,
+) {
+  const surfaceTint = expanded && sectionTheme ? sectionTheme.tint : theme.colors.surface;
   return StyleSheet.create({
     card: {
       overflow: "hidden",
       borderRadius: 12,
+      backgroundColor: surfaceTint,
     },
     sectionHeader: {
       minHeight: 44,
@@ -116,14 +133,14 @@ function createStyles(theme: AppTheme, accent?: string, tint?: string) {
       alignItems: "center",
       justifyContent: "space-between",
       gap: theme.spacing.sm,
-      backgroundColor: tint ?? theme.colors.surface,
+      backgroundColor: surfaceTint,
     },
     accentBar: {
       width: 3,
       height: 20,
       borderRadius: 2,
       flexShrink: 0,
-      backgroundColor: accent ?? theme.colors.textSecondary,
+      backgroundColor: sectionTheme?.accent ?? theme.colors.textSecondary,
     },
     title: {
       flex: 1,
@@ -139,7 +156,13 @@ function createStyles(theme: AppTheme, accent?: string, tint?: string) {
     sectionBody: {
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.sm + theme.spacing.xs,
+      backgroundColor: surfaceTint,
     },
+  });
+}
+
+function createDetailStyles(theme: AppTheme) {
+  return StyleSheet.create({
     subsection: {
       paddingTop: theme.spacing.md,
       paddingBottom: theme.spacing.xs,

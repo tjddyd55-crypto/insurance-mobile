@@ -20,7 +20,7 @@ import {
 
 /**
  * 고객 상세 업무 패널 상단 — 고객앱 상태 row.
- * 상태 텍스트 + 링크 복사 · 고객앱 발송.
+ * 상태 pill + 링크 복사 · 고객앱 발송.
  */
 export function CustomerAppLinkStatusRow({
   customerId,
@@ -106,12 +106,25 @@ export function CustomerAppLinkStatusRow({
     }
   };
 
+  const statusPillStyle = link.isLoading
+    ? styles.statusPillLoading
+    : connected
+      ? styles.statusPillConnected
+      : styles.statusPillIdle;
+
   return (
     <View style={styles.wrap} testID="customer-app-compact-row">
-      <Inline align="center" gap="sm" style={styles.row}>
-        <AppText variant="bodyStrong" numberOfLines={1} style={styles.status}>
-          {statusLabel}
-        </AppText>
+      <Inline align="center" gap="xs" style={styles.row}>
+        <View style={[styles.statusPill, statusPillStyle]}>
+          <AppText
+            variant="caption"
+            color={connected ? "brandStrong" : "textSecondary"}
+            numberOfLines={1}
+            style={styles.statusText}
+          >
+            {statusLabel}
+          </AppText>
+        </View>
         <Inline gap="xs" style={styles.actions}>
           <Button
             label="링크 복사"
@@ -120,7 +133,7 @@ export function CustomerAppLinkStatusRow({
             loading={busyAction === "copy"}
             disabled={busyAction != null || link.isLoading}
             onPress={() => void handleCopy()}
-            style={styles.actionBtn}
+            style={styles.copyBtn}
           />
           <Button
             label="고객앱 발송"
@@ -128,7 +141,7 @@ export function CustomerAppLinkStatusRow({
             variant="action"
             disabled={busyAction != null || link.isLoading || !phoneReady}
             onPress={() => setSendConfirm(true)}
-            style={styles.actionBtn}
+            style={styles.sendBtn}
           />
         </Inline>
       </Inline>
@@ -166,13 +179,50 @@ export function CustomerAppLinkSection(props: {
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    wrap: { gap: theme.spacing.xs },
+    wrap: { gap: theme.spacing.xxs },
     row: {
-      minHeight: theme.controlSize.md,
+      minHeight: theme.controlSize.sm,
       flexWrap: "nowrap",
     },
-    status: { flexShrink: 1, minWidth: 0 },
-    actions: { marginLeft: "auto", flexShrink: 0 },
-    actionBtn: { minWidth: 88 },
+    statusPill: {
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs + 2,
+      borderWidth: 1,
+      flexShrink: 1,
+      minWidth: 0,
+      maxWidth: "42%",
+    },
+    statusPillIdle: {
+      backgroundColor: theme.colors.surfaceSubtle,
+      borderColor: theme.colors.border,
+    },
+    statusPillLoading: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+    },
+    statusPillConnected: {
+      backgroundColor: theme.colors.primarySoft,
+      borderColor: theme.colors.primaryBorder,
+    },
+    statusText: {
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    actions: {
+      marginLeft: "auto",
+      flexShrink: 0,
+      flexWrap: "nowrap",
+    },
+    copyBtn: {
+      minWidth: 76,
+      minHeight: theme.controlSize.sm,
+      paddingHorizontal: theme.spacing.sm,
+    },
+    sendBtn: {
+      minWidth: 92,
+      minHeight: theme.controlSize.sm,
+      paddingHorizontal: theme.spacing.sm,
+    },
   });
 }

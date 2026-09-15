@@ -30,3 +30,29 @@ export const CUSTOMER_SECTION_THEMES: Record<CustomerSectionId, CustomerSectionT
 export function customerSectionTheme(sectionId: CustomerSectionId): CustomerSectionTheme {
   return CUSTOMER_SECTION_THEMES[sectionId]
 }
+
+/** 고객 업무 패널 — actions section theme alias (Native SSOT). */
+export function customerTaskPanelTheme(): CustomerSectionTheme {
+  return CUSTOMER_SECTION_THEMES.actions
+}
+
+const EXPANDED_SECTION_BORDER_WIDTH = 1.5
+const COLLAPSED_SECTION_BORDER_WIDTH = 1
+
+/** accordion 펼침 시 섹션 accent border, 접힘 시 neutral. */
+export function customerSectionBorderStyle(
+  sectionId: CustomerSectionId | undefined,
+  expanded: boolean,
+  neutralBorder: string,
+): { borderColor: string; borderWidth: number } {
+  if (!expanded || !sectionId) {
+    return {
+      borderColor: neutralBorder,
+      borderWidth: COLLAPSED_SECTION_BORDER_WIDTH,
+    }
+  }
+  return {
+    borderColor: CUSTOMER_SECTION_THEMES[sectionId].accent,
+    borderWidth: EXPANDED_SECTION_BORDER_WIDTH,
+  }
+}
