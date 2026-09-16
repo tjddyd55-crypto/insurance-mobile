@@ -49,7 +49,7 @@ import { CustomerAlertDatesDetailSection } from "./detail-sections/CustomerAlert
 import { CustomerBusinessDetailSection } from "./detail-sections/CustomerBusinessDetailSection";
 import { CustomerCarDetailSection } from "./detail-sections/CustomerCarDetailSection";
 import { CustomerFireInsuranceDetailSection } from "./detail-sections/CustomerFireInsuranceDetailSection";
-import { CustomerCustomFieldsDetailSection } from "./detail-sections/CustomerCustomFieldsDetailSection";
+import { CustomerBasicInlineCustomFields } from "./detail-sections/CustomerBasicInlineCustomFields";
 import { SectionEditAction } from "./detail-sections/CustomerSectionActions";
 import type { CustomerSectionId } from "./customerSectionTheme";
 import {
@@ -312,6 +312,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 label="계좌 정보"
                 value={formatCustomerDetailValue(customer.notes.accountNumber)}
               />
+              <CustomerBasicInlineCustomFields
+                customerId={customer.id}
+                items={customFieldsQuery.data}
+                loading={customFieldsQuery.isLoading}
+              />
               <View style={styles.basicEditAction}>
                 <SectionEditAction
                   label="수정하기"
@@ -355,14 +360,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               loading={specialDatesQuery.isLoading}
               expanded={isSectionExpanded("anniversary", false)}
               onExpandedChange={(expanded) => setSectionExpandedState("anniversary", expanded)}
-            />
-
-            <CustomerCustomFieldsDetailSection
-              customerId={customer.id}
-              items={customFieldsQuery.data}
-              loading={customFieldsQuery.isLoading}
-              expanded={isSectionExpanded("customFields", false)}
-              onExpandedChange={(expanded) => setSectionExpandedState("customFields", expanded)}
             />
 
             <Stack gap="sm" style={styles.bottomActions} testID="customer-detail-bottom-actions">
