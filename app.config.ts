@@ -23,13 +23,15 @@ function resolveGoogleServicesFile(environment: AppEnvironment): string | undefi
   const fs = require('fs') as { existsSync: (path: string) => boolean };
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require('path') as { resolve: (...parts: string[]) => string };
-  const candidates =
+  const localCandidates =
     environment === 'production'
       ? ['./google-services.prod.json', './google-services.json']
       : ['./google-services.dev.json', './google-services.json'];
-  for (const relative of candidates) {
-    if (fs.existsSync(path.resolve(process.cwd(), relative))) {
-      return relative;
+  const candidates = [process.env.GOOGLE_SERVICES_JSON, ...localCandidates];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (fs.existsSync(path.resolve(process.cwd(), candidate))) {
+      return candidate;
     }
   }
   return undefined;
