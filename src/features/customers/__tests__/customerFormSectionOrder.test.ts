@@ -15,9 +15,11 @@ describe("customerFormSectionOrder", () => {
       "fireInsurance",
       "alertDates",
       "insuranceReference",
+      "customFields",
     ]);
     expect(CUSTOMER_FORM_SECTION_TITLES.alertDates).toBe("알림일");
     expect(CUSTOMER_FORM_SECTION_TITLES.insuranceReference).toBe("보험 / 참고 정보");
+    expect(CUSTOMER_FORM_SECTION_TITLES.customFields).toBe("추가 정보");
     expect(CUSTOMER_FORM_SECTION_TEST_IDS.insuranceReference).toBe(
       "customer-form-section-insurance-reference",
     );

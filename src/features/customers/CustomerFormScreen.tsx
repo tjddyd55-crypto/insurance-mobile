@@ -70,6 +70,13 @@ import {
   saveCustomerSpecialDatesForCustomer,
   type CustomerSpecialDateFormItem,
 } from './customerSpecialDatesApi';
+import {
+  listCustomerCustomFields,
+  saveCustomerCustomFieldsForCustomer,
+  type CustomerCustomFieldFormItem,
+} from './customerCustomFieldsApi';
+import { getCustomerCustomFieldsValidationError } from './customerCustomFieldFormUtils';
+import { CustomerCustomFieldsEditor } from './CustomerCustomFieldsEditor';
 import { createCustomer, getCustomer, updateCustomer } from './customersApi';
 import { navigateToCustomerDetail } from './customerWorkspaceNavigation';
 import {
@@ -155,6 +162,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       const next = customerToForm(customer);
       let cars = next.cars;
       let specialDates: CustomerSpecialDateFormItem[] = [];
+      let customFields: CustomerCustomFieldFormItem[] = [];
       let fireLocationsRaw: Awaited<
         ReturnType<typeof listCustomerFireInsuranceLocations>
       > = [];
@@ -163,6 +171,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           loadCustomerCarFormItems(token, customer.id, next.cars),
           listCustomerSpecialDates(token, customer.id),
           listCustomerFireInsuranceLocations(token, customer.id),
+          listCustomerCustomFields(token, customer.id),
         ]);
         cars = loaded[0];
         specialDates = loaded[1].map((item) => ({
@@ -173,9 +182,15 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           memo: item.memo,
         }));
         fireLocationsRaw = loaded[2];
+        customFields = loaded[3].map((item) => ({
+          id: item.id,
+          label: item.label,
+          value: item.value,
+        }));
       } catch {
         // Secondary collections failed — still hydrate core customer fields so edit session can start.
         specialDates = [];
+        customFields = [];
         fireLocationsRaw = [];
       }
       if (cancelled || epoch !== hydrateEpochRef.current) return;
@@ -183,6 +198,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         ...next,
         cars,
         specialDates,
+        customFields,
         fireInsuranceLocations: ensureFireInsuranceLocationFormItems(
           fireLocationsRaw.map(customerFireInsuranceLocationRecordToFormItem),
         ),
@@ -221,8 +237,14 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         customerId: savedCustomerId,
         formItems: draft.specialDates,
       });
+      await saveCustomerCustomFieldsForCustomer({
+        token,
+        customerId: savedCustomerId,
+        formItems: draft.customFields,
+      });
       void queryClient.invalidateQueries({ queryKey: ['customer-cars', savedCustomerId] });
       void queryClient.invalidateQueries({ queryKey: ['customer-special-dates', savedCustomerId] });
+      void queryClient.invalidateQueries({ queryKey: ['customer-custom-fields', savedCustomerId] });
       void queryClient.invalidateQueries({
         queryKey: ['customer-fire-insurance-locations', savedCustomerId],
       });
@@ -338,6 +360,12 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       setValidationMessage('입력 내용을 확인해 주세요.');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    const customFieldsErr = getCustomerCustomFieldsValidationError(form.customFields);
+    if (customFieldsErr) {
+      setValidationMessage(customFieldsErr);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
@@ -640,6 +668,19 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
                   scrollRef.current?.scrollToEnd({ animated: true });
                 });
               }}
+            />
+          </FormSection>
+        );
+      case 'customFields':
+        return (
+          <FormSection
+            title={CUSTOMER_FORM_SECTION_TITLES.customFields}
+            testID={CUSTOMER_FORM_SECTION_TEST_IDS.customFields}
+          >
+            <CustomerCustomFieldsEditor
+              items={form.customFields}
+              onChange={(customFields) => updateField('customFields', customFields)}
+              disabled={saveMutation.isPending}
             />
           </FormSection>
         );

@@ -30,6 +30,7 @@ import { formatCustomerMobileCarrierDisplay } from "./customerCarrier";
 import { buildKakaoCustomerCopyText } from "./customerCopyText";
 import { listCustomerCars } from "./customerCarsApi";
 import { listCustomerSpecialDates } from "./customerSpecialDatesApi";
+import { listCustomerCustomFields } from "./customerCustomFieldsApi";
 import { formatCustomerInflowSourceDisplay } from "./customerInflowSource";
 import { listCustomerFireInsuranceLocations } from "./customerFireInsuranceLocationsApi";
 import { deleteCustomer, getCustomer, setCustomerFavorite } from "./customersApi";
@@ -48,6 +49,7 @@ import { CustomerAlertDatesDetailSection } from "./detail-sections/CustomerAlert
 import { CustomerBusinessDetailSection } from "./detail-sections/CustomerBusinessDetailSection";
 import { CustomerCarDetailSection } from "./detail-sections/CustomerCarDetailSection";
 import { CustomerFireInsuranceDetailSection } from "./detail-sections/CustomerFireInsuranceDetailSection";
+import { CustomerCustomFieldsDetailSection } from "./detail-sections/CustomerCustomFieldsDetailSection";
 import type { CustomerSectionId } from "./customerSectionTheme";
 import {
   CustomerContactIconButton,
@@ -98,6 +100,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const specialDatesQuery = useQuery({
     queryKey: ["customer-special-dates", customerId],
     queryFn: () => listCustomerSpecialDates(token, customerId),
+    enabled: Boolean(token) && Boolean(query.data),
+  });
+  const customFieldsQuery = useQuery({
+    queryKey: ["customer-custom-fields", customerId],
+    queryFn: () => listCustomerCustomFields(token, customerId),
     enabled: Boolean(token) && Boolean(query.data),
   });
   const fireLocationsQuery = useQuery({
@@ -217,6 +224,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                     carsQuery.refetch(),
                     fireLocationsQuery.refetch(),
                     specialDatesQuery.refetch(),
+                    customFieldsQuery.refetch(),
                     queryClient.invalidateQueries({
                       queryKey: ["customer-relation-groups", customerId],
                     }),
@@ -335,6 +343,13 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               loading={specialDatesQuery.isLoading}
               expanded={isSectionExpanded("anniversary", false)}
               onExpandedChange={(expanded) => setSectionExpandedState("anniversary", expanded)}
+            />
+
+            <CustomerCustomFieldsDetailSection
+              items={customFieldsQuery.data}
+              loading={customFieldsQuery.isLoading}
+              expanded={isSectionExpanded("customFields", false)}
+              onExpandedChange={(expanded) => setSectionExpandedState("customFields", expanded)}
             />
 
             <Stack gap="sm" style={styles.bottomActions} testID="customer-detail-bottom-actions">

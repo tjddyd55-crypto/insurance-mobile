@@ -5,7 +5,8 @@ export type CustomerFormSectionId =
   | "business"
   | "fireInsurance"
   | "alertDates"
-  | "insuranceReference";
+  | "insuranceReference"
+  | "customFields";
 
 /** 고객 정보 수정 화면 섹션 순서 (합의 SSOT) */
 export const CUSTOMER_EDIT_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] = [
@@ -15,6 +16,7 @@ export const CUSTOMER_EDIT_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] 
   "fireInsurance",
   "alertDates",
   "insuranceReference",
+  "customFields",
 ];
 
 /**
@@ -31,6 +33,7 @@ export const CUSTOMER_FORM_SECTION_TITLES: Record<CustomerFormSectionId, string>
   fireInsurance: "화재보험 정보",
   alertDates: "알림일",
   insuranceReference: "보험 / 참고 정보",
+  customFields: "추가 정보",
 };
 
 export const CUSTOMER_FORM_SECTION_TEST_IDS: Partial<Record<CustomerFormSectionId, string>> = {
@@ -39,6 +42,7 @@ export const CUSTOMER_FORM_SECTION_TEST_IDS: Partial<Record<CustomerFormSectionI
   fireInsurance: "customer-form-section-fire-insurance",
   alertDates: "customer-form-section-alert-dates",
   insuranceReference: "customer-form-section-insurance-reference",
+  customFields: "customer-form-section-custom-fields",
 };
 
 export function resolveCustomerFormSectionOrder(

@@ -22,6 +22,7 @@ import {
   type CustomerFireInsuranceLocationFormItem,
 } from "./customerFireInsuranceLocationsApi";
 import type { CustomerSpecialDateFormItem } from "./customerSpecialDatesApi";
+import type { CustomerCustomFieldFormItem } from "./customerCustomFieldsApi";
 import type { CustomerRecord } from "./types";
 import {
   formatKoreanMobilePhone,
@@ -51,6 +52,7 @@ export type CustomerFormState = {
   businessInfo: CustomerBusinessInfo;
   fireInsuranceLocations: CustomerFireInsuranceLocationFormItem[];
   specialDates: CustomerSpecialDateFormItem[];
+  customFields: CustomerCustomFieldFormItem[];
   inflowSource: string;
   referrerName: string;
   insuranceHistory: string;
@@ -116,6 +118,7 @@ export const EMPTY_CUSTOMER_FORM: CustomerFormState = {
     createdAt: "",
   }),
   specialDates: [],
+  customFields: [],
   inflowSource: "",
   referrerName: "",
   insuranceHistory: "",
@@ -164,6 +167,7 @@ export function customerToForm(customer: CustomerRecord): CustomerFormState {
       ),
     ),
     specialDates: [],
+    customFields: [],
     inflowSource: customer.inflowSource ?? "",
     referrerName: customer.referrerName ?? "",
     insuranceHistory: customer.notes.insuranceHistory,
