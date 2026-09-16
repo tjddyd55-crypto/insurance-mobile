@@ -1,4 +1,4 @@
-import type { ClaimStatus } from "./types";
+import type { ClaimListItem, ClaimStatus } from "./types";
 
 const LABELS: Record<ClaimStatus, string> = {
   requested: "요청됨",
@@ -46,6 +46,30 @@ export function extractClaimFileUrl(
 export function claimListPreview(title: string, memo: string): string {
   const message = claimMessage(title, memo);
   return message.length <= 140 ? message : `${message.slice(0, 137)}…`;
+}
+
+export type ClaimStatusSummary = {
+  total: number;
+  requested: number;
+  processing: number;
+  done: number;
+  rejected: number;
+  canceled: number;
+};
+
+export function summarizeClaimRows(rows: ClaimListItem[]): ClaimStatusSummary {
+  const summary: ClaimStatusSummary = {
+    total: rows.length,
+    requested: 0,
+    processing: 0,
+    done: 0,
+    rejected: 0,
+    canceled: 0,
+  };
+  for (const row of rows) {
+    summary[row.status] += 1;
+  }
+  return summary;
 }
 
 export function formatClaimRequester(

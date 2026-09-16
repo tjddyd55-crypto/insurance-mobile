@@ -42,11 +42,16 @@ import {
   sendCustomerAppAlimtalk,
   updateClaimStatus,
 } from "./claimsApi";
-import { CLAIM_STATUSES, extractClaimFileUrl } from "./claimsModel";
+import {
+  CLAIM_STATUSES,
+  extractClaimFileUrl,
+  summarizeClaimRows,
+} from "./claimsModel";
 import type { ClaimDetail, ClaimStatus } from "./types";
 import { ClaimCustomerPickerModal } from "./ClaimCustomerPickerModal";
 import { ClaimDetailModal } from "./ClaimDetailModal";
 import { ClaimListCard } from "./ClaimListCard";
+import { ClaimSummaryCards } from "./ClaimSummaryCards";
 import { CustomerClaimConnectionCard } from "./CustomerClaimConnectionCard";
 
 export function ClaimsScreen({
@@ -90,11 +95,21 @@ export function ClaimsScreen({
     setSelectedId(initialClaimId);
   }, [initialClaimId, initialCustomerId]);
   const listKey = ["claims", customerId, status] as const;
+  const summaryKey = ["claims-summary", customerId] as const;
   const claims = useQuery({
     queryKey: listKey,
     queryFn: () => listClaims(token, { customerId, status }),
     enabled: Boolean(token),
   });
+  const summaryClaims = useQuery({
+    queryKey: summaryKey,
+    queryFn: () => listClaims(token, { customerId }),
+    enabled: Boolean(token),
+  });
+  const statusSummary = useMemo(
+    () => summarizeClaimRows(summaryClaims.data?.rows ?? []),
+    [summaryClaims.data?.rows],
+  );
   const detail = useQuery({
     queryKey: ["claim", selectedId],
     queryFn: () => getClaim(token, selectedId!),
@@ -118,6 +133,7 @@ export function ClaimsScreen({
       setNotice("청구 상태를 저장했습니다.");
       await Promise.all([
         client.invalidateQueries({ queryKey: listKey }),
+        client.invalidateQueries({ queryKey: summaryKey }),
         client.invalidateQueries({ queryKey: ["claim", selectedId] }),
       ]);
     },
@@ -236,35 +252,59 @@ export function ClaimsScreen({
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListHeaderComponent={
             <Stack gap="md" style={styles.listHeader}>
-              <Inline justify="space-between">
+              <Inline justify="space-between" align="flex-start">
                 <View style={styles.grow}>
-                  <AppText variant="heading">고객 보험청구</AppText>
+                  <AppText variant="heading">
+                    {initialCustomerId ? "청구 요청 목록" : "청구 확인"}
+                  </AppText>
                   <AppText variant="caption">
-                    고객 앱으로 접수된 청구와 첨부서류를 처리합니다.
+                    {initialCustomerId
+                      ? `총 ${claims.data?.total ?? 0}건`
+                      : "고객 앱으로 접수된 청구와 첨부서류를 처리합니다."}
                   </AppText>
                 </View>
-                {initialCustomerId ? (
+                <Inline>
                   <Button
-                    label="고객 보기"
+                    label="새로고침"
                     size="sm"
-                    variant="ghost"
-                    onPress={() =>
-                      router.push(`/customers/${initialCustomerId}`)
-                    }
+                    variant="secondary"
+                    loading={claims.isRefetching || summaryClaims.isRefetching}
+                    onPress={() => {
+                      void claims.refetch();
+                      void summaryClaims.refetch();
+                    }}
                   />
-                ) : null}
+                  {initialCustomerId ? (
+                    <Button
+                      label="고객 보기"
+                      size="sm"
+                      variant="ghost"
+                      onPress={() =>
+                        router.push(`/customers/${initialCustomerId}`)
+                      }
+                    />
+                  ) : null}
+                </Inline>
               </Inline>
-              <Button
-                label={
-                  customer
-                    ? `${customer.name} · ${formatCustomerPhone(customer.phone)}`
-                    : "전체 고객"
-                }
-                variant="secondary"
-                fullWidth
-                disabled={Boolean(initialCustomerId)}
-                onPress={() => setPicker(true)}
-              />
+              {!initialCustomerId ? (
+                <ClaimSummaryCards
+                  summary={statusSummary}
+                  activeStatus={status}
+                  onSelectStatus={setStatus}
+                />
+              ) : null}
+              {!initialCustomerId ? (
+                <Button
+                  label={
+                    customer
+                      ? `${customer.name} · ${formatCustomerPhone(customer.phone)}`
+                      : "전체 고객"
+                  }
+                  variant="secondary"
+                  fullWidth
+                  onPress={() => setPicker(true)}
+                />
+              ) : null}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -318,9 +358,11 @@ export function ClaimsScreen({
                   onRetry={() => void claims.refetch()}
                 />
               ) : null}
-              <Inline wrap>
-                <Badge label={`총 ${claims.data?.total ?? 0}건`} tone="info" />
-                {customer ? (
+              <Inline justify="space-between" align="center">
+                <AppText variant="label">
+                  요청 목록 {claims.data?.rows.length ?? 0}건
+                </AppText>
+                {!initialCustomerId && customer ? (
                   <Badge label={customer.name} tone="success" />
                 ) : null}
               </Inline>
@@ -344,6 +386,7 @@ export function ClaimsScreen({
           renderItem={({ item }) => (
             <ClaimListCard
               claim={item}
+              showCustomerName={!initialCustomerId}
               onPress={() => {
                 setNotice("");
                 setDetailActionError("");
@@ -412,9 +455,10 @@ function makeStyles(theme: AppTheme) {
     root: { flex: 1, backgroundColor: theme.colors.background },
     grow: { flex: 1 },
     content: {
-      padding: theme.spacing.lg,
+      paddingHorizontal: theme.layout.screenPaddingHorizontal,
+      paddingTop: theme.spacing.md,
       paddingBottom: theme.spacing.huge,
-      gap: theme.spacing.md,
+      gap: theme.spacing.sm,
     },
     listHeader: { paddingBottom: theme.spacing.md },
     filters: { gap: theme.spacing.sm },

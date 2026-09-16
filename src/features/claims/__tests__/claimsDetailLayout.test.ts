@@ -5,7 +5,7 @@ describe('claimsDetailLayout', () => {
     expect(CLAIM_DETAIL_SECTION_TITLES).toEqual([
       '청구 정보',
       '청구 내용',
-      '처리 상태',
+      '상태 변경',
     ]);
   });
 });

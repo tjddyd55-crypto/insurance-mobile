@@ -7,7 +7,9 @@ import {
   formatClaimDate,
   formatClaimFileSize,
   formatClaimRequester,
+  summarizeClaimRows,
 } from "../claimsModel";
+import type { ClaimListItem } from "../types";
 
 describe("claimsModel", () => {
   it("운영 Web과 동일한 청구 상태 의미를 사용한다", () => {
@@ -44,5 +46,60 @@ describe("claimsModel", () => {
     expect(
       extractClaimFileUrl({ url: "open", downloadUrl: "signed" }, true),
     ).toBe("signed");
+  });
+
+  it("청구 목록 상태 요약을 계산한다", () => {
+    const rows: ClaimListItem[] = [
+      {
+        id: 1,
+        customerId: 1,
+        deviceId: "d",
+        customerName: "A",
+        requesterName: "A",
+        requesterBirthDate: "",
+        requesterPhone: "",
+        status: "requested",
+        title: "",
+        memo: "",
+        submittedAt: null,
+        fileCount: 0,
+      },
+      {
+        id: 2,
+        customerId: 2,
+        deviceId: "d",
+        customerName: "B",
+        requesterName: "B",
+        requesterBirthDate: "",
+        requesterPhone: "",
+        status: "processing",
+        title: "",
+        memo: "",
+        submittedAt: null,
+        fileCount: 1,
+      },
+      {
+        id: 3,
+        customerId: 3,
+        deviceId: "d",
+        customerName: "C",
+        requesterName: "C",
+        requesterBirthDate: "",
+        requesterPhone: "",
+        status: "done",
+        title: "",
+        memo: "",
+        submittedAt: null,
+        fileCount: 2,
+      },
+    ];
+    expect(summarizeClaimRows(rows)).toEqual({
+      total: 3,
+      requested: 1,
+      processing: 1,
+      done: 1,
+      rejected: 0,
+      canceled: 0,
+    });
   });
 });
