@@ -50,6 +50,7 @@ import { CustomerBusinessDetailSection } from "./detail-sections/CustomerBusines
 import { CustomerCarDetailSection } from "./detail-sections/CustomerCarDetailSection";
 import { CustomerFireInsuranceDetailSection } from "./detail-sections/CustomerFireInsuranceDetailSection";
 import { CustomerCustomFieldsDetailSection } from "./detail-sections/CustomerCustomFieldsDetailSection";
+import { SectionEditAction } from "./detail-sections/CustomerSectionActions";
 import type { CustomerSectionId } from "./customerSectionTheme";
 import {
   CustomerContactIconButton,
@@ -311,6 +312,17 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 label="계좌 정보"
                 value={formatCustomerDetailValue(customer.notes.accountNumber)}
               />
+              <View style={styles.basicEditAction}>
+                <SectionEditAction
+                  label="수정하기"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/customers/[customerId]/edit",
+                      params: { customerId: String(customer.id) },
+                    })
+                  }
+                />
+              </View>
             </CollapsibleDetailSection>
 
             <CustomerCarDetailSection
@@ -323,18 +335,18 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
 
             <CustomerRelationsPanel customerId={customer.id} />
 
-            <CustomerBusinessDetailSection
-              customer={customer}
-              expanded={isSectionExpanded("business", false)}
-              onExpandedChange={(expanded) => setSectionExpandedState("business", expanded)}
-            />
-
             <CustomerFireInsuranceDetailSection
               customerId={customer.id}
               locations={fireLocationsQuery.data}
               loading={fireLocationsQuery.isLoading}
               expanded={isSectionExpanded("fire", false)}
               onExpandedChange={(expanded) => setSectionExpandedState("fire", expanded)}
+            />
+
+            <CustomerBusinessDetailSection
+              customer={customer}
+              expanded={isSectionExpanded("business", false)}
+              onExpandedChange={(expanded) => setSectionExpandedState("business", expanded)}
             />
 
             <CustomerAlertDatesDetailSection
@@ -346,6 +358,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             />
 
             <CustomerCustomFieldsDetailSection
+              customerId={customer.id}
               items={customFieldsQuery.data}
               loading={customFieldsQuery.isLoading}
               expanded={isSectionExpanded("customFields", false)}
@@ -353,17 +366,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             />
 
             <Stack gap="sm" style={styles.bottomActions} testID="customer-detail-bottom-actions">
-              <Button
-                accessibilityLabel={`${customer.name} 고객 정보 수정`}
-                label="정보 수정"
-                variant="action"
-                onPress={() =>
-                  router.push({
-                    pathname: "/customers/[customerId]/edit",
-                    params: { customerId: String(customer.id) },
-                  })
-                }
-              />
               <Button
                 accessibilityLabel={`${customer.name} 고객 삭제`}
                 label="고객 삭제"
@@ -414,6 +416,10 @@ function createStyles(theme: AppTheme) {
     bottomActions: {
       marginTop: theme.spacing.sm,
       marginBottom: theme.spacing.md,
+    },
+    basicEditAction: {
+      alignItems: "flex-end",
+      paddingTop: theme.spacing.sm,
     },
   });
 }

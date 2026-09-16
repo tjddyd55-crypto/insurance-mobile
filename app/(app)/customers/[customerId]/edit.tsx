@@ -4,5 +4,5 @@ import { CustomerFormScreen } from '../../../../src/features/customers/CustomerF
 
 export default function EditCustomerRoute() {
   const { customerId } = useLocalSearchParams<{ customerId?: string }>();
-  return <CustomerFormScreen mode="edit" customerId={Number(customerId)} />;
+  return <CustomerFormScreen mode="edit-basic" customerId={Number(customerId)} />;
 }

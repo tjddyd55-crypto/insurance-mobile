@@ -1,5 +1,6 @@
 import {
   CUSTOMER_BASIC_EMBEDDED_REFERENCE_FIELD_KEYS,
+  CUSTOMER_BASIC_EDIT_FORM_SECTION_ORDER,
   CUSTOMER_CREATE_FORM_SECTION_ORDER,
   CUSTOMER_EDIT_FORM_SECTION_ORDER,
   CUSTOMER_FORM_SECTION_TITLES,
@@ -35,12 +36,13 @@ describe("customerFormSectionOrder", () => {
     ]);
   });
 
-  it("keeps create order policy separate from edit SSOT", () => {
+  it("keeps create order policy separate from basic edit SSOT", () => {
     expect(resolveCustomerFormSectionOrder("create")).toEqual(
       CUSTOMER_CREATE_FORM_SECTION_ORDER,
     );
-    expect(resolveCustomerFormSectionOrder("edit")).toEqual(
-      CUSTOMER_EDIT_FORM_SECTION_ORDER,
+    expect(resolveCustomerFormSectionOrder("edit-basic")).toEqual(
+      CUSTOMER_BASIC_EDIT_FORM_SECTION_ORDER,
     );
+    expect(CUSTOMER_BASIC_EDIT_FORM_SECTION_ORDER).toEqual(["basic"]);
   });
 });

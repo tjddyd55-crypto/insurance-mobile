@@ -1,5 +1,27 @@
 import type { CustomerFormState } from './customerForm';
 
+const CUSTOMER_BASIC_FORM_COMPARE_KEYS: (keyof CustomerFormState)[] = [
+  'name',
+  'ssn',
+  'gender',
+  'phone',
+  'birthDate',
+  'carrier',
+  'height',
+  'weight',
+  'address',
+  'job',
+  'driver',
+  'inflowSource',
+  'referrerName',
+  'insuranceHistory',
+  'accountNumber',
+  'treatmentHistoryNote',
+  'medicationHistoryNote',
+  'isFavorite',
+  'smsOptOut',
+];
+
 /** Deep-clone form state so draft never shares refs with React Query cache. */
 export function cloneCustomerFormState(form: CustomerFormState): CustomerFormState {
   return JSON.parse(JSON.stringify(form)) as CustomerFormState;
@@ -8,6 +30,22 @@ export function cloneCustomerFormState(form: CustomerFormState): CustomerFormSta
 /** Stable snapshot for dirty comparison (normalize then stringify). */
 export function createCustomerFormSnapshot(form: CustomerFormState): string {
   return JSON.stringify(normalizeCustomerFormForCompare(form));
+}
+
+export function createCustomerBasicFormSnapshot(form: CustomerFormState): string {
+  const slice: Record<string, unknown> = {};
+  for (const key of CUSTOMER_BASIC_FORM_COMPARE_KEYS) {
+    slice[key] = form[key];
+  }
+  return JSON.stringify(stableNormalize(slice));
+}
+
+export function isCustomerBasicFormDirty(
+  draft: CustomerFormState,
+  originalSnapshot: string | null | undefined,
+): boolean {
+  if (!originalSnapshot) return false;
+  return createCustomerBasicFormSnapshot(draft) !== originalSnapshot;
 }
 
 export function isCustomerFormDirty(

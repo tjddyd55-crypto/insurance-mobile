@@ -31,9 +31,10 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { AddressSearchField } from '../../components/AddressSearchField';
-import { formatAddressForSave, parseAddressFromSave } from './customerAddressSearch';
+import { SavedAddressSearchField } from '../../components/SavedAddressSearchField';
 import {
   EMPTY_CUSTOMER_FORM,
+  customerBasicFormToPayload,
   customerFormToPayload,
   customerToForm,
   validateCustomerForm,
@@ -42,8 +43,10 @@ import {
 } from './customerForm';
 import {
   cloneCustomerFormState,
+  createCustomerBasicFormSnapshot,
   createCustomerFormSnapshot,
   decideCloseEdit,
+  isCustomerBasicFormDirty,
   isCustomerFormDirty,
   resolveCustomerEditHardwareBack,
   shouldEnableCustomerEditSave,
@@ -59,23 +62,10 @@ import { CollapsibleFormSection } from './CollapsibleFormSection';
 import { DetailSubsectionLabel } from './CollapsibleDetailSection';
 import { CustomerCarsEditor } from './CustomerCarsEditor';
 import { CustomerFireInsuranceLocationsEditor } from './CustomerFireInsuranceLocationsEditor';
-import { loadCustomerCarFormItems, saveCustomerCarsForCustomer } from './customerCarsSave';
-import {
-  ensureFireInsuranceLocationFormItems,
-  customerFireInsuranceLocationRecordToFormItem,
-  listCustomerFireInsuranceLocations,
-  saveCustomerFireInsuranceLocationsForCustomer,
-} from './customerFireInsuranceLocationsApi';
-import {
-  listCustomerSpecialDates,
-  saveCustomerSpecialDatesForCustomer,
-  type CustomerSpecialDateFormItem,
-} from './customerSpecialDatesApi';
-import {
-  listCustomerCustomFields,
-  saveCustomerCustomFieldsForCustomer,
-  type CustomerCustomFieldFormItem,
-} from './customerCustomFieldsApi';
+import { saveCustomerCarsForCustomer } from './customerCarsSave';
+import { saveCustomerFireInsuranceLocationsForCustomer } from './customerFireInsuranceLocationsApi';
+import { saveCustomerSpecialDatesForCustomer } from './customerSpecialDatesApi';
+import { saveCustomerCustomFieldsForCustomer } from './customerCustomFieldsApi';
 import { getCustomerCustomFieldsValidationError } from './customerCustomFieldFormUtils';
 import { CustomerCustomFieldsEditor } from './CustomerCustomFieldsEditor';
 import { createCustomer, getCustomer, updateCustomer } from './customersApi';
@@ -95,7 +85,7 @@ import type { ListCustomersResult } from './types';
 
 type CustomerFormScreenProps =
   | { mode: 'create'; customerId?: never }
-  | { mode: 'edit'; customerId: number };
+  | { mode: 'edit-basic'; customerId: number };
 
 export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps) {
   const { token } = useAuth();
@@ -151,62 +141,20 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const customerQuery = useQuery({
     queryKey: customerQueryKeys.detail(customerId ?? 0),
     queryFn: () => getCustomer(token, customerId ?? 0),
-    enabled: mode === 'edit' && Boolean(token) && Number.isInteger(customerId) && customerId > 0,
+    enabled: mode === 'edit-basic' && Boolean(token) && Number.isInteger(customerId) && customerId > 0,
   });
 
   useEffect(() => {
-    if (mode !== 'edit' || !customerQuery.data || initialized) return;
+    if (mode !== 'edit-basic' || !customerQuery.data || initialized) return;
     const epoch = ++hydrateEpochRef.current;
     let cancelled = false;
     const customer = customerQuery.data;
     void (async () => {
       const next = customerToForm(customer);
-      let cars = next.cars;
-      let specialDates: CustomerSpecialDateFormItem[] = [];
-      let customFields: CustomerCustomFieldFormItem[] = [];
-      let fireLocationsRaw: Awaited<
-        ReturnType<typeof listCustomerFireInsuranceLocations>
-      > = [];
-      try {
-        const loaded = await Promise.all([
-          loadCustomerCarFormItems(token, customer.id, next.cars),
-          listCustomerSpecialDates(token, customer.id),
-          listCustomerFireInsuranceLocations(token, customer.id),
-          listCustomerCustomFields(token, customer.id),
-        ]);
-        cars = loaded[0];
-        specialDates = loaded[1].map((item) => ({
-          id: item.id,
-          purposeType: item.purposeType,
-          title: item.title,
-          dateValue: item.dateValue,
-          memo: item.memo,
-        }));
-        fireLocationsRaw = loaded[2];
-        customFields = loaded[3].map((item) => ({
-          id: item.id,
-          label: item.label,
-          value: item.value,
-        }));
-      } catch {
-        // Secondary collections failed — still hydrate core customer fields so edit session can start.
-        specialDates = [];
-        customFields = [];
-        fireLocationsRaw = [];
-      }
       if (cancelled || epoch !== hydrateEpochRef.current) return;
-      const hydrated: CustomerFormState = cloneCustomerFormState({
-        ...next,
-        cars,
-        specialDates,
-        customFields,
-        fireInsuranceLocations: ensureFireInsuranceLocationFormItems(
-          fireLocationsRaw.map(customerFireInsuranceLocationRecordToFormItem),
-        ),
-      });
-      // Separate clones: original stays immutable; draft is editable.
+      const hydrated: CustomerFormState = cloneCustomerFormState(next);
       originalFormRef.current = cloneCustomerFormState(hydrated);
-      originalSnapshotRef.current = createCustomerFormSnapshot(hydrated);
+      originalSnapshotRef.current = createCustomerBasicFormSnapshot(hydrated);
       setForm(cloneCustomerFormState(hydrated));
       setInitialized(true);
     })();
@@ -216,7 +164,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   }, [customerQuery.data, initialized, mode, token]);
 
   const dirty =
-    initialized && isCustomerFormDirty(form, originalSnapshotRef.current);
+    initialized &&
+    (mode === 'edit-basic'
+      ? isCustomerBasicFormDirty(form, originalSnapshotRef.current)
+      : isCustomerFormDirty(form, originalSnapshotRef.current));
 
   const formRef = useRef(form);
   formRef.current = form;
@@ -256,16 +207,25 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const saveMutation = useMutation({
     mutationFn: async () => {
       const draft = formRef.current;
-      const payload = customerFormToPayload(draft, customerQuery.data);
-      const saved =
-        mode === 'create'
-          ? await createCustomer(token, payload)
-          : await updateCustomer(token, customerId, payload);
-      return { saved, draft: cloneCustomerFormState(draft) };
+      if (mode === 'create') {
+        const payload = customerFormToPayload(draft, customerQuery.data);
+        const saved = await createCustomer(token, payload);
+        return { saved, draft: cloneCustomerFormState(draft), mode };
+      }
+      const existing = customerQuery.data;
+      if (!existing) {
+        throw new Error('고객 정보를 불러오지 못했습니다.');
+      }
+      const payload = customerBasicFormToPayload(draft, existing);
+      const saved = await updateCustomer(token, customerId, payload);
+      return { saved, draft: cloneCustomerFormState(draft), mode };
     },
-    onSuccess: ({ saved, draft }) => {
+    onSuccess: ({ saved, draft, mode: savedMode }) => {
       originalFormRef.current = cloneCustomerFormState(draft);
-      originalSnapshotRef.current = createCustomerFormSnapshot(draft);
+      originalSnapshotRef.current =
+        savedMode === 'edit-basic'
+          ? createCustomerBasicFormSnapshot(draft)
+          : createCustomerFormSnapshot(draft);
       queryClient.setQueryData(customerQueryKeys.detail(saved.id), saved);
       queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) => {
         if (!previous) return previous;
@@ -279,14 +239,16 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       });
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(saved.id) });
       router.replace({ pathname: '/customers/[customerId]', params: { customerId: String(saved.id) } });
-      void persistSecondaryCollections(saved.id, draft).catch(() => {
-        // Core customer saved — detail screen shows latest PUT; collections refresh on invalidate.
-      });
+      if (savedMode === 'create') {
+        void persistSecondaryCollections(saved.id, draft).catch(() => {
+          // Core customer saved — detail screen shows latest PUT; collections refresh on invalidate.
+        });
+      }
     },
   });
 
   const leaveWithoutSave = useCallback(() => {
-    if (mode === 'edit' && customerId) {
+    if (mode === 'edit-basic' && customerId) {
       // Ensure detail re-reads server/cache original — never treat draft as persisted.
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(customerId) });
       navigateToCustomerDetail(router, customerId);
@@ -349,14 +311,14 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   };
 
   const submit = useCallback(() => {
-    if (mode === 'edit' && !initialized) return;
+    if (mode === 'edit-basic' && !initialized) return;
     if (saveMutation.isPending) return;
-    if (mode === 'edit' && !shouldEnableCustomerEditSave({ initialized, dirty, saving: false })) {
+    if (mode === 'edit-basic' && !shouldEnableCustomerEditSave({ initialized, dirty, saving: false })) {
       return;
     }
     const nextErrors = validateCustomerForm(form, {
-      mode,
-      original: mode === 'edit' ? originalFormRef.current ?? undefined : undefined,
+      mode: mode === 'edit-basic' ? 'edit' : mode,
+      original: mode === 'edit-basic' ? originalFormRef.current ?? undefined : undefined,
     });
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -364,7 +326,8 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
-    const customFieldsErr = getCustomerCustomFieldsValidationError(form.customFields);
+    const customFieldsErr =
+      mode === 'create' ? getCustomerCustomFieldsValidationError(form.customFields) : null;
     if (customFieldsErr) {
       setValidationMessage(customFieldsErr);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -374,10 +337,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     saveMutation.mutate();
   }, [dirty, form, initialized, mode, saveMutation]);
 
-  if (mode === 'edit' && (customerQuery.isLoading || !initialized)) {
+  if (mode === 'edit-basic' && (customerQuery.isLoading || !initialized)) {
     return <LoadingState message="고객 정보를 불러오는 중…" />;
   }
-  if (mode === 'edit' && (customerQuery.isError || !customerQuery.data)) {
+  if (mode === 'edit-basic' && (customerQuery.isError || !customerQuery.data)) {
     return (
       <ErrorState
         title="고객 정보를 불러오지 못했습니다"
@@ -612,15 +575,12 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
                 }))
               }
             />
-            <AddressSearchField
-              value={parseAddressFromSave(form.businessInfo.businessAddress)}
-              onChange={(address) =>
+            <SavedAddressSearchField
+              savedAddress={form.businessInfo.businessAddress}
+              onSavedAddressChange={(businessAddress) =>
                 setForm((previous) => ({
                   ...previous,
-                  businessInfo: {
-                    ...previous.businessInfo,
-                    businessAddress: formatAddressForSave(address),
-                  },
+                  businessInfo: { ...previous.businessInfo, businessAddress },
                 }))
               }
               disabled={saveMutation.isPending}
@@ -693,7 +653,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       keyboardVerticalOffset={0}
     >
       <AppHeader
-        title={mode === 'create' ? '고객 등록' : '고객 정보 수정'}
+        title={mode === 'create' ? '고객 등록' : '기본 정보 수정'}
         showMenu={false}
         showBack
         onBackPress={attemptCloseEdit}
@@ -737,12 +697,12 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
                 ? '저장 중...'
                 : mode === 'create'
                   ? '고객 등록'
-                  : '변경 저장'
+                  : '저장'
             }
             variant="actionEmphasis"
             loading={saveMutation.isPending}
             disabled={
-              mode === 'edit'
+              mode === 'edit-basic'
                 ? !shouldEnableCustomerEditSave({
                     initialized,
                     dirty,

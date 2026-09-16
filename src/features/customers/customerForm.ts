@@ -253,6 +253,37 @@ export function validateCustomerForm(
   return errors;
 }
 
+/** 기본 정보 수정 화면 — core customer PUT만 (child resource / business 제외). */
+export function customerBasicFormToPayload(
+  form: CustomerFormState,
+  existing: CustomerRecord,
+): Partial<SaveCustomerPayload> {
+  return {
+    name: form.name.trim(),
+    ssn: stripResidentNumberFormatting(form.ssn),
+    gender: form.gender || null,
+    phone: stripPhoneFormatting(form.phone),
+    birthDate: form.birthDate.trim() || ymd(existing.birthDate),
+    carrier: normalizeCustomerCarrierForSave(form.carrier),
+    height: form.height.trim(),
+    weight: form.weight.trim(),
+    address: formatAddressForSave(form.address),
+    job: form.job.trim(),
+    isDriver: form.driver === "yes" ? true : form.driver === "no" ? false : null,
+    inflowSource: form.inflowSource.trim() || null,
+    referrerName: resolveReferrerNameForSave(form.inflowSource, form.referrerName),
+    notes: {
+      items: existing.notes.items ?? [],
+      insuranceHistory: form.insuranceHistory.trim(),
+      accountNumber: form.accountNumber.trim(),
+      treatmentHistoryNote: form.treatmentHistoryNote.trim(),
+      medicationHistoryNote: form.medicationHistoryNote.trim(),
+    },
+    isFavorite: form.isFavorite,
+    smsOptOut: form.smsOptOut,
+  };
+}
+
 export function customerFormToPayload(
   form: CustomerFormState,
   existing?: CustomerRecord,

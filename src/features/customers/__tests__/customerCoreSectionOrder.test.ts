@@ -6,8 +6,8 @@ describe('customerCoreSectionOrder', () => {
       'customer-detail-section-basic',
       'customer-detail-section-vehicle',
       'customer-detail-section-linked-customers',
-      'customer-detail-section-business',
       'customer-detail-section-fire-insurance',
+      'customer-detail-section-business',
       'customer-detail-section-special-dates',
     ])
   })

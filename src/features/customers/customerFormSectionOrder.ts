@@ -55,10 +55,15 @@ export const CUSTOMER_BASIC_EMBEDDED_REFERENCE_FIELD_KEYS = [
 export type CustomerBasicEmbeddedReferenceFieldKey =
   (typeof CUSTOMER_BASIC_EMBEDDED_REFERENCE_FIELD_KEYS)[number];
 
+export const CUSTOMER_BASIC_EDIT_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] = [
+  "basic",
+];
+
 export function resolveCustomerFormSectionOrder(
-  mode: "create" | "edit",
+  mode: "create" | "edit-basic",
 ): readonly CustomerFormSectionId[] {
-  return mode === "edit"
-    ? CUSTOMER_EDIT_FORM_SECTION_ORDER
-    : CUSTOMER_CREATE_FORM_SECTION_ORDER;
+  if (mode === "edit-basic") {
+    return CUSTOMER_BASIC_EDIT_FORM_SECTION_ORDER;
+  }
+  return CUSTOMER_CREATE_FORM_SECTION_ORDER;
 }
