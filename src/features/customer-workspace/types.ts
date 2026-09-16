@@ -1,2 +1,18 @@
 export type Consultation = { id: number; customerId: number; body: string; consultationDate?: string | null; contactResult?: string | null; followUpStatus?: string | null; nextContactDate?: string | null; followUpNote?: string | null; createdAt: string; updatedAt?: string };
-export type CustomerFile = { id: number; displayName: string; fileName: string; fileUrl: string; fileSize: number; mimeType: string | null; createdAt: string };
+export type CustomerFolder = {
+  id: number;
+  name: string;
+  parentId: number | null;
+  customerId: number;
+  createdAt: string;
+};
+export type CustomerFile = {
+  id: number;
+  displayName: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  mimeType: string | null;
+  createdAt: string;
+  folderId: number | null;
+};

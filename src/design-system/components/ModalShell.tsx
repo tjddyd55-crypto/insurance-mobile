@@ -1,5 +1,6 @@
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -8,7 +9,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '../DesignSystemProvider';
 import type { AppTheme } from '../themes';
@@ -63,9 +64,38 @@ export function ModalShell({
   onRequestClose,
 }: ModalShellProps) {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const isDialog = presentation === 'dialog';
   const resolvedBodyPadding = dialogBodyPadding ?? theme.layout.modalPadding;
+  const keyboardOpen = keyboardInset > 0;
+
+  useEffect(() => {
+    if (!open) {
+      setKeyboardInset(0);
+      return;
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardInset(event.endCoordinates.height);
+      if (scroll) {
+        requestAnimationFrame(() => {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        });
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardInset(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [open, scroll]);
+
   const requestClose = () => {
     if (!busy && dismissOnAndroidBack) {
       onRequestClose();
@@ -73,8 +103,19 @@ export function ModalShell({
   };
   const body = scroll ? (
     <ScrollView
-      contentContainerStyle={[styles.scrollContent, { padding: resolvedBodyPadding }]}
+      ref={scrollRef}
+      style={isDialog ? styles.dialogScroll : undefined}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          padding: resolvedBodyPadding,
+          paddingBottom: resolvedBodyPadding + (keyboardOpen ? theme.spacing.lg : 0),
+        },
+      ]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets
+      nestedScrollEnabled
     >
       {children}
     </ScrollView>
@@ -98,10 +139,13 @@ export function ModalShell({
       statusBarTranslucent={isDialog}
       onRequestClose={requestClose}
     >
-      <View
+      <KeyboardAvoidingView
+        enabled={keyboardAvoiding}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[
           styles.modalRoot,
           isDialog && styles.dialogOverlay,
+          isDialog && keyboardOpen && styles.dialogOverlayKeyboardOpen,
           isDialog && {
             paddingVertical: dialogOverlayPaddingVertical ?? theme.spacing.xl,
             paddingHorizontal: dialogOverlayPaddingHorizontal ?? theme.spacing.xl,
@@ -127,13 +171,10 @@ export function ModalShell({
             isDialog && styles.dialogPanel,
             isDialog && dialogMaxHeight ? { maxHeight: dialogMaxHeight } : null,
             isDialog && dialogWidth ? { width: dialogWidth, alignSelf: 'center' } : null,
+            isDialog && keyboardOpen && styles.dialogPanelKeyboardOpen,
           ]}
         >
-          <KeyboardAvoidingView
-            enabled={keyboardAvoiding}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={isDialog ? styles.dialogKeyboard : styles.keyboard}
-          >
+          <View style={isDialog ? styles.dialogContent : styles.keyboard}>
             <View style={[styles.header, dialogHeaderCompact && styles.headerCompact]}>
               <View style={styles.titleBlock}>
                 <AppText
@@ -151,10 +192,25 @@ export function ModalShell({
               {headerAction}
             </View>
             {body}
-            {footer ? <View style={styles.footer}>{footer}</View> : null}
-          </KeyboardAvoidingView>
+            {footer ? (
+              <View
+                style={[
+                  styles.footer,
+                  isDialog &&
+                    keyboardOpen && {
+                      paddingBottom: Math.max(
+                        theme.layout.modalPadding,
+                        keyboardInset - insets.bottom + theme.spacing.sm,
+                      ),
+                    },
+                ]}
+              >
+                {footer}
+              </View>
+            ) : null}
+          </View>
         </SafeAreaView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -169,6 +225,10 @@ function createStyles(theme: AppTheme) {
       justifyContent: 'center',
       backgroundColor: theme.colors.overlay,
     },
+    dialogOverlayKeyboardOpen: {
+      justifyContent: 'flex-end',
+      paddingBottom: theme.spacing.sm,
+    },
     safe: {
       flex: 1,
       backgroundColor: theme.colors.background,
@@ -182,11 +242,18 @@ function createStyles(theme: AppTheme) {
       backgroundColor: theme.colors.surfaceElevated,
       zIndex: 1,
     },
+    dialogPanelKeyboardOpen: {
+      maxHeight: '82%',
+    },
     keyboard: {
       flex: 1,
     },
-    // dialog는 콘텐츠 높이로 패널을 잡는다. flex:1이면 Android에서 본문이 0 높이로 접힌다.
-    dialogKeyboard: {
+    dialogContent: {
+      flexGrow: 0,
+      flexShrink: 1,
+      maxHeight: '100%',
+    },
+    dialogScroll: {
       flexGrow: 0,
       flexShrink: 1,
     },
