@@ -2,20 +2,18 @@
 export type CustomerFormSectionId =
   | "basic"
   | "vehicle"
-  | "business"
   | "fireInsurance"
+  | "business"
   | "alertDates"
-  | "insuranceReference"
   | "customFields";
 
 /** 고객 정보 수정 화면 섹션 순서 (합의 SSOT) */
 export const CUSTOMER_EDIT_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] = [
   "basic",
   "vehicle",
-  "business",
   "fireInsurance",
+  "business",
   "alertDates",
-  "insuranceReference",
   "customFields",
 ];
 
@@ -29,21 +27,33 @@ export const CUSTOMER_CREATE_FORM_SECTION_ORDER: readonly CustomerFormSectionId[
 export const CUSTOMER_FORM_SECTION_TITLES: Record<CustomerFormSectionId, string> = {
   basic: "기본 정보",
   vehicle: "자동차 정보",
-  business: "사업자 정보",
   fireInsurance: "화재보험 정보",
+  business: "사업자 정보",
   alertDates: "알림일",
-  insuranceReference: "보험 / 참고 정보",
   customFields: "추가 정보",
 };
 
 export const CUSTOMER_FORM_SECTION_TEST_IDS: Partial<Record<CustomerFormSectionId, string>> = {
   vehicle: "customer-form-section-vehicle",
-  business: "customer-form-section-business",
   fireInsurance: "customer-form-section-fire-insurance",
+  business: "customer-form-section-business",
   alertDates: "customer-form-section-alert-dates",
-  insuranceReference: "customer-form-section-insurance-reference",
   customFields: "customer-form-section-custom-fields",
 };
+
+/**
+ * 별도 accordion 없이 기본 정보 섹션 안에 렌더되는 보험/참고 입력 필드.
+ * 저장 payload 키는 customerForm.ts SSOT를 따른다.
+ */
+export const CUSTOMER_BASIC_EMBEDDED_REFERENCE_FIELD_KEYS = [
+  "treatmentHistoryNote",
+  "medicationHistoryNote",
+  "insuranceHistory",
+  "accountNumber",
+] as const;
+
+export type CustomerBasicEmbeddedReferenceFieldKey =
+  (typeof CUSTOMER_BASIC_EMBEDDED_REFERENCE_FIELD_KEYS)[number];
 
 export function resolveCustomerFormSectionOrder(
   mode: "create" | "edit",

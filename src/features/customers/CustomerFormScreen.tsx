@@ -56,6 +56,7 @@ import {
 } from './customerInflowSource';
 import { CustomerAlertDatesEditor } from './CustomerAlertDatesEditor';
 import { CollapsibleFormSection } from './CollapsibleFormSection';
+import { DetailSubsectionLabel } from './CollapsibleDetailSection';
 import { CustomerCarsEditor } from './CustomerCarsEditor';
 import { CustomerFireInsuranceLocationsEditor } from './CustomerFireInsuranceLocationsEditor';
 import { loadCustomerCarFormItems, saveCustomerCarsForCustomer } from './customerCarsSave';
@@ -469,7 +470,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
               />
             </Inline>
             <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
-            {mode === 'create' ? renderDriverChoice() : null}
             <AddressSearchField
               value={form.address}
               onChange={(address) => updateField('address', address)}
@@ -491,6 +491,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
                 placeholder={getInflowSourceDetailFieldMeta(form.inflowSource)?.placeholder}
               />
             ) : null}
+            {renderDriverChoice()}
             <Inline align="center" justify="space-between" style={styles.toggleRow}>
               <AppText variant="label">중요 고객</AppText>
               <Switch
@@ -517,7 +518,55 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
                 thumbColor={form.smsOptOut ? theme.colors.danger : theme.colors.surface}
               />
             </Inline>
-            {mode === 'edit' ? renderDriverChoice() : null}
+            <View testID="customer-form-basic-embedded-reference-fields">
+              <DetailSubsectionLabel label="건강/보험 참고" />
+              <TextField
+                label="수술·치료 관련"
+                multiline
+                value={form.treatmentHistoryNote}
+                onChangeText={(value) => updateField('treatmentHistoryNote', value)}
+                onFocus={() => {
+                  requestAnimationFrame(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  });
+                }}
+              />
+              <TextField
+                label="약 복용 관련"
+                multiline
+                value={form.medicationHistoryNote}
+                onChangeText={(value) => updateField('medicationHistoryNote', value)}
+                onFocus={() => {
+                  requestAnimationFrame(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  });
+                }}
+              />
+              <DetailSubsectionLabel label="보험 가입" />
+              <TextField
+                label="보험가입내역"
+                multiline
+                value={form.insuranceHistory}
+                onChangeText={(value) => updateField('insuranceHistory', value)}
+                onFocus={() => {
+                  requestAnimationFrame(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  });
+                }}
+              />
+              <DetailSubsectionLabel label="계좌" />
+              <TextField
+                label="계좌정보"
+                multiline
+                value={form.accountNumber}
+                onChangeText={(value) => updateField('accountNumber', value)}
+                onFocus={() => {
+                  requestAnimationFrame(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  });
+                }}
+              />
+            </View>
           </FormSection>
         );
       case 'vehicle':
@@ -616,58 +665,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
               items={form.specialDates}
               onChange={(specialDates) => updateField('specialDates', specialDates)}
               disabled={saveMutation.isPending}
-            />
-          </FormSection>
-        );
-      case 'insuranceReference':
-        return (
-          <FormSection
-            title={CUSTOMER_FORM_SECTION_TITLES.insuranceReference}
-            testID={CUSTOMER_FORM_SECTION_TEST_IDS.insuranceReference}
-          >
-            <TextField
-              label="수술·치료 관련"
-              multiline
-              value={form.treatmentHistoryNote}
-              onChangeText={(value) => updateField('treatmentHistoryNote', value)}
-              onFocus={() => {
-                requestAnimationFrame(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                });
-              }}
-            />
-            <TextField
-              label="약 복용 관련"
-              multiline
-              value={form.medicationHistoryNote}
-              onChangeText={(value) => updateField('medicationHistoryNote', value)}
-              onFocus={() => {
-                requestAnimationFrame(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                });
-              }}
-            />
-            <TextField
-              label="보험가입내역"
-              multiline
-              value={form.insuranceHistory}
-              onChangeText={(value) => updateField('insuranceHistory', value)}
-              onFocus={() => {
-                requestAnimationFrame(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                });
-              }}
-            />
-            <TextField
-              label="계좌정보"
-              multiline
-              value={form.accountNumber}
-              onChangeText={(value) => updateField('accountNumber', value)}
-              onFocus={() => {
-                requestAnimationFrame(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                });
-              }}
             />
           </FormSection>
         );
