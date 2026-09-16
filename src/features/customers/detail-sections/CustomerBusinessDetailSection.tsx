@@ -4,7 +4,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../auth/AuthProvider";
 import { AddressSearchField } from "../../../components/AddressSearchField";
 import { AppText, Stack, TextField, useAppTheme, type AppTheme } from "../../../design-system";
-import { formatAddressForSave, parseAddressFromSave } from "../customerAddressSearch";
+import {
+  formatAddressForSave,
+  parseAddressFromSave,
+  type AddressSearchValue,
+} from "../customerAddressSearch";
 import {
   customerBusinessInfoToForm,
   formatBusinessNumberDisplay,
@@ -13,7 +17,7 @@ import {
 } from "../customerBusinessInfo";
 import { formatCustomerDetailValue } from "../customerDetailPresentation";
 import { CollapsibleDetailSection, DetailRow } from "../CollapsibleDetailSection";
-import { updateCustomer } from "../customersApi";
+import { updateCustomerBusinessInfo } from "../customersApi";
 import { customerQueryKeys } from "../queryKeys";
 import type { CustomerRecord } from "../types";
 import { CustomerSectionEditModal } from "./CustomerSectionEditModal";
@@ -39,6 +43,9 @@ export function CustomerBusinessDetailSection({
   const [draft, setDraft] = useState<CustomerBusinessInfo>(() =>
     customerBusinessInfoToForm(businessInfo),
   );
+  const [addressValue, setAddressValue] = useState<AddressSearchValue>(() =>
+    parseAddressFromSave(customerBusinessInfoToForm(businessInfo).businessAddress),
+  );
   const [error, setError] = useState("");
 
   const saveMutation = useMutation({
@@ -46,13 +53,10 @@ export function CustomerBusinessDetailSection({
       const next = {
         representativeName: draft.representativeName.trim(),
         businessNumber: draft.businessNumber.trim(),
-        businessAddress: draft.businessAddress.trim(),
+        businessAddress: formatAddressForSave(addressValue).trim(),
         memo: draft.memo.trim(),
       };
-      if (isCustomerBusinessInfoEmpty(next)) {
-        return updateCustomer(token, customer.id, { businessInfo: null });
-      }
-      return updateCustomer(token, customer.id, { businessInfo: next });
+      return updateCustomerBusinessInfo(token, customer, next);
     },
     onSuccess: async (updated) => {
       queryClient.setQueryData(customerQueryKeys.detail(customer.id), updated);
@@ -66,7 +70,9 @@ export function CustomerBusinessDetailSection({
   });
 
   const openEditor = () => {
-    setDraft(customerBusinessInfoToForm(businessInfo));
+    const nextDraft = customerBusinessInfoToForm(businessInfo);
+    setDraft(nextDraft);
+    setAddressValue(parseAddressFromSave(nextDraft.businessAddress));
     setError("");
     setOpen(true);
   };
@@ -128,15 +134,7 @@ export function CustomerBusinessDetailSection({
           value={draft.businessNumber}
           onChangeText={(value) => setDraft((prev) => ({ ...prev, businessNumber: value }))}
         />
-        <AddressSearchField
-          value={parseAddressFromSave(draft.businessAddress)}
-          onChange={(address) =>
-            setDraft((prev) => ({
-              ...prev,
-              businessAddress: formatAddressForSave(address),
-            }))
-          }
-        />
+        <AddressSearchField value={addressValue} onChange={setAddressValue} />
         <TextField
           label="메모"
           multiline

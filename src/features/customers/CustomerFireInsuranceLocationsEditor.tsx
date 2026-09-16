@@ -1,9 +1,5 @@
-import { AddressSearchField } from "../../components/AddressSearchField";
+import { SavedAddressSearchField } from "../../components/SavedAddressSearchField";
 import { AppText, Button, Inline, Stack, TextField } from "../../design-system";
-import {
-  formatAddressForSave,
-  parseAddressFromSave,
-} from "./customerAddressSearch";
 import {
   createEmptyFireInsuranceLocation,
   type CustomerFireInsuranceLocationFormItem,
@@ -53,11 +49,9 @@ export function CustomerFireInsuranceLocationsEditor({
               onPress={() => removeAt(index)}
             />
           </Inline>
-          <AddressSearchField
-            value={parseAddressFromSave(item.address)}
-            onChange={(address) =>
-              updateAt(index, { ...item, address: formatAddressForSave(address) })
-            }
+          <SavedAddressSearchField
+            savedAddress={item.address}
+            onSavedAddressChange={(address) => updateAt(index, { ...item, address })}
             disabled={disabled}
           />
           <TextField

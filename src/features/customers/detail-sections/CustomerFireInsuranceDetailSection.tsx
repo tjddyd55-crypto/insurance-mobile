@@ -5,7 +5,12 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { AddressSearchField } from "../../../components/AddressSearchField";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { AppText, Stack, TextField } from "../../../design-system";
-import { formatAddressForSave, parseAddressFromSave } from "../customerAddressSearch";
+import {
+  EMPTY_ADDRESS_SEARCH,
+  formatAddressForSave,
+  parseAddressFromSave,
+  type AddressSearchValue,
+} from "../customerAddressSearch";
 import { formatCustomerDetailValue } from "../customerDetailPresentation";
 import {
   createCustomerFireInsuranceLocation,
@@ -41,6 +46,9 @@ export function CustomerFireInsuranceDetailSection({
   const [draft, setDraft] = useState<CustomerFireInsuranceLocationFormItem>(() =>
     createEmptyFireInsuranceLocation(),
   );
+  const [addressValue, setAddressValue] = useState<AddressSearchValue>(() => ({
+    ...EMPTY_ADDRESS_SEARCH,
+  }));
   const [deleteTarget, setDeleteTarget] = useState<CustomerFireInsuranceLocationRecord | null>(null);
   const [error, setError] = useState("");
 
@@ -53,7 +61,7 @@ export function CustomerFireInsuranceDetailSection({
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
-        address: draft.address.trim(),
+        address: formatAddressForSave(addressValue).trim(),
         memo: draft.memo.trim() || undefined,
       };
       if (!payload.address) throw new Error("주소를 입력해 주세요.");
@@ -91,12 +99,14 @@ export function CustomerFireInsuranceDetailSection({
 
   const openAdd = () => {
     setDraft(createEmptyFireInsuranceLocation());
+    setAddressValue({ ...EMPTY_ADDRESS_SEARCH });
     setError("");
     setEditMode({ kind: "add" });
   };
 
   const openEdit = (location: CustomerFireInsuranceLocationRecord) => {
     setDraft(customerFireInsuranceLocationRecordToFormItem(location));
+    setAddressValue(parseAddressFromSave(location.address));
     setError("");
     setEditMode({ kind: "edit", locationId: location.id });
   };
@@ -137,12 +147,7 @@ export function CustomerFireInsuranceDetailSection({
         onCancel={() => setEditMode(null)}
         onSave={() => saveMutation.mutate()}
       >
-        <AddressSearchField
-          value={parseAddressFromSave(draft.address)}
-          onChange={(address) =>
-            setDraft((prev) => ({ ...prev, address: formatAddressForSave(address) }))
-          }
-        />
+        <AddressSearchField value={addressValue} onChange={setAddressValue} />
         <TextField
           label="메모"
           multiline

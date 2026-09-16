@@ -1,5 +1,6 @@
 import { ApiError, apiRequest } from '../../api/client';
 import type { CustomerBusinessInfo } from './customerBusinessInfo';
+import { isCustomerBusinessInfoEmpty } from './customerBusinessInfo';
 import { normalizeCustomer, normalizeCustomerListResponse } from './customerModel';
 import type { CustomerRecord, ListCustomersResult } from './types';
 
@@ -95,6 +96,29 @@ export async function updateCustomer(
     body: JSON.stringify(payload),
   });
   return normalizeCustomer(body, '고객 수정');
+}
+
+/** 사업자 섹션 저장 — 서버 partial PUT 검증을 위해 name을 함께 전송한다. */
+export function buildCustomerBusinessInfoUpdatePayload(
+  customer: CustomerRecord,
+  businessInfo: CustomerBusinessInfo,
+): Partial<SaveCustomerPayload> {
+  return {
+    name: customer.name,
+    businessInfo: isCustomerBusinessInfoEmpty(businessInfo) ? null : businessInfo,
+  };
+}
+
+export async function updateCustomerBusinessInfo(
+  token: string | null,
+  customer: CustomerRecord,
+  businessInfo: CustomerBusinessInfo,
+): Promise<CustomerRecord> {
+  return updateCustomer(
+    token,
+    customer.id,
+    buildCustomerBusinessInfoUpdatePayload(customer, businessInfo),
+  );
 }
 
 export async function deleteCustomer(token: string | null, customerId: number): Promise<void> {
