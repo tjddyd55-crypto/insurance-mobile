@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { DateField } from "../../components/DateField";
 import {
   AppText,
   Button,
@@ -110,13 +111,11 @@ export function CustomerCarsEditor({
               containerStyle={styles.grow}
               editable={!disabled}
             />
-            <TextField
+            <DateField
               label="갱신 예정일"
               value={car.renewalDate}
-              onChangeText={(value) => updateAt(index, { ...car, renewalDate: value })}
-              placeholder="YYYY-MM-DD"
-              containerStyle={styles.grow}
-              editable={!disabled}
+              onChange={(value) => updateAt(index, { ...car, renewalDate: value })}
+              disabled={disabled}
             />
           </Inline>
         </View>

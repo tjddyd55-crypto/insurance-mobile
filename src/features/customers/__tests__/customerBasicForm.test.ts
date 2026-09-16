@@ -1,5 +1,8 @@
 import { customerBasicFormToPayload, customerToForm } from "../customerForm";
-import { buildCustomerBusinessInfoUpdatePayload } from "../customersApi";
+import {
+  assertCustomerBusinessInfoPersisted,
+  buildCustomerBusinessInfoUpdatePayload,
+} from "../customersApi";
 import type { CustomerRecord } from "../types";
 
 const existing: CustomerRecord = {
@@ -93,5 +96,34 @@ describe("buildCustomerBusinessInfoUpdatePayload", () => {
     });
 
     expect(payload.businessInfo).toBeNull();
+  });
+
+  it("저장 응답에 businessInfo가 없으면 실패한다", () => {
+    expect(() =>
+      assertCustomerBusinessInfoPersisted(
+        {
+          representativeName: "대표2",
+          businessNumber: "123",
+          businessAddress: "서울",
+          memo: "",
+        },
+        { ...existing, businessInfo: null },
+      ),
+    ).toThrow("사업자 정보를 저장하지 못했습니다.");
+  });
+
+  it("저장 응답 businessInfo가 payload와 일치하면 통과한다", () => {
+    const sent = {
+      representativeName: "대표2",
+      businessNumber: "123-45-67890",
+      businessAddress: "(06236) 서울",
+      memo: "메모",
+    };
+    expect(() =>
+      assertCustomerBusinessInfoPersisted(sent, {
+        ...existing,
+        businessInfo: sent,
+      }),
+    ).not.toThrow();
   });
 });

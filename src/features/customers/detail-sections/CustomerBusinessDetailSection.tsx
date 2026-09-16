@@ -60,6 +60,9 @@ export function CustomerBusinessDetailSection({
     },
     onSuccess: async (updated) => {
       queryClient.setQueryData(customerQueryKeys.detail(customer.id), updated);
+      await queryClient.invalidateQueries({
+        queryKey: customerQueryKeys.detail(customer.id),
+      });
       setOpen(false);
       setError("");
       onExpandedChange(true);

@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../../../auth/AuthProvider";
+import { DateField } from "../../../components/DateField";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { AppText, Inline, Stack, TextField, useAppTheme, type AppTheme } from "../../../design-system";
 import {
@@ -182,11 +183,10 @@ export function CustomerCarDetailSection({
             onChangeText={(value) => setDraft((prev) => ({ ...prev, carYear: value }))}
             containerStyle={styles.grow}
           />
-          <TextField
+          <DateField
             label="갱신 예정일"
             value={draft.renewalDate}
-            placeholder="YYYY-MM-DD"
-            onChangeText={(value) => setDraft((prev) => ({ ...prev, renewalDate: value }))}
+            onChange={(value) => setDraft((prev) => ({ ...prev, renewalDate: value }))}
             containerStyle={styles.grow}
           />
         </Inline>

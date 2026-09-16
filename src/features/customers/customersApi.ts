@@ -1,6 +1,9 @@
 import { ApiError, apiRequest } from '../../api/client';
 import type { CustomerBusinessInfo } from './customerBusinessInfo';
-import { isCustomerBusinessInfoEmpty } from './customerBusinessInfo';
+import {
+  customerBusinessInfoToForm,
+  isCustomerBusinessInfoEmpty,
+} from './customerBusinessInfo';
 import { normalizeCustomer, normalizeCustomerListResponse } from './customerModel';
 import type { CustomerRecord, ListCustomersResult } from './types';
 
@@ -98,6 +101,41 @@ export async function updateCustomer(
   return normalizeCustomer(body, '고객 수정');
 }
 
+function trimBusinessField(value: string): string {
+  return String(value ?? '').trim();
+}
+
+function businessInfoMatches(
+  expected: CustomerBusinessInfo,
+  actual: CustomerBusinessInfo | null | undefined,
+): boolean {
+  const normalizedExpected = customerBusinessInfoToForm(expected);
+  const normalizedActual = customerBusinessInfoToForm(actual);
+  return (
+    trimBusinessField(normalizedActual.representativeName) ===
+      trimBusinessField(normalizedExpected.representativeName) &&
+    trimBusinessField(normalizedActual.businessNumber) ===
+      trimBusinessField(normalizedExpected.businessNumber) &&
+    trimBusinessField(normalizedActual.businessAddress) ===
+      trimBusinessField(normalizedExpected.businessAddress) &&
+    trimBusinessField(normalizedActual.memo) === trimBusinessField(normalizedExpected.memo)
+  );
+}
+
+/** PUT 응답에 businessInfo가 실제 반영됐는지 검증한다. */
+export function assertCustomerBusinessInfoPersisted(
+  sent: CustomerBusinessInfo,
+  saved: CustomerRecord,
+): void {
+  if (businessInfoMatches(sent, saved.businessInfo)) {
+    return;
+  }
+  const devHint = __DEV__
+    ? ' 서버가 businessInfo를 저장·반환하지 않았습니다. API contract/배포 상태를 확인하세요.'
+    : '';
+  throw new ApiError(`사업자 정보를 저장하지 못했습니다.${devHint}`, 502);
+}
+
 /** 사업자 섹션 저장 — 서버 partial PUT 검증을 위해 name을 함께 전송한다. */
 export function buildCustomerBusinessInfoUpdatePayload(
   customer: CustomerRecord,
@@ -114,11 +152,10 @@ export async function updateCustomerBusinessInfo(
   customer: CustomerRecord,
   businessInfo: CustomerBusinessInfo,
 ): Promise<CustomerRecord> {
-  return updateCustomer(
-    token,
-    customer.id,
-    buildCustomerBusinessInfoUpdatePayload(customer, businessInfo),
-  );
+  const payload = buildCustomerBusinessInfoUpdatePayload(customer, businessInfo);
+  const updated = await updateCustomer(token, customer.id, payload);
+  assertCustomerBusinessInfoPersisted(businessInfo, updated);
+  return updated;
 }
 
 export async function deleteCustomer(token: string | null, customerId: number): Promise<void> {

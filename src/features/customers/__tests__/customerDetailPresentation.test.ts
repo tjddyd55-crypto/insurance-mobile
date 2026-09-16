@@ -22,7 +22,7 @@ describe('customer detail presentation', () => {
   test('uses one empty-value representation', () => {
     expect(formatCustomerDetailValue('')).toBe(CUSTOMER_DETAIL_EMPTY_VALUE);
     expect(formatCustomerDetailValue('  값  ')).toBe('값');
-    expect(formatCustomerDetailDate('2026-09-01T10:00:00.000Z')).toBe('2026-09-01');
+    expect(formatCustomerDetailDate('2026-09-01T10:00:00.000Z')).toBe('2026.09.01');
   });
 
   test('masks a normalized resident number', () => {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../../../auth/AuthProvider";
+import { DateField } from "../../../components/DateField";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { AppText, Stack, TextField } from "../../../design-system";
 import {
@@ -141,11 +142,10 @@ export function CustomerAlertDatesDetailSection({
           onChangeText={setLabel}
           placeholder="예: 자동차보험 갱신"
         />
-        <TextField
+        <DateField
           label="날짜"
           value={dateValue}
-          onChangeText={setDateValue}
-          placeholder="YYYY-MM-DD"
+          onChange={setDateValue}
         />
         {editMode?.kind === "edit" ? (
           <AppText

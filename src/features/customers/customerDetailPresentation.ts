@@ -1,3 +1,4 @@
+import { formatDateForDisplay } from '../../utils/dateInput';
 import type { CustomerRecord } from './types';
 
 export const CUSTOMER_DETAIL_EMPTY_VALUE = '—';
@@ -17,7 +18,8 @@ export function formatCustomerDetailValue(
 export function formatCustomerDetailDate(
   value: string | null | undefined,
 ): string {
-  return formatCustomerDetailValue(value?.slice(0, 10));
+  const formatted = formatDateForDisplay(value);
+  return formatted || CUSTOMER_DETAIL_EMPTY_VALUE;
 }
 
 export function formatCustomerSsn(value: string): string {

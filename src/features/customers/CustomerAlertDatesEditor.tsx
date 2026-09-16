@@ -1,3 +1,4 @@
+import { DateField } from "../../components/DateField";
 import { AppText, Button, Inline, Stack, TextField } from "../../design-system";
 import { DEFAULT_ALERT_DATE_PURPOSE } from "./customerAlertDateDisplay";
 import type { CustomerSpecialDateFormItem } from "./customerSpecialDatesApi";
@@ -49,12 +50,11 @@ export function CustomerAlertDatesEditor({
             onChangeText={(value) => updateAt(index, { ...item, title: value })}
             editable={!disabled}
           />
-          <TextField
+          <DateField
             label="날짜"
             value={item.dateValue}
-            onChangeText={(value) => updateAt(index, { ...item, dateValue: value })}
-            placeholder="YYYY-MM-DD"
-            editable={!disabled}
+            onChange={(value) => updateAt(index, { ...item, dateValue: value })}
+            disabled={disabled}
           />
           <Button
             label="삭제"

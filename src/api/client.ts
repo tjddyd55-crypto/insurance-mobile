@@ -150,7 +150,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
         ? '요청이 많습니다. 잠시 후 다시 시도해 주세요.'
         : response.status === 401
           ? '로그인이 필요합니다.'
-          : '요청 처리에 실패했습니다.';
+          : response.status === 404
+            ? '요청한 API를 찾을 수 없습니다.'
+            : '요청 처리에 실패했습니다.';
     const rawCode =
       typeof payload.code === 'string' && payload.code.trim() ? payload.code.trim() : '';
     const rawErr =
@@ -161,11 +163,21 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       typeof payload.message === 'string' && payload.message.trim()
         ? payload.message.trim()
         : fallback;
+    if (__DEV__) {
+      console.warn('[apiRequest] failed', {
+        path,
+        url: resolvedUrl,
+        status: response.status,
+        message: userMsg,
+        code,
+        payload,
+      });
+    }
     throw new ApiError(userMsg, response.status, {
       retryAfterSec: payload.retryAfterSec,
       retryAfterMin: payload.retryAfterMin,
       code,
-      data: payload.data,
+      data: payload.data ?? payload,
     });
   }
 

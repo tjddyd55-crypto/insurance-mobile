@@ -41,8 +41,17 @@ export function resolveFireInsuranceLocationId(value: unknown): number | null {
 }
 
 function mapLocation(raw: Record<string, unknown>): CustomerFireInsuranceLocationRecord {
+  const id = Number(raw.id);
+  if (!Number.isFinite(id) || !Number.isInteger(id) || id <= 0) {
+    throw new ApiError(
+      __DEV__
+        ? "화재보험 소재지 등록 응답에 id가 없습니다. API contract를 확인하세요."
+        : "화재보험 소재지 등록 응답이 올바르지 않습니다.",
+      502,
+    );
+  }
   return {
-    id: Number(raw.id),
+    id,
     customerId: Number(raw.customerId ?? raw.customer_id),
     address: String(raw.address ?? ""),
     memo: String(raw.memo ?? ""),

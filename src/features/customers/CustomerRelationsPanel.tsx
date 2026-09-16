@@ -263,12 +263,16 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
           />
         </Inline>
       </Inline>
-      {group.members.filter((member) => !member.isCurrentCustomer).map((member) => (
+      {group.members.filter((member) => !member.isCurrentCustomer).map((member, index, members) => (
         <Pressable
           key={`${group.id}-${member.customerId}`}
           accessibilityRole="button"
           onPress={() => openRelated(member.customerId)}
-          style={[styles.row, member.isCurrentCustomer && styles.currentRow]}
+          style={[
+            styles.row,
+            index === members.length - 1 && styles.rowLast,
+            member.isCurrentCustomer && styles.currentRow,
+          ]}
         >
           <View style={styles.rowText}>
             <AppText variant="bodyStrong">
@@ -346,12 +350,12 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
         {relationsQuery.isLoading ? (
           <AppText variant="caption">연결 고객을 불러오는 중…</AppText>
         ) : individualRelations.length ? (
-          individualRelations.map((relation) => (
+          individualRelations.map((relation, index) => (
             <Pressable
               key={`relation:${relation.relatedCustomerId}:${relation.createdAt}`}
               accessibilityRole="button"
               onPress={() => openRelated(relation.relatedCustomerId)}
-              style={styles.row}
+              style={[styles.row, index === individualRelations.length - 1 && styles.rowLast]}
             >
               <View style={styles.rowText}>
                 <AppText variant="bodyStrong">{relation.relatedName}</AppText>
@@ -487,8 +491,6 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     groupBlock: {
       paddingVertical: theme.spacing.xs,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
     },
     row: {
       minHeight: theme.controlSize.md,
@@ -498,6 +500,9 @@ function createStyles(theme: AppTheme) {
       paddingVertical: theme.spacing.xs,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
+    },
+    rowLast: {
+      borderBottomWidth: 0,
     },
     currentRow: {
       backgroundColor: theme.colors.primarySoft,

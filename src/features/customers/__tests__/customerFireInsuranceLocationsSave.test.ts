@@ -1,3 +1,4 @@
+import { formatAddressForSave } from "../customerAddressSearch";
 import {
   createEmptyFireInsuranceLocation,
   normalizeFireInsuranceLocationsForSave,
@@ -19,6 +20,21 @@ function rec(
     ...partial,
   };
 }
+
+describe("fire insurance quick save payload", () => {
+  it("keeps base and detail address separate in save payload", () => {
+    const payload = {
+      address: formatAddressForSave({
+        zonecode: "06236",
+        baseAddress: "서울특별시 강남구 테헤란로 152",
+        detailAddress: "101동 202호",
+      }).trim(),
+      memo: "본사",
+    };
+
+    expect(payload.address).toBe("(06236) 서울특별시 강남구 테헤란로 152 101동 202호");
+  });
+});
 
 describe("fire insurance location id preservation", () => {
   it("resolves numeric and numeric-string ids", () => {
