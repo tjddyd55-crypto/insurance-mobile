@@ -87,17 +87,6 @@ export function ClaimDetailModal({
       headerAction={
         <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
       }
-      footer={
-        detail ? (
-          <Button
-            label="상태 저장"
-            fullWidth
-            loading={saving}
-            disabled={saveDisabled}
-            onPress={onSave}
-          />
-        ) : undefined
-      }
     >
       {loadError ? (
         <ErrorState
@@ -109,85 +98,89 @@ export function ClaimDetailModal({
         <LoadingState compact message="청구 상세를 불러오는 중…" />
       ) : (
         <Stack gap="lg">
-          <Card variant="outlined">
-            <Stack gap="md">
-              <Inline justify="space-between" align="flex-start">
-                <View style={{ flex: 1 }}>
-                  <DetailRow label="청구번호" value={`#${detail.id}`} />
-                  <DetailRow
-                    label="접수일시"
-                    value={formatClaimDate(detail.submittedAt)}
-                  />
-                </View>
-                {status ? (
-                  <Badge label={status.label} tone={status.tone} />
-                ) : null}
-              </Inline>
-              <DetailRow
-                label="요청자"
-                value={
-                  formatClaimRequester(
-                    detail.requesterName,
-                    detail.requesterBirthDate,
-                    detail.requesterPhone,
-                  ) || "—"
-                }
-              />
-              <Button
-                label="고객 상세 보기"
-                size="sm"
-                variant="secondary"
-                onPress={() => onOpenCustomer(detail.customerId)}
-              />
-            </Stack>
-          </Card>
-
-          <Section title="요청 내용">
-            <Card variant="filled">
-              <AppText>{claimMessage(detail.title, detail.memo)}</AppText>
+          <Section title="청구 정보">
+            <Card variant="outlined">
+              <Stack gap="md">
+                <Inline justify="space-between" align="flex-start">
+                  <View style={{ flex: 1 }}>
+                    <DetailRow label="청구번호" value={`#${detail.id}`} />
+                    <DetailRow
+                      label="접수일시"
+                      value={formatClaimDate(detail.submittedAt)}
+                    />
+                  </View>
+                  {status ? (
+                    <Badge label={status.label} tone={status.tone} />
+                  ) : null}
+                </Inline>
+                <DetailRow
+                  label="요청자"
+                  value={
+                    formatClaimRequester(
+                      detail.requesterName,
+                      detail.requesterBirthDate,
+                      detail.requesterPhone,
+                    ) || "—"
+                  }
+                />
+                <Button
+                  label="고객 상세 보기"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => onOpenCustomer(detail.customerId)}
+                />
+              </Stack>
             </Card>
           </Section>
 
-          <Section title={`첨부 파일 ${detail.files.length}개`}>
-            {actionError ? (
-              <AppText color="danger">{actionError}</AppText>
-            ) : null}
-            {detail.files.length ? (
-              <>
-                <Inline wrap>
-                  <Button
-                    label="PDF 다운로드"
-                    size="sm"
-                    variant="secondary"
-                    loading={bundleKind === "pdf"}
-                    disabled={bundleKind != null}
-                    onPress={() => onShareBundle("pdf")}
-                  />
-                  <Button
-                    label="전체 다운로드"
-                    size="sm"
-                    variant="secondary"
-                    loading={bundleKind === "zip"}
-                    disabled={bundleKind != null}
-                    onPress={() => onShareBundle("zip")}
-                  />
-                </Inline>
-                {detail.files.map((file) => (
-                  <AttachmentCard
-                    key={file.id}
-                    file={file}
-                    sharing={sharingFileId === file.id}
-                    onOpen={onOpenFile}
-                    onShare={onShareFile}
-                  />
-                ))}
-              </>
-            ) : (
-              <EmptyState title="첨부 파일이 없습니다" compact />
-            )}
+          <Section title="청구 내용">
+            <Card variant="filled">
+              <Stack gap="md">
+                <AppText>{claimMessage(detail.title, detail.memo)}</AppText>
+                <Stack gap="sm">
+                  <AppText variant="label">첨부 파일</AppText>
+                  {actionError ? (
+                    <AppText color="danger">{actionError}</AppText>
+                  ) : null}
+                  {detail.files.length ? (
+                    <>
+                      <Inline wrap>
+                        <Button
+                          label="PDF 다운로드"
+                          size="sm"
+                          variant="secondary"
+                          loading={bundleKind === "pdf"}
+                          disabled={bundleKind != null}
+                          onPress={() => onShareBundle("pdf")}
+                        />
+                        <Button
+                          label="전체 다운로드"
+                          size="sm"
+                          variant="secondary"
+                          loading={bundleKind === "zip"}
+                          disabled={bundleKind != null}
+                          onPress={() => onShareBundle("zip")}
+                        />
+                      </Inline>
+                      {detail.files.map((file) => (
+                        <AttachmentCard
+                          key={file.id}
+                          file={file}
+                          sharing={sharingFileId === file.id}
+                          onOpen={onOpenFile}
+                          onShare={onShareFile}
+                        />
+                      ))}
+                    </>
+                  ) : (
+                    <EmptyState title="첨부 파일이 없습니다" compact />
+                  )}
+                </Stack>
+              </Stack>
+            </Card>
           </Section>
 
-          <Section title="상태 변경">
+          <Section title="처리 상태">
             <Card variant="outlined">
               <Stack gap="md">
                 <Inline wrap>
@@ -218,6 +211,13 @@ export function ClaimDetailModal({
                 {statusNotice ? (
                   <AppText color="success">{statusNotice}</AppText>
                 ) : null}
+                <Button
+                  label="상태 저장"
+                  fullWidth
+                  loading={saving}
+                  disabled={saveDisabled}
+                  onPress={onSave}
+                />
               </Stack>
             </Card>
           </Section>

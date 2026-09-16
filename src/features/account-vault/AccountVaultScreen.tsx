@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { CopyIconButton, VisibilityIconButton } from '../../components/CopyIconButton';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -185,47 +186,47 @@ function AccountCard({
   });
   return (
     <Card variant="outlined">
-      <Stack gap="md">
+      <Stack gap="sm">
         <AppText variant="heading">{row.companyName}</AppText>
-        <TextField
-          label="아이디"
-          value={loginId}
-          onChangeText={setLoginId}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <Inline justify="flex-end">
-          <Button
-            label="아이디 복사"
-            size="sm"
-            variant="ghost"
+        <AppText variant="body" color="textSecondary">아이디</AppText>
+        <Inline align="center" gap="sm">
+          <TextField
+            value={loginId}
+            onChangeText={setLoginId}
+            autoCapitalize="none"
+            autoCorrect={false}
+            containerStyle={styles.fieldGrow}
+          />
+          <CopyIconButton
+            accessibilityLabel="아이디 복사"
             disabled={!loginId}
             onPress={() => onCopy(loginId, '아이디')}
           />
         </Inline>
-        <TextField
-          label="비밀번호"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!revealed}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <Inline wrap justify="flex-end">
-          <Button
-            label={revealed ? '숨기기' : `보기 (${maskSecret(password)})`}
-            size="sm"
-            variant="ghost"
+        <AppText variant="body" color="textSecondary">비밀번호</AppText>
+        <Inline align="center" gap="sm">
+          <TextField
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!revealed}
+            autoCapitalize="none"
+            autoCorrect={false}
+            containerStyle={styles.fieldGrow}
+          />
+          <VisibilityIconButton
+            accessibilityLabel={revealed ? '비밀번호 숨기기' : '비밀번호 보기'}
+            revealed={revealed}
             onPress={() => setRevealed((value) => !value)}
           />
-          <Button
-            label="비밀번호 복사"
-            size="sm"
-            variant="ghost"
+          <CopyIconButton
+            accessibilityLabel="비밀번호 복사"
             disabled={!password}
             onPress={() => onCopy(password, '비밀번호')}
           />
         </Inline>
+        {!revealed && password ? (
+          <AppText variant="caption" color="textSecondary">{maskSecret(password)}</AppText>
+        ) : null}
         {save.error ? (
           <AppText color="danger">
             {save.error instanceof Error ? save.error.message : '저장하지 못했습니다.'}
@@ -353,5 +354,6 @@ function createStyles(theme: AppTheme) {
       gap: theme.spacing.md,
     },
     tab: { flex: 1 },
+    fieldGrow: { flex: 1, minWidth: 0 },
   });
 }

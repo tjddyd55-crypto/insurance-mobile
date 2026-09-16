@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { DateField } from '../../components/DateField';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -198,7 +199,7 @@ export function TodoFormScreen({
         keyboardShouldPersistTaps="handled"
       >
         <Card variant="outlined">
-          <Stack gap="lg">
+          <Stack gap="md">
             <TextField
               label="내용"
               required
@@ -211,30 +212,31 @@ export function TodoFormScreen({
               }}
               placeholder="할 일을 입력하세요."
             />
-            <Button
-              label="본문에서 마감일 제안"
-              size="sm"
-              variant="ghost"
-              onPress={() => {
-                const suggested = suggestTodoDueDate(form.description);
-                if (suggested && !form.dueDate) {
-                  setForm((previous) => ({ ...previous, dueDate: suggested }));
-                }
-              }}
-            />
-            <TextField
-              label="마감일"
-              value={form.dueDate}
-              onChangeText={(dueDate) => setForm((previous) => ({ ...previous, dueDate }))}
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              helperText="오늘, 내일, 모레가 본문에 있으면 위 버튼으로 제안할 수 있습니다."
-            />
+            <Stack gap="xs">
+              <DateField
+                label="마감일"
+                value={form.dueDate}
+                onChange={(dueDate) => setForm((previous) => ({ ...previous, dueDate }))}
+                helperText="본문에 오늘·내일·모레가 있으면 제안으로 마감일을 채울 수 있습니다."
+              />
+              <Button
+                label="제안"
+                size="sm"
+                variant="ghost"
+                style={styles.suggestButton}
+                onPress={() => {
+                  const suggested = suggestTodoDueDate(form.description);
+                  if (suggested && !form.dueDate) {
+                    setForm((previous) => ({ ...previous, dueDate: suggested }));
+                  }
+                }}
+              />
+            </Stack>
           </Stack>
         </Card>
 
         <Card variant="outlined">
-          <Stack gap="md">
+          <Stack gap="sm">
             <AppText variant="heading">연결 고객</AppText>
             {selectedCustomer ? (
               <Inline justify="space-between">
@@ -351,5 +353,6 @@ function createStyles(theme: AppTheme) {
     },
     footer: { flexDirection: 'row', gap: theme.spacing.sm, padding: theme.spacing.md },
     grow: { flex: 1 },
+    suggestButton: { alignSelf: 'flex-end', marginTop: -theme.spacing.xs },
   });
 }

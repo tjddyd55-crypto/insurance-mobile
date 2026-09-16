@@ -1,17 +1,21 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
+import { CopyIconButton } from '../../components/CopyIconButton';
+import {
+  CustomerActionIcon,
+  openPhoneUrl,
+} from '../customers/CustomerActionIcon';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
   AppText,
   Button,
   Card,
-  IconButton,
   Inline,
   Screen,
   Stack,
@@ -221,35 +225,25 @@ function PhoneRow({
   styles: ReturnType<typeof createStyles>;
 }) {
   const callable = normalizePhone(phone);
+  const telHref = callable ? `tel:${callable}` : null;
   return (
     <Inline align="center" style={styles.phoneRow}>
       <View style={styles.label}>
         <AppText color="textSecondary">{label}</AppText>
       </View>
-      <AppText style={styles.value}>{phone ? formatPhone(phone) : '—'}</AppText>
+      <AppText style={styles.value} numberOfLines={1}>
+        {phone ? formatPhone(phone) : '—'}
+      </AppText>
       {phone ? (
-        <Inline gap="xs">
-          <IconButton
+        <Inline gap="xs" style={styles.actions}>
+          <CustomerActionIcon
+            kind="tel"
             accessibilityLabel={`${formatPhone(phone)} 전화`}
-            variant="outlined"
-            size="sm"
-            onPress={() => void Linking.openURL(`tel:${callable}`)}
-            icon={(color) => (
-              <AppText accessibilityElementsHidden style={[styles.actionIcon, { color }]}>
-                ☎
-              </AppText>
-            )}
+            onPress={() => openPhoneUrl(telHref)}
           />
-          <IconButton
+          <CopyIconButton
             accessibilityLabel={`${formatPhone(phone)} 복사`}
-            variant="outlined"
-            size="sm"
             onPress={() => onCopy(phone)}
-            icon={(color) => (
-              <AppText accessibilityElementsHidden style={[styles.actionIcon, { color }]}>
-                ⧉
-              </AppText>
-            )}
           />
         </Inline>
       ) : null}
@@ -270,14 +264,14 @@ function createStyles(theme: AppTheme) {
       marginBottom: theme.spacing.md,
     },
     tab: { flex: 1 },
-    label: { width: 74 },
-    value: { flex: 1, fontWeight: '600' },
+    label: { width: 74, flexShrink: 0 },
+    value: { flex: 1, minWidth: 0, fontWeight: '600' },
     phoneRow: {
       minHeight: 44,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
     },
+    actions: { flexShrink: 0 },
     contacts: { paddingTop: theme.spacing.sm },
-    actionIcon: { fontSize: 16, lineHeight: 20 },
   });
 }
