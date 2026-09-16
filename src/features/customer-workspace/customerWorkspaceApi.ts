@@ -1,4 +1,5 @@
-import { ApiError, apiRequest, resolveApiUrl } from '../../api/client';
+import { ApiError, apiRequest } from '../../api/client';
+import { createStorageOpenUrl } from '../storage/storageApi';
 import { normalizeStorageFile, normalizeStorageFolder } from '../storage/storageModel';
 import type { CustomerFile, CustomerFolder, Consultation } from './types';
 
@@ -111,12 +112,7 @@ export async function listCustomerFiles(
 }
 
 export async function openCustomerFile(token: string | null, id: number) {
-  const result = await apiRequest<{ openUrl: string }>(`/api/storage/files/${id}/open-token`, {
-    method: 'POST',
-    token: auth(token),
-    body: JSON.stringify({}),
-  });
-  return resolveApiUrl(result.openUrl);
+  return createStorageOpenUrl(token, id);
 }
 
 export async function deleteCustomerFile(token: string | null, id: number) {

@@ -5,9 +5,12 @@ import { ApiError } from "../../api/client";
 
 const REMOTE_FILE_TIMEOUT_MS = 30_000;
 
-function safeFileName(value: string): string {
-  const normalized = value.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_");
-  return normalized || `onefc-file-${Date.now()}`;
+/** Local cache path must stay ASCII-safe; original name is kept in the share dialog. */
+export function buildRemoteCacheFileName(displayName: string): string {
+  const trimmed = displayName.trim();
+  const extensionMatch = trimmed.match(/(\.[^./\\]+)$/);
+  const extension = extensionMatch?.[1] ?? "";
+  return `onefc-${Date.now()}${extension}`;
 }
 
 export async function shareRemoteFile({
@@ -38,7 +41,7 @@ export async function shareRemoteFile({
   if (!response.ok) {
     throw new ApiError("파일을 내려받지 못했습니다.", response.status);
   }
-  const file = new File(Paths.cache, safeFileName(fileName));
+  const file = new File(Paths.cache, buildRemoteCacheFileName(fileName));
   file.create({ overwrite: true });
   file.write(new Uint8Array(await response.arrayBuffer()));
   await Sharing.shareAsync(file.uri, {

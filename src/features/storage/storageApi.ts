@@ -11,7 +11,27 @@ export async function getStorageQuota(token: string | null): Promise<StorageQuot
 export async function getStorageUsageBreakdown(token: string | null): Promise<StorageUsageBreakdown> { return normalizeStorageUsageBreakdown(await apiRequest('/api/storage/usage-breakdown', { token: tokenOf(token) })); }
 export async function renameStorageFile(token: string | null, id: number, displayName: string): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ displayName: displayName.trim() }) }); }
 export async function deleteStorageFile(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
-export async function createStorageOpenUrl(token: string | null, id: number): Promise<string> { const result = await apiRequest<{ openUrl: string }>(`/api/storage/files/${id}/open-token`, { method: 'POST', token: tokenOf(token), body: JSON.stringify({}) }); return resolveApiUrl(result.openUrl); }
+export async function createStorageOpenUrl(token: string | null, id: number): Promise<string> {
+  const result = await apiRequest<{ openUrl: string }>(`/api/storage/files/${id}/open-token`, {
+    method: 'POST',
+    token: tokenOf(token),
+    body: JSON.stringify({}),
+  });
+  return resolveApiUrl(result.openUrl);
+}
+
+/** Web `createStorageFileDownloadUrl` parity — attachment disposition open-token. */
+export async function createStorageFileDownloadUrl(
+  token: string | null,
+  id: number,
+): Promise<string> {
+  const result = await apiRequest<{ openUrl: string }>(`/api/storage/files/${id}/open-token`, {
+    method: 'POST',
+    token: tokenOf(token),
+    body: JSON.stringify({ disposition: 'attachment' }),
+  });
+  return resolveApiUrl(result.openUrl);
+}
 export async function uploadStorageFile(token: string | null, asset: { uri: string; name: string; mimeType?: string | null; size?: number }, folderId: number | null): Promise<void> {
   const blob = await fetch(asset.uri).then((response) => response.blob()); const contentType = asset.mimeType || blob.type || 'application/octet-stream';
   const presign = await apiRequest<{ fileId: number; uploadUrl: string; fileUrl: string; objectKey: string; putHeaders?: Record<string, string> }>('/api/storage/files/presign', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ fileName: asset.name, contentType, size: asset.size ?? blob.size, customerId: null }) });

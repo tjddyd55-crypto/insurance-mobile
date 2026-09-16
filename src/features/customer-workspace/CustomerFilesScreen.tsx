@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Linking, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation";
@@ -41,10 +41,12 @@ import {
   deleteCustomerFile,
   listCustomerFiles,
   listCustomerFolders,
-  openCustomerFile,
   uploadCustomerFile,
 } from "./customerWorkspaceApi";
-import { shareRemoteFile } from "../files/remoteFileSharing";
+import {
+  downloadStorageFileById,
+  previewStorageFileById,
+} from "../files/storageFileAccess";
 import {
   formatWorkspaceBytes,
   formatWorkspaceDate,
@@ -179,10 +181,17 @@ export function CustomerFilesScreen({ customerId }: { customerId: number }) {
   async function open(file: CustomerFile) {
     setActionError("");
     try {
-      await Linking.openURL(await openCustomerFile(token, file.id));
+      await previewStorageFileById(token, file.id);
     } catch (error) {
+      if (__DEV__) {
+        console.warn("[CustomerFilesScreen] preview failed", {
+          fileId: file.id,
+          fileName: file.displayName || file.fileName,
+          error: error instanceof Error ? error.message : error,
+        });
+      }
       setActionError(
-        error instanceof Error ? error.message : "파일을 열지 못했습니다.",
+        error instanceof Error ? error.message : "파일을 불러오지 못했습니다.",
       );
     }
   }
@@ -191,15 +200,22 @@ export function CustomerFilesScreen({ customerId }: { customerId: number }) {
     setActionError("");
     setSharingId(file.id);
     try {
-      const url = await openCustomerFile(token, file.id);
-      await shareRemoteFile({
-        url,
-        fileName: file.displayName || file.fileName,
-        mimeType: file.mimeType,
-      });
+      await downloadStorageFileById(
+        token,
+        file.id,
+        file.displayName || file.fileName,
+        file.mimeType,
+      );
     } catch (error) {
+      if (__DEV__) {
+        console.warn("[CustomerFilesScreen] download failed", {
+          fileId: file.id,
+          fileName: file.displayName || file.fileName,
+          error: error instanceof Error ? error.message : error,
+        });
+      }
       setActionError(
-        error instanceof Error ? error.message : "파일을 공유하지 못했습니다.",
+        error instanceof Error ? error.message : "파일 다운로드에 실패했습니다.",
       );
     } finally {
       setSharingId(null);
