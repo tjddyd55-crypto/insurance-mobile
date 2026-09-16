@@ -76,6 +76,12 @@ import {
   CUSTOMER_GENDER_FORM_OPTIONS,
   resolveSegmentSelectedVariant,
 } from './customerFormChoices';
+import {
+  CUSTOMER_FORM_SECTION_TEST_IDS,
+  CUSTOMER_FORM_SECTION_TITLES,
+  type CustomerFormSectionId,
+  resolveCustomerFormSectionOrder,
+} from './customerFormSectionOrder';
 import { customerQueryKeys } from './queryKeys';
 import type { ListCustomersResult } from './types';
 
@@ -352,6 +358,296 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     );
   }
 
+  const sectionOrder = resolveCustomerFormSectionOrder(mode);
+
+  const renderDriverChoice = () => (
+    <SegmentedChoice
+      label="운전 여부"
+      required
+      value={form.driver}
+      error={errors.driver}
+      options={[
+        { value: 'yes', label: '운전함' },
+        { value: 'no', label: '운전안함' },
+      ]}
+      onChange={(value) => updateField('driver', value as CustomerFormState['driver'])}
+    />
+  );
+
+  const renderFormSection = (sectionId: CustomerFormSectionId) => {
+    switch (sectionId) {
+      case 'basic':
+        return (
+          <FormSection title={CUSTOMER_FORM_SECTION_TITLES.basic}>
+            <TextField
+              label="고객명"
+              required
+              value={form.name}
+              error={errors.name}
+              onChangeText={(value) => updateField('name', value)}
+              autoFocus={mode === 'create'}
+            />
+            <TextField
+              label="연락처"
+              value={form.phone}
+              error={errors.phone}
+              format="phone"
+              onChangeText={(value) => updateField('phone', value)}
+              keyboardType="phone-pad"
+              placeholder="010-1234-5678"
+            />
+            <TextField
+              label="주민등록번호"
+              value={form.ssn}
+              error={errors.ssn}
+              format="residentNumber"
+              onChangeText={(value) => updateField('ssn', value)}
+              keyboardType="number-pad"
+              placeholder="900101-1234567"
+              helperText="민감정보이므로 업무에 필요한 범위에서만 입력해 주세요."
+              autoComplete="off"
+              textContentType="none"
+            />
+            <SegmentedChoice
+              label="성별"
+              required
+              value={form.gender}
+              error={errors.gender}
+              options={CUSTOMER_GENDER_FORM_OPTIONS}
+              onChange={(value) => updateField('gender', value as CustomerFormState['gender'])}
+            />
+            <SelectField
+              label="통신사"
+              value={form.carrier}
+              options={CUSTOMER_MOBILE_CARRIER_OPTIONS}
+              placeholder="통신사를 선택해 주세요"
+              onChange={(value) => updateField('carrier', value)}
+              testID="customer-form-carrier-select"
+            />
+            <Inline>
+              <TextField
+                label="키(cm)"
+                value={form.height}
+                onChangeText={(value) => updateField('height', value)}
+                keyboardType="number-pad"
+                containerStyle={styles.grow}
+              />
+              <TextField
+                label="몸무게(kg)"
+                value={form.weight}
+                onChangeText={(value) => updateField('weight', value)}
+                keyboardType="number-pad"
+                containerStyle={styles.grow}
+              />
+            </Inline>
+            <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
+            {mode === 'create' ? renderDriverChoice() : null}
+            <AddressSearchField
+              value={form.address}
+              onChange={(address) => updateField('address', address)}
+              disabled={saveMutation.isPending}
+            />
+            <SelectField
+              label="유입 경로"
+              value={form.inflowSource}
+              options={CUSTOMER_INFLOW_SOURCE_OPTIONS}
+              placeholder="유입 경로를 선택해 주세요"
+              onChange={(value) => updateField('inflowSource', value)}
+              testID="customer-form-inflow-select"
+            />
+            {requiresInflowSourceDetail(form.inflowSource) ? (
+              <TextField
+                label={getInflowSourceDetailFieldMeta(form.inflowSource)?.label ?? '소개자·이관자'}
+                value={form.referrerName}
+                onChangeText={(value) => updateField('referrerName', value)}
+                placeholder={getInflowSourceDetailFieldMeta(form.inflowSource)?.placeholder}
+              />
+            ) : null}
+            <Inline align="center" justify="space-between" style={styles.toggleRow}>
+              <AppText variant="label">중요 고객</AppText>
+              <Switch
+                accessibilityLabel="중요 고객"
+                value={form.isFavorite}
+                onValueChange={(value) => updateField('isFavorite', value)}
+                trackColor={{
+                  false: theme.colors.border,
+                  true: theme.colors.primarySoft,
+                }}
+                thumbColor={form.isFavorite ? theme.colors.primary : theme.colors.surface}
+              />
+            </Inline>
+            <Inline align="center" justify="space-between" style={styles.toggleRow}>
+              <AppText variant="label">문자 수신거부</AppText>
+              <Switch
+                accessibilityLabel="문자 수신거부"
+                value={form.smsOptOut}
+                onValueChange={(value) => updateField('smsOptOut', value)}
+                trackColor={{
+                  false: theme.colors.border,
+                  true: theme.colors.dangerSoft,
+                }}
+                thumbColor={form.smsOptOut ? theme.colors.danger : theme.colors.surface}
+              />
+            </Inline>
+            {mode === 'edit' ? renderDriverChoice() : null}
+          </FormSection>
+        );
+      case 'vehicle':
+        return (
+          <CollapsibleFormSection
+            title={CUSTOMER_FORM_SECTION_TITLES.vehicle}
+            sectionId="car"
+            testID={CUSTOMER_FORM_SECTION_TEST_IDS.vehicle}
+          >
+            <CustomerCarsEditor
+              cars={form.cars}
+              onChange={(cars) => updateField('cars', cars)}
+              disabled={saveMutation.isPending}
+            />
+          </CollapsibleFormSection>
+        );
+      case 'business':
+        return (
+          <CollapsibleFormSection
+            title={CUSTOMER_FORM_SECTION_TITLES.business}
+            sectionId="business"
+            testID={CUSTOMER_FORM_SECTION_TEST_IDS.business}
+          >
+            <TextField
+              label="대표자명"
+              value={form.businessInfo.representativeName}
+              editable={!saveMutation.isPending}
+              onChangeText={(value) =>
+                setForm((previous) => ({
+                  ...previous,
+                  businessInfo: { ...previous.businessInfo, representativeName: value },
+                }))
+              }
+            />
+            <TextField
+              label="사업자번호"
+              value={form.businessInfo.businessNumber}
+              editable={!saveMutation.isPending}
+              onChangeText={(value) =>
+                setForm((previous) => ({
+                  ...previous,
+                  businessInfo: { ...previous.businessInfo, businessNumber: value },
+                }))
+              }
+            />
+            <AddressSearchField
+              value={parseAddressFromSave(form.businessInfo.businessAddress)}
+              onChange={(address) =>
+                setForm((previous) => ({
+                  ...previous,
+                  businessInfo: {
+                    ...previous.businessInfo,
+                    businessAddress: formatAddressForSave(address),
+                  },
+                }))
+              }
+              disabled={saveMutation.isPending}
+            />
+            <TextField
+              label="메모"
+              multiline
+              value={form.businessInfo.memo}
+              editable={!saveMutation.isPending}
+              onChangeText={(value) =>
+                setForm((previous) => ({
+                  ...previous,
+                  businessInfo: { ...previous.businessInfo, memo: value },
+                }))
+              }
+            />
+          </CollapsibleFormSection>
+        );
+      case 'fireInsurance':
+        return (
+          <CollapsibleFormSection
+            title={CUSTOMER_FORM_SECTION_TITLES.fireInsurance}
+            sectionId="fire"
+            testID={CUSTOMER_FORM_SECTION_TEST_IDS.fireInsurance}
+          >
+            <CustomerFireInsuranceLocationsEditor
+              items={form.fireInsuranceLocations}
+              onChange={(fireInsuranceLocations) =>
+                updateField('fireInsuranceLocations', fireInsuranceLocations)
+              }
+              disabled={saveMutation.isPending}
+            />
+          </CollapsibleFormSection>
+        );
+      case 'alertDates':
+        return (
+          <FormSection
+            title={CUSTOMER_FORM_SECTION_TITLES.alertDates}
+            testID={CUSTOMER_FORM_SECTION_TEST_IDS.alertDates}
+          >
+            <CustomerAlertDatesEditor
+              items={form.specialDates}
+              onChange={(specialDates) => updateField('specialDates', specialDates)}
+              disabled={saveMutation.isPending}
+            />
+          </FormSection>
+        );
+      case 'insuranceReference':
+        return (
+          <FormSection
+            title={CUSTOMER_FORM_SECTION_TITLES.insuranceReference}
+            testID={CUSTOMER_FORM_SECTION_TEST_IDS.insuranceReference}
+          >
+            <TextField
+              label="수술·치료 관련"
+              multiline
+              value={form.treatmentHistoryNote}
+              onChangeText={(value) => updateField('treatmentHistoryNote', value)}
+              onFocus={() => {
+                requestAnimationFrame(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                });
+              }}
+            />
+            <TextField
+              label="약 복용 관련"
+              multiline
+              value={form.medicationHistoryNote}
+              onChangeText={(value) => updateField('medicationHistoryNote', value)}
+              onFocus={() => {
+                requestAnimationFrame(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                });
+              }}
+            />
+            <TextField
+              label="보험가입내역"
+              multiline
+              value={form.insuranceHistory}
+              onChangeText={(value) => updateField('insuranceHistory', value)}
+              onFocus={() => {
+                requestAnimationFrame(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                });
+              }}
+            />
+            <TextField
+              label="계좌정보"
+              multiline
+              value={form.accountNumber}
+              onChangeText={(value) => updateField('accountNumber', value)}
+              onFocus={() => {
+                requestAnimationFrame(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                });
+              }}
+            />
+          </FormSection>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -372,255 +668,9 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
       >
-        <FormSection title="기본 정보">
-          <TextField
-            label="고객명"
-            required
-            value={form.name}
-            error={errors.name}
-            onChangeText={(value) => updateField('name', value)}
-            autoFocus={mode === 'create'}
-          />
-          <TextField
-            label="연락처"
-            value={form.phone}
-            error={errors.phone}
-            format="phone"
-            onChangeText={(value) => updateField('phone', value)}
-            keyboardType="phone-pad"
-            placeholder="010-1234-5678"
-          />
-          <TextField
-            label="주민등록번호"
-            value={form.ssn}
-            error={errors.ssn}
-            format="residentNumber"
-            onChangeText={(value) => updateField('ssn', value)}
-            keyboardType="number-pad"
-            placeholder="900101-1234567"
-            helperText="민감정보이므로 업무에 필요한 범위에서만 입력해 주세요."
-            autoComplete="off"
-            textContentType="none"
-          />
-          <SegmentedChoice
-            label="성별"
-            required
-            value={form.gender}
-            error={errors.gender}
-            options={CUSTOMER_GENDER_FORM_OPTIONS}
-            onChange={(value) => updateField('gender', value as CustomerFormState['gender'])}
-          />
-          <SelectField
-            label="통신사"
-            value={form.carrier}
-            options={CUSTOMER_MOBILE_CARRIER_OPTIONS}
-            placeholder="통신사를 선택해 주세요"
-            onChange={(value) => updateField('carrier', value)}
-            testID="customer-form-carrier-select"
-          />
-          <Inline>
-            <TextField
-              label="키(cm)"
-              value={form.height}
-              onChangeText={(value) => updateField('height', value)}
-              keyboardType="number-pad"
-              containerStyle={styles.grow}
-            />
-            <TextField
-              label="몸무게(kg)"
-              value={form.weight}
-              onChangeText={(value) => updateField('weight', value)}
-              keyboardType="number-pad"
-              containerStyle={styles.grow}
-            />
-          </Inline>
-          <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
-          <SegmentedChoice
-            label="운전 여부"
-            required
-            value={form.driver}
-            error={errors.driver}
-            options={[
-              { value: 'yes', label: '운전함' },
-              { value: 'no', label: '운전안함' },
-            ]}
-            onChange={(value) => updateField('driver', value as CustomerFormState['driver'])}
-          />
-          <AddressSearchField
-            value={form.address}
-            onChange={(address) => updateField('address', address)}
-            disabled={saveMutation.isPending}
-          />
-          <SelectField
-            label="유입 경로"
-            value={form.inflowSource}
-            options={CUSTOMER_INFLOW_SOURCE_OPTIONS}
-            placeholder="유입 경로를 선택해 주세요"
-            onChange={(value) => updateField('inflowSource', value)}
-            testID="customer-form-inflow-select"
-          />
-          {requiresInflowSourceDetail(form.inflowSource) ? (
-            <TextField
-              label={getInflowSourceDetailFieldMeta(form.inflowSource)?.label ?? '소개자·이관자'}
-              value={form.referrerName}
-              onChangeText={(value) => updateField('referrerName', value)}
-              placeholder={getInflowSourceDetailFieldMeta(form.inflowSource)?.placeholder}
-            />
-          ) : null}
-          <Inline align="center" justify="space-between" style={styles.toggleRow}>
-            <AppText variant="label">중요 고객</AppText>
-            <Switch
-              accessibilityLabel="중요 고객"
-              value={form.isFavorite}
-              onValueChange={(value) => updateField('isFavorite', value)}
-              trackColor={{
-                false: theme.colors.border,
-                true: theme.colors.primarySoft,
-              }}
-              thumbColor={form.isFavorite ? theme.colors.primary : theme.colors.surface}
-            />
-          </Inline>
-          <Inline align="center" justify="space-between" style={styles.toggleRow}>
-            <AppText variant="label">문자 수신거부</AppText>
-            <Switch
-              accessibilityLabel="문자 수신거부"
-              value={form.smsOptOut}
-              onValueChange={(value) => updateField('smsOptOut', value)}
-              trackColor={{
-                false: theme.colors.border,
-                true: theme.colors.dangerSoft,
-              }}
-              thumbColor={form.smsOptOut ? theme.colors.danger : theme.colors.surface}
-            />
-          </Inline>
-        </FormSection>
-
-        <CollapsibleFormSection title="자동차 정보" sectionId="car" testID="customer-form-section-vehicle">
-          <CustomerCarsEditor
-            cars={form.cars}
-            onChange={(cars) => updateField('cars', cars)}
-            disabled={saveMutation.isPending}
-          />
-        </CollapsibleFormSection>
-
-        <CollapsibleFormSection title="사업자 정보" sectionId="business" testID="customer-form-section-business">
-          <TextField
-            label="대표자명"
-            value={form.businessInfo.representativeName}
-            editable={!saveMutation.isPending}
-            onChangeText={(value) =>
-              setForm((previous) => ({
-                ...previous,
-                businessInfo: { ...previous.businessInfo, representativeName: value },
-              }))
-            }
-          />
-          <TextField
-            label="사업자번호"
-            value={form.businessInfo.businessNumber}
-            editable={!saveMutation.isPending}
-            onChangeText={(value) =>
-              setForm((previous) => ({
-                ...previous,
-                businessInfo: { ...previous.businessInfo, businessNumber: value },
-              }))
-            }
-          />
-          <AddressSearchField
-            value={parseAddressFromSave(form.businessInfo.businessAddress)}
-            onChange={(address) =>
-              setForm((previous) => ({
-                ...previous,
-                businessInfo: {
-                  ...previous.businessInfo,
-                  businessAddress: formatAddressForSave(address),
-                },
-              }))
-            }
-            disabled={saveMutation.isPending}
-          />
-          <TextField
-            label="메모"
-            multiline
-            value={form.businessInfo.memo}
-            editable={!saveMutation.isPending}
-            onChangeText={(value) =>
-              setForm((previous) => ({
-                ...previous,
-                businessInfo: { ...previous.businessInfo, memo: value },
-              }))
-            }
-          />
-        </CollapsibleFormSection>
-
-        <CollapsibleFormSection title="화재보험 정보" sectionId="fire" testID="customer-form-section-fire-insurance">
-          <CustomerFireInsuranceLocationsEditor
-            items={form.fireInsuranceLocations}
-            onChange={(fireInsuranceLocations) =>
-              updateField('fireInsuranceLocations', fireInsuranceLocations)
-            }
-            disabled={saveMutation.isPending}
-          />
-        </CollapsibleFormSection>
-
-        <FormSection title="알림일">
-          <CustomerAlertDatesEditor
-            items={form.specialDates}
-            onChange={(specialDates) => updateField('specialDates', specialDates)}
-            disabled={saveMutation.isPending}
-          />
-        </FormSection>
-
-        <FormSection title="보험 및 참고사항">
-          <TextField
-            label="수술·치료 관련"
-            multiline
-            value={form.treatmentHistoryNote}
-            onChangeText={(value) => updateField('treatmentHistoryNote', value)}
-            onFocus={() => {
-              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
-              requestAnimationFrame(() => {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              });
-            }}
-          />
-          <TextField
-            label="약 복용 관련"
-            multiline
-            value={form.medicationHistoryNote}
-            onChangeText={(value) => updateField('medicationHistoryNote', value)}
-            onFocus={() => {
-              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
-              requestAnimationFrame(() => {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              });
-            }}
-          />
-          <TextField
-            label="보험가입내역"
-            multiline
-            value={form.insuranceHistory}
-            onChangeText={(value) => updateField('insuranceHistory', value)}
-            onFocus={() => {
-              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
-              requestAnimationFrame(() => {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              });
-            }}
-          />
-          <TextField
-            label="계좌정보"
-            multiline
-            value={form.accountNumber}
-            onChangeText={(value) => updateField('accountNumber', value)}
-            onFocus={() => {
-              // Keep bottom fields (esp. 계좌정보) visible above Android keyboard.
-              requestAnimationFrame(() => {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              });
-            }}
-          />
-        </FormSection>
+        {sectionOrder.map((sectionId) => (
+          <View key={sectionId}>{renderFormSection(sectionId)}</View>
+        ))}
 
         {validationMessage ? (
           <AppText color="danger" accessibilityRole="alert">
@@ -677,9 +727,17 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   );
 }
 
-function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FormSection({
+  title,
+  children,
+  testID,
+}: {
+  title: string;
+  children: React.ReactNode;
+  testID?: string;
+}) {
   return (
-    <Stack gap="md" style={{ alignSelf: "stretch" }}>
+    <Stack gap="md" style={{ alignSelf: "stretch" }} testID={testID}>
       <AppText variant="heading" numberOfLines={1}>
         {title}
       </AppText>
