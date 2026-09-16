@@ -18,18 +18,17 @@ function resolveBuildEnvironment(
 }
 
 function resolveGoogleServicesFile(environment: AppEnvironment): string | undefined {
+  if (environment === 'production') {
+    return process.env.GOOGLE_SERVICES_JSON?.trim() || undefined;
+  }
+
   // Never commit these files. Local/EAS secret path only.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fs = require('fs') as { existsSync: (path: string) => boolean };
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require('path') as { resolve: (...parts: string[]) => string };
-  const localCandidates =
-    environment === 'production'
-      ? ['./google-services.prod.json', './google-services.json']
-      : ['./google-services.dev.json', './google-services.json'];
-  const candidates = [process.env.GOOGLE_SERVICES_JSON, ...localCandidates];
+  const candidates = ['./google-services.dev.json', './google-services.json'];
   for (const candidate of candidates) {
-    if (!candidate) continue;
     if (fs.existsSync(path.resolve(process.cwd(), candidate))) {
       return candidate;
     }
