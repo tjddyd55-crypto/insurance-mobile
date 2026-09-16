@@ -57,7 +57,7 @@ adb exec-out screencap -p > ./qa-screenshots/screen.png
 
 ## Google Maps (선택)
 
-- `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` 없으면 지도 화면은 설정 안내 + 목록 fallback (크래시 방지)
+- `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` 없으면 고객 지도는 네이버 지도 설정 안내 + 목록 fallback (Web `VITE_NAVER_MAP_CLIENT_ID`와 동일 contract)
 - 키가 있을 때만 네이티브 지도 타일·마커 활성화
 
 ## 관련 문서

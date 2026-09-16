@@ -1,4 +1,8 @@
-import { groupCustomersByCoordinate, hasGoogleMapsApiKey, normalizeCustomerMap } from '../customerMapModel';
+import {
+  groupCustomersByCoordinate,
+  hasNaverMapClientId,
+  normalizeCustomerMap,
+} from '../customerMapModel';
 
 describe('customerMapModel', () => {
   test('normalizes and groups map customers', () => {
@@ -14,9 +18,9 @@ describe('customerMapModel', () => {
     expect(groupCustomersByCoordinate(result.customers).size).toBe(1);
   });
 
-  test('requires a non-empty native Google Maps key', () => {
-    expect(hasGoogleMapsApiKey(' maps-key ')).toBe(true);
-    expect(hasGoogleMapsApiKey('')).toBe(false);
-    expect(hasGoogleMapsApiKey(undefined)).toBe(false);
+  test('requires a non-empty naver map client id', () => {
+    expect(hasNaverMapClientId(' naver-client ')).toBe(true);
+    expect(hasNaverMapClientId('')).toBe(false);
+    expect(hasNaverMapClientId(undefined)).toBe(false);
   });
 });

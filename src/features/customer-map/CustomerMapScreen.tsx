@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import MapView, { Marker } from 'react-native-maps';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -15,7 +14,8 @@ import { getCustomer } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import { getCustomerMap } from './customerMapApi';
-import { groupCustomersByCoordinate, hasGoogleMapsApiKey } from './customerMapModel';
+import { hasNaverMapClientId, naverMapUnavailableMessage } from './customerMapModel';
+import { NaverCustomerMapView } from './NaverCustomerMapView';
 
 export function CustomerMapScreen({
   focusCustomerId = null,
@@ -43,7 +43,7 @@ export function CustomerMapScreen({
     if (nextKeyword) setKeyword(nextKeyword);
   }, [focusCustomer.data, focusCustomerId]);
   const radius = Number(radiusText);
-  const mapAvailable = hasGoogleMapsApiKey();
+  const mapAvailable = hasNaverMapClientId();
   const query = useQuery({
     queryKey: ['customer-map', keyword, favoriteOnly, Number.isFinite(radius) ? radius : null],
     queryFn: () => getCustomerMap(token, {
@@ -53,10 +53,6 @@ export function CustomerMapScreen({
     }),
     enabled: Boolean(token),
   });
-  const groups = useMemo(
-    () => [...groupCustomersByCoordinate(query.data?.customers ?? []).values()],
-    [query.data?.customers],
-  );
 
   return (
     <View style={styles.root}>
@@ -82,15 +78,20 @@ export function CustomerMapScreen({
             <>
               <Inline wrap><Badge label={`전체 ${query.data.stats.totalCustomers}`} tone="info" /><Badge label={`지도 ${query.data.stats.mappedCount}`} tone="success" /><Badge label={`미표시 ${query.data.stats.unmappedCount}`} tone="warning" /></Inline>
               {query.data.customers.length && mapAvailable ? (
-                <MapView style={styles.map} initialRegion={{ latitude: query.data.centerLat, longitude: query.data.centerLng, latitudeDelta: 0.18, longitudeDelta: 0.18 }}>
-                  {groups.map((group) => {
-                    const first = group[0];
-                    if (!first) return null;
-                    return <Marker key={`${first.latitude}-${first.longitude}`} coordinate={{ latitude: first.latitude, longitude: first.longitude }} title={group.length > 1 ? `${first.name} 외 ${group.length - 1}명` : first.name} description={first.address} onCalloutPress={() => router.push(`/customers/${first.id}`)} />;
-                  })}
-                </MapView>
+                <NaverCustomerMapView
+                  centerLat={query.data.centerLat}
+                  centerLng={query.data.centerLng}
+                  zoom={query.data.zoom}
+                  customers={query.data.customers}
+                  onMarkerPress={(customerId) => router.push(`/customers/${customerId}`)}
+                />
               ) : query.data.customers.length ? (
-                <Card variant="filled"><Stack gap="xs"><AppText variant="bodyStrong">지도 설정이 필요합니다.</AppText><AppText variant="caption">Google Maps API 키가 포함된 앱 빌드에서 지도를 표시합니다. 아래 고객 목록은 계속 사용할 수 있습니다.</AppText></Stack></Card>
+                <Card variant="filled">
+                  <Stack gap="xs">
+                    <AppText variant="bodyStrong">네이버 지도 설정이 필요합니다.</AppText>
+                    <AppText variant="caption">{naverMapUnavailableMessage()}</AppText>
+                  </Stack>
+                </Card>
               ) : (
                 <Card variant="outlined"><AppText color="textSecondary" align="center">표시할 고객 좌표가 없습니다.</AppText></Card>
               )}
@@ -114,6 +115,5 @@ function createStyles(theme: AppTheme) {
     content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl, gap: theme.spacing.md },
     grow: { flex: 1 },
     favorite: { paddingTop: theme.spacing.lg },
-    map: { height: 420, borderRadius: theme.radius.lg },
   });
 }

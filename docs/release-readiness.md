@@ -29,7 +29,7 @@ Last audited: 2026-09-01
 - Passed: customer detail navigation to claim, consultation, memo, and file workspaces without production mutation.
 - Passed: all seven primary Drawer groups were reachable by scroll; no React Native or Android crash remained after the map fallback fix.
 - Intentionally not executed: production create/update/delete, SMS/Alimtalk send, card/payment/subscription mutations, file upload, OTA publish, and store release.
-- Build-time gate: provide `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for the signed Android build to enable native map tiles and markers.
+- Build-time gate: provide `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` for Naver Dynamic Map rendering in the customer map WebView (same NCP client id family as Web `VITE_NAVER_MAP_CLIENT_ID`).
 
 ## Required before public release
 

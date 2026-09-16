@@ -3,4 +3,17 @@ function itemOf(value: unknown): CustomerMapItem | null { if (!value || typeof v
 function unmappedOf(value: unknown): CustomerMapUnmapped | null { if (!value || typeof value !== 'object') return null; const row = value as Record<string, unknown>; const id = Number(row.id); if (!Number.isFinite(id)) return null; return { id, name: String(row.name ?? ''), phone: String(row.phone ?? ''), address: String(row.address ?? ''), mapStatusLabel: String(row.mapStatusLabel ?? '위치 정보 없음') }; }
 export function normalizeCustomerMap(value: unknown): CustomerMapResult { const row = value && typeof value === 'object' ? value as Record<string, unknown> : {}; const map = row.map && typeof row.map === 'object' ? row.map as Record<string, unknown> : {}; const stats = row.stats && typeof row.stats === 'object' ? row.stats as Record<string, unknown> : {}; const source = Array.isArray(row.mapCustomers) ? row.mapCustomers : Array.isArray(row.customers) ? row.customers : []; const customers = source.map(itemOf).filter((item): item is CustomerMapItem => Boolean(item)); const unmapped = (Array.isArray(row.unmappedCustomers) ? row.unmappedCustomers : []).map(unmappedOf).filter((item): item is CustomerMapUnmapped => Boolean(item)); return { customers, unmappedCustomers: unmapped, centerLat: Number(map.centerLat) || 37.5665, centerLng: Number(map.centerLng) || 126.978, zoom: Number(map.zoom) || 12, stats: { totalCustomers: Number(stats.totalCustomers ?? stats.total) || customers.length + unmapped.length, mappedCount: Number(stats.mappedCount ?? stats.geocodedSuccess ?? stats.withLocation) || customers.length, unmappedCount: Number(stats.unmappedCount) || unmapped.length } }; }
 export function groupCustomersByCoordinate(customers: CustomerMapItem[]): Map<string, CustomerMapItem[]> { const result = new Map<string, CustomerMapItem[]>(); for (const item of customers) { const key = `${item.latitude.toFixed(6)},${item.longitude.toFixed(6)}`; result.set(key, [...(result.get(key) ?? []), item]); } return result; }
-export function hasGoogleMapsApiKey(value = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY): boolean { return Boolean(value?.trim()); }
+export function hasNaverMapClientId(
+  value = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID,
+): boolean {
+  return Boolean(value?.trim());
+}
+
+export function naverMapUnavailableMessage(): string {
+  return '네이버 지도 Client ID가 설정된 빌드에서 지도를 표시합니다. 아래 고객 목록은 계속 사용할 수 있습니다.';
+}
+
+/** @deprecated Google Maps는 Native 고객 지도에서 사용하지 않는다. */
+export function hasGoogleMapsApiKey(): boolean {
+  return false;
+}
