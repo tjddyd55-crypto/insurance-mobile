@@ -15,6 +15,12 @@ import {
 } from '../design-system';
 import { formatGaBannerLabel } from '../navigation/gaTenantLabel';
 
+/** @internal 테스트·스냅샷 검증용 */
+export const APP_HEADER_TITLE_TEXT_PROPS = {
+  numberOfLines: 1 as const,
+  ellipsizeMode: 'tail' as const,
+};
+
 type AppHeaderProps = {
   title: string;
   showMenu?: boolean;
@@ -48,28 +54,34 @@ export function AppHeader({
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.wrap}>
-        <View style={styles.left}>
-          {showBack ? (
-            <IconButton
-              accessibilityLabel="뒤로 가기"
-              onPress={() => (onBackPress ? onBackPress() : router.back())}
-              icon={(color) => (
-                <AppText accessibilityElementsHidden style={[styles.backIcon, { color }]}>‹</AppText>
-              )}
-            />
-          ) : showMenu ? (
-            <IconButton
-              accessibilityLabel="메뉴 열기"
-              onPress={() => navigation.openDrawer()}
-              icon={(color) => (
-                <AppText accessibilityElementsHidden style={[styles.menuIcon, { color }]}>☰</AppText>
-              )}
-            />
-          ) : null}
-          <View style={styles.titleBlock}>
-            <AppText variant="navigationTitle" numberOfLines={1}>{titleLabel}</AppText>
-            {subtitle ? <AppText variant="helper" numberOfLines={1}>{subtitle}</AppText> : null}
+        {showBack || showMenu ? (
+          <View style={styles.leading}>
+            {showBack ? (
+              <IconButton
+                accessibilityLabel="뒤로 가기"
+                onPress={() => (onBackPress ? onBackPress() : router.back())}
+                icon={(color) => (
+                  <AppText accessibilityElementsHidden style={[styles.backIcon, { color }]}>‹</AppText>
+                )}
+              />
+            ) : (
+              <IconButton
+                accessibilityLabel="메뉴 열기"
+                onPress={() => navigation.openDrawer()}
+                icon={(color) => (
+                  <AppText accessibilityElementsHidden style={[styles.menuIcon, { color }]}>☰</AppText>
+                )}
+              />
+            )}
           </View>
+        ) : null}
+        <View style={styles.titleBlock}>
+          <AppText variant="navigationTitle" {...APP_HEADER_TITLE_TEXT_PROPS}>
+            {titleLabel}
+          </AppText>
+          {subtitle ? (
+            <AppText variant="helper" {...APP_HEADER_TITLE_TEXT_PROPS}>{subtitle}</AppText>
+          ) : null}
         </View>
         <View style={styles.right}>
           {isDevApp ? <Badge label="DEV" tone="warning" /> : null}
@@ -81,29 +93,40 @@ export function AppHeader({
   );
 }
 
-function createStyles(theme: AppTheme) {
+export function createAppHeaderStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { backgroundColor: theme.colors.surface },
     wrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
       minHeight: theme.layout.headerHeight,
       paddingHorizontal: theme.spacing.md,
       backgroundColor: theme.colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
     },
-    left: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0, gap: theme.spacing.sm },
-    titleBlock: { flexShrink: 1, minWidth: 0, gap: theme.spacing.xxs },
+    leading: {
+      flexShrink: 0,
+      marginRight: theme.spacing.sm,
+    },
+    titleBlock: {
+      flex: 1,
+      minWidth: 0,
+      flexShrink: 1,
+      gap: theme.spacing.xxs,
+    },
     right: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.sm,
-      flexShrink: 1,
+      flexShrink: 0,
       marginLeft: theme.spacing.sm,
     },
     menuIcon: { fontSize: 20, lineHeight: 24 },
     backIcon: { fontSize: 30, lineHeight: 32 },
   });
+}
+
+function createStyles(theme: AppTheme) {
+  return createAppHeaderStyles(theme);
 }
