@@ -30,6 +30,16 @@ describe('environment', () => {
     expect(cfg.scheme).toBe('onefc-dev');
   });
 
+  it('exposes production package identity and API', () => {
+    const cfg = getEnvironmentConfig('production');
+    expect(cfg.appDisplayName).toBe('ONE FC');
+    expect(cfg.androidPackage).toBe('com.onefc.app');
+    expect(cfg.iosBundleIdentifier).toBe('com.onefc.app');
+    expect(cfg.scheme).toBe('onefc');
+    expect(cfg.apiBaseUrl).toContain('insurance-production');
+    expect(cfg.apiBaseUrl).not.toContain('insurance-dev');
+  });
+
   it('rejects a DEV identity connected to the Production API', () => {
     expect(() => {
       assertApiEnvironmentAffinity(

@@ -71,6 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       bundleIdentifier: identity.applicationId,
       buildNumber: iosBuildNumber,
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
           '청구서류나 고객 관련 이미지를 촬영하여 첨부하기 위해 카메라 접근이 필요합니다.',
         NSPhotoLibraryUsageDescription:
