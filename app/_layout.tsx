@@ -2,6 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
@@ -54,23 +55,25 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <DesignSystemProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <AppErrorBoundary>
-              <ThemedStatusBar />
-              <AuthGate>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="(auth)" />
-                  <Stack.Screen name="(app)" />
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="design-system" />
-                </Stack>
-              </AuthGate>
-            </AppErrorBoundary>
-          </AuthProvider>
-        </QueryClientProvider>
-      </DesignSystemProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <DesignSystemProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <AppErrorBoundary>
+                <ThemedStatusBar />
+                <AuthGate>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="(auth)" />
+                    <Stack.Screen name="(app)" />
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="design-system" />
+                  </Stack>
+                </AuthGate>
+              </AppErrorBoundary>
+            </AuthProvider>
+          </QueryClientProvider>
+        </DesignSystemProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

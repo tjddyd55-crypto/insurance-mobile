@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -28,6 +27,7 @@ import {
   SelectField,
   TextField,
   useAppTheme,
+  useBottomSafeInset,
   type AppTheme,
 } from '../../design-system';
 import { AddressSearchField } from '../../components/AddressSearchField';
@@ -102,7 +102,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const kbHeightRef = useRef(0);
   const discardOpenRef = useRef(false);
   const initialCreateFocusDoneRef = useRef(false);
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomSafeInset();
 
   useEffect(() => {
     discardOpenRef.current = discardOpen;
@@ -658,10 +658,11 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         showBack
         onBackPress={attemptCloseEdit}
       />
+      <View style={[styles.body, { paddingBottom: bottomInset }]}>
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: theme.spacing.xl + insets.bottom }]}
+        contentContainerStyle={[styles.content, { paddingBottom: theme.spacing.xl }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
@@ -715,6 +716,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           />
         </View>
       </ScrollView>
+      </View>
 
       <CustomerDiscardChangesDialog
         open={discardOpen}
@@ -789,6 +791,7 @@ function SegmentedChoice({
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
+    body: { flex: 1 },
     scroll: { flex: 1 },
     content: {
       paddingHorizontal: theme.spacing.md,

@@ -13,9 +13,9 @@ import {
   AppText,
   Button,
   Inline,
-  Screen,
   Stack,
   useAppTheme,
+  useBottomSafeInset,
   type AppTheme,
 } from "../../design-system";
 import { formatCustomerPhone } from "./customerModel";
@@ -81,6 +81,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const { token } = useAuth();
   const router = useRouter();
   const theme = useAppTheme();
+  const bottomInset = useBottomSafeInset();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
   const queryKey = customerQueryKeys.detail(customerId);
@@ -217,20 +218,23 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
           ) : null
         }
       />
-      {query.isLoading ? (
-        <LoadingState message="고객 정보를 불러오는 중…" />
-      ) : query.isError || !customer ? (
-        <ErrorState
-          title="고객 정보를 불러오지 못했습니다"
-          message={query.error instanceof Error ? query.error.message : "고객을 찾을 수 없습니다."}
-          onRetry={() => void query.refetch()}
-        />
-      ) : (
-        <Screen padded={false}>
+      <View style={[styles.body, { paddingBottom: bottomInset }]}>
+        {query.isLoading ? (
+          <LoadingState message="고객 정보를 불러오는 중…" />
+        ) : query.isError || !customer ? (
+          <ErrorState
+            title="고객 정보를 불러오지 못했습니다"
+            message={query.error instanceof Error ? query.error.message : "고객을 찾을 수 없습니다."}
+            onRetry={() => void query.refetch()}
+          />
+        ) : (
           <ScrollView
             testID="customer-detail-scroll"
             style={styles.scroll}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: theme.layout.contentBottomInset },
+            ]}
             refreshControl={
               <RefreshControl
                 refreshing={query.isRefetching}
@@ -393,8 +397,8 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               ) : null}
             </Stack>
           </ScrollView>
-        </Screen>
-      )}
+        )}
+      </View>
       <CustomerGaDataModal
         open={gaOpen}
         customerId={customerId}
@@ -422,11 +426,11 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
+    body: { flex: 1 },
     scroll: { flex: 1 },
     content: {
       paddingHorizontal: theme.spacing.md,
       paddingTop: theme.spacing.md,
-      paddingBottom: theme.layout.contentBottomInset,
       gap: theme.spacing.sm,
     },
     bottomActions: {
