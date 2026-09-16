@@ -36,7 +36,15 @@ describe("customerFormSectionOrder", () => {
     ]);
   });
 
-  it("keeps create order policy separate from basic edit SSOT", () => {
+  it("keeps create order aligned with native detail information flow", () => {
+    expect(CUSTOMER_CREATE_FORM_SECTION_ORDER).toEqual([
+      "basic",
+      "vehicle",
+      "business",
+      "fireInsurance",
+      "alertDates",
+      "customFields",
+    ]);
     expect(resolveCustomerFormSectionOrder("create")).toEqual(
       CUSTOMER_CREATE_FORM_SECTION_ORDER,
     );

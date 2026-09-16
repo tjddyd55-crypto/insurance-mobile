@@ -7,7 +7,7 @@ export type CustomerFormSectionId =
   | "alertDates"
   | "customFields";
 
-/** 고객 정보 수정 화면 섹션 순서 (합의 SSOT) */
+/** 레거시 전체 수정 폼 섹션 순서 */
 export const CUSTOMER_EDIT_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] = [
   "basic",
   "vehicle",
@@ -17,12 +17,15 @@ export const CUSTOMER_EDIT_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] 
   "customFields",
 ];
 
-/**
- * 신규 고객 등록 화면 섹션 순서.
- * 현재는 수정 화면과 동일하나, 등록 전용 정책이 생기면 이 배열만 조정한다.
- */
-export const CUSTOMER_CREATE_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] =
-  CUSTOMER_EDIT_FORM_SECTION_ORDER;
+/** 신규 고객 등록 화면 섹션 순서 — Native 상세 구조와 동일한 정보 흐름 */
+export const CUSTOMER_CREATE_FORM_SECTION_ORDER: readonly CustomerFormSectionId[] = [
+  "basic",
+  "vehicle",
+  "business",
+  "fireInsurance",
+  "alertDates",
+  "customFields",
+];
 
 export const CUSTOMER_FORM_SECTION_TITLES: Record<CustomerFormSectionId, string> = {
   basic: "기본 정보",

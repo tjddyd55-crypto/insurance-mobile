@@ -62,10 +62,11 @@ import { CollapsibleFormSection } from './CollapsibleFormSection';
 import { DetailSubsectionLabel } from './CollapsibleDetailSection';
 import { CustomerCarsEditor } from './CustomerCarsEditor';
 import { CustomerFireInsuranceLocationsEditor } from './CustomerFireInsuranceLocationsEditor';
-import { saveCustomerCarsForCustomer } from './customerCarsSave';
-import { saveCustomerFireInsuranceLocationsForCustomer } from './customerFireInsuranceLocationsApi';
-import { saveCustomerSpecialDatesForCustomer } from './customerSpecialDatesApi';
-import { saveCustomerCustomFieldsForCustomer } from './customerCustomFieldsApi';
+import { getCustomerAlertDatesValidationError } from './customerAlertDateFormUtils';
+import {
+  formatCustomerCreateChildSaveMessage,
+  persistCustomerCreateChildCollections,
+} from './customerCreateChildSave';
 import { getCustomerCustomFieldsValidationError } from './customerCustomFieldFormUtils';
 import { CustomerCustomFieldsEditor } from './CustomerCustomFieldsEditor';
 import { createCustomer, getCustomer, updateCustomer } from './customersApi';
@@ -172,45 +173,24 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const formRef = useRef(form);
   formRef.current = form;
 
-  const persistSecondaryCollections = useCallback(
-    async (savedCustomerId: number, draft: CustomerFormState) => {
-      await saveCustomerCarsForCustomer({
-        token,
-        customerId: savedCustomerId,
-        formCars: draft.cars,
-      });
-      await saveCustomerFireInsuranceLocationsForCustomer({
-        token,
-        customerId: savedCustomerId,
-        formItems: draft.fireInsuranceLocations,
-      });
-      await saveCustomerSpecialDatesForCustomer({
-        token,
-        customerId: savedCustomerId,
-        formItems: draft.specialDates,
-      });
-      await saveCustomerCustomFieldsForCustomer({
-        token,
-        customerId: savedCustomerId,
-        formItems: draft.customFields,
-      });
-      void queryClient.invalidateQueries({ queryKey: ['customer-cars', savedCustomerId] });
-      void queryClient.invalidateQueries({ queryKey: ['customer-special-dates', savedCustomerId] });
-      void queryClient.invalidateQueries({ queryKey: ['customer-custom-fields', savedCustomerId] });
-      void queryClient.invalidateQueries({
-        queryKey: ['customer-fire-insurance-locations', savedCustomerId],
-      });
-    },
-    [queryClient, token],
-  );
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       const draft = formRef.current;
       if (mode === 'create') {
         const payload = customerFormToPayload(draft, customerQuery.data);
         const saved = await createCustomer(token, payload);
-        return { saved, draft: cloneCustomerFormState(draft), mode };
+        const childSave = await persistCustomerCreateChildCollections({
+          token,
+          customerId: saved.id,
+          draft,
+          queryClient,
+        });
+        return {
+          saved,
+          draft: cloneCustomerFormState(draft),
+          mode,
+          childSaveFailures: childSave.failures,
+        };
       }
       const existing = customerQuery.data;
       if (!existing) {
@@ -218,9 +198,14 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       }
       const payload = customerBasicFormToPayload(draft, existing);
       const saved = await updateCustomer(token, customerId, payload);
-      return { saved, draft: cloneCustomerFormState(draft), mode };
+      return {
+        saved,
+        draft: cloneCustomerFormState(draft),
+        mode,
+        childSaveFailures: [],
+      };
     },
-    onSuccess: ({ saved, draft, mode: savedMode }) => {
+    onSuccess: ({ saved, draft, mode: savedMode, childSaveFailures }) => {
       originalFormRef.current = cloneCustomerFormState(draft);
       originalSnapshotRef.current =
         savedMode === 'edit-basic'
@@ -238,12 +223,17 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         };
       });
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(saved.id) });
-      router.replace({ pathname: '/customers/[customerId]', params: { customerId: String(saved.id) } });
-      if (savedMode === 'create') {
-        void persistSecondaryCollections(saved.id, draft).catch(() => {
-          // Core customer saved — detail screen shows latest PUT; collections refresh on invalidate.
-        });
+      if (childSaveFailures.length > 0) {
+        setValidationMessage(
+          formatCustomerCreateChildSaveMessage({
+            customerId: saved.id,
+            failures: childSaveFailures,
+          }),
+        );
+      } else {
+        setValidationMessage(null);
       }
+      router.replace({ pathname: '/customers/[customerId]', params: { customerId: String(saved.id) } });
     },
   });
 
@@ -330,6 +320,13 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       mode === 'create' ? getCustomerCustomFieldsValidationError(form.customFields) : null;
     if (customFieldsErr) {
       setValidationMessage(customFieldsErr);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    const alertDatesErr =
+      mode === 'create' ? getCustomerAlertDatesValidationError(form.specialDates) : null;
+    if (alertDatesErr) {
+      setValidationMessage(alertDatesErr);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
