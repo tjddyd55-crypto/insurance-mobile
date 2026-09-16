@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
@@ -62,6 +62,14 @@ import {
   resolveCustomerWorkspaceActionHref,
   type CustomerWorkspaceActionId,
 } from "./customerWorkspaceActions";
+import {
+  closeCustomerDeleteConfirm,
+  isCustomerDeleteConfirmVisible,
+  openCustomerDeleteConfirm,
+  resetCustomerDeleteConfirmForCustomerChange,
+  resolveCustomerDeleteTargetId,
+  type CustomerDeleteConfirmState,
+} from "./customerDeleteConfirmState";
 type CustomerDetailScreenProps = { customerId: number };
 
 function phoneUrl(phone: string, scheme: "tel" | "sms"): string | null {
@@ -77,7 +85,13 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
   const queryClient = useQueryClient();
   const queryKey = customerQueryKeys.detail(customerId);
   const onBackFromDetail = useGoBackFromCustomerDetail();
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<CustomerDeleteConfirmState>(
+    closeCustomerDeleteConfirm(),
+  );
+
+  useEffect(() => {
+    setDeleteConfirm(resetCustomerDeleteConfirmForCustomerChange());
+  }, [customerId]);
   const [gaOpen, setGaOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState("");
   const [sectionExpanded, setSectionExpanded] = useState<Partial<Record<CustomerSectionId, boolean>>>(
@@ -130,14 +144,15 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
     },
   });
   const deleteMutation = useMutation({
-    mutationFn: () => deleteCustomer(token, customerId),
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey });
+    mutationFn: (idToDelete: number) => deleteCustomer(token, idToDelete),
+    onSuccess: (_data, idToDelete) => {
+      setDeleteConfirm(closeCustomerDeleteConfirm());
+      queryClient.removeQueries({ queryKey: customerQueryKeys.detail(idToDelete) });
       queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) =>
         previous
           ? {
               total: Math.max(0, previous.total - 1),
-              customers: previous.customers.filter((item) => item.id !== customerId),
+              customers: previous.customers.filter((item) => item.id !== idToDelete),
             }
           : previous,
       );
@@ -367,7 +382,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 accessibilityLabel={`${customer.name} 고객 삭제`}
                 label="고객 삭제"
                 variant="danger"
-                onPress={() => setDeleteOpen(true)}
+                onPress={() => setDeleteConfirm(openCustomerDeleteConfirm(customer.id))}
               />
               {deleteMutation.isError ? (
                 <AppText variant="caption" color="danger">
@@ -387,14 +402,18 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
         onClose={() => setGaOpen(false)}
       />
       <ConfirmDialog
-        open={deleteOpen}
+        open={isCustomerDeleteConfirmVisible(deleteConfirm, customerId)}
         title="고객 삭제"
         message={`${customer?.name ?? "이 고객"}의 정보와 연결된 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
         confirmLabel="삭제"
         tone="danger"
         busy={deleteMutation.isPending}
-        onCancel={() => setDeleteOpen(false)}
-        onConfirm={() => deleteMutation.mutateAsync()}
+        onCancel={() => setDeleteConfirm(closeCustomerDeleteConfirm())}
+        onConfirm={() => {
+          const idToDelete = resolveCustomerDeleteTargetId(deleteConfirm);
+          if (idToDelete == null || deleteMutation.isPending) return;
+          void deleteMutation.mutateAsync(idToDelete);
+        }}
       />
     </View>
   );
