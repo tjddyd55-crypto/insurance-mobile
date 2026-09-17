@@ -2,70 +2,85 @@
 
 ONE FC Native 푸시 알림 운영·개발 가이드.
 
-## 현재 scope (v1.0.3)
+## Delivery 정책 (최종)
 
-**판정: A — v1.0.3 Android only**
+Push와 Kakao 알림톡은 **독립 채널**이다. Push token 유무·Push 성공/실패는 Kakao 발송 조건에 **사용하지 않는다**.
 
-- Android: FCM + `expo-notifications` 구현 완료 (`src/features/push/`)
-- iOS: **미구현** — 모든 push 진입점이 `Platform.OS !== 'android'`에서 early return
-- v1.0.3 스토어 문구·QA 범위는 Android 푸시만 포함
+| 이벤트 | Production Kakao | Production Push |
+|--------|------------------|---------------|
+| 링크 고객등록 완료 | ON (기존 유지) | ON |
+| 고객 청구 신청 | ON (기존 유지) | ON |
+| 소식지 게시 | OFF | ON |
 
-### iOS 포함 시 필요 작업 (별도 Phase)
+Development:
 
-| 영역 | 작업 |
-|------|------|
-| APNs | Apple Developer 키·프로비저닝 |
-| Expo | `expo-notifications` iOS permission·token |
-| Firebase | iOS 앱(`GoogleService-Info.plist`) — 사용 시 |
-| 서버 | `platform: IOS` 등록·발송 경로 검증 |
-| Handler | 포그라운드/백그라운드·뱃지 |
-| Deep link | `pushDeepLink.ts` iOS 라우팅 QA |
-| EAS | Push credentials, `eas credentials` |
+- Kakao 운영 실발송: OFF (고객등록·청구)
+- Push 테스트: ON
+- 소식지: Push only (Kakao 없음)
+
+금지 정책 (구현하지 않음):
+
+- Push device 있으면 Kakao 미발송
+- Push 실패 시 Kakao fallback
+- Push token 없을 때만 Kakao 발송
+
+## 현재 scope
+
+- **Android**: FCM + `expo-notifications` 구현 완료
+- **iOS**: 클라이언트 코드 구현 완료 — APNs/Firebase 인프라 설정 후 실기기 QA
+- v1.0.3 스토어 빌드는 별도 승인 후 수행
+
+## 공통 흐름
+
+```
+업무 이벤트
+  → notifications (in-app SSOT)
+  → notification_push_outbox
+  → FCM/APNs
+  → Native 알림함
+  → Deep Link Target (pushDeepLink.ts)
+```
 
 ## DEV / PROD Firebase 분리
 
 - DEV: `google-services.dev.json` → `com.onefc.app.dev`
-- PROD: `google-services.prod.json` (또는 prod용 파일) → `com.onefc.app`
-- 파일은 **커밋하지 않음** — EAS secret / 로컬만
+- PROD: `google-services.prod.json` → `com.onefc.app`
+- 파일은 커밋하지 않음 — EAS secret / 로컬만
 
 ## 토큰·등록 API
 
 로그인 후 (`syncPushRegistrationAfterLogin`):
 
-1. Android 알림 권한·채널(`work` channel) 설정
-2. `Notifications.getDevicePushTokenAsync()` — FCM device token
+1. 알림 권한·채널(Android `claim_notifications`) 설정
+2. `Notifications.getDevicePushTokenAsync()`
 3. `POST /api/push/devices/register`
 
-Body 필드:
+Body: `token`, `platform` (`ANDROID`|`IOS`), `installationId`, `appPackage`, `appVersion`
 
-- `token` — device push token
-- `platform` — `ANDROID`
-- `installationId` — `onefc-native-{appPackage}-{buildId|session}`
-- `appPackage` — `com.onefc.app.dev` 또는 `com.onefc.app`
-- `appVersion` — Expo `version`
-
-로그아웃: `POST /api/push/devices/unregister` (installationId)
-
-## 채널
-
-- Android: `WORK_NOTIFICATION_CHANNEL_ID` (`notificationChannelConfig.ts`)
-- Importance·이름은 업무 알림용으로 고정 — OS 설정에서 사용자가 끌 수 있음
+로그아웃: `POST /api/push/devices/unregister`
 
 ## Deep link
 
-푸시 payload (`pushRegistration.ts` / `pushDeepLink.ts`):
+Push payload (`pushDeepLink.ts`):
 
-- `type`, `customerId`, `claimId`, `route`, `notificationId`
-- 앱 cold start·포그라운드: `usePushNotificationListeners`
+| type | 화면 |
+|------|------|
+| `CUSTOMER_CREATED` | `/customers/[customerId]` |
+| `CUSTOMER_CLAIM_SUBMITTED` 등 | `/customers/[customerId]/claim-requests` |
+| `NEWSLETTER_PUBLISHED` | `/portal/newsletters?newsletterId=...` |
+
+Kakao `고객등록 확인`: `/staff-app/open` → `onefc://customers/{id}` (Web fallback 있음)
 
 ## Production QA 순서 (Android)
 
-1. DEV 패키지 + DEV Firebase + DEV API에서 등록·수신
-2. PROD 패키지 Internal track + PROD Firebase + PROD API (제한된 테스터)
-3. 권한 거부·채널 off·로그아웃 unregister
-4. 딥링크: 고객 상세·청구·알림함
-5. **전체 사용자 rollout 전** 위 항목 PASS
+1. DEV 패키지 + DEV API에서 등록·수신
+2. PROD Internal track + PROD API (제한 테스터)
+3. 고객등록·청구·소식지 Push tap route
+4. Kakao 고객등록/청구 **기존 수신 유지** + `고객등록 확인` Native route
+5. 소식지 Kakao **미발송** 확인
 
-## Crash / observability (참고)
+## iOS 인프라 (사용자 액션)
 
-푸시 실패는 서버 outbox·device row와 클라이언트 register API 응답으로 추적. 전용 crash SDK는 Phase 2에서 비교만 수행(Sentry vs Crashlytics) — 미설치.
+- Firebase iOS app: `com.onefc.app`
+- `GoogleService-Info.plist` (production)
+- EAS APNs key / Push credentials
