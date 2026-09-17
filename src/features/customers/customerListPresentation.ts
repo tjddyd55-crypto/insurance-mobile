@@ -2,11 +2,11 @@ export type CustomerListSummaryInput = {
   visibleCount: number;
   totalCount: number;
   search: string;
-  favoritesOnly: boolean;
+  filtersActive: boolean;
 };
 
 export function buildCustomerListCountText(input: CustomerListSummaryInput): string {
-  const filtered = input.search.trim().length > 0 || input.favoritesOnly;
+  const filtered = input.search.trim().length > 0 || input.filtersActive;
   if (filtered) {
     return `검색·필터 결과: ${input.visibleCount}명`;
   }
@@ -18,12 +18,12 @@ export function buildCustomerListCountText(input: CustomerListSummaryInput): str
 
 export function buildCustomerListEmptyCopy(
   search: string,
-  favoritesOnly: boolean,
+  filtersActive: boolean,
 ): { title: string; message: string } {
-  if (search.trim() || favoritesOnly) {
+  if (search.trim() || filtersActive) {
     return {
-      title: '검색 결과가 없습니다',
-      message: '검색어 또는 중요 고객 조건을 변경해 주세요.',
+      title: '조건에 맞는 고객이 없습니다',
+      message: '검색어 또는 필터 조건을 변경하거나 초기화해 주세요.',
     };
   }
   return {

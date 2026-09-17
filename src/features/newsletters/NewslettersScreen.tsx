@@ -17,6 +17,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
+import { SearchControlRow } from '../../components/SearchControlRow';
 import {
   AppText,
   Badge,
@@ -112,17 +113,12 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
 
   const listHeader = (
     <Stack gap="md" style={styles.listHeader}>
-      <Inline gap="sm" align="flex-end" style={styles.searchRow}>
-        <TextField
-          placeholder="제목 · 내용 · 게시처 검색"
-          value={searchDraft}
-          onChangeText={setSearchDraft}
-          returnKeyType="search"
-          onSubmitEditing={applySearch}
-          containerStyle={styles.searchField}
-        />
-        <Button label="검색" size="sm" variant="secondary" onPress={applySearch} />
-      </Inline>
+      <SearchControlRow
+        placeholder="제목 · 내용 · 게시처 검색"
+        value={searchDraft}
+        onChangeText={setSearchDraft}
+        onSubmit={applySearch}
+      />
       {!isBoard ? (
         <ScrollView
           horizontal

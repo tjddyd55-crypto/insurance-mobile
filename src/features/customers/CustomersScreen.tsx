@@ -9,19 +9,21 @@ import { AppHeader } from '../../components/AppHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
+import { SearchControlRow } from '../../components/SearchControlRow';
 import {
   AppText,
   Button,
   Inline,
-  ModalShell,
   Screen,
   Stack,
-  TextField,
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
+import { CustomerListFilterModal } from './CustomerListFilterModal';
 import {
   DEFAULT_CUSTOMER_LIST_FILTERS,
+  buildCustomerListQueryOptions,
+  countActiveCustomerListFilters,
   filterCustomerList,
   hasActiveCustomerListFilters,
   sortCustomerList,
@@ -58,6 +60,7 @@ export function CustomersScreen() {
     DEFAULT_CUSTOMER_LIST_FILTERS,
   );
   const [filterOpen, setFilterOpen] = useState(false);
+  const [filterError, setFilterError] = useState('');
   const [status, setStatus] = useState('');
 
   useEffect(() => {
@@ -65,9 +68,13 @@ export function CustomersScreen() {
       setDraftFilters(appliedFilters);
     }
   }, [appliedFilters, filterOpen]);
+  const listQueryOptions = useMemo(
+    () => buildCustomerListQueryOptions(appliedFilters),
+    [appliedFilters],
+  );
   const query = useQuery({
-    queryKey: customerQueryKeys.all,
-    queryFn: () => listCustomers(token),
+    queryKey: customerQueryKeys.list(listQueryOptions),
+    queryFn: () => listCustomers(token, listQueryOptions),
     enabled: Boolean(token),
     staleTime: CUSTOMER_LIST_STALE_MS,
   });
@@ -75,15 +82,17 @@ export function CustomersScreen() {
     mutationFn: ({ customerId, isFavorite }: { customerId: number; isFavorite: boolean }) =>
       setCustomerFavorite(token, customerId, isFavorite),
     onSuccess: (updated) => {
-      queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) =>
-        previous
-          ? {
-              ...previous,
-              customers: previous.customers.map((customer) =>
-                customer.id === updated.id ? updated : customer,
-              ),
-            }
-          : previous,
+      queryClient.setQueryData<ListCustomersResult>(
+        customerQueryKeys.list(listQueryOptions),
+        (previous) =>
+          previous
+            ? {
+                ...previous,
+                customers: previous.customers.map((customer) =>
+                  customer.id === updated.id ? updated : customer,
+                ),
+              }
+            : previous,
       );
     },
   });
@@ -100,17 +109,20 @@ export function CustomersScreen() {
 
   const customers = useMemo(() => {
     const rows = filterCustomerList(query.data?.customers ?? [], search, appliedFilters);
-    return sortCustomerList(rows);
+    return sortCustomerList(rows, appliedFilters);
   }, [appliedFilters, query.data?.customers, search]);
   const countText = buildCustomerListCountText({
     visibleCount: customers.length,
     totalCount: query.data?.total ?? customers.length,
     search,
-    favoritesOnly: appliedFilters.favoritesOnly,
+    filtersActive: hasActiveCustomerListFilters(appliedFilters) || Boolean(search.trim()),
   });
-  const emptyCopy = buildCustomerListEmptyCopy(search, appliedFilters.favoritesOnly);
+  const emptyCopy = buildCustomerListEmptyCopy(
+    search,
+    hasActiveCustomerListFilters(appliedFilters),
+  );
   const filtersActive = hasActiveCustomerListFilters(appliedFilters);
-  const activeFilterCount = appliedFilters.favoritesOnly ? 1 : 0;
+  const activeFilterCount = countActiveCustomerListFilters(appliedFilters);
 
   const applySearch = () => {
     setSearch(searchDraft.trim());
@@ -156,27 +168,24 @@ export function CustomersScreen() {
                   style={styles.topActionButton}
                 />
               </Inline>
-              <Inline gap="sm" align="flex-end" style={styles.searchRow}>
-                <TextField
-                  accessibilityLabel="고객 검색"
-                  placeholder="이름 / 전화번호 검색"
-                  value={searchDraft}
-                  onChangeText={setSearchDraft}
-                  onSubmitEditing={applySearch}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                  containerStyle={styles.searchField}
-                />
-                <Button label="검색" size="sm" variant="secondary" onPress={applySearch} />
-                <Button
-                  label={activeFilterCount ? `필터 · ${activeFilterCount}` : '필터'}
-                  size="sm"
-                  variant={filtersActive ? 'secondary' : 'ghost'}
-                  onPress={() => setFilterOpen(true)}
-                  accessibilityState={{ selected: filtersActive }}
-                  testID="customers-filter-button"
-                />
-              </Inline>
+              <SearchControlRow
+                placeholder="이름 / 전화번호 검색"
+                value={searchDraft}
+                onChangeText={setSearchDraft}
+                onSubmit={applySearch}
+                accessibilityLabel="고객 검색"
+                trailing={
+                  <Button
+                    label={activeFilterCount ? `필터 · ${activeFilterCount}` : '필터'}
+                    size="md"
+                    variant={filtersActive ? 'secondary' : 'ghost'}
+                    onPress={() => setFilterOpen(true)}
+                    accessibilityState={{ selected: filtersActive }}
+                    testID="customers-filter-button"
+                    style={styles.filterButton}
+                  />
+                }
+              />
               {query.isSuccess && (query.data?.customers.length ?? 0) > 0 ? (
                 <AppText variant="helper" color="textSecondary">
                   {countText}
@@ -224,49 +233,32 @@ export function CustomersScreen() {
         />
       </Screen>
 
-      <ModalShell
+      <CustomerListFilterModal
         open={filterOpen}
-        title="필터"
-        onRequestClose={() => setFilterOpen(false)}
-        headerAction={
-          <Button label="닫기" size="sm" variant="ghost" onPress={() => setFilterOpen(false)} />
-        }
-        footer={
-          <Inline>
-            <Button
-              label="초기화"
-              variant="secondary"
-              onPress={() => setDraftFilters(DEFAULT_CUSTOMER_LIST_FILTERS)}
-              style={styles.grow}
-            />
-            <Button
-              label="적용"
-              variant="action"
-              onPress={() => {
-                setAppliedFilters(draftFilters);
-                setFilterOpen(false);
-              }}
-              style={styles.grow}
-            />
-          </Inline>
-        }
-      >
-        <Stack gap="md">
-          <AppText variant="helper" color="textSecondary">
-            기존 중요 고객 필터를 그대로 사용합니다.
-          </AppText>
-          <Button
-            label={draftFilters.favoritesOnly ? '중요 고객만 보기 · 켜짐' : '중요 고객만 보기'}
-            variant={draftFilters.favoritesOnly ? 'secondary' : 'ghost'}
-            onPress={() =>
-              setDraftFilters((current) => ({
-                ...current,
-                favoritesOnly: !current.favoritesOnly,
-              }))
-            }
-          />
-        </Stack>
-      </ModalShell>
+        draft={draftFilters}
+        onChange={setDraftFilters}
+        onClose={() => {
+          setFilterOpen(false);
+          setFilterError('');
+        }}
+        onReset={() => {
+          setDraftFilters(DEFAULT_CUSTOMER_LIST_FILTERS);
+          setFilterError('');
+        }}
+        onApply={() => {
+          if (
+            draftFilters.consultationFilter === 'no_since' &&
+            !draftFilters.consultationCutoff.trim()
+          ) {
+            setFilterError('기준 날짜를 선택해 주세요.');
+            return;
+          }
+          setFilterError('');
+          setAppliedFilters(draftFilters);
+          setFilterOpen(false);
+        }}
+        errorMessage={filterError}
+      />
     </View>
   );
 }
@@ -285,8 +277,7 @@ function createStyles(theme: AppTheme) {
     listHeader: { marginBottom: theme.spacing.xs },
     topActions: { width: '100%' },
     topActionButton: { flex: 1, minWidth: 0 },
-    searchRow: { width: '100%' },
-    searchField: { flex: 1, minWidth: 0 },
+    filterButton: { minWidth: 72, alignSelf: 'stretch' },
     grow: { flex: 1 },
   });
 }

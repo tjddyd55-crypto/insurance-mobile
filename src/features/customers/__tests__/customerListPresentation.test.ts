@@ -9,7 +9,7 @@ describe('customer list presentation', () => {
       visibleCount: 3,
       totalCount: 120,
       search: '김',
-      favoritesOnly: false,
+      filtersActive: false,
     })).toBe('검색·필터 결과: 3명');
   });
 
@@ -18,7 +18,7 @@ describe('customer list presentation', () => {
       visibleCount: 688,
       totalCount: 688,
       search: '',
-      favoritesOnly: false,
+      filtersActive: false,
     })).toBe('검색·필터 결과: 688명');
   });
 
@@ -27,7 +27,7 @@ describe('customer list presentation', () => {
       visibleCount: 500,
       totalCount: 620,
       search: '',
-      favoritesOnly: false,
+      filtersActive: false,
     })).toBe('전체 620명 중 500명 표시');
   });
 
@@ -37,8 +37,8 @@ describe('customer list presentation', () => {
       message: '고객 등록을 눌러 새 고객을 추가해 주세요.',
     });
     expect(buildCustomerListEmptyCopy('없는 고객', false)).toEqual({
-      title: '검색 결과가 없습니다',
-      message: '검색어 또는 중요 고객 조건을 변경해 주세요.',
+      title: '조건에 맞는 고객이 없습니다',
+      message: '검색어 또는 필터 조건을 변경하거나 초기화해 주세요.',
     });
   });
 });

@@ -40,8 +40,47 @@ function requireToken(token: string | null): string {
   return value;
 }
 
-export async function listCustomers(token: string | null, limit = 2000): Promise<ListCustomersResult> {
-  const body = await apiRequest<unknown>(`/api/customers?limit=${limit}`, {
+export type ListCustomersOptions = {
+  limit?: number;
+  consultationStatus?: 'none' | 'has' | 'no_since';
+  noConsultationSince?: string;
+  inflowSource?: string;
+  sort?: string;
+};
+
+function appendListCustomersQuery(params: URLSearchParams, options: ListCustomersOptions) {
+  if (options.limit != null) {
+    params.set('limit', String(options.limit));
+  }
+  if (
+    options.consultationStatus === 'none' ||
+    options.consultationStatus === 'has' ||
+    options.consultationStatus === 'no_since'
+  ) {
+    params.set('consultationStatus', options.consultationStatus);
+  }
+  const cutoff = options.noConsultationSince?.trim();
+  if (cutoff) {
+    params.set('noConsultationSince', cutoff);
+  }
+  const inflowSource = options.inflowSource?.trim();
+  if (inflowSource) {
+    params.set('inflowSource', inflowSource);
+  }
+  const sort = options.sort?.trim();
+  if (sort) {
+    params.set('sort', sort);
+  }
+}
+
+export async function listCustomers(
+  token: string | null,
+  options: ListCustomersOptions = { limit: 2000 },
+): Promise<ListCustomersResult> {
+  const params = new URLSearchParams();
+  appendListCustomersQuery(params, options);
+  const query = params.toString();
+  const body = await apiRequest<unknown>(`/api/customers${query ? `?${query}` : ''}`, {
     token: requireToken(token),
   });
   return normalizeCustomerListResponse(body);

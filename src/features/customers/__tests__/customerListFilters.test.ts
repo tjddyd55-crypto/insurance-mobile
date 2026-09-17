@@ -1,7 +1,9 @@
 import {
   DEFAULT_CUSTOMER_LIST_FILTERS,
+  buildCustomerListQueryOptions,
   filterCustomerList,
   hasActiveCustomerListFilters,
+  sortCustomerList,
 } from '../customerListFilters';
 import type { CustomerRecord } from '../types';
 
@@ -12,7 +14,7 @@ function customer(partial: Partial<CustomerRecord> & Pick<CustomerRecord, 'id' |
     name: partial.name,
     ssn: '',
     gender: null,
-    insuranceAge: null,
+    insuranceAge: partial.insuranceAge ?? null,
     isDriver: null,
     carType: '',
     notes: {
@@ -67,5 +69,36 @@ describe('customerListFilters', () => {
     expect(
       hasActiveCustomerListFilters({ ...DEFAULT_CUSTOMER_LIST_FILTERS, favoritesOnly: true }),
     ).toBe(true);
+    expect(
+      hasActiveCustomerListFilters({ ...DEFAULT_CUSTOMER_LIST_FILTERS, listSort: 'nameAsc' }),
+    ).toBe(true);
+  });
+
+  test('builds server query options for consultation and sort filters', () => {
+    expect(buildCustomerListQueryOptions(DEFAULT_CUSTOMER_LIST_FILTERS)).toEqual({ limit: 2000 });
+    expect(
+      buildCustomerListQueryOptions({
+        ...DEFAULT_CUSTOMER_LIST_FILTERS,
+        consultationFilter: 'has',
+        inflowSource: '소개',
+        listSort: 'nameAsc',
+      }),
+    ).toEqual({
+      limit: 2000,
+      consultationStatus: 'has',
+      inflowSource: '소개',
+      sort: 'nameAsc',
+    });
+  });
+
+  test('sorts by insurance age when quick sort is age', () => {
+    const sorted = sortCustomerList(
+      [
+        customer({ id: 1, name: '김ONE', insuranceAge: 40 }),
+        customer({ id: 2, name: '이TWO', insuranceAge: 20 }),
+      ],
+      { ...DEFAULT_CUSTOMER_LIST_FILTERS, quickSort: 'age' },
+    );
+    expect(sorted.map((row) => row.id)).toEqual([2, 1]);
   });
 });
