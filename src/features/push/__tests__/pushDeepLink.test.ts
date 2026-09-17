@@ -27,6 +27,30 @@ describe('resolvePushDeepLink', () => {
     ).toBe('/customers/[customerId]/claim-requests');
   });
 
+  it('routes newsletter published to newsletters screen', () => {
+    expect(
+      resolvePushDeepLink({
+        type: 'NEWSLETTER_PUBLISHED',
+        newsletterId: 'abc-1',
+        channel: 'INSURER',
+      }),
+    ).toEqual({
+      pathname: '/portal/newsletters',
+      params: { newsletterId: 'abc-1', channel: 'INSURER' },
+    });
+  });
+
+  it('parses server route passthrough', () => {
+    expect(
+      resolvePushDeepLink({
+        route: '/customers/12/claim-requests?customerId=12&claimId=3',
+      }),
+    ).toEqual({
+      pathname: '/customers/[customerId]/claim-requests',
+      params: { customerId: '12', claimId: '3' },
+    });
+  });
+
   it('falls back to notification list on invalid payload', () => {
     expect(resolvePushDeepLink(null)).toEqual({ pathname: '/notifications' });
     expect(resolvePushDeepLink({ type: 'CLAIM_CREATED' })).toEqual({

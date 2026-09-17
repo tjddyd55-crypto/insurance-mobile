@@ -24,6 +24,9 @@ export type PushPayloadData = {
   type?: string;
   customerId?: string;
   claimId?: string;
+  newsletterId?: string;
+  channel?: string;
+  boardSlug?: string;
   route?: string;
   notificationId?: string;
 };
@@ -41,14 +44,18 @@ function asPermissionSnapshot(value: unknown): PermissionSnapshot {
   };
 }
 
+function isPushSupportedPlatform(): boolean {
+  return Platform.OS === 'android' || Platform.OS === 'ios';
+}
+
 export async function getOsNotificationPermissionGranted(): Promise<boolean> {
-  if (Platform.OS !== 'android') return false;
+  if (!isPushSupportedPlatform()) return false;
   const current = asPermissionSnapshot(await Notifications.getPermissionsAsync());
   return current.status === 'granted';
 }
 
-export async function ensureAndroidNotificationPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android') return false;
+export async function ensureNotificationPermission(): Promise<boolean> {
+  if (!isPushSupportedPlatform()) return false;
   const current = asPermissionSnapshot(await Notifications.getPermissionsAsync());
   if (current.status === 'granted') return true;
   if (current.status === 'denied' && current.canAskAgain === false) return false;
@@ -59,7 +66,7 @@ export async function ensureAndroidNotificationPermission(): Promise<boolean> {
 let permissionPromptShownThisProcess = false;
 
 export function promptNotificationPermissionOnce(): Promise<boolean> {
-  if (Platform.OS !== 'android') return Promise.resolve(false);
+  if (!isPushSupportedPlatform()) return Promise.resolve(false);
   if (permissionPromptShownThisProcess) {
     return Notifications.getPermissionsAsync().then(
       (p) => asPermissionSnapshot(p).status === 'granted',
@@ -93,13 +100,13 @@ export function promptNotificationPermissionOnce(): Promise<boolean> {
       }
       Alert.alert(
         '알림을 받아보세요',
-        '신규 고객·청구·파일/문의 등 업무 알림을 바로 알려드립니다.',
+        '신규 고객·청구·소식지 등 업무 알림을 바로 알려드립니다.',
         [
           { text: '나중에', style: 'cancel', onPress: () => resolve(false) },
           {
             text: '알림 허용',
             onPress: () => {
-              void ensureAndroidNotificationPermission().then(resolve);
+              void ensureNotificationPermission().then(resolve);
             },
           },
         ],
@@ -130,7 +137,17 @@ export function getInstallationId(): string {
   const env = getEnvironmentConfig();
   const session = String(Constants.sessionId ?? '').trim();
   const buildId = String(Device.osInternalBuildId ?? '').trim();
-  return `onefc-native-${env.androidPackage}-${buildId || session || 'dev'}`;
+  const packageId = Platform.OS === 'ios' ? env.iosBundleIdentifier : env.androidPackage;
+  return `onefc-native-${packageId}-${buildId || session || 'dev'}`;
+}
+
+function resolvePushPlatform(): 'ANDROID' | 'IOS' {
+  return Platform.OS === 'ios' ? 'IOS' : 'ANDROID';
+}
+
+function resolvePushAppPackage(): string {
+  const env = getEnvironmentConfig();
+  return Platform.OS === 'ios' ? env.iosBundleIdentifier : env.androidPackage;
 }
 
 export async function registerPushDeviceWithServer(params: {
@@ -147,9 +164,9 @@ export async function registerPushDeviceWithServer(params: {
       token: authToken,
       body: JSON.stringify({
         token: deviceToken,
-        platform: 'ANDROID',
+        platform: resolvePushPlatform(),
         installationId: getInstallationId(),
-        appPackage: env.androidPackage,
+        appPackage: resolvePushAppPackage(),
         appVersion: String(Constants.expoConfig?.version ?? ''),
       }),
     });
@@ -177,7 +194,7 @@ export async function unregisterPushDeviceWithServer(authToken: string | null): 
 }
 
 export async function syncPushRegistrationAfterLogin(authToken: string): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  if (!isPushSupportedPlatform()) return;
   await ensureWorkNotificationChannel();
   const granted = await promptNotificationPermissionOnce();
   if (!granted) return;
@@ -199,6 +216,9 @@ export function pushPayloadFromNotification(
     type: data.type != null ? String(data.type) : undefined,
     customerId: data.customerId != null ? String(data.customerId) : undefined,
     claimId: data.claimId != null ? String(data.claimId) : undefined,
+    newsletterId: data.newsletterId != null ? String(data.newsletterId) : undefined,
+    channel: data.channel != null ? String(data.channel) : undefined,
+    boardSlug: data.boardSlug != null ? String(data.boardSlug) : undefined,
     route: data.route != null ? String(data.route) : undefined,
     notificationId: data.notificationId != null ? String(data.notificationId) : undefined,
   };

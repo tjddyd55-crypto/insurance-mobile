@@ -3,17 +3,20 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { type DrawerContentComponentProps } from 'expo-router/drawer';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../auth/AuthProvider';
 import { BillingStatusPill } from '../components/BillingStatusPill';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { AppText, Button, IconButton, useAppTheme, type AppTheme } from '../design-system';
+import { AppText, Badge, Button, IconButton, useAppTheme, type AppTheme } from '../design-system';
+import { getUnreadNotificationCount } from '../features/notifications/notificationsApi';
+import { notificationQueryKeys } from '../features/notifications/queryKeys';
 import { type NativeMenuLink } from './menuConfig';
 import { formatGaBannerLabel } from './gaTenantLabel';
 import { useNativeMenu } from './useNativeMenu';
 
 export function AppDrawerContent(props: DrawerContentComponentProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const theme = useAppTheme();
@@ -21,6 +24,13 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
   const menu = useNativeMenu();
+  const unreadQuery = useQuery({
+    queryKey: [...notificationQueryKeys.all, 'unread-count'],
+    queryFn: () => getUnreadNotificationCount(token),
+    enabled: Boolean(token),
+    refetchInterval: 60_000,
+  });
+  const unreadCount = unreadQuery.data ?? 0;
 
   const onPressLink = (item: NativeMenuLink) => {
     if (item.disabled || item.mode === 'DISABLED' || item.mode === 'PC_ONLY') return;
@@ -72,6 +82,9 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
                     >
                       {child.label}
                     </AppText>
+                    {child.id === 'notifications' && unreadCount > 0 ? (
+                      <Badge label={`${unreadCount}`} tone="warning" />
+                    ) : null}
                   </Pressable>
                 );
               })}
@@ -128,7 +141,10 @@ function createStyles(theme: AppTheme) {
     sectionLabel: { paddingBottom: theme.spacing.xs, color: theme.colors.textSecondary, fontWeight: '700', letterSpacing: 0.5 },
     link: {
       minHeight: theme.interaction.minimumTouchTarget,
-      justifyContent: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing.sm,
       paddingHorizontal: theme.spacing.sm,
       borderRadius: theme.radius.md,
     },

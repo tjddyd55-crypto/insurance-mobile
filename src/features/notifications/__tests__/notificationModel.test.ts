@@ -66,6 +66,7 @@ describe('notificationModel', () => {
     const groups = groupNotifications([normalizeNotification(raw), claim]);
     expect(groups.map((group) => group.type)).toEqual([
       'customer_created',
+      'newsletter_published',
       'claim_request_received',
       'insurance_age_date',
       'car_expiry',

@@ -21,6 +21,7 @@ export const NOTIFICATION_PANEL_PREVIEW_COUNT = 5;
 
 export const NOTIFICATION_SECTIONS: { type: NotificationType; title: string; dateLabel: string }[] = [
   { type: 'customer_created', title: '신규 고객', dateLabel: '등록일' },
+  { type: 'newsletter_published', title: '소식지', dateLabel: '게시일' },
   { type: 'claim_request_received', title: '청구요청', dateLabel: '접수일' },
   { type: 'insurance_age_date', title: '상령일', dateLabel: '상령일' },
   { type: 'car_expiry', title: '자동차만기', dateLabel: '만기일' },
@@ -49,7 +50,8 @@ function notificationType(value: unknown): NotificationType {
     raw === 'insurance_age_date' ||
     raw === 'claim_request_received' ||
     raw === 'special_date' ||
-    raw === 'customer_created'
+    raw === 'customer_created' ||
+    raw === 'newsletter_published'
   ) {
     return raw;
   }

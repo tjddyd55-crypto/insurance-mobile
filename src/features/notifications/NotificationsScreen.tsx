@@ -89,8 +89,17 @@ export function NotificationsScreen() {
   });
 
   const openNotification = (notification: NotificationRecord) => {
-    if (notification.customerId == null || notification.customerId < 1) return;
     if (!notification.isRead) readMutation.mutate(notification);
+    if (notification.type === 'newsletter_published') {
+      const newsletterId = String(notification.referenceId ?? '').trim();
+      if (!newsletterId) return;
+      router.push({
+        pathname: '/portal/newsletters',
+        params: { newsletterId },
+      });
+      return;
+    }
+    if (notification.customerId == null || notification.customerId < 1) return;
     if (notification.type === 'claim_request_received' && notification.claimRequestId != null) {
       router.push({
         pathname: '/customers/[customerId]/claim-requests',

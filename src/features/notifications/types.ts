@@ -3,7 +3,8 @@ export type NotificationType =
   | 'insurance_age_date'
   | 'claim_request_received'
   | 'special_date'
-  | 'customer_created';
+  | 'customer_created'
+  | 'newsletter_published';
 
 export type NotificationView = 'active' | 'confirmed';
 

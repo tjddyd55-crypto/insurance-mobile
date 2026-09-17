@@ -9,9 +9,40 @@ import { markNotificationRead } from '../notifications/notificationsApi';
 import { notificationQueryKeys } from '../notifications/queryKeys';
 import { navigateFromPushPayload } from './pushDeepLink';
 import {
+  consumePendingPushPayload,
+  stashPendingPushPayload,
+} from './pendingPushNavigation';
+import {
   pushPayloadFromNotification,
   registerPushDeviceWithServer,
 } from './pushRegistration';
+
+function isPushSupportedPlatform(): boolean {
+  return Platform.OS === 'android' || Platform.OS === 'ios';
+}
+
+function handleNotificationOpen(params: {
+  payload: ReturnType<typeof pushPayloadFromNotification>;
+  authToken: string | null;
+  isAuthenticated: boolean;
+  router: ReturnType<typeof useRouter>;
+  queryClient: ReturnType<typeof useQueryClient>;
+}): void {
+  const { payload, authToken, isAuthenticated, router, queryClient } = params;
+  if (!payload) return;
+
+  void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all });
+  if (authToken && payload.notificationId) {
+    void markNotificationRead(authToken, payload.notificationId).catch(() => undefined);
+  }
+
+  if (!isAuthenticated) {
+    stashPendingPushPayload(payload);
+    return;
+  }
+
+  navigateFromPushPayload(router, payload);
+}
 
 /**
  * Foreground receive → invalidate notification center.
@@ -24,14 +55,39 @@ export function usePushNotificationListeners() {
   const queryClient = useQueryClient();
   const handledResponseIds = useRef(new Set<string>());
   const tokenRef = useRef(token);
+  const isAuthenticated = status === 'authenticated';
 
   useEffect(() => {
     tokenRef.current = token;
   }, [token]);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    if (status !== 'authenticated') return;
+    if (!isPushSupportedPlatform()) return;
+
+    void Notifications.getLastNotificationResponseAsync().then((last) => {
+      if (!last) return;
+      const responseId = String(last.notification.request.identifier ?? '');
+      if (responseId && handledResponseIds.current.has(responseId)) return;
+      if (responseId) handledResponseIds.current.add(responseId);
+      const payload = pushPayloadFromNotification(last.notification.request.content);
+      handleNotificationOpen({
+        payload,
+        authToken: tokenRef.current,
+        isAuthenticated,
+        router,
+        queryClient,
+      });
+    });
+  }, [isAuthenticated, queryClient, router]);
+
+  useEffect(() => {
+    if (!isPushSupportedPlatform()) return;
+    if (!isAuthenticated) return;
+
+    const pending = consumePendingPushPayload();
+    if (pending) {
+      navigateFromPushPayload(router, pending);
+    }
 
     const receivedSub = Notifications.addNotificationReceivedListener(() => {
       void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all });
@@ -43,11 +99,13 @@ export function usePushNotificationListeners() {
       if (responseId) handledResponseIds.current.add(responseId);
 
       const payload = pushPayloadFromNotification(response.notification.request.content);
-      void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all });
-      if (tokenRef.current && payload?.notificationId) {
-        void markNotificationRead(tokenRef.current, payload.notificationId).catch(() => undefined);
-      }
-      navigateFromPushPayload(router, payload);
+      handleNotificationOpen({
+        payload,
+        authToken: tokenRef.current,
+        isAuthenticated: true,
+        router,
+        queryClient,
+      });
     });
 
     const tokenSub = Notifications.addPushTokenListener((devicePushToken) => {
@@ -57,19 +115,10 @@ export function usePushNotificationListeners() {
       void registerPushDeviceWithServer({ authToken, deviceToken: nextToken });
     });
 
-    void Notifications.getLastNotificationResponseAsync().then((last) => {
-      if (!last) return;
-      const responseId = String(last.notification.request.identifier ?? '');
-      if (responseId && handledResponseIds.current.has(responseId)) return;
-      if (responseId) handledResponseIds.current.add(responseId);
-      const payload = pushPayloadFromNotification(last.notification.request.content);
-      navigateFromPushPayload(router, payload);
-    });
-
     return () => {
       receivedSub.remove();
       responseSub.remove();
       tokenSub.remove();
     };
-  }, [queryClient, router, status]);
+  }, [isAuthenticated, queryClient, router]);
 }

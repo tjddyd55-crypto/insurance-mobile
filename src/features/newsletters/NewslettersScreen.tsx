@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -46,8 +46,8 @@ import { formatPublishedAt, sortPublishedNews, stripUnsafeMarkup } from './newsl
 import type { NewsChannel, NewsletterAttachment, NewsletterItem } from './types';
 
 export type NewslettersScreenProps =
-  | { mode?: 'channel'; channel: NewsChannel; boardSlug?: never }
-  | { mode: 'board'; boardSlug: string; channel?: never };
+  | { mode?: 'channel'; channel: NewsChannel; boardSlug?: never; initialNewsletterId?: string }
+  | { mode: 'board'; boardSlug: string; channel?: never; initialNewsletterId?: string };
 
 const GRID_COLUMNS = 2;
 const GRID_GAP = 12;
@@ -64,6 +64,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
   const [search, setSearch] = useState('');
   const [insurer, setInsurer] = useState('');
   const [selected, setSelected] = useState<NewsletterItem | null>(null);
+  const initialNewsletterId = String(props.initialNewsletterId ?? '').trim();
 
   const channelQuery = useQuery({
     queryKey: ['newsletters', channel, user?.gaCode],
@@ -100,6 +101,14 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
   const applySearch = useCallback(() => {
     setSearch(searchDraft.trim());
   }, [searchDraft]);
+
+  useEffect(() => {
+    if (!initialNewsletterId || selected?.id === initialNewsletterId) return;
+    const matched = items.find((row) => row.id === initialNewsletterId);
+    if (matched) {
+      setSelected(matched);
+    }
+  }, [initialNewsletterId, items, selected?.id]);
 
   const listHeader = (
     <Stack gap="md" style={styles.listHeader}>

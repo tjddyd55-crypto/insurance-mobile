@@ -11,6 +11,15 @@ function requireToken(token: string | null): string {
   return result;
 }
 
+export async function getUnreadNotificationCount(token: string | null): Promise<number> {
+  const body = await apiRequest<{ count?: number; unreadCount?: number }>(
+    '/api/notifications/unread-count',
+    { token: requireToken(token) },
+  );
+  const value = Number(body?.count ?? body?.unreadCount ?? 0);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 export async function listNotifications(
   token: string | null,
   view: NotificationView,
