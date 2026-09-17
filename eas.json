@@ -65,6 +65,11 @@
       "android": {
         "track": "internal",
         "releaseStatus": "draft"
+      },
+      "ios": {
+        "ascAppId": "6785336968",
+        "appleTeamId": "HVK2UWPBY9",
+        "bundleIdentifier": "com.onefc.app"
       }
     }
   }
