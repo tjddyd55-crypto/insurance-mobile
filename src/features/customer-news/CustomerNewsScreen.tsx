@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Linking, Modal, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  FlatList,
+  Linking,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -12,7 +21,6 @@ import {
   Badge,
   Button,
   Card,
-  Divider,
   Inline,
   Screen,
   Stack,
@@ -21,6 +29,20 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { CustomerNewsPreviewModal, type CustomerNewsPreviewDraft } from './CustomerNewsPreviewModal';
+import {
+  buildCustomerNewsGalleryUrls,
+  canPublishCustomerNews,
+  draftAttachmentsToPreviewRows,
+  fileDraftsFromDrafts,
+  galleryUrlsFromDrafts,
+  hydrateDraftAttachmentsFromItem,
+  listCardPreviewText,
+  localAttachmentToDraft,
+  nextDraftSortOrder,
+  previewValidationMessage,
+  publishValidationMessage,
+} from './customerNewsContent';
+import { CustomerNewsImageCarousel } from './customerNewsImageCarousel';
 import {
   createCustomerNews,
   createNewsComment,
@@ -33,16 +55,15 @@ import {
 } from './customerNewsApi';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import { attachmentKind, newsScopeLabel, validateNewsAttachment } from './customerNewsModel';
-import type { CustomerNewsItem, LocalAttachment, NewsAttachment } from './types';
+import type { CustomerNewsItem, DraftAttachment, LocalAttachment, NewsAttachment } from './types';
 
 type FormState = {
-  title: string;
   content: string;
   sendPush: boolean;
   pinned: boolean;
-  asset: LocalAttachment | null;
+  attachments: DraftAttachment[];
 };
-const EMPTY_FORM: FormState = { title: '', content: '', sendPush: true, pinned: false, asset: null };
+const EMPTY_FORM: FormState = { content: '', sendPush: true, pinned: false, attachments: [] };
 type ConfirmState = { type: 'publish' } | { type: 'delete'; item: CustomerNewsItem } | null;
 
 export function CustomerNewsScreen({
@@ -98,42 +119,70 @@ export function CustomerNewsScreen({
       (news.data ?? []).filter(
         (item) =>
           !search.trim() ||
-          `${item.title} ${item.content} ${item.targetCustomerName}`
+          `${item.content} ${item.targetCustomerName}`
             .toLowerCase()
             .includes(search.trim().toLowerCase()),
       ),
     [news.data, search],
   );
 
+  async function uploadDraftAttachments(drafts: DraftAttachment[]): Promise<Omit<NewsAttachment, 'id'>[]> {
+    const sorted = [...drafts].sort((a, b) => a.sortOrder - b.sortOrder);
+    const uploaded: Omit<NewsAttachment, 'id'>[] = [];
+    for (const [index, draft] of sorted.entries()) {
+      if (draft.localUri) {
+        const asset: LocalAttachment = {
+          uri: draft.localUri,
+          name: draft.fileName,
+          mimeType: draft.mimeType,
+          size: draft.size,
+          kind: draft.kind,
+        };
+        const row = await uploadNewsAttachment(
+          token,
+          asset,
+          scope,
+          scope === 'personal' ? customerId : null,
+        );
+        uploaded.push({ ...row, sortOrder: index });
+        continue;
+      }
+      if (!draft.url) {
+        continue;
+      }
+      uploaded.push({
+        kind: draft.kind,
+        url: draft.url,
+        objectKey: draft.objectKey,
+        fileName: draft.fileName,
+        mimeType: draft.mimeType,
+        size: draft.size,
+        sortOrder: index,
+      });
+    }
+    return uploaded;
+  }
+
   const publish = useMutation({
     mutationFn: async () => {
-      if (!form.title.trim() || !form.content.trim()) {
-        throw new Error('제목과 내용을 입력해 주세요.');
+      const validation = publishValidationMessage(form.content, form.attachments);
+      if (validation) {
+        throw new Error(validation);
       }
       if (scope === 'personal' && !customerId) {
         throw new Error('받을 고객을 선택해 주세요.');
       }
-      const attachments = form.asset
-        ? [
-            await uploadNewsAttachment(
-              token,
-              form.asset,
-              scope,
-              scope === 'personal' ? customerId : null,
-            ),
-          ]
-        : editing?.attachments?.map(({ id: _id, ...item }) => item);
+      const attachments = await uploadDraftAttachments(form.attachments);
+      const content = form.content.trim();
       if (editing) {
         await updateCustomerNews(token, editing.id, {
-          title: form.title.trim(),
-          content: form.content.trim(),
+          content,
           sendPush: form.sendPush,
           attachments,
         });
       } else {
         await createCustomerNews(token, {
-          title: form.title.trim(),
-          content: form.content.trim(),
+          content,
           scope,
           targetCustomerId: scope === 'personal' ? customerId : null,
           sendPush: form.sendPush,
@@ -167,24 +216,17 @@ export function CustomerNewsScreen({
 
   const openCreate = useCallback(() => {
     setEditing(null);
-    setForm({
-      ...EMPTY_FORM,
-      title:
-        scope === 'personal'
-          ? `${linked.data?.find((item) => item.customerId === customerId)?.customerName ?? '고객'} 고객님께`
-          : '',
-    });
+    setForm(EMPTY_FORM);
     setFormOpen(true);
-  }, [customerId, linked.data, scope]);
+  }, []);
 
   function openEdit(item: CustomerNewsItem) {
     setEditing(item);
     setForm({
-      title: item.title,
       content: item.content,
       sendPush: false,
       pinned: item.isPinned,
-      asset: null,
+      attachments: hydrateDraftAttachmentsFromItem(item),
     });
     setFormOpen(true);
   }
@@ -192,52 +234,45 @@ export function CustomerNewsScreen({
   async function chooseFile() {
     const result = await DocumentPicker.getDocumentAsync({
       type: ['image/*', 'application/pdf'],
-      multiple: false,
+      multiple: true,
       copyToCacheDirectory: true,
     });
     if (result.canceled) return;
-    const asset = result.assets[0];
-    if (!asset) return;
-    const local: LocalAttachment = {
-      uri: asset.uri,
-      name: asset.name,
-      mimeType: asset.mimeType,
-      size: asset.size,
-      kind: attachmentKind(asset.mimeType ?? ''),
-    };
-    const error = validateNewsAttachment(local);
-    if (error) {
-      setNotice(error);
-      return;
+    const nextDrafts = [...form.attachments];
+    for (const asset of result.assets) {
+      const local: LocalAttachment = {
+        uri: asset.uri,
+        name: asset.name,
+        mimeType: asset.mimeType,
+        size: asset.size,
+        kind: attachmentKind(asset.mimeType ?? ''),
+      };
+      const error = validateNewsAttachment(local);
+      if (error) {
+        setNotice(error);
+        continue;
+      }
+      nextDrafts.push(localAttachmentToDraft(local, nextDraftSortOrder(nextDrafts)));
     }
-    setForm((value) => ({ ...value, asset: local }));
+    setForm((value) => ({ ...value, attachments: nextDrafts }));
   }
 
-  function buildPreviewAttachments(): NewsAttachment[] {
-    if (form.asset) {
-      return [
-        {
-          kind: form.asset.kind,
-          url: form.asset.uri,
-          fileName: form.asset.name,
-          mimeType: form.asset.mimeType ?? undefined,
-          size: form.asset.size ?? undefined,
-          sortOrder: 0,
-        },
-      ];
-    }
-    return editing?.attachments ?? [];
+  function removeAttachment(key: string) {
+    setForm((value) => ({
+      ...value,
+      attachments: value.attachments.filter((row) => row.key !== key),
+    }));
   }
 
   function openPreview() {
-    if (!form.title.trim() || !form.content.trim()) {
-      setNotice('미리보기 전에 제목과 내용을 입력해 주세요.');
+    const validation = previewValidationMessage(form.content, form.attachments);
+    if (validation) {
+      setNotice(validation);
       return;
     }
     setPreviewDraft({
-      title: form.title,
       content: form.content,
-      attachments: buildPreviewAttachments(),
+      attachments: draftAttachmentsToPreviewRows(form.attachments),
       isPinned: form.pinned,
     });
     setPreviewOpen(true);
@@ -245,6 +280,7 @@ export function CustomerNewsScreen({
 
   const audience = linked.data?.find((item) => item.customerId === customerId);
   const headerTitle = lockedPersonal ? '개인메시지' : '고객 앱 소식지';
+  const canPublish = canPublishCustomerNews(form.content, form.attachments);
 
   const listHeader = (
     <View style={styles.listHeader}>
@@ -262,7 +298,7 @@ export function CustomerNewsScreen({
           <Inline align="flex-end">
             <TextField
               label="검색"
-              placeholder="제목 · 내용 검색"
+              placeholder="내용 검색"
               value={search}
               onChangeText={setSearch}
               containerStyle={styles.grow}
@@ -340,7 +376,9 @@ export function CustomerNewsScreen({
         setValue={setForm}
         busy={publish.isPending}
         error={publish.error}
+        canPublish={canPublish}
         onChooseFile={() => void chooseFile()}
+        onRemoveAttachment={removeAttachment}
         onClose={() => setFormOpen(false)}
         onPreview={openPreview}
         onSubmit={() => setConfirm({ type: 'publish' })}
@@ -387,16 +425,11 @@ function NewsCard({
   return (
     <Card variant="outlined">
       <Stack gap="sm">
-        <Inline justify="space-between">
-          <View style={{ flex: 1 }}>
-            <Inline wrap>
-              {item.isPinned ? <Badge label="고정" tone="warning" /> : null}
-              <Badge label={newsScopeLabel(item.scope, item.targetCustomerName)} tone="info" />
-            </Inline>
-            <AppText variant="bodyStrong">{item.title}</AppText>
-          </View>
+        <Inline wrap>
+          {item.isPinned ? <Badge label="고정" tone="warning" /> : null}
+          <Badge label={newsScopeLabel(item.scope, item.targetCustomerName)} tone="info" />
         </Inline>
-        <AppText numberOfLines={3}>{item.content}</AppText>
+        <AppText variant="bodyStrong" numberOfLines={3}>{listCardPreviewText(item)}</AppText>
         <AppText variant="caption">
           {item.updatedAt ? new Date(item.updatedAt).toLocaleString('ko-KR') : '작성일 미확인'} · 첨부{' '}
           {item.attachments?.length ?? 0}개
@@ -420,7 +453,9 @@ function NewsFormModal({
   setValue,
   busy,
   error,
+  canPublish,
   onChooseFile,
+  onRemoveAttachment,
   onClose,
   onPreview,
   onSubmit,
@@ -433,13 +468,17 @@ function NewsFormModal({
   setValue: React.Dispatch<React.SetStateAction<FormState>>;
   busy: boolean;
   error: Error | null;
+  canPublish: boolean;
   onChooseFile: () => void;
+  onRemoveAttachment: (key: string) => void;
   onClose: () => void;
   onPreview: () => void;
   onSubmit: () => void;
 }) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const imageDrafts = value.attachments.filter((row) => row.kind === 'image');
+  const fileDrafts = fileDraftsFromDrafts(value.attachments);
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
@@ -453,14 +492,7 @@ function NewsFormModal({
             <Stack gap="md">
               <Badge label={newsScopeLabel(scope, audience?.customerName)} tone="info" />
               <TextField
-                label="제목"
-                required
-                value={value.title}
-                onChangeText={(title) => setValue((old) => ({ ...old, title }))}
-              />
-              <TextField
                 label="내용"
-                required
                 value={value.content}
                 onChangeText={(content) => setValue((old) => ({ ...old, content }))}
                 multiline
@@ -484,24 +516,37 @@ function NewsFormModal({
               </Inline>
               <AppText variant="label">첨부</AppText>
               <Button label="이미지/PDF 첨부" size="sm" variant="secondary" onPress={onChooseFile} />
-              {value.asset ? (
-                <AppText variant="caption">첨부: {value.asset.name}</AppText>
-              ) : editing?.attachments?.length ? (
-                <AppText variant="caption">기존 첨부 {editing.attachments.length}개 유지</AppText>
-              ) : null}
+              {value.attachments.length ? (
+                <Stack gap="sm">
+                  {imageDrafts.map((row) => (
+                    <Inline key={row.key} justify="space-between">
+                      <AppText variant="caption">이미지 · {row.fileName}</AppText>
+                      <Button label="삭제" size="sm" variant="ghost" onPress={() => onRemoveAttachment(row.key)} />
+                    </Inline>
+                  ))}
+                  {fileDrafts.map((row) => (
+                    <Inline key={row.key} justify="space-between">
+                      <AppText variant="caption">파일 · {row.fileName}</AppText>
+                      <Button label="삭제" size="sm" variant="ghost" onPress={() => onRemoveAttachment(row.key)} />
+                    </Inline>
+                  ))}
+                </Stack>
+              ) : (
+                <AppText variant="caption" color="textSecondary">첨부된 파일이 없습니다.</AppText>
+              )}
               {error ? <AppText color="danger">{error.message}</AppText> : null}
               <Button
                 label="고객 앱 미리보기"
                 variant="secondary"
                 fullWidth
-                disabled={!value.title.trim() || !value.content.trim()}
+                disabled={!canPublish}
                 onPress={onPreview}
               />
               <Button
                 label={editing ? '수정하기' : '게시하기'}
                 fullWidth
                 loading={busy}
-                disabled={!value.title.trim() || !value.content.trim()}
+                disabled={!canPublish}
                 onPress={onSubmit}
               />
             </Stack>
@@ -525,8 +570,10 @@ function NewsDetailModal({
 }) {
   const client = useQueryClient();
   const theme = useAppTheme();
+  const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [comment, setComment] = useState('');
+  const contentWidth = Math.max(windowWidth - theme.spacing.lg * 2, 1);
 
   const comments = useQuery({
     queryKey: ['customer-news-comments', item?.id],
@@ -543,6 +590,15 @@ function NewsDetailModal({
     },
   });
 
+  const galleryUrls = item
+    ? buildCustomerNewsGalleryUrls({
+        heroImageUrl: item.heroImageUrl,
+        attachments: item.attachments,
+      })
+    : [];
+  const fileRows = item ? fileDraftsFromDrafts(hydrateDraftAttachmentsFromItem(item)) : [];
+  const content = String(item?.content ?? '').trim();
+
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
       <View style={styles.modal}>
@@ -553,25 +609,24 @@ function NewsDetailModal({
         <ScrollView contentContainerStyle={styles.content}>
           {item ? (
             <>
-              <Card>
-                <Stack gap="md">
-                  <Inline wrap>
-                    {item.isPinned ? <Badge label="고정" tone="warning" /> : null}
-                    <Badge label={newsScopeLabel(item.scope, item.targetCustomerName)} tone="info" />
-                  </Inline>
-                  <AppText variant="title">{item.title}</AppText>
-                  <Divider />
-                  <AppText>{item.content}</AppText>
-                  {item.attachments?.map((file) => (
-                    <Button
-                      key={file.id ?? file.url}
-                      label={`첨부 열기 · ${file.fileName}`}
-                      variant="secondary"
-                      onPress={() => void Linking.openURL(file.url)}
-                    />
-                  ))}
-                </Stack>
-              </Card>
+              <Stack gap="md" style={styles.detailBody}>
+                <Inline wrap>
+                  {item.isPinned ? <Badge label="고정" tone="warning" /> : null}
+                  <Badge label={newsScopeLabel(item.scope, item.targetCustomerName)} tone="info" />
+                </Inline>
+                {galleryUrls.length ? (
+                  <CustomerNewsImageCarousel imageUrls={galleryUrls} contentWidth={contentWidth} />
+                ) : null}
+                {content ? <AppText>{content}</AppText> : null}
+                {fileRows.map((file) => (
+                  <Button
+                    key={file.key}
+                    label={`첨부 열기 · ${file.fileName}`}
+                    variant="secondary"
+                    onPress={() => void Linking.openURL(String(file.url ?? ''))}
+                  />
+                ))}
+              </Stack>
               <AppText variant="heading">댓글</AppText>
               {comments.isLoading ? <AppText variant="caption">댓글을 불러오는 중…</AppText> : null}
               {comments.isError ? (
@@ -622,6 +677,7 @@ function makeStyles(theme: AppTheme) {
     grow: { flex: 1 },
     listHeader: { gap: theme.spacing.md },
     content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.huge, gap: theme.spacing.md },
+    detailBody: { width: '100%' },
     modal: { flex: 1, backgroundColor: theme.colors.background },
     modalHeader: {
       minHeight: 64,

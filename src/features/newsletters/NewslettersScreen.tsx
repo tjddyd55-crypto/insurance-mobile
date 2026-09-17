@@ -305,7 +305,7 @@ function NewsletterDetailModal({
           <AppText variant="heading">소식지 상세</AppText>
           <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
         </View>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, styles.detailContent]}>
           {detail.isError ? (
             <ErrorState
               title="상세를 불러오지 못했습니다"
@@ -322,45 +322,43 @@ function NewsletterDetailModal({
           ) : null}
           {detail.data ? (
             <>
-              <Card>
-                <Stack gap="md">
-                  <AppText variant="caption">
-                    {detail.data.insurerName} · {formatPublishedAt(detail.data.publishedAt)}
-                  </AppText>
-                  <AppText variant="title">{headline}</AppText>
-                  <Divider />
-                  {galleryUrls.length ? (
-                    <Stack gap="sm">
-                      {galleryUrls.map((url) => (
-                        <Pressable
-                          key={url}
-                          accessibilityRole="imagebutton"
-                          onPress={() => void Linking.openURL(url)}
-                        >
-                          <Image
-                            source={{ uri: url }}
-                            style={styles.detailGalleryImage}
-                            resizeMode="contain"
-                          />
-                        </Pressable>
-                      ))}
-                    </Stack>
-                  ) : null}
-                  <AppText>
-                    {stripUnsafeMarkup(detail.data.bodyText || detail.data.summary)}
-                  </AppText>
-                  {detail.data.linkPreview?.url ? (
-                    <Button
-                      label={detail.data.linkPreview.title || '관련 링크 열기'}
-                      variant="secondary"
-                      onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
-                    />
-                  ) : null}
-                </Stack>
-              </Card>
+              <Stack gap="md" style={styles.detailBody}>
+                <AppText variant="caption">
+                  {detail.data.insurerName} · {formatPublishedAt(detail.data.publishedAt)}
+                </AppText>
+                <AppText variant="title">{headline}</AppText>
+                <Divider />
+                {galleryUrls.length ? (
+                  <Stack gap="sm">
+                    {galleryUrls.map((url) => (
+                      <Pressable
+                        key={url}
+                        accessibilityRole="imagebutton"
+                        onPress={() => void Linking.openURL(url)}
+                      >
+                        <Image
+                          source={{ uri: url }}
+                          style={styles.detailGalleryImage}
+                          resizeMode="contain"
+                        />
+                      </Pressable>
+                    ))}
+                  </Stack>
+                ) : null}
+                <AppText>
+                  {stripUnsafeMarkup(detail.data.bodyText || detail.data.summary)}
+                </AppText>
+                {detail.data.linkPreview?.url ? (
+                  <Button
+                    label={detail.data.linkPreview.title || '관련 링크 열기'}
+                    variant="secondary"
+                    onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
+                  />
+                ) : null}
+              </Stack>
               {fileAttachments.length ? <AppText variant="heading">첨부자료</AppText> : null}
               {fileAttachments.map((file: NewsletterAttachment) => (
-                <Card key={file.id} variant="outlined">
+                <View key={file.id} style={styles.detailAttachmentRow}>
                   <Inline justify="space-between">
                     <View style={styles.grow}>
                       <AppText variant="bodyStrong">{file.fileName}</AppText>
@@ -378,7 +376,7 @@ function NewsletterDetailModal({
                       }
                     />
                   </Inline>
-                </Card>
+                </View>
               ))}
             </>
           ) : null}
@@ -435,11 +433,23 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
     gridMeta: {
       padding: theme.spacing.sm,
     },
+    detailContent: {
+      paddingTop: theme.spacing.md,
+    },
+    detailBody: {
+      width: '100%',
+    },
     detailGalleryImage: {
       width: '100%',
       minHeight: 220,
       borderRadius: theme.radius.md,
       backgroundColor: theme.colors.surfaceSubtle,
+    },
+    detailAttachmentRow: {
+      width: '100%',
+      paddingVertical: theme.spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
     },
     modal: { flex: 1, backgroundColor: theme.colors.background },
     modalHeader: {
