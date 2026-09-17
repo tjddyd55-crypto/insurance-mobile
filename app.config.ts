@@ -118,7 +118,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-notifications',
         {
-          icon: './assets/images/icon-prod.png',
+          // Monochrome small icon — do not reuse full-color launcher logo.
+          icon: './assets/images/notification-icon-monochrome.png',
           color: '#003D1F',
           defaultChannel: 'claim_notifications',
         },
