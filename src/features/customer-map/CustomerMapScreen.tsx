@@ -7,7 +7,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
 import { ErrorState } from '../../components/ErrorState';
 import {
-  AppText, Badge, Button, Card, Inline, Screen, Stack, TextField,
+  AppText, Badge, Card, Inline, Screen, Stack, TextField,
   useAppTheme, type AppTheme,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
@@ -54,6 +54,8 @@ export function CustomerMapScreen({
     enabled: Boolean(token),
   });
 
+  const mapCustomers = query.data?.customers ?? [];
+
   return (
     <View style={styles.root}>
       <AppHeader
@@ -62,48 +64,85 @@ export function CustomerMapScreen({
         showBack={showBack}
         onBackPress={showBack && focusCustomerId ? onBackPress : undefined}
       />
-      <Screen padded={false}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
-        >
-          <TextField placeholder="이름 · 연락처 · 주소 검색" value={keyword} onChangeText={setKeyword} returnKeyType="search" />
+      <Screen padded={false} style={styles.screen}>
+        <View style={styles.controls}>
+          <TextField
+            placeholder="이름 · 연락처 · 주소 검색"
+            value={keyword}
+            onChangeText={setKeyword}
+            returnKeyType="search"
+          />
           <Inline>
-            <TextField label="반경(km)" value={radiusText} onChangeText={setRadiusText} keyboardType="decimal-pad" containerStyle={styles.grow} />
-            <Inline style={styles.favorite}><AppText variant="label">즐겨찾기만</AppText><Switch value={favoriteOnly} onValueChange={setFavoriteOnly} /></Inline>
+            <TextField
+              label="반경(km)"
+              value={radiusText}
+              onChangeText={setRadiusText}
+              keyboardType="decimal-pad"
+              containerStyle={styles.grow}
+            />
+            <Inline style={styles.favorite}>
+              <AppText variant="label">즐겨찾기만</AppText>
+              <Switch value={favoriteOnly} onValueChange={setFavoriteOnly} />
+            </Inline>
           </Inline>
-          {query.isError ? <ErrorState title="고객 위치를 불러오지 못했습니다" message={query.error instanceof Error ? query.error.message : '잠시 후 다시 시도해 주세요.'} onRetry={() => void query.refetch()} /> : null}
           {query.data ? (
-            <>
-              <Inline wrap><Badge label={`전체 ${query.data.stats.totalCustomers}`} tone="info" /><Badge label={`지도 ${query.data.stats.mappedCount}`} tone="success" /><Badge label={`미표시 ${query.data.stats.unmappedCount}`} tone="warning" /></Inline>
-              {query.data.customers.length && mapAvailable ? (
-                <NaverCustomerMapView
-                  centerLat={query.data.centerLat}
-                  centerLng={query.data.centerLng}
-                  zoom={query.data.zoom}
-                  customers={query.data.customers}
-                  onMarkerPress={(customerId) => router.push(`/customers/${customerId}`)}
-                />
-              ) : query.data.customers.length ? (
-                <Card variant="filled">
-                  <Stack gap="xs">
-                    <AppText variant="bodyStrong">네이버 지도 설정이 필요합니다.</AppText>
-                    <AppText variant="caption">{naverMapUnavailableMessage()}</AppText>
-                  </Stack>
-                </Card>
-              ) : (
-                <Card variant="outlined"><AppText color="textSecondary" align="center">표시할 고객 좌표가 없습니다.</AppText></Card>
-              )}
-              {query.data.customers.map((customer) => (
-                <Card key={customer.id} variant="outlined"><Inline justify="space-between"><View style={styles.grow}><AppText variant="bodyStrong">{customer.name}</AppText><AppText variant="caption">{customer.address || '주소 없음'} · {customer.phone}</AppText></View><Button label="상세" size="sm" onPress={() => router.push(`/customers/${customer.id}`)} /></Inline></Card>
-              ))}
-              {query.data.unmappedCustomers.length ? (
-                <Card variant="filled"><Stack gap="sm"><AppText variant="heading">지도 미표시 고객</AppText>{query.data.unmappedCustomers.map((customer) => <Inline key={customer.id} justify="space-between"><View style={styles.grow}><AppText>{customer.name}</AppText><AppText variant="caption">{customer.mapStatusLabel}</AppText></View><Button label="상세" size="sm" variant="ghost" onPress={() => router.push(`/customers/${customer.id}`)} /></Inline>)}</Stack></Card>
-              ) : null}
-            </>
+            <Inline wrap>
+              <Badge label={`전체 ${query.data.stats.totalCustomers}`} tone="info" />
+              <Badge label={`지도 ${query.data.stats.mappedCount}`} tone="success" />
+              <Badge label={`미표시 ${query.data.stats.unmappedCount}`} tone="warning" />
+            </Inline>
           ) : null}
-        </ScrollView>
+        </View>
+
+        <View style={styles.mapArea}>
+          {query.isError ? (
+            <ErrorState
+              title="고객 위치를 불러오지 못했습니다"
+              message={query.error instanceof Error ? query.error.message : '잠시 후 다시 시도해 주세요.'}
+              onRetry={() => void query.refetch()}
+            />
+          ) : null}
+          {mapAvailable ? (
+            <NaverCustomerMapView
+              fullHeight
+              centerLat={query.data?.centerLat ?? 37.5665}
+              centerLng={query.data?.centerLng ?? 126.978}
+              zoom={query.data?.zoom ?? 12}
+              customers={mapCustomers}
+              onMarkerPress={(customerId) => router.push(`/customers/${customerId}`)}
+            />
+          ) : (
+            <Card variant="filled" style={styles.mapFallback}>
+              <Stack gap="xs">
+                <AppText variant="bodyStrong">네이버 지도 설정이 필요합니다.</AppText>
+                <AppText variant="caption">{naverMapUnavailableMessage()}</AppText>
+              </Stack>
+            </Card>
+          )}
+        </View>
+
+        {query.data?.unmappedCustomers.length ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.unmappedRow}
+            refreshControl={
+              <RefreshControl
+                refreshing={query.isRefetching}
+                onRefresh={() => void query.refetch()}
+                colors={[theme.colors.primary]}
+                tintColor={theme.colors.primary}
+              />
+            }
+          >
+            {query.data.unmappedCustomers.map((customer) => (
+              <Card key={customer.id} variant="outlined" style={styles.unmappedCard}>
+                <AppText variant="bodyStrong" numberOfLines={1}>{customer.name}</AppText>
+                <AppText variant="caption" numberOfLines={1}>{customer.mapStatusLabel}</AppText>
+              </Card>
+            ))}
+          </ScrollView>
+        ) : null}
       </Screen>
     </View>
   );
@@ -112,8 +151,32 @@ export function CustomerMapScreen({
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1 },
-    content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl, gap: theme.spacing.md },
+    screen: { flex: 1 },
+    controls: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.sm,
+      gap: theme.spacing.sm,
+    },
     grow: { flex: 1 },
-    favorite: { paddingTop: theme.spacing.lg },
+    favorite: { paddingTop: theme.spacing.lg, alignItems: 'center', gap: theme.spacing.xs },
+    mapArea: {
+      flex: 1,
+      minHeight: 320,
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: theme.spacing.sm,
+    },
+    mapFallback: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    unmappedRow: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    unmappedCard: {
+      width: 180,
+    },
   });
 }

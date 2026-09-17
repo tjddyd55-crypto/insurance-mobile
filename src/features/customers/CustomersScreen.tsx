@@ -49,6 +49,7 @@ export function CustomersScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
+  const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<CustomerListFilters>(
     DEFAULT_CUSTOMER_LIST_FILTERS,
@@ -109,6 +110,11 @@ export function CustomersScreen() {
   });
   const emptyCopy = buildCustomerListEmptyCopy(search, appliedFilters.favoritesOnly);
   const filtersActive = hasActiveCustomerListFilters(appliedFilters);
+  const activeFilterCount = appliedFilters.favoritesOnly ? 1 : 0;
+
+  const applySearch = () => {
+    setSearch(searchDraft.trim());
+  };
 
   return (
     <View style={styles.root}>
@@ -149,23 +155,28 @@ export function CustomersScreen() {
                   onPress={() => inviteMutation.mutate()}
                   style={styles.topActionButton}
                 />
+              </Inline>
+              <Inline gap="sm" align="flex-end" style={styles.searchRow}>
+                <TextField
+                  accessibilityLabel="고객 검색"
+                  placeholder="이름 / 전화번호 검색"
+                  value={searchDraft}
+                  onChangeText={setSearchDraft}
+                  onSubmitEditing={applySearch}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                  containerStyle={styles.searchField}
+                />
+                <Button label="검색" size="sm" variant="secondary" onPress={applySearch} />
                 <Button
-                  label="필터"
+                  label={activeFilterCount ? `필터 · ${activeFilterCount}` : '필터'}
                   size="sm"
                   variant={filtersActive ? 'secondary' : 'ghost'}
                   onPress={() => setFilterOpen(true)}
-                  style={styles.topActionButton}
                   accessibilityState={{ selected: filtersActive }}
+                  testID="customers-filter-button"
                 />
               </Inline>
-              <TextField
-                accessibilityLabel="고객 검색"
-                placeholder="이름 / 전화번호 검색"
-                value={search}
-                onChangeText={setSearch}
-                returnKeyType="search"
-                autoCorrect={false}
-              />
               {query.isSuccess && (query.data?.customers.length ?? 0) > 0 ? (
                 <AppText variant="helper" color="textSecondary">
                   {countText}
@@ -274,6 +285,8 @@ function createStyles(theme: AppTheme) {
     listHeader: { marginBottom: theme.spacing.xs },
     topActions: { width: '100%' },
     topActionButton: { flex: 1, minWidth: 0 },
+    searchRow: { width: '100%' },
+    searchField: { flex: 1, minWidth: 0 },
     grow: { flex: 1 },
   });
 }

@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
+  FlatList,
   Image,
   Linking,
   Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 
@@ -33,12 +36,21 @@ import {
   getNewsletter,
   getNewsletterFeed,
 } from './newslettersApi';
+import {
+  buildNewsletterGalleryUrls,
+  isNewsletterImageAttachment,
+  resolveNewsletterAttachmentDisplayUrl,
+  resolveNewsletterListCardImageUrl,
+} from './newslettersImageUtils';
 import { formatPublishedAt, sortPublishedNews, stripUnsafeMarkup } from './newslettersModel';
-import type { NewsChannel, NewsletterItem } from './types';
+import type { NewsChannel, NewsletterAttachment, NewsletterItem } from './types';
 
 export type NewslettersScreenProps =
   | { mode?: 'channel'; channel: NewsChannel; boardSlug?: never }
   | { mode: 'board'; boardSlug: string; channel?: never };
+
+const GRID_COLUMNS = 2;
+const GRID_GAP = 12;
 
 export function NewslettersScreen(props: NewslettersScreenProps) {
   const isBoard = props.mode === 'board';
@@ -46,7 +58,9 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
   const boardSlug = isBoard ? props.boardSlug.trim() : '';
   const { token, user } = useAuth();
   const theme = useAppTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { width: windowWidth } = useWindowDimensions();
+  const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
+  const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [insurer, setInsurer] = useState('');
   const [selected, setSelected] = useState<NewsletterItem | null>(null);
@@ -73,11 +87,6 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
     : channel === 'INSURER'
       ? '원수사소식지'
       : '손해사정사 소식지';
-  const caption = isBoard
-    ? '선택한 게시판의 소식을 확인합니다.'
-    : channel === 'INSURER'
-      ? '보험사별 최신 업무 소식과 첨부자료를 확인합니다.'
-      : '손해사정 관련 공지와 업무자료를 확인합니다.';
 
   const items = sortPublishedNews(newsletters).filter(
     (row) =>
@@ -88,12 +97,83 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
           .includes(search.trim().toLowerCase())),
   );
 
+  const applySearch = useCallback(() => {
+    setSearch(searchDraft.trim());
+  }, [searchDraft]);
+
+  const listHeader = (
+    <Stack gap="md" style={styles.listHeader}>
+      <Inline gap="sm" align="flex-end" style={styles.searchRow}>
+        <TextField
+          placeholder="제목 · 내용 · 게시처 검색"
+          value={searchDraft}
+          onChangeText={setSearchDraft}
+          returnKeyType="search"
+          onSubmitEditing={applySearch}
+          containerStyle={styles.searchField}
+        />
+        <Button label="검색" size="sm" variant="secondary" onPress={applySearch} />
+      </Inline>
+      {!isBoard ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filters}
+        >
+          <Button
+            label="전체"
+            size="sm"
+            variant={!insurer ? 'selected' : 'secondary'}
+            onPress={() => setInsurer('')}
+          />
+          {insurers.map((row) => (
+            <Button
+              key={row.insurerSlug}
+              label={`${row.insurerName} ${row.newsletterCount}`}
+              size="sm"
+              variant={insurer === row.insurerSlug ? 'selected' : 'secondary'}
+              onPress={() => setInsurer(row.insurerSlug)}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+      {query.isLoading ? <LoadingState message="소식지를 불러오는 중…" /> : null}
+      {query.isError ? (
+        <ErrorState
+          title={isBoard ? '게시판을 불러오지 못했습니다' : '소식지를 불러오지 못했습니다'}
+          message={
+            query.error instanceof Error ? query.error.message : '잠시 후 다시 시도해 주세요.'
+          }
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      <Inline wrap>
+        <Badge label={`${items.length}건`} tone="info" />
+        {user?.gaName ? <Badge label={user.gaName} /> : null}
+      </Inline>
+      {!query.isLoading && !query.isError && !items.length ? (
+        <Card variant="outlined">
+          <AppText color="textSecondary" align="center">
+            {isBoard ? '이 게시판에 등록된 소식지가 없습니다.' : '등록된 소식지가 없습니다.'}
+          </AppText>
+        </Card>
+      ) : null}
+    </Stack>
+  );
+
   return (
     <View style={styles.root}>
       <AppHeader title={title} />
       <Screen padded={false}>
-        <ScrollView
+        <FlatList
+          data={items}
+          key={GRID_COLUMNS}
+          numColumns={GRID_COLUMNS}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.content}
+          columnWrapperStyle={styles.gridRow}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={listHeader}
           refreshControl={
             <RefreshControl
               refreshing={query.isRefetching}
@@ -102,99 +182,10 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
               tintColor={theme.colors.primary}
             />
           }
-        >
-          <Card>
-            <Stack gap="md">
-              <AppText variant="heading">{title}</AppText>
-              <AppText variant="caption">{caption}</AppText>
-              <TextField
-                placeholder="제목 · 내용 · 게시처 검색"
-                value={search}
-                onChangeText={setSearch}
-              />
-              {!isBoard ? (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.filters}
-                >
-                  <Button
-                    label="전체"
-                    size="sm"
-                    variant={!insurer ? 'selected' : 'secondary'}
-                    onPress={() => setInsurer('')}
-                  />
-                  {insurers.map((row) => (
-                    <Button
-                      key={row.insurerSlug}
-                      label={`${row.insurerName} ${row.newsletterCount}`}
-                      size="sm"
-                      variant={insurer === row.insurerSlug ? 'selected' : 'secondary'}
-                      onPress={() => setInsurer(row.insurerSlug)}
-                    />
-                  ))}
-                </ScrollView>
-              ) : null}
-            </Stack>
-          </Card>
-          {query.isLoading ? <LoadingState message="소식지를 불러오는 중…" /> : null}
-          {query.isError ? (
-            <ErrorState
-              title={isBoard ? '게시판을 불러오지 못했습니다' : '소식지를 불러오지 못했습니다'}
-              message={
-                query.error instanceof Error
-                  ? query.error.message
-                  : '잠시 후 다시 시도해 주세요.'
-              }
-              onRetry={() => void query.refetch()}
-            />
-          ) : null}
-          <Inline wrap>
-            <Badge label={`${items.length}건`} tone="info" />
-            {user?.gaName ? <Badge label={user.gaName} /> : null}
-          </Inline>
-          {!query.isLoading && !query.isError && !items.length ? (
-            <Card variant="outlined">
-              <AppText color="textSecondary" align="center">
-                {isBoard
-                  ? '이 게시판에 등록된 소식지가 없습니다.'
-                  : '등록된 소식지가 없습니다.'}
-              </AppText>
-            </Card>
-          ) : null}
-          {items.map((item) => (
-            <Card key={item.id} variant="outlined">
-              <Stack gap="sm">
-                {item.heroImageUrl ? (
-                  <Image
-                    source={{ uri: item.heroImageUrl }}
-                    style={styles.hero}
-                    resizeMode="cover"
-                  />
-                ) : null}
-                <Inline justify="space-between" align="flex-start">
-                  <View style={styles.grow}>
-                    <AppText variant="caption">
-                      {item.insurerName || item.boardLabel || title}
-                    </AppText>
-                    <AppText variant="bodyStrong">{item.title}</AppText>
-                  </View>
-                  <AppText variant="caption">
-                    {formatPublishedAt(item.publishedAt)}
-                  </AppText>
-                </Inline>
-                {item.summary ? (
-                  <AppText numberOfLines={3}>{stripUnsafeMarkup(item.summary)}</AppText>
-                ) : null}
-                <Inline wrap>
-                  {item.hasImages ? <Badge label="이미지" tone="info" /> : null}
-                  {item.hasPdf ? <Badge label="PDF" tone="warning" /> : null}
-                  <Button label="자세히" size="sm" onPress={() => setSelected(item)} />
-                </Inline>
-              </Stack>
-            </Card>
-          ))}
-        </ScrollView>
+          renderItem={({ item }) => (
+            <NewsletterGridCard item={item} title={title} onPress={() => setSelected(item)} />
+          )}
+        />
       </Screen>
       <NewsletterDetailModal
         item={selected}
@@ -205,6 +196,50 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
         onClose={() => setSelected(null)}
       />
     </View>
+  );
+}
+
+function NewsletterGridCard({
+  item,
+  title,
+  onPress,
+}: {
+  item: NewsletterItem;
+  title: string;
+  onPress: () => void;
+}) {
+  const theme = useAppTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
+  const imageUrl = resolveNewsletterListCardImageUrl(item);
+  const headline = stripUnsafeMarkup(item.summary) || stripUnsafeMarkup(item.title);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={styles.gridCard}
+      testID={`newsletter-card-${item.id}`}
+    >
+      <Card variant="outlined" padding="none" style={styles.gridCardInner}>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.gridImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.gridImage, styles.gridImagePlaceholder]}>
+            <AppText variant="caption" color="textSecondary" numberOfLines={4}>
+              {headline}
+            </AppText>
+          </View>
+        )}
+        <Stack gap="xs" style={styles.gridMeta}>
+          <AppText variant="caption" numberOfLines={1}>
+            {item.insurerName || item.boardLabel || title}
+          </AppText>
+          <AppText variant="bodyStrong" numberOfLines={2}>{item.title}</AppText>
+          <AppText variant="caption">{formatPublishedAt(item.publishedAt)}</AppText>
+        </Stack>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -224,7 +259,8 @@ function NewsletterDetailModal({
   onClose: () => void;
 }) {
   const theme = useAppTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { width: windowWidth } = useWindowDimensions();
+  const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
   const detail = useQuery({
     queryKey: ['newsletter', channel, boardSlug, item?.id],
     queryFn: () =>
@@ -233,6 +269,17 @@ function NewsletterDetailModal({
         : getNewsletter(token, gaCode, channel!, item!.id),
     enabled: Boolean(token && item && (boardSlug || (gaCode && channel))),
   });
+
+  const galleryUrls = detail.data
+    ? buildNewsletterGalleryUrls({
+        heroImageUrl: detail.data.heroImageUrl,
+        heroImageObjectKey: detail.data.heroImageObjectKey,
+        attachments: detail.data.attachments,
+      })
+    : [];
+  const fileAttachments = (detail.data?.attachments ?? []).filter(
+    (file) => !isNewsletterImageAttachment(file),
+  );
 
   return (
     <Modal visible={Boolean(item)} animationType="slide" onRequestClose={onClose}>
@@ -262,12 +309,22 @@ function NewsletterDetailModal({
                   </AppText>
                   <AppText variant="title">{detail.data.title}</AppText>
                   <Divider />
-                  {detail.data.heroImageUrl ? (
-                    <Image
-                      source={{ uri: detail.data.heroImageUrl }}
-                      style={styles.detailHero}
-                      resizeMode="contain"
-                    />
+                  {galleryUrls.length ? (
+                    <Stack gap="sm">
+                      {galleryUrls.map((url) => (
+                        <Pressable
+                          key={url}
+                          accessibilityRole="imagebutton"
+                          onPress={() => void Linking.openURL(url)}
+                        >
+                          <Image
+                            source={{ uri: url }}
+                            style={styles.detailGalleryImage}
+                            resizeMode="contain"
+                          />
+                        </Pressable>
+                      ))}
+                    </Stack>
                   ) : null}
                   <AppText>
                     {stripUnsafeMarkup(detail.data.bodyText || detail.data.summary)}
@@ -281,16 +338,14 @@ function NewsletterDetailModal({
                   ) : null}
                 </Stack>
               </Card>
-              {detail.data.attachments.length ? (
-                <AppText variant="heading">첨부자료</AppText>
-              ) : null}
-              {detail.data.attachments.map((file) => (
+              {fileAttachments.length ? <AppText variant="heading">첨부자료</AppText> : null}
+              {fileAttachments.map((file: NewsletterAttachment) => (
                 <Card key={file.id} variant="outlined">
                   <Inline justify="space-between">
                     <View style={styles.grow}>
                       <AppText variant="bodyStrong">{file.fileName}</AppText>
                       <AppText variant="caption">
-                        {file.kind === 'image' ? '이미지' : '파일'}
+                        파일
                         {file.size ? ` · ${(file.size / 1024 / 1024).toFixed(1)} MB` : ''}
                       </AppText>
                     </View>
@@ -298,7 +353,9 @@ function NewsletterDetailModal({
                       label="열기"
                       size="sm"
                       variant="secondary"
-                      onPress={() => void Linking.openURL(file.url)}
+                      onPress={() =>
+                        void Linking.openURL(resolveNewsletterAttachmentDisplayUrl(file))
+                      }
                     />
                   </Inline>
                 </Card>
@@ -313,23 +370,54 @@ function NewsletterDetailModal({
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, windowWidth: number) {
+  const horizontalPadding = theme.spacing.lg;
+  const cardWidth = (windowWidth - horizontalPadding * 2 - GRID_GAP) / GRID_COLUMNS;
+
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     grow: { flex: 1 },
     content: {
-      padding: theme.spacing.lg,
+      paddingHorizontal: horizontalPadding,
       paddingBottom: theme.spacing.huge,
       gap: theme.spacing.md,
     },
-    filters: { gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
-    hero: {
+    listHeader: {
+      paddingTop: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+    },
+    searchRow: {
       width: '100%',
-      height: 160,
-      borderRadius: theme.radius.md,
+    },
+    searchField: {
+      flex: 1,
+      minWidth: 0,
+    },
+    filters: { gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
+    gridRow: {
+      gap: GRID_GAP,
+      marginBottom: GRID_GAP,
+    },
+    gridCard: {
+      width: cardWidth,
+    },
+    gridCardInner: {
+      overflow: 'hidden',
+    },
+    gridImage: {
+      width: '100%',
+      aspectRatio: 3 / 4,
       backgroundColor: theme.colors.surfaceSubtle,
     },
-    detailHero: {
+    gridImagePlaceholder: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: theme.spacing.sm,
+    },
+    gridMeta: {
+      padding: theme.spacing.sm,
+    },
+    detailGalleryImage: {
       width: '100%',
       minHeight: 220,
       borderRadius: theme.radius.md,

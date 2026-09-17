@@ -10,7 +10,7 @@ export function hasNaverMapClientId(
 }
 
 export function naverMapUnavailableMessage(): string {
-  return '네이버 지도 Client ID가 설정된 빌드에서 지도를 표시합니다. 아래 고객 목록은 계속 사용할 수 있습니다.';
+  return '네이버 지도 Client ID가 설정된 빌드에서 지도를 표시합니다.';
 }
 
 /** @deprecated Google Maps는 Native 고객 지도에서 사용하지 않는다. */

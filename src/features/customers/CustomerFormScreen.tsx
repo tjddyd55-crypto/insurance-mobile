@@ -210,6 +210,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       if (mode === 'create') {
         const payload = customerFormToPayload(draft, customerQuery.data);
         const saved = await createCustomer(token, payload);
+        await persistSecondaryCollections(saved.id, draft);
         return { saved, draft: cloneCustomerFormState(draft), mode };
       }
       const existing = customerQuery.data;
@@ -239,11 +240,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       });
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(saved.id) });
       router.replace({ pathname: '/customers/[customerId]', params: { customerId: String(saved.id) } });
-      if (savedMode === 'create') {
-        void persistSecondaryCollections(saved.id, draft).catch(() => {
-          // Core customer saved — detail screen shows latest PUT; collections refresh on invalidate.
-        });
-      }
     },
   });
 
@@ -617,29 +613,33 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         );
       case 'alertDates':
         return (
-          <FormSection
+          <CollapsibleFormSection
             title={CUSTOMER_FORM_SECTION_TITLES.alertDates}
+            sectionId="anniversary"
             testID={CUSTOMER_FORM_SECTION_TEST_IDS.alertDates}
+            defaultExpanded={mode === 'create'}
           >
             <CustomerAlertDatesEditor
               items={form.specialDates}
               onChange={(specialDates) => updateField('specialDates', specialDates)}
               disabled={saveMutation.isPending}
             />
-          </FormSection>
+          </CollapsibleFormSection>
         );
       case 'customFields':
         return (
-          <FormSection
+          <CollapsibleFormSection
             title={CUSTOMER_FORM_SECTION_TITLES.customFields}
+            sectionId="customFields"
             testID={CUSTOMER_FORM_SECTION_TEST_IDS.customFields}
+            defaultExpanded={mode === 'create'}
           >
             <CustomerCustomFieldsEditor
               items={form.customFields}
               onChange={(customFields) => updateField('customFields', customFields)}
               disabled={saveMutation.isPending}
             />
-          </FormSection>
+          </CollapsibleFormSection>
         );
       default:
         return null;
