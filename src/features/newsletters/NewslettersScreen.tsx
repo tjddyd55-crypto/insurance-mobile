@@ -44,7 +44,7 @@ import {
   resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
 import { formatPublishedAt, sortPublishedNews, stripUnsafeMarkup } from './newslettersModel';
-import type { NewsChannel, NewsletterAttachment, NewsletterItem } from './types';
+import type { NewsChannel, NewsletterAttachment, NewsletterDetail, NewsletterItem } from './types';
 
 export type NewslettersScreenProps =
   | { mode?: 'channel'; channel: NewsChannel; boardSlug?: never; initialNewsletterId?: string }
@@ -267,13 +267,25 @@ function NewsletterDetailModal({
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
   const detail = useQuery({
-    queryKey: ['newsletter', channel, boardSlug, item?.id],
+    queryKey: ['newsletter', channel, boardSlug, gaCode, item?.id],
     queryFn: () =>
       boardSlug
         ? getBoardNewsletter(token, boardSlug, item!.id)
         : getNewsletter(token, gaCode, channel!, item!.id),
     enabled: Boolean(token && item && (boardSlug || (gaCode && channel))),
+    placeholderData: item
+      ? ({
+          ...item,
+          bodyText: item.summary,
+          attachments: [],
+          linkPreview: null,
+        } satisfies NewsletterDetail)
+      : undefined,
   });
+
+  const headline =
+    String(detail.data?.summary ?? item?.summary ?? detail.data?.title ?? item?.title ?? '').trim() ||
+    '소식지';
 
   const galleryUrls = detail.data
     ? buildNewsletterGalleryUrls({
@@ -305,6 +317,9 @@ function NewsletterDetailModal({
               onRetry={() => void detail.refetch()}
             />
           ) : null}
+          {detail.isPending && !detail.data ? (
+            <LoadingState message="상세를 불러오는 중…" />
+          ) : null}
           {detail.data ? (
             <>
               <Card>
@@ -312,7 +327,7 @@ function NewsletterDetailModal({
                   <AppText variant="caption">
                     {detail.data.insurerName} · {formatPublishedAt(detail.data.publishedAt)}
                   </AppText>
-                  <AppText variant="title">{detail.data.title}</AppText>
+                  <AppText variant="title">{headline}</AppText>
                   <Divider />
                   {galleryUrls.length ? (
                     <Stack gap="sm">
@@ -366,9 +381,7 @@ function NewsletterDetailModal({
                 </Card>
               ))}
             </>
-          ) : (
-            <AppText align="center">상세를 불러오는 중…</AppText>
-          )}
+          ) : null}
         </ScrollView>
       </View>
     </Modal>

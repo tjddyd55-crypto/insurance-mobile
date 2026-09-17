@@ -27,7 +27,11 @@ export function isNewsletterImageAttachment(row: Pick<NewsletterAttachment, 'kin
   return /\.(jpe?g|png|webp|gif|heic|heif)$/.test(name);
 }
 
-function pickAttachmentUrl(row: Pick<NewsletterAttachment, 'url' | 'objectKey'>): string {
+function pickAttachmentUrl(row: Pick<NewsletterAttachment, 'url' | 'objectKey' | 'openUrl'>): string {
+  const openUrl = String(row.openUrl ?? '').trim();
+  if (openUrl) {
+    return openUrl;
+  }
   const objectKey = String(row.objectKey ?? '').trim();
   if (objectKey) {
     return cdnUrlForObjectKey(objectKey);
@@ -47,7 +51,7 @@ export function resolveNewsletterImageUrl(raw?: string | null): string {
 }
 
 export function resolveNewsletterAttachmentDisplayUrl(
-  row: Pick<NewsletterAttachment, 'url' | 'objectKey'>,
+  row: Pick<NewsletterAttachment, 'url' | 'objectKey' | 'openUrl'>,
 ): string {
   return resolveNewsletterImageUrl(pickAttachmentUrl(row));
 }

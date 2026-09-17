@@ -1,10 +1,20 @@
 import {
   buildNewsletterGalleryUrls,
   isNewsletterImageAttachment,
+  resolveNewsletterAttachmentDisplayUrl,
   resolveNewsletterListCardImageUrl,
 } from '../newslettersImageUtils';
 
 describe('newslettersImageUtils', () => {
+  it('prefers signed openUrl for attachment display', () => {
+    expect(
+      resolveNewsletterAttachmentDisplayUrl({
+        url: 'https://cdn.example/legacy.png',
+        objectKey: 'crm-platform/dev/file.png',
+        openUrl: '/api/insurer-news/id/attachments/1/open?accessToken=abc',
+      }),
+    ).toContain('/api/insurer-news/id/attachments/1/open');
+  });
   test('detects image attachments by kind, mime, or extension', () => {
     expect(isNewsletterImageAttachment({ kind: 'image', fileName: 'a.pdf' })).toBe(true);
     expect(isNewsletterImageAttachment({ kind: 'file', mimeType: 'image/png', fileName: 'a.bin' })).toBe(true);
