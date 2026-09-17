@@ -2,10 +2,21 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+import { resolveApiBaseUrl } from '../../config/environment';
 import { AppText, useAppTheme, type AppTheme } from '../../design-system';
 import type { CustomerMapItem } from './types';
 import { hasNaverMapClientId } from './customerMapModel';
 import { buildNaverCustomerMapHtml, buildNaverMapMarkerGroups } from './naverMapHtml';
+
+/**
+ * NCP Dynamic Map 인증 origin.
+ * Web SSOT: insurance-dev / insurance-production Railway host가 NCP Web 서비스 URL에 등록됨.
+ * Native WebView inline HTML은 prod origin을 사용 (Web ops 가이드와 동일).
+ */
+function resolveNaverMapWebViewBaseUrl(): string {
+  const prodOrigin = resolveApiBaseUrl('production').replace(/\/$/, '');
+  return `${prodOrigin}/`;
+}
 
 export type NaverCustomerMapViewProps = {
   centerLat: number;
@@ -48,7 +59,7 @@ export function NaverCustomerMapView({
     <View style={styles.wrap}>
       <WebView
         originWhitelist={['*']}
-        source={{ html }}
+        source={{ html, baseUrl: resolveNaverMapWebViewBaseUrl() }}
         style={styles.map}
         scrollEnabled={false}
         nestedScrollEnabled

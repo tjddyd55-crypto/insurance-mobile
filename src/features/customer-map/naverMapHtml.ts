@@ -80,13 +80,22 @@ export function buildNaverCustomerMapHtml(params: {
       }
     }
     function initMap() {
-      if (!window.naver || !window.naver.maps) {
-        var el = document.getElementById('error');
-        el.style.display = 'block';
-        el.textContent = '네이버 지도를 불러오지 못했습니다.';
-        postMessage({ type: 'init_failure' });
-        return;
+      var attempts = 0;
+      function boot() {
+        if (window.naver && window.naver.maps) {
+          renderMap();
+          return;
+        }
+        if (++attempts > 40) {
+          var el = document.getElementById('error');
+          el.style.display = 'block';
+          el.textContent = '네이버 지도를 불러오지 못했습니다.';
+          postMessage({ type: 'init_failure' });
+          return;
+        }
+        setTimeout(boot, 100);
       }
+      function renderMap() {
       var map = new naver.maps.Map('map', {
         center: new naver.maps.LatLng(${centerLat}, ${centerLng}),
         zoom: ${zoom},
@@ -113,6 +122,8 @@ export function buildNaverCustomerMapHtml(params: {
         });
       });
       postMessage({ type: 'ready' });
+      }
+      boot();
     }
   </script>
   <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(
