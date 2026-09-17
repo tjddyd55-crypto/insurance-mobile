@@ -240,7 +240,7 @@ function NewsletterGridCard({
           <AppText variant="caption" numberOfLines={1}>
             {item.insurerName || item.boardLabel || title}
           </AppText>
-          <AppText variant="bodyStrong" numberOfLines={2}>{item.title}</AppText>
+          <AppText variant="bodyStrong" numberOfLines={2}>{headline}</AppText>
           <AppText variant="caption">{formatPublishedAt(item.publishedAt)}</AppText>
         </Stack>
       </Card>
