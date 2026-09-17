@@ -38,36 +38,3 @@ export function CopyIconButton({
     />
   );
 }
-
-export function VisibilityIconButton({
-  accessibilityLabel,
-  revealed,
-  onPress,
-}: {
-  accessibilityLabel: string;
-  revealed: boolean;
-  onPress: () => void;
-}) {
-  const theme = useAppTheme();
-  const color = theme.colors.textSecondary;
-
-  return (
-    <IconButton
-      accessibilityLabel={accessibilityLabel}
-      variant="outlined"
-      size="sm"
-      onPress={onPress}
-      icon={() => (
-        <SymbolView
-          name={
-            revealed
-              ? { ios: 'eye.slash', android: 'visibility_off' }
-              : { ios: 'eye', android: 'visibility' }
-          }
-          size={18}
-          tintColor={color}
-        />
-      )}
-    />
-  );
-}

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
-import { CopyIconButton, VisibilityIconButton } from '../../components/CopyIconButton';
+import { CopyIconButton } from '../../components/CopyIconButton';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -27,7 +27,6 @@ import {
   getAccountVault,
   updateAccountVaultRow,
 } from './accountVaultApi';
-import { maskSecret } from './accountVaultModel';
 import type { AccountCategory, AccountVaultRow } from './types';
 
 const QUERY_KEY = ['account-vault'] as const;
@@ -174,7 +173,6 @@ function AccountCard({
   const queryClient = useQueryClient();
   const [loginId, setLoginId] = useState(row.loginId);
   const [password, setPassword] = useState(row.loginPassword);
-  const [revealed, setRevealed] = useState(false);
   useEffect(() => {
     setLoginId(row.loginId);
     setPassword(row.loginPassword);
@@ -208,15 +206,9 @@ function AccountCard({
           <TextField
             value={password}
             onChangeText={setPassword}
-            secureTextEntry={!revealed}
             autoCapitalize="none"
             autoCorrect={false}
             containerStyle={styles.fieldGrow}
-          />
-          <VisibilityIconButton
-            accessibilityLabel={revealed ? '비밀번호 숨기기' : '비밀번호 보기'}
-            revealed={revealed}
-            onPress={() => setRevealed((value) => !value)}
           />
           <CopyIconButton
             accessibilityLabel="비밀번호 복사"
@@ -224,9 +216,6 @@ function AccountCard({
             onPress={() => onCopy(password, '비밀번호')}
           />
         </Inline>
-        {!revealed && password ? (
-          <AppText variant="caption" color="textSecondary">{maskSecret(password)}</AppText>
-        ) : null}
         {save.error ? (
           <AppText color="danger">
             {save.error instanceof Error ? save.error.message : '저장하지 못했습니다.'}
@@ -330,7 +319,6 @@ function AddAccountModal({
           label="비밀번호"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
           autoCapitalize="none"
         />
         {create.error ? (
