@@ -28,7 +28,11 @@ describe('naver map html', () => {
 
     expect(html).toContain('oapi.map.naver.com/openapi/v3/maps.js');
     expect(html).toContain('ncpKeyId=test-client-id');
+    expect(html).toContain('customer-map-name-marker__label');
+    expect(html).toContain('marker_select');
+    expect(html).toContain('map_click');
     expect(html).not.toContain('Google Maps');
+    expect(html).not.toContain('marker_press');
   });
 
   it('uses naver client id gate instead of google maps key', () => {

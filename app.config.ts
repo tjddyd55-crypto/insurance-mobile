@@ -79,6 +79,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           '청구서류나 고객 관련 파일을 첨부하기 위해 사진 보관함 접근이 필요합니다.',
         NSPhotoLibraryAddUsageDescription:
           '필요한 파일을 기기에 저장하기 위해 사진 보관함 저장 권한이 필요할 수 있습니다.',
+        NSLocationWhenInUseUsageDescription:
+          '고객 지도에서 내 위치를 표시하기 위해 위치 접근이 필요합니다.',
       },
     },
     android: {
@@ -90,7 +92,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#003D1F',
       },
       predictiveBackGestureEnabled: false,
-      permissions: ['POST_NOTIFICATIONS'],
+      permissions: ['POST_NOTIFICATIONS', 'ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
       // Legacy apps/mobile parity: onefc://customers/... (DEV uses onefc-dev)
       intentFilters: [
         {

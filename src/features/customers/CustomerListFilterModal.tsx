@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { DateField } from '../../components/DateField';
+import { ModalCloseButton } from '../../components/ModalCloseButton';
 import {
   AppText,
   Button,
@@ -51,7 +52,7 @@ export function CustomerListFilterModal({
       open={open}
       title="필터 · 정렬"
       onRequestClose={onClose}
-      headerAction={<Button label="닫기" size="sm" variant="ghost" onPress={onClose} />}
+      headerAction={<ModalCloseButton onPress={onClose} />}
       footer={
         <Inline>
           <Button label="초기화" variant="secondary" onPress={onReset} style={styles.grow} />

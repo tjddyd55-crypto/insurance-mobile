@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -6,104 +6,138 @@ import { resolveApiBaseUrl } from '../../config/environment';
 import { AppText, useAppTheme, type AppTheme } from '../../design-system';
 import type { CustomerMapItem } from './types';
 import { hasNaverMapClientId } from './customerMapModel';
-import { buildNaverCustomerMapHtml, buildNaverMapMarkerGroups } from './naverMapHtml';
+import { buildCustomerMapMarkerGroups } from './customerMapMarkerModel';
+import { buildNaverCustomerMapHtml } from './naverMapHtml';
 
-/**
- * NCP Dynamic Map 인증 origin.
- * Web SSOT: insurance-dev / insurance-production Railway host가 NCP Web 서비스 URL에 등록됨.
- * Native WebView inline HTML은 prod origin을 사용 (Web ops 가이드와 동일).
- */
 function resolveNaverMapWebViewBaseUrl(): string {
   const prodOrigin = resolveApiBaseUrl('production').replace(/\/$/, '');
   return `${prodOrigin}/`;
 }
+
+export type NaverMapBridgeMessage =
+  | { type: 'marker_select'; groupKey: string; customerId: number; isGroup: boolean }
+  | { type: 'map_click' }
+  | { type: 'auth_failure' }
+  | { type: 'init_failure' }
+  | { type: 'ready' };
+
+export type NaverCustomerMapHandle = {
+  panTo: (latitude: number, longitude: number, zoom?: number) => void;
+};
 
 export type NaverCustomerMapViewProps = {
   centerLat: number;
   centerLng: number;
   zoom: number;
   customers: CustomerMapItem[];
-  onMarkerPress: (customerId: number) => void;
+  selectedGroupKey?: string | null;
+  onBridgeMessage: (message: NaverMapBridgeMessage) => void;
   fullHeight?: boolean;
 };
 
-export function NaverCustomerMapView({
-  centerLat,
-  centerLng,
-  zoom,
-  customers,
-  onMarkerPress,
-  fullHeight = false,
-}: NaverCustomerMapViewProps) {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme, fullHeight), [theme, fullHeight]);
-  const [debugMessage, setDebugMessage] = useState<string | null>(null);
-  const clientId = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID?.trim() ?? '';
-  const html = useMemo(
-    () =>
-      buildNaverCustomerMapHtml({
-        clientId,
-        centerLat,
-        centerLng,
-        zoom,
-        groups: buildNaverMapMarkerGroups(customers),
-      }),
-    [centerLat, centerLng, clientId, customers, zoom],
-  );
+export const NaverCustomerMapView = forwardRef<NaverCustomerMapHandle, NaverCustomerMapViewProps>(
+  function NaverCustomerMapView(
+    {
+      centerLat,
+      centerLng,
+      zoom,
+      customers,
+      selectedGroupKey = null,
+      onBridgeMessage,
+      fullHeight = false,
+    },
+    ref,
+  ) {
+    const theme = useAppTheme();
+    const styles = useMemo(() => createStyles(theme, fullHeight), [theme, fullHeight]);
+    const [debugMessage, setDebugMessage] = useState<string | null>(null);
+    const webViewRef = useRef<WebView>(null);
+    const clientId = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID?.trim() ?? '';
+    const groups = useMemo(() => buildCustomerMapMarkerGroups(customers), [customers]);
+    const html = useMemo(
+      () =>
+        buildNaverCustomerMapHtml({
+          clientId,
+          centerLat,
+          centerLng,
+          zoom,
+          groups,
+          selectedGroupKey,
+        }),
+      [centerLat, centerLng, clientId, groups, selectedGroupKey, zoom],
+    );
 
-  if (!hasNaverMapClientId(clientId)) {
-    return null;
-  }
+    const postNativeCommand = useCallback((command: Record<string, unknown>) => {
+      const payload = JSON.stringify(command);
+      webViewRef.current?.injectJavaScript(
+        `(function(){ if (window.__handleNativeCommand) window.__handleNativeCommand(${payload}); })(); true;`,
+      );
+    }, []);
 
-  return (
-    <View style={styles.wrap}>
-      <WebView
-        originWhitelist={['*']}
-        source={{ html, baseUrl: resolveNaverMapWebViewBaseUrl() }}
-        style={styles.map}
-        scrollEnabled={false}
-        nestedScrollEnabled
-        javaScriptEnabled
-        domStorageEnabled
-        mixedContentMode="always"
-        onError={() => {
-          if (__DEV__) {
-            setDebugMessage('WebView load error');
-          }
-        }}
-        onHttpError={(event) => {
-          if (__DEV__) {
-            setDebugMessage(`HTTP ${event.nativeEvent.statusCode}: ${event.nativeEvent.url}`);
-          }
-        }}
-        onMessage={(event) => {
-          try {
-            const payload = JSON.parse(event.nativeEvent.data) as {
-              type?: string;
-              customerId?: number;
-            };
-            if (__DEV__ && payload.type === 'auth_failure') {
-              setDebugMessage('Naver map auth failure');
+    const panTo = useCallback(
+      (latitude: number, longitude: number, nextZoom?: number) => {
+        postNativeCommand({
+          type: 'pan_to',
+          lat: latitude,
+          lng: longitude,
+          zoom: nextZoom ?? zoom,
+        });
+      },
+      [postNativeCommand, zoom],
+    );
+
+    useImperativeHandle(ref, () => ({ panTo }), [panTo]);
+
+    if (!hasNaverMapClientId(clientId)) {
+      return null;
+    }
+
+    return (
+      <View style={styles.wrap}>
+        <WebView
+          ref={webViewRef}
+          originWhitelist={['*']}
+          source={{ html, baseUrl: resolveNaverMapWebViewBaseUrl() }}
+          style={styles.map}
+          scrollEnabled={false}
+          nestedScrollEnabled
+          javaScriptEnabled
+          domStorageEnabled
+          mixedContentMode="always"
+          onError={() => {
+            if (__DEV__) {
+              setDebugMessage('WebView load error');
             }
-            if (__DEV__ && payload.type === 'init_failure') {
-              setDebugMessage('Naver map init failure');
+          }}
+          onHttpError={(event) => {
+            if (__DEV__) {
+              setDebugMessage(`HTTP ${event.nativeEvent.statusCode}: ${event.nativeEvent.url}`);
             }
-            if (payload.type === 'marker_press' && payload.customerId) {
-              onMarkerPress(payload.customerId);
+          }}
+          onMessage={(event) => {
+            try {
+              const payload = JSON.parse(event.nativeEvent.data) as NaverMapBridgeMessage;
+              if (__DEV__ && payload.type === 'auth_failure') {
+                setDebugMessage('Naver map auth failure');
+              }
+              if (__DEV__ && payload.type === 'init_failure') {
+                setDebugMessage('Naver map init failure');
+              }
+              onBridgeMessage(payload);
+            } catch {
+              // ignore malformed bridge messages
             }
-          } catch {
-            // ignore malformed bridge messages
-          }
-        }}
-      />
-      {__DEV__ && debugMessage ? (
-        <View style={styles.debugBanner}>
-          <AppText variant="caption" color="danger">{debugMessage}</AppText>
-        </View>
-      ) : null}
-    </View>
-  );
-}
+          }}
+        />
+        {__DEV__ && debugMessage ? (
+          <View style={styles.debugBanner}>
+            <AppText variant="caption" color="danger">{debugMessage}</AppText>
+          </View>
+        ) : null}
+      </View>
+    );
+  },
+);
 
 function createStyles(theme: AppTheme, fullHeight: boolean) {
   return StyleSheet.create({
@@ -111,10 +145,8 @@ function createStyles(theme: AppTheme, fullHeight: boolean) {
       flex: fullHeight ? 1 : undefined,
       height: fullHeight ? undefined : 420,
       minHeight: fullHeight ? 280 : undefined,
-      borderRadius: theme.radius.lg,
+      borderRadius: fullHeight ? 0 : theme.radius.lg,
       overflow: 'hidden',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.border,
     },
     map: {
       flex: 1,
