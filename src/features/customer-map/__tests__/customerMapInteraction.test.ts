@@ -12,6 +12,8 @@ function customer(partial: Partial<CustomerMapItem> & Pick<CustomerMapItem, 'id'
     name: partial.name,
     phone: partial.phone ?? '',
     address: partial.address ?? '',
+    birthDateYmd: partial.birthDateYmd ?? null,
+    gender: partial.gender ?? null,
     latitude: partial.latitude ?? 37.5,
     longitude: partial.longitude ?? 127,
     lastConsultDate: null,

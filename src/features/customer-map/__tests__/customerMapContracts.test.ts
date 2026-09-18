@@ -18,9 +18,18 @@ describe('customerMapContracts', () => {
 
   it('uses overlay detail action for second-step navigation', () => {
     const overlaySource = readSource('CustomerMapSelectionOverlay.tsx');
-    expect(overlaySource).toMatch(/onOpenDetail\(selected\.id\)/);
+    const screenSource = readSource('CustomerMapScreen.tsx');
+    expect(overlaySource).toMatch(/accessibilityLabel="고객 상세 보기"/);
     expect(overlaySource).toMatch(/onPress=\{\(\) => onSelectCustomer\(customer\.id\)\}/);
     expect(overlaySource).toMatch(/onPress=\{\(\) => onOpenDetail\(customer\.id\)\}/);
+    expect(screenSource).toMatch(/left: 0,\s*\n\s*right: 0,\s*\n\s*bottom: 0/);
+    expect(overlaySource).not.toMatch(/theme\.shadows\.floating/);
+    expect(overlaySource).toMatch(/buildCustomerMapPanelPresentation/);
+    expect(overlaySource).toMatch(/생년월일/);
+    expect(overlaySource).toMatch(/연락처/);
+    expect(overlaySource).toMatch(/주소/);
+    const presentationSource = readSource('customerMapSelectionPresentation.ts');
+    expect(presentationSource).toMatch(/formatCustomerGenderParenthetical/);
   });
 
   it('posts marker_select and map_click bridge messages from web html', () => {

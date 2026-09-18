@@ -17,6 +17,8 @@ describe('naver map html', () => {
           name: '문해자',
           phone: '010',
           address: '서울',
+          birthDateYmd: null,
+          gender: null,
           latitude: 37.5,
           longitude: 127,
           lastConsultDate: null,

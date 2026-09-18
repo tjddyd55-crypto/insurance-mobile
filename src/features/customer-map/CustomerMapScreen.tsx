@@ -15,6 +15,7 @@ import {
   IconButton,
   Screen,
   useAppTheme,
+  useBottomSafeInset,
   type AppTheme,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
@@ -50,7 +51,7 @@ export function CustomerMapScreen({
   const router = useRouter();
   const onBackPress = useCustomerDetailBack(focusCustomerId ?? 0);
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomInset = useBottomSafeInset();
   const mapRef = useRef<NaverCustomerMapHandle>(null);
   const [keywordDraft, setKeywordDraft] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -88,6 +89,11 @@ export function CustomerMapScreen({
   const selectedGroup = useMemo(
     () => markerGroups.find((group) => group.groupKey === selectedGroupKey) ?? null,
     [markerGroups, selectedGroupKey],
+  );
+  const hasSelectionPanel = selectedGroup != null && selectedCustomerId != null;
+  const styles = useMemo(
+    () => createStyles(theme, bottomInset, hasSelectionPanel),
+    [theme, bottomInset, hasSelectionPanel],
   );
 
   const clearSelection = useCallback(() => {
@@ -238,7 +244,6 @@ export function CustomerMapScreen({
                 selectedCustomerId={selectedCustomerId}
                 onSelectCustomer={setSelectedCustomerId}
                 onOpenDetail={(customerId) => router.push(`/customers/${customerId}`)}
-                onClose={clearSelection}
               />
             </View>
           ) : null}
@@ -248,7 +253,9 @@ export function CustomerMapScreen({
   );
 }
 
-function createStyles(theme: AppTheme) {
+const SELECTION_PANEL_ESTIMATED_HEIGHT = 220;
+
+function createStyles(theme: AppTheme, bottomInset: number, hasSelectionPanel: boolean) {
   return StyleSheet.create({
     root: { flex: 1 },
     screen: { flex: 1 },
@@ -295,7 +302,9 @@ function createStyles(theme: AppTheme) {
     myLocationWrap: {
       position: 'absolute',
       right: theme.spacing.lg,
-      bottom: theme.spacing.xxl,
+      bottom: hasSelectionPanel
+        ? SELECTION_PANEL_ESTIMATED_HEIGHT + bottomInset + theme.spacing.md
+        : theme.spacing.xxl,
       zIndex: 3,
     },
     myLocationButton: {
@@ -305,9 +314,9 @@ function createStyles(theme: AppTheme) {
     },
     selectionOverlay: {
       position: 'absolute',
-      left: theme.spacing.lg,
-      right: theme.spacing.lg,
-      bottom: theme.spacing.lg,
+      left: 0,
+      right: 0,
+      bottom: 0,
       zIndex: 4,
     },
   });

@@ -1,26 +1,120 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppText, useAppTheme, type AppTheme } from '../../design-system';
+import { AppText, useAppTheme, useBottomSafeInset, type AppTheme } from '../../design-system';
+import {
+  buildCustomerMapPanelPresentation,
+  buildGroupSelectionTitle,
+} from './customerMapSelectionPresentation';
 import type { CustomerMapMarkerGroup } from './customerMapMarkerModel';
+import type { CustomerMapItem } from './types';
 
 type CustomerMapSelectionOverlayProps = {
   group: CustomerMapMarkerGroup;
   selectedCustomerId: number;
   onSelectCustomer: (customerId: number) => void;
   onOpenDetail: (customerId: number) => void;
-  onClose: () => void;
 };
+
+function CustomerMapInfoPanel({
+  customer,
+  onOpenDetail,
+  styles,
+  theme,
+  detailOnly = false,
+}: {
+  customer: CustomerMapItem;
+  onOpenDetail: (customerId: number) => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: AppTheme;
+  detailOnly?: boolean;
+}) {
+  const presentation = buildCustomerMapPanelPresentation(customer);
+  const genderColor =
+    presentation.genderTone === 'male'
+      ? theme.colors.info
+      : presentation.genderTone === 'female'
+        ? theme.colors.danger
+        : undefined;
+
+  const content = (
+    <>
+      <View style={styles.headerRow}>
+        <View style={styles.nameRow}>
+          {customer.isFavorite ? (
+            <AppText variant="bodyStrong" color="warning">★ </AppText>
+          ) : null}
+          <AppText variant="bodyStrong" numberOfLines={1} style={styles.nameText}>
+            {presentation.displayName}
+          </AppText>
+          {presentation.genderParenthetical ? (
+            <AppText
+              variant="body"
+              style={[styles.genderText, genderColor ? { color: genderColor } : null]}
+            >
+              {presentation.genderParenthetical}
+            </AppText>
+          ) : null}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="고객 상세 보기"
+          onPress={() => onOpenDetail(customer.id)}
+          hitSlop={8}
+          style={styles.detailAction}
+        >
+          <AppText variant="bodyStrong" color="primary">상세</AppText>
+        </Pressable>
+      </View>
+
+      <View style={styles.infoRow}>
+        <AppText variant="caption" color="textSecondary" style={styles.infoLabel}>
+          생년월일
+        </AppText>
+        <AppText variant="body" style={styles.infoValue}>{presentation.birthDate}</AppText>
+      </View>
+      <View style={styles.infoRow}>
+        <AppText variant="caption" color="textSecondary" style={styles.infoLabel}>
+          연락처
+        </AppText>
+        <AppText variant="body" style={styles.infoValue}>{presentation.phone}</AppText>
+      </View>
+      <View style={styles.addressBlock}>
+        <AppText variant="caption" color="textSecondary" style={styles.infoLabel}>
+          주소
+        </AppText>
+        <AppText variant="body" style={styles.addressValue} numberOfLines={2}>
+          {presentation.address}
+        </AppText>
+      </View>
+    </>
+  );
+
+  if (detailOnly) {
+    return <View style={styles.infoBody}>{content}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="고객 상세 보기"
+      onPress={() => onOpenDetail(customer.id)}
+      style={styles.infoBody}
+    >
+      {content}
+    </Pressable>
+  );
+}
 
 export function CustomerMapSelectionOverlay({
   group,
   selectedCustomerId,
   onSelectCustomer,
   onOpenDetail,
-  onClose,
 }: CustomerMapSelectionOverlayProps) {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomInset = useBottomSafeInset();
+  const styles = useMemo(() => createStyles(theme, bottomInset), [theme, bottomInset]);
   const selected =
     group.customers.find((customer) => customer.id === selectedCustomerId) ?? group.customers[0];
   const isGroup = group.count > 1;
@@ -29,114 +123,135 @@ export function CustomerMapSelectionOverlay({
     return null;
   }
 
-  if (!isGroup) {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${selected.name} 고객 상세 보기`}
-        onPress={() => onOpenDetail(selected.id)}
-        style={styles.singleCard}
-      >
-        <View style={styles.singleHeader}>
-          <AppText variant="bodyStrong" numberOfLines={1}>
-            {selected.isFavorite ? '★ ' : ''}
-            {selected.name || '이름 없음'}
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="선택 닫기"
-            onPress={(event) => {
-              event.stopPropagation();
-              onClose();
-            }}
-            hitSlop={8}
-          >
-            <AppText variant="caption" color="textSecondary">닫기</AppText>
-          </Pressable>
-        </View>
-        <AppText variant="caption" color="textSecondary" numberOfLines={2}>
-          {selected.address?.trim() || '주소 없음'}
-        </AppText>
-        <AppText variant="helper" color="primary">탭하여 고객 상세 보기</AppText>
-      </Pressable>
-    );
-  }
-
   return (
-    <View style={styles.groupCard} accessibilityLabel="동일 위치 고객 목록">
-      <View style={styles.singleHeader}>
-        <AppText variant="bodyStrong">{group.count}명 · 동일 위치</AppText>
-        <Pressable accessibilityRole="button" accessibilityLabel="선택 닫기" onPress={onClose} hitSlop={8}>
-          <AppText variant="caption" color="textSecondary">닫기</AppText>
-        </Pressable>
-      </View>
-      {group.customers.map((customer) => {
-        const active = customer.id === selectedCustomerId;
-        return (
-          <Pressable
-            key={customer.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${customer.name} 선택`}
-            onPress={() => onSelectCustomer(customer.id)}
-            style={[styles.groupRow, active && styles.groupRowActive]}
+    <View style={styles.panel} accessibilityLabel="선택된 고객 정보">
+      {isGroup ? (
+        <>
+          <View style={styles.groupHeader}>
+            <AppText variant="bodyStrong">{buildGroupSelectionTitle(group.customers, group.count)}</AppText>
+            <AppText variant="caption" color="textSecondary">{group.count}명 · 동일 위치</AppText>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.groupPicker}
+            keyboardShouldPersistTaps="handled"
           >
-            <AppText variant="body" numberOfLines={1}>
-              {customer.isFavorite ? '★ ' : ''}
-              {customer.name || '이름 없음'}
-            </AppText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${customer.name} 상세 보기`}
-              onPress={() => onOpenDetail(customer.id)}
-              hitSlop={8}
-            >
-              <AppText variant="caption" color="primary">상세</AppText>
-            </Pressable>
-          </Pressable>
-        );
-      })}
+            {group.customers.map((customer) => {
+              const active = customer.id === selectedCustomerId;
+              return (
+                <Pressable
+                  key={customer.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${customer.name} 선택`}
+                  onPress={() => onSelectCustomer(customer.id)}
+                  style={[styles.groupChip, active && styles.groupChipActive]}
+                >
+                  <AppText variant="body" numberOfLines={1}>
+                    {customer.isFavorite ? '★ ' : ''}
+                    {customer.name || '이름 없음'}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          <CustomerMapInfoPanel
+            customer={selected}
+            onOpenDetail={onOpenDetail}
+            styles={styles}
+            theme={theme}
+            detailOnly
+          />
+        </>
+      ) : (
+        <CustomerMapInfoPanel
+          customer={selected}
+          onOpenDetail={onOpenDetail}
+          styles={styles}
+          theme={theme}
+        />
+      )}
     </View>
   );
 }
 
-function createStyles(theme: AppTheme) {
+function createStyles(theme: AppTheme, bottomInset: number) {
   return StyleSheet.create({
-    singleCard: {
-      borderRadius: theme.radius.lg,
+    panel: {
+      width: '100%',
       backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      borderTopLeftRadius: theme.radius.lg,
+      borderTopRightRadius: theme.radius.lg,
+      paddingTop: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: Math.max(theme.spacing.md, bottomInset),
+      gap: theme.spacing.sm,
+    },
+    groupHeader: {
+      gap: theme.spacing.xxs,
+    },
+    groupPicker: {
+      gap: theme.spacing.sm,
+      paddingBottom: theme.spacing.xs,
+    },
+    groupChip: {
+      borderRadius: theme.radius.full,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      maxWidth: 180,
+      backgroundColor: theme.colors.background,
+    },
+    groupChipActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primarySoft,
+    },
+    infoBody: {
+      gap: theme.spacing.sm,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing.sm,
+    },
+    nameRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
       gap: theme.spacing.xs,
-      ...theme.shadows.floating,
     },
-    groupCard: {
-      borderRadius: theme.radius.lg,
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: theme.spacing.md,
-      gap: theme.spacing.sm,
-      maxHeight: 220,
-      ...theme.shadows.floating,
+    nameText: {
+      flexShrink: 1,
     },
-    singleHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: theme.spacing.sm,
+    genderText: {
+      flexShrink: 0,
     },
-    groupRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: theme.spacing.sm,
+    detailAction: {
       paddingVertical: theme.spacing.xs,
       paddingHorizontal: theme.spacing.sm,
-      borderRadius: theme.radius.md,
     },
-    groupRowActive: {
-      backgroundColor: theme.colors.primarySoft,
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.spacing.md,
+    },
+    infoLabel: {
+      width: 72,
+      flexShrink: 0,
+    },
+    infoValue: {
+      flex: 1,
+    },
+    addressBlock: {
+      gap: theme.spacing.xxs,
+    },
+    addressValue: {
+      paddingLeft: 0,
     },
   });
 }
