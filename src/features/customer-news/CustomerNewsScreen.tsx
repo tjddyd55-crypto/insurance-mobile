@@ -30,17 +30,20 @@ import {
 } from '../../design-system';
 import { CustomerNewsPreviewModal, type CustomerNewsPreviewDraft } from './CustomerNewsPreviewModal';
 import {
+  buildCreateCustomerNewsPayload,
   buildCustomerNewsGalleryUrls,
+  buildPreviewDraftFromForm,
+  buildUpdateCustomerNewsPayload,
   canPublishCustomerNews,
-  draftAttachmentsToPreviewRows,
   fileDraftsFromDrafts,
-  galleryUrlsFromDrafts,
   hydrateDraftAttachmentsFromItem,
   listCardPreviewText,
   localAttachmentToDraft,
   nextDraftSortOrder,
   previewValidationMessage,
   publishValidationMessage,
+  resolveCustomerNewsBodySegments,
+  serializeDraftAttachmentsForSubmit,
 } from './customerNewsContent';
 import { CustomerNewsImageCarousel } from './customerNewsImageCarousel';
 import {
@@ -126,43 +129,6 @@ export function CustomerNewsScreen({
     [news.data, search],
   );
 
-  async function uploadDraftAttachments(drafts: DraftAttachment[]): Promise<Omit<NewsAttachment, 'id'>[]> {
-    const sorted = [...drafts].sort((a, b) => a.sortOrder - b.sortOrder);
-    const uploaded: Omit<NewsAttachment, 'id'>[] = [];
-    for (const [index, draft] of sorted.entries()) {
-      if (draft.localUri) {
-        const asset: LocalAttachment = {
-          uri: draft.localUri,
-          name: draft.fileName,
-          mimeType: draft.mimeType,
-          size: draft.size,
-          kind: draft.kind,
-        };
-        const row = await uploadNewsAttachment(
-          token,
-          asset,
-          scope,
-          scope === 'personal' ? customerId : null,
-        );
-        uploaded.push({ ...row, sortOrder: index });
-        continue;
-      }
-      if (!draft.url) {
-        continue;
-      }
-      uploaded.push({
-        kind: draft.kind,
-        url: draft.url,
-        objectKey: draft.objectKey,
-        fileName: draft.fileName,
-        mimeType: draft.mimeType,
-        size: draft.size,
-        sortOrder: index,
-      });
-    }
-    return uploaded;
-  }
-
   const publish = useMutation({
     mutationFn: async () => {
       const validation = publishValidationMessage(form.content, form.attachments);
@@ -172,23 +138,31 @@ export function CustomerNewsScreen({
       if (scope === 'personal' && !customerId) {
         throw new Error('받을 고객을 선택해 주세요.');
       }
-      const attachments = await uploadDraftAttachments(form.attachments);
-      const content = form.content.trim();
+      const attachments = await serializeDraftAttachmentsForSubmit(form.attachments, (asset) =>
+        uploadNewsAttachment(token, asset, scope, scope === 'personal' ? customerId : null),
+      );
       if (editing) {
-        await updateCustomerNews(token, editing.id, {
-          content,
-          sendPush: form.sendPush,
-          attachments,
-        });
+        await updateCustomerNews(
+          token,
+          editing.id,
+          buildUpdateCustomerNewsPayload({
+            content: form.content,
+            sendPush: form.sendPush,
+            attachments,
+          }),
+        );
       } else {
-        await createCustomerNews(token, {
-          content,
-          scope,
-          targetCustomerId: scope === 'personal' ? customerId : null,
-          sendPush: form.sendPush,
-          isPinned: form.pinned,
-          attachments,
-        });
+        await createCustomerNews(
+          token,
+          buildCreateCustomerNewsPayload({
+            content: form.content,
+            scope,
+            targetCustomerId: customerId,
+            sendPush: form.sendPush,
+            isPinned: form.pinned,
+            attachments,
+          }),
+        );
       }
     },
     onSuccess: async () => {
@@ -270,11 +244,13 @@ export function CustomerNewsScreen({
       setNotice(validation);
       return;
     }
-    setPreviewDraft({
-      content: form.content,
-      attachments: draftAttachmentsToPreviewRows(form.attachments),
-      isPinned: form.pinned,
-    });
+    setPreviewDraft(
+      buildPreviewDraftFromForm({
+        content: form.content,
+        attachments: form.attachments,
+        isPinned: form.pinned,
+      }),
+    );
     setPreviewOpen(true);
   }
 
@@ -598,6 +574,13 @@ function NewsDetailModal({
     : [];
   const fileRows = item ? fileDraftsFromDrafts(hydrateDraftAttachmentsFromItem(item)) : [];
   const content = String(item?.content ?? '').trim();
+  const segments = item
+    ? resolveCustomerNewsBodySegments({
+        galleryUrlCount: galleryUrls.length,
+        content,
+        fileCount: fileRows.length,
+      })
+    : [];
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
@@ -614,18 +597,28 @@ function NewsDetailModal({
                   {item.isPinned ? <Badge label="고정" tone="warning" /> : null}
                   <Badge label={newsScopeLabel(item.scope, item.targetCustomerName)} tone="info" />
                 </Inline>
-                {galleryUrls.length ? (
-                  <CustomerNewsImageCarousel imageUrls={galleryUrls} contentWidth={contentWidth} />
-                ) : null}
-                {content ? <AppText>{content}</AppText> : null}
-                {fileRows.map((file) => (
-                  <Button
-                    key={file.key}
-                    label={`첨부 열기 · ${file.fileName}`}
-                    variant="secondary"
-                    onPress={() => void Linking.openURL(String(file.url ?? ''))}
-                  />
-                ))}
+                {segments.map((segment) => {
+                  if (segment === 'gallery') {
+                    return (
+                      <CustomerNewsImageCarousel
+                        key="gallery"
+                        imageUrls={galleryUrls}
+                        contentWidth={contentWidth}
+                      />
+                    );
+                  }
+                  if (segment === 'content') {
+                    return <AppText key="content">{content}</AppText>;
+                  }
+                  return fileRows.map((file) => (
+                    <Button
+                      key={file.key}
+                      label={`첨부 열기 · ${file.fileName}`}
+                      variant="secondary"
+                      onPress={() => void Linking.openURL(String(file.url ?? ''))}
+                    />
+                  ));
+                })}
               </Stack>
               <AppText variant="heading">댓글</AppText>
               {comments.isLoading ? <AppText variant="caption">댓글을 불러오는 중…</AppText> : null}

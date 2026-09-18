@@ -1,5 +1,42 @@
-import type { CustomerNewsItem, DraftAttachment, LocalAttachment, NewsAttachment } from './types';
-import { attachmentKind, isFileAttachment, isImageAttachment } from './customerNewsModel';
+import type {
+  CustomerNewsItem,
+  CustomerNewsPreviewDraft,
+  DraftAttachment,
+  LocalAttachment,
+  NewsAttachment,
+} from './types';
+import { isFileAttachment, isImageAttachment } from './customerNewsModel';
+
+export type CustomerNewsBodySegment = 'gallery' | 'content' | 'files';
+export type CustomerNewsCarouselMode = 'none' | 'single' | 'multi';
+
+export function customerNewsCarouselMode(urlCount: number): CustomerNewsCarouselMode {
+  if (urlCount <= 0) {
+    return 'none';
+  }
+  if (urlCount === 1) {
+    return 'single';
+  }
+  return 'multi';
+}
+
+export function resolveCustomerNewsBodySegments(params: {
+  galleryUrlCount: number;
+  content: string;
+  fileCount: number;
+}): CustomerNewsBodySegment[] {
+  const segments: CustomerNewsBodySegment[] = [];
+  if (params.galleryUrlCount > 0) {
+    segments.push('gallery');
+  }
+  if (params.content.trim()) {
+    segments.push('content');
+  }
+  if (params.fileCount > 0) {
+    segments.push('files');
+  }
+  return segments;
+}
 
 export function buildCustomerNewsGalleryUrls(params: {
   heroImageUrl?: string | null;
@@ -153,6 +190,83 @@ export function previewValidationMessage(content: string, drafts: DraftAttachmen
     return null;
   }
   return '미리보기 전에 내용 또는 첨부파일을 추가해 주세요.';
+}
+
+export async function serializeDraftAttachmentsForSubmit(
+  drafts: DraftAttachment[],
+  uploadLocal: (asset: LocalAttachment) => Promise<Omit<NewsAttachment, 'id'>>,
+): Promise<Omit<NewsAttachment, 'id'>[]> {
+  const sorted = [...drafts].sort((a, b) => a.sortOrder - b.sortOrder);
+  const uploaded: Omit<NewsAttachment, 'id'>[] = [];
+  for (const [index, draft] of sorted.entries()) {
+    if (draft.localUri) {
+      const asset: LocalAttachment = {
+        uri: draft.localUri,
+        name: draft.fileName,
+        mimeType: draft.mimeType,
+        size: draft.size,
+        kind: draft.kind,
+      };
+      const row = await uploadLocal(asset);
+      uploaded.push({ ...row, sortOrder: index });
+      continue;
+    }
+    if (!draft.url) {
+      continue;
+    }
+    uploaded.push({
+      kind: draft.kind,
+      url: draft.url,
+      objectKey: draft.objectKey,
+      fileName: draft.fileName,
+      mimeType: draft.mimeType,
+      size: draft.size,
+      sortOrder: index,
+    });
+  }
+  return uploaded;
+}
+
+export function buildCreateCustomerNewsPayload(params: {
+  content: string;
+  scope: 'all' | 'personal';
+  targetCustomerId: number | null;
+  sendPush: boolean;
+  isPinned: boolean;
+  attachments: Omit<NewsAttachment, 'id'>[];
+}) {
+  return {
+    content: params.content.trim(),
+    scope: params.scope,
+    targetCustomerId: params.scope === 'personal' ? params.targetCustomerId : null,
+    sendPush: params.sendPush,
+    isPinned: params.isPinned,
+    attachments: params.attachments,
+  };
+}
+
+export function buildUpdateCustomerNewsPayload(params: {
+  content: string;
+  sendPush: boolean;
+  attachments: Omit<NewsAttachment, 'id'>[];
+}) {
+  return {
+    content: params.content.trim(),
+    sendPush: params.sendPush,
+    attachments: params.attachments,
+  };
+}
+
+export function buildPreviewDraftFromForm(params: {
+  content: string;
+  attachments: DraftAttachment[];
+  isPinned: boolean;
+}): CustomerNewsPreviewDraft {
+  return {
+    content: params.content,
+    attachments: draftAttachmentsToPreviewRows(params.attachments),
+    isPinned: params.isPinned,
+  };
 }
 
 export function listCardPreviewText(item: CustomerNewsItem): string {

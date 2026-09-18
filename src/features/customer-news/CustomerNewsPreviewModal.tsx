@@ -5,13 +5,10 @@ import { AppText, Button, Stack, useAppTheme, type AppTheme } from '../../design
 import { CustomerNewsImageCarousel } from './customerNewsImageCarousel';
 import { buildCustomerNewsGalleryUrls } from './customerNewsContent';
 import { isFileAttachment } from './customerNewsModel';
-import type { NewsAttachment } from './types';
+import { resolveCustomerNewsBodySegments } from './customerNewsContent';
+import type { CustomerNewsPreviewDraft } from './types';
 
-export type CustomerNewsPreviewDraft = {
-  content: string;
-  attachments: NewsAttachment[];
-  isPinned: boolean;
-};
+export type { CustomerNewsPreviewDraft } from './types';
 
 export function CustomerNewsPreviewModal({
   open,
@@ -40,6 +37,11 @@ export function CustomerNewsPreviewModal({
       fileName: row.fileName,
     }));
   const content = draft.content.trim();
+  const segments = resolveCustomerNewsBodySegments({
+    galleryUrlCount: galleryUrls.length,
+    content,
+    fileCount: files.length,
+  });
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
@@ -53,18 +55,28 @@ export function CustomerNewsPreviewModal({
             {draft.isPinned ? (
               <AppText variant="caption" color="warning">상단 고정</AppText>
             ) : null}
-            {galleryUrls.length ? (
-              <CustomerNewsImageCarousel imageUrls={galleryUrls} contentWidth={contentWidth} />
-            ) : null}
-            {content ? <AppText>{content}</AppText> : null}
-            {files.length ? (
-              <Stack gap="sm">
-                <AppText variant="label">첨부 파일</AppText>
-                {files.map((file) => (
-                  <AppText key={file.key} variant="bodyStrong">{file.fileName}</AppText>
-                ))}
-              </Stack>
-            ) : null}
+            {segments.map((segment) => {
+              if (segment === 'gallery') {
+                return (
+                  <CustomerNewsImageCarousel
+                    key="gallery"
+                    imageUrls={galleryUrls}
+                    contentWidth={contentWidth}
+                  />
+                );
+              }
+              if (segment === 'content') {
+                return <AppText key="content">{content}</AppText>;
+              }
+              return (
+                <Stack key="files" gap="sm">
+                  <AppText variant="label">첨부 파일</AppText>
+                  {files.map((file) => (
+                    <AppText key={file.key} variant="bodyStrong">{file.fileName}</AppText>
+                  ))}
+                </Stack>
+              );
+            })}
           </Stack>
         </ScrollView>
       </View>

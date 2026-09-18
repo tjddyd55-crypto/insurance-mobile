@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { AppText, useAppTheme, type AppTheme } from '../../design-system';
+import { customerNewsCarouselMode } from './customerNewsContent';
 
 type Props = {
   imageUrls: string[];
@@ -23,7 +24,8 @@ export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<string>>(null);
 
-  if (urls.length === 0) {
+  const mode = customerNewsCarouselMode(urls.length);
+  if (mode === 'none') {
     return null;
   }
 
@@ -33,7 +35,7 @@ export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
     setIndex(Math.min(Math.max(next, 0), urls.length - 1));
   };
 
-  if (urls.length === 1) {
+  if (mode === 'single') {
     return (
       <Image
         source={{ uri: urls[0] }}
