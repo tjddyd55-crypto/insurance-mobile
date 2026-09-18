@@ -20,4 +20,13 @@ describe('NewsDetailImageViewerModal', () => {
     expect(source).toMatch(/resetTransform/);
     expect(source).toMatch(/\[imageUrl\]/);
   });
+
+  it('clamps pan using contain rendered size and viewport bounds', () => {
+    const source = readSource('NewsDetailImageViewerModal.tsx');
+    expect(source).toMatch(/calculateContainRenderedSize/);
+    expect(source).toMatch(/calculatePanBounds/);
+    expect(source).toMatch(/clampTranslation/);
+    expect(source).toMatch(/Image\.getSize/);
+    expect(source).toMatch(/resizeMode="contain"/);
+  });
 });

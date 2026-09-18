@@ -11,6 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
@@ -20,6 +21,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { ModalCloseButton } from '../../components/ModalCloseButton';
 import { NewsDetailImageViewerModal } from '../../components/NewsDetailImageViewerModal';
+import { NewsDetailPageZoomContent } from '../../components/NewsDetailPageZoomContent';
 import { SearchControlRow } from '../../components/SearchControlRow';
 import {
   AppText,
@@ -347,13 +349,14 @@ function NewsletterDetailModal({
           <AppText variant="heading">소식지 상세</AppText>
           <ModalCloseButton onPress={onClose} />
         </View>
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            styles.detailContent,
-            { paddingBottom: bottomInset + theme.spacing.lg },
-          ]}
-        >
+        <GestureHandlerRootView style={styles.detailGestureRoot}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.content,
+              styles.detailContent,
+              { paddingBottom: bottomInset + theme.spacing.lg },
+            ]}
+          >
           {detail.isError ? (
             <ErrorState
               title="상세를 불러오지 못했습니다"
@@ -369,11 +372,12 @@ function NewsletterDetailModal({
             <LoadingState message="상세를 불러오는 중…" />
           ) : null}
           {detail.data ? (
-            <Stack gap="md" style={styles.detailBody}>
-              <AppText variant="caption">
-                {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
-              </AppText>
-              {detailSegments.map((segment) => {
+            <NewsDetailPageZoomContent resetKey={item?.id ?? null}>
+              <Stack gap="md" style={styles.detailBody}>
+                <AppText variant="caption">
+                  {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
+                </AppText>
+                {detailSegments.map((segment) => {
                 if (segment === 'body') {
                   return (
                     <Stack key="body" gap="md">
@@ -435,10 +439,12 @@ function NewsletterDetailModal({
                     ))}
                   </Stack>
                 );
-              })}
-            </Stack>
+                })}
+              </Stack>
+            </NewsDetailPageZoomContent>
           ) : null}
-        </ScrollView>
+          </ScrollView>
+        </GestureHandlerRootView>
         <NewsDetailImageViewerModal
           visible={Boolean(zoomImageUrl)}
           imageUrl={zoomImageUrl}
@@ -457,6 +463,7 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
 
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
+    detailGestureRoot: { flex: 1 },
     grow: { flex: 1 },
     content: {
       paddingHorizontal: horizontalPadding,

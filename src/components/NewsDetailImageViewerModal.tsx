@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Image, Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -9,15 +9,14 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ModalCloseButton } from './ModalCloseButton';
+import {
+  NEWS_DETAIL_ZOOM_MIN,
+  calculateContainRenderedSize,
+  calculatePanBounds,
+  clampNewsDetailZoomScale,
+  clampTranslation,
+} from './newsDetailZoomMath';
 import { useAppTheme, type AppTheme } from '../design-system';
-
-const MIN_SCALE = 1;
-const MAX_SCALE = 3;
-
-function clampScale(value: number): number {
-  'worklet';
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
-}
 
 type Props = {
   visible: boolean;
@@ -31,64 +30,129 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
   const { width, height } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  const scale = useSharedValue(1);
-  const savedScale = useSharedValue(1);
+  const scale = useSharedValue(NEWS_DETAIL_ZOOM_MIN);
+  const savedScale = useSharedValue(NEWS_DETAIL_ZOOM_MIN);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
+  const renderedWidth = useSharedValue(0);
+  const renderedHeight = useSharedValue(0);
+  const viewportWidth = useSharedValue(0);
+  const viewportHeight = useSharedValue(0);
+
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
 
   const resetTransform = () => {
-    scale.value = 1;
-    savedScale.value = 1;
+    scale.value = NEWS_DETAIL_ZOOM_MIN;
+    savedScale.value = NEWS_DETAIL_ZOOM_MIN;
     translateX.value = 0;
     translateY.value = 0;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
   };
 
+  const uri = String(imageUrl ?? '').trim();
+  const imageLayoutWidth = width;
+  const imageLayoutHeight = height * 0.72;
+
   useEffect(() => {
     if (!visible) {
       resetTransform();
+      setNaturalSize({ width: 0, height: 0 });
     }
   }, [visible]);
 
   useEffect(() => {
     resetTransform();
+    setNaturalSize({ width: 0, height: 0 });
+    if (!uri) {
+      return;
+    }
+    void Image.getSize(
+      uri,
+      (imageWidth, imageHeight) => {
+        setNaturalSize({ width: imageWidth, height: imageHeight });
+      },
+      () => {
+        setNaturalSize({ width: 0, height: 0 });
+      },
+    );
   }, [imageUrl]);
+
+  useEffect(() => {
+    const rendered = calculateContainRenderedSize(
+      imageLayoutWidth,
+      imageLayoutHeight,
+      naturalSize.width,
+      naturalSize.height,
+    );
+    renderedWidth.value = rendered.width;
+    renderedHeight.value = rendered.height;
+    viewportWidth.value = imageLayoutWidth;
+    viewportHeight.value = imageLayoutHeight;
+  }, [imageLayoutWidth, imageLayoutHeight, naturalSize.width, naturalSize.height]);
+
+  const applyClampedTranslation = (nextX: number, nextY: number) => {
+    'worklet';
+    if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
+      translateX.value = 0;
+      translateY.value = 0;
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+      return;
+    }
+
+    const bounds = calculatePanBounds(
+      renderedWidth.value,
+      renderedHeight.value,
+      scale.value,
+      viewportWidth.value,
+      viewportHeight.value,
+    );
+    const clamped = clampTranslation(nextX, nextY, bounds);
+    translateX.value = clamped.x;
+    translateY.value = clamped.y;
+    savedTranslateX.value = clamped.x;
+    savedTranslateY.value = clamped.y;
+  };
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
       'worklet';
-      scale.value = clampScale(savedScale.value * event.scale);
+      scale.value = clampNewsDetailZoomScale(savedScale.value * event.scale);
+      applyClampedTranslation(translateX.value, translateY.value);
     })
     .onEnd(() => {
       'worklet';
       savedScale.value = scale.value;
-      if (scale.value <= MIN_SCALE) {
-        scale.value = withTiming(MIN_SCALE);
-        savedScale.value = MIN_SCALE;
+      if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
+        scale.value = withTiming(NEWS_DETAIL_ZOOM_MIN);
+        savedScale.value = NEWS_DETAIL_ZOOM_MIN;
         translateX.value = withTiming(0);
         translateY.value = withTiming(0);
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
+        return;
       }
+      applyClampedTranslation(translateX.value, translateY.value);
     });
 
   const panGesture = Gesture.Pan()
     .maxPointers(1)
     .onUpdate((event) => {
       'worklet';
-      if (scale.value <= MIN_SCALE) {
+      if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
         return;
       }
-      translateX.value = savedTranslateX.value + event.translationX;
-      translateY.value = savedTranslateY.value + event.translationY;
+      applyClampedTranslation(
+        savedTranslateX.value + event.translationX,
+        savedTranslateY.value + event.translationY,
+      );
     })
     .onEnd(() => {
       'worklet';
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
+      applyClampedTranslation(translateX.value, translateY.value);
     });
 
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
@@ -100,9 +164,6 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
       { scale: scale.value },
     ],
   }));
-
-  const uri = String(imageUrl ?? '').trim();
-  const imageHeight = height * 0.72;
 
   return (
     <Modal
@@ -124,7 +185,11 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
                   source={{ uri }}
                   resizeMode="contain"
                   accessibilityLabel="확대된 소식지 이미지"
-                  style={[styles.image, { width, height: imageHeight }, imageStyle]}
+                  style={[
+                    styles.image,
+                    { width: imageLayoutWidth, height: imageLayoutHeight },
+                    imageStyle,
+                  ]}
                 />
               ) : null}
             </Animated.View>
