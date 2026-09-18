@@ -24,8 +24,8 @@ import {
   formatCustomerDetailDate,
   formatCustomerDetailValue,
   formatCustomerDriver,
-  formatCustomerSsn,
 } from "./customerDetailPresentation";
+import { CustomerSsnDetailRow } from "./CustomerSsnDetailRow";
 import { formatCustomerMobileCarrierDisplay } from "./customerCarrier";
 import { buildKakaoCustomerCopyText } from "./customerCopyText";
 import { listCustomerCars } from "./customerCarsApi";
@@ -281,7 +281,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                   customer.phone ? formatCustomerPhone(customer.phone) : "",
                 )}
               />
-              <DetailRow label="주민번호" value={formatCustomerSsn(customer.ssn)} />
+              <CustomerSsnDetailRow customerId={customer.id} ssn={customer.ssn} />
               <DetailRow label="상령일" value={formatCustomerDetailDate(customer.nextAgeDate)} />
               <DetailRow
                 label="보험나이"

@@ -5,6 +5,10 @@ import {
   formatCustomerDetailValue,
   formatCustomerDriver,
   formatCustomerSsn,
+  formatCustomerSsnForDisplay,
+  formatCustomerSsnFull,
+  getCustomerSsnVisibilityMeta,
+  hasCustomerSsnDigits,
   getCustomerFollowUpPresentation,
 } from '../customerDetailPresentation';
 import { normalizeCustomer } from '../customerModel';
@@ -28,6 +32,30 @@ describe('customer detail presentation', () => {
   test('masks a normalized resident number', () => {
     expect(formatCustomerSsn('900101-1234567')).toBe('900101-1******');
     expect(formatCustomerSsn('')).toBe(CUSTOMER_DETAIL_EMPTY_VALUE);
+  });
+
+  test('toggles resident number display between masked and full values', () => {
+    const ssn = '900101-1234567';
+    expect(hasCustomerSsnDigits(ssn)).toBe(true);
+    expect(formatCustomerSsnFull(ssn)).toBe('900101-1234567');
+    expect(formatCustomerSsnForDisplay(ssn, false)).toBe('900101-1******');
+    expect(formatCustomerSsnForDisplay(ssn, true)).toBe('900101-1234567');
+    expect(getCustomerSsnVisibilityMeta(ssn, false)).toEqual({
+      canToggle: true,
+      displayValue: '900101-1******',
+      accessibilityLabel: '주민등록번호 보기',
+    });
+    expect(getCustomerSsnVisibilityMeta(ssn, true)).toEqual({
+      canToggle: true,
+      displayValue: '900101-1234567',
+      accessibilityLabel: '주민등록번호 숨기기',
+    });
+  });
+
+  test('hides resident number toggle when value is missing or invalid', () => {
+    expect(hasCustomerSsnDigits('')).toBe(false);
+    expect(getCustomerSsnVisibilityMeta('', false).canToggle).toBe(false);
+    expect(getCustomerSsnVisibilityMeta('900101', false).canToggle).toBe(false);
   });
 
   test('describes body size and driving without hiding partial data', () => {

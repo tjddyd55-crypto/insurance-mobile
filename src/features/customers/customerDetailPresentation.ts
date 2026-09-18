@@ -1,4 +1,5 @@
 import { formatDateForDisplay } from '../../utils/dateInput';
+import { formatKoreanResidentNumber } from '../../utils/inputFormatters';
 import type { CustomerRecord } from './types';
 
 export const CUSTOMER_DETAIL_EMPTY_VALUE = '—';
@@ -22,12 +23,40 @@ export function formatCustomerDetailDate(
   return formatted || CUSTOMER_DETAIL_EMPTY_VALUE;
 }
 
+export function hasCustomerSsnDigits(value: string): boolean {
+  return value.replace(/\D/g, '').length === 13;
+}
+
 export function formatCustomerSsn(value: string): string {
   const digits = value.replace(/\D/g, '');
   if (digits.length !== 13) {
     return formatCustomerDetailValue(value);
   }
   return `${digits.slice(0, 6)}-${digits.slice(6, 7)}******`;
+}
+
+export function formatCustomerSsnFull(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length !== 13) {
+    return formatCustomerDetailValue(value);
+  }
+  return formatKoreanResidentNumber(digits);
+}
+
+export function formatCustomerSsnForDisplay(
+  value: string,
+  visible: boolean,
+): string {
+  return visible ? formatCustomerSsnFull(value) : formatCustomerSsn(value);
+}
+
+export function getCustomerSsnVisibilityMeta(ssn: string, isVisible: boolean) {
+  const canToggle = hasCustomerSsnDigits(ssn);
+  return {
+    canToggle,
+    displayValue: formatCustomerSsnForDisplay(ssn, isVisible),
+    accessibilityLabel: isVisible ? '주민등록번호 숨기기' : '주민등록번호 보기',
+  };
 }
 
 export function formatCustomerBodySize(customer: CustomerRecord): string {

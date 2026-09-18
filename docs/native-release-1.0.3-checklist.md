@@ -7,8 +7,10 @@ Branch: `release/native-v1.0.3`
 
 - [x] Code QA complete (`ONEFC_REMAINING_CODE_QA_COMPLETE`)
 - [ ] Device QA complete (`DEVICE_QA_PENDING`)
-- [ ] Production backend merged/deployed with comments API + schema
+- [ ] Production backend selective merge to `main` (comments-only; do **not** full `develop` merge)
+- [ ] Production backend deployed with comments API + schema
 - [ ] Production DB init (`customer_news_comments`) verified on deploy
+- [ ] Backend security scope tests PASS on `develop` (`nativeReleaseSecurityScope`, `customerNewsComments`)
 - [ ] Android/iOS push config verified on real devices
 - [ ] `npm run release:preflight:release` PASS after version bump to 6
 
@@ -24,9 +26,11 @@ Do **not** bump to 6 until device QA is complete.
 
 ## Deploy order
 
-1. Merge `develop` → production backend branch and deploy backend
-2. Confirm server startup runs `initDb()` (creates `customer_news_comments` if missing)
-3. Smoke test backend APIs used by Native 1.0.3
+1. Tag backup: `backup/main-before-customer-news-comments-YYYYMMDD`
+2. Cherry-pick `62530634` (comments API + DDL) onto `main` — exclude unrelated `develop` commits
+3. Run backend test matrix; push `origin/main`; deploy backend (Railway)
+4. Confirm server startup runs `initDb()` (creates `customer_news_comments` if missing)
+5. Production smoke: health, customer-news list/detail, comments GET/POST, cross-tenant deny
 4. Bump Native `versionCode` / `buildNumber` to 6
 5. Run `npm run release:preflight:release`
 6. Build Android AAB (production profile)
