@@ -34,6 +34,8 @@ export type NewsletterItem = {
   heroImageObjectKey?: string | null;
   publishedAt: string;
   status: 'DRAFT' | 'PUBLISHED';
+  imageCount?: number;
+  fileCount?: number;
   hasImages: boolean;
   hasPdf: boolean;
   hasTextBody: boolean;

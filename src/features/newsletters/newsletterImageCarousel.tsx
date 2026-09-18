@@ -10,19 +10,71 @@ import {
 } from 'react-native';
 
 import { AppText, useAppTheme, type AppTheme } from '../../design-system';
-import { customerNewsCarouselMode } from './customerNewsContent';
+import { customerNewsCarouselMode } from '../customer-news/customerNewsContent';
+
+const MAX_IMAGE_HEIGHT = 480;
 
 type Props = {
   imageUrls: string[];
   contentWidth: number;
+  onImagePress?: (url: string, index: number) => void;
 };
 
-export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
+function NewsletterCarouselImage({
+  url,
+  contentWidth,
+  onPress,
+}: {
+  url: string;
+  contentWidth: number;
+  onPress?: () => void;
+}) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const [height, setHeight] = useState(Math.min(MAX_IMAGE_HEIGHT, contentWidth * 0.75));
+
+  const image = (
+    <Image
+      source={{ uri: url }}
+      style={[styles.image, { width: contentWidth, height }]}
+      resizeMode="contain"
+      accessibilityLabel="소식 이미지"
+      onLoad={(event) => {
+        const source = event.nativeEvent.source;
+        if (!source.width || !source.height) {
+          return;
+        }
+        const nextHeight = Math.min(MAX_IMAGE_HEIGHT, contentWidth * (source.height / source.width));
+        if (Number.isFinite(nextHeight) && nextHeight > 0) {
+          setHeight(nextHeight);
+        }
+      }}
+    />
+  );
+
+  if (!onPress) {
+    return image;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="이미지 확대"
+      onPress={onPress}
+      style={{ width: contentWidth, alignItems: 'center' }}
+    >
+      {image}
+    </Pressable>
+  );
+}
+
+export function NewsletterImageCarousel({ imageUrls, contentWidth, onImagePress }: Props) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const urls = imageUrls.map((url) => String(url ?? '').trim()).filter(Boolean);
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<string>>(null);
+  const width = Math.max(contentWidth, 1);
 
   const mode = customerNewsCarouselMode(urls.length);
   if (mode === 'none') {
@@ -30,18 +82,16 @@ export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
   }
 
   const onScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const width = Math.max(contentWidth, 1);
     const next = Math.round(event.nativeEvent.contentOffset.x / width);
     setIndex(Math.min(Math.max(next, 0), urls.length - 1));
   };
 
   if (mode === 'single') {
     return (
-      <Image
-        source={{ uri: urls[0] }}
-        style={[styles.image, { width: contentWidth }]}
-        resizeMode="contain"
-        accessibilityLabel="소식 이미지"
+      <NewsletterCarouselImage
+        url={urls[0]}
+        contentWidth={width}
+        onPress={onImagePress ? () => onImagePress(urls[0], 0) : undefined}
       />
     );
   }
@@ -59,16 +109,15 @@ export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
         keyExtractor={(url, itemIndex) => `${url}-${itemIndex}`}
         onMomentumScrollEnd={onScrollEnd}
         getItemLayout={(_, itemIndex) => ({
-          length: contentWidth,
-          offset: contentWidth * itemIndex,
+          length: width,
+          offset: width * itemIndex,
           index: itemIndex,
         })}
-        renderItem={({ item }) => (
-          <Image
-            source={{ uri: item }}
-            style={[styles.image, { width: contentWidth }]}
-            resizeMode="contain"
-            accessibilityLabel="소식 이미지"
+        renderItem={({ item, index: itemIndex }) => (
+          <NewsletterCarouselImage
+            url={item}
+            contentWidth={width}
+            onPress={onImagePress ? () => onImagePress(item, itemIndex) : undefined}
           />
         )}
       />
@@ -99,9 +148,6 @@ function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { width: '100%', gap: theme.spacing.sm },
     image: {
-      minHeight: 220,
-      maxHeight: 480,
-      aspectRatio: 9 / 16,
       backgroundColor: theme.colors.surfaceSubtle,
     },
     meta: { gap: theme.spacing.xs },

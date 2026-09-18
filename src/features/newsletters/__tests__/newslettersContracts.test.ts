@@ -22,13 +22,23 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/utils\/formatInsurerNewsDate/);
   });
 
-  it('uses shared close button, image zoom viewer, and safe area in detail modal', () => {
+  it('uses newsletter carousel, zoom viewer, and safe area in detail modal', () => {
     const source = readSource('NewslettersScreen.tsx');
     expect(source).toMatch(/ModalCloseButton/);
     expect(source).toMatch(/NewsDetailImageViewerModal/);
-    expect(source).toMatch(/onImagePress/);
+    expect(source).toMatch(/NewsletterImageCarousel/);
+    expect(source).not.toMatch(/CustomerNewsImageCarousel/);
     expect(source).toMatch(/useSafeAreaInsets/);
     expect(source).toMatch(/useBottomSafeInset/);
-    expect(source).toMatch(/CustomerNewsImageCarousel/);
+    expect(source).toMatch(/attachmentSection/);
+  });
+
+  it('keeps customer-news carousel free of newsletter zoom hooks', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'customer-news', 'customerNewsImageCarousel.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/onImagePress/);
+    expect(source).not.toMatch(/이미지 확대/);
   });
 });

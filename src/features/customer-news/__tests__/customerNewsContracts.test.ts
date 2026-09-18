@@ -37,6 +37,7 @@ describe('customerNewsContracts', () => {
     expect(carouselSource).toMatch(/horizontal/);
     expect(carouselSource).toMatch(/pagingEnabled/);
     expect(carouselSource).toMatch(/1} \/ \{urls\.length\}/);
+    expect(carouselSource).not.toMatch(/onImagePress/);
   });
 
   it('keeps comments failures isolated from detail body rendering', () => {

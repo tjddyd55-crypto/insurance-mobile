@@ -20,7 +20,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { ModalCloseButton } from '../../components/ModalCloseButton';
 import { NewsDetailImageViewerModal } from '../../components/NewsDetailImageViewerModal';
 import { SearchControlRow } from '../../components/SearchControlRow';
-import { CustomerNewsImageCarousel } from '../customer-news/customerNewsImageCarousel';
+import { NewsletterImageCarousel } from './newsletterImageCarousel';
 import {
   AppText,
   Badge,
@@ -338,53 +338,52 @@ function NewsletterDetailModal({
             <LoadingState message="상세를 불러오는 중…" />
           ) : null}
           {detail.data ? (
-            <>
-              <Stack gap="md" style={styles.detailBody}>
-                <Stack gap="xs">
-                  <AppText variant="bodyStrong">{publisher}</AppText>
-                  <AppText variant="caption" color="textSecondary">
-                    {formatInsurerNewsDateTime(detail.data.publishedAt)}
-                  </AppText>
-                </Stack>
-                {galleryUrls.length ? (
-                  <CustomerNewsImageCarousel
-                    imageUrls={galleryUrls}
-                    contentWidth={contentWidth}
-                    onImagePress={(url) => setZoomImageUrl(url)}
-                  />
-                ) : null}
-                {bodyText ? <AppText>{bodyText}</AppText> : null}
-                {detail.data.linkPreview?.url ? (
-                  <Button
-                    label={detail.data.linkPreview.title || '관련 링크 열기'}
-                    variant="secondary"
-                    onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
-                  />
-                ) : null}
-              </Stack>
-              {fileAttachments.length ? <AppText variant="heading">첨부자료</AppText> : null}
-              {fileAttachments.map((file: NewsletterAttachment) => (
-                <View key={file.id} style={styles.detailAttachmentRow}>
-                  <Inline justify="space-between">
-                    <View style={styles.grow}>
-                      <AppText variant="bodyStrong">{file.fileName}</AppText>
-                      <AppText variant="caption">
-                        파일
-                        {file.size ? ` · ${(file.size / 1024 / 1024).toFixed(1)} MB` : ''}
-                      </AppText>
+            <Stack gap="md" style={styles.detailBody}>
+              <AppText variant="caption">
+                {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
+              </AppText>
+              {galleryUrls.length ? (
+                <NewsletterImageCarousel
+                  imageUrls={galleryUrls}
+                  contentWidth={contentWidth}
+                  onImagePress={(url) => setZoomImageUrl(url)}
+                />
+              ) : null}
+              {bodyText ? <AppText>{bodyText}</AppText> : null}
+              {detail.data.linkPreview?.url ? (
+                <Button
+                  label={detail.data.linkPreview.title || '관련 링크 열기'}
+                  variant="secondary"
+                  onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
+                />
+              ) : null}
+              {fileAttachments.length ? (
+                <Stack gap="sm" style={styles.attachmentSection}>
+                  <AppText variant="heading">첨부자료</AppText>
+                  {fileAttachments.map((file: NewsletterAttachment) => (
+                    <View key={file.id} style={styles.detailAttachmentRow}>
+                      <Inline justify="space-between">
+                        <View style={styles.grow}>
+                          <AppText variant="bodyStrong">{file.fileName}</AppText>
+                          <AppText variant="caption">
+                            파일
+                            {file.size ? ` · ${(file.size / 1024 / 1024).toFixed(1)} MB` : ''}
+                          </AppText>
+                        </View>
+                        <Button
+                          label="열기"
+                          size="sm"
+                          variant="secondary"
+                          onPress={() =>
+                            void Linking.openURL(resolveNewsletterAttachmentDisplayUrl(file))
+                          }
+                        />
+                      </Inline>
                     </View>
-                    <Button
-                      label="열기"
-                      size="sm"
-                      variant="secondary"
-                      onPress={() =>
-                        void Linking.openURL(resolveNewsletterAttachmentDisplayUrl(file))
-                      }
-                    />
-                  </Inline>
-                </View>
-              ))}
-            </>
+                  ))}
+                </Stack>
+              ) : null}
+            </Stack>
           ) : null}
         </ScrollView>
         <NewsDetailImageViewerModal
@@ -426,6 +425,10 @@ function makeStyles(theme: AppTheme) {
     },
     detailBody: {
       width: '100%',
+    },
+    attachmentSection: {
+      width: '100%',
+      paddingTop: theme.spacing.sm,
     },
     detailAttachmentRow: {
       width: '100%',

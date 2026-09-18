@@ -17,6 +17,8 @@ function item(partial: Partial<NewsletterItem> & Pick<NewsletterItem, 'id'>): Ne
     heroImageUrl: partial.heroImageUrl ?? null,
     publishedAt: partial.publishedAt ?? '2026-09-18T00:00:00.000Z',
     status: partial.status ?? 'PUBLISHED',
+    imageCount: partial.imageCount,
+    fileCount: partial.fileCount,
     hasImages: partial.hasImages ?? false,
     hasPdf: partial.hasPdf ?? false,
     hasTextBody: partial.hasTextBody ?? false,
@@ -47,7 +49,7 @@ describe('insurerNewsPresentation', () => {
     ).toBe('더도움손해사정 · 홍길동');
   });
 
-  it('renders text preview from summary only', () => {
+  it('renders summary-only preview text', () => {
     expect(
       newsletterListPreviewText(
         item({
@@ -60,18 +62,49 @@ describe('insurerNewsPresentation', () => {
     ).toBe('보험금 청구 심사 관련 변경사항을 안내드립니다.');
   });
 
-  it('hides placeholder summary text', () => {
+  it('does not show title-like summary in list cards', () => {
     expect(
-      newsletterListPreviewText(item({ id: '2', summary: '요약 없음', hasImages: true })),
-    ).toBe('');
+      newsletterListPreviewText(
+        item({
+          id: 'qa-1',
+          title: '[QA] 소식지 이미지 파일 혼합 테스트',
+          summary: '[QA] 소식지 이미지 파일 혼합 테스트',
+          imageCount: 3,
+          hasImages: true,
+        }),
+      ),
+    ).toBe('이미지 3장');
+  });
+
+  it('renders image-only summary', () => {
+    expect(
+      newsletterListPreviewText(item({ id: '2', summary: '요약 없음', imageCount: 3, hasImages: true })),
+    ).toBe('이미지 3장');
+  });
+
+  it('renders file-only summary', () => {
+    expect(
+      newsletterListPreviewText(item({ id: '3', summary: '요약 없음', fileCount: 2, hasPdf: true })),
+    ).toBe('첨부파일 2개');
   });
 
   it('omits title from detail body fallback', () => {
     expect(
       newsletterDetailBodyText({
         bodyText: '',
-        summary: '요약 없음',
+        summary: '[QA] 소식지 카드 테스트 1',
+        title: '[QA] 소식지 카드 테스트 1',
       }),
     ).toBe('');
+  });
+
+  it('keeps real detail body text', () => {
+    expect(
+      newsletterDetailBodyText({
+        bodyText: '실제 본문 내용',
+        summary: '요약 없음',
+        title: '제목',
+      }),
+    ).toBe('실제 본문 내용');
   });
 });
