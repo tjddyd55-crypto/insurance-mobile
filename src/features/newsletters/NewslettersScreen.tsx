@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -296,9 +296,16 @@ function NewsletterDetailModal({
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+  const detailScrollRef = useRef<ScrollView>(null);
+  const detailScrollYRef = useRef(0);
+  const [detailViewportHeight, setDetailViewportHeight] = useState(0);
+  const detailScrollTopPadding = theme.spacing.md;
+  const detailScrollBottomPadding = bottomInset + theme.spacing.lg;
 
   useEffect(() => {
     setZoomImageUrl(null);
+    detailScrollYRef.current = 0;
+    detailScrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [item?.id]);
   const detail = useQuery({
     queryKey: ['newsletter', channel, boardSlug, gaCode, item?.id],
@@ -351,10 +358,16 @@ function NewsletterDetailModal({
         </View>
         <GestureHandlerRootView style={styles.detailGestureRoot}>
           <ScrollView
+            ref={detailScrollRef}
+            scrollEventThrottle={16}
+            onLayout={(event) => setDetailViewportHeight(event.nativeEvent.layout.height)}
+            onScroll={(event) => {
+              detailScrollYRef.current = event.nativeEvent.contentOffset.y;
+            }}
             contentContainerStyle={[
               styles.content,
               styles.detailContent,
-              { paddingBottom: bottomInset + theme.spacing.lg },
+              { paddingBottom: detailScrollBottomPadding },
             ]}
           >
           {detail.isError ? (
@@ -372,7 +385,14 @@ function NewsletterDetailModal({
             <LoadingState message="상세를 불러오는 중…" />
           ) : null}
           {detail.data ? (
-            <NewsDetailPageZoomContent resetKey={item?.id ?? null}>
+            <NewsDetailPageZoomContent
+              resetKey={item?.id ?? null}
+              scrollRef={detailScrollRef}
+              scrollYRef={detailScrollYRef}
+              viewportHeight={detailViewportHeight}
+              topPadding={detailScrollTopPadding}
+              bottomPadding={detailScrollBottomPadding}
+            >
               <Stack gap="md" style={styles.detailBody}>
                 <AppText variant="caption">
                   {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}

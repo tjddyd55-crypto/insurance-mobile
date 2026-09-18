@@ -19,6 +19,48 @@ export function clampNewsDetailZoomScale(scale: number): number {
   return Math.min(NEWS_DETAIL_ZOOM_MAX, Math.max(NEWS_DETAIL_ZOOM_MIN, scale));
 }
 
+export function getScaledContentHeight(baseHeight: number, scale: number): number {
+  'worklet';
+  if (!Number.isFinite(baseHeight) || baseHeight <= 0) {
+    return 0;
+  }
+  return baseHeight * clampNewsDetailZoomScale(scale);
+}
+
+/** Keeps the visual top edge anchored while scaling from the default center origin. */
+export function getPageZoomTopOriginTranslateY(baseHeight: number, scale: number): number {
+  'worklet';
+  if (!Number.isFinite(baseHeight) || baseHeight <= 0 || scale <= NEWS_DETAIL_ZOOM_MIN) {
+    return 0;
+  }
+  return (baseHeight * (clampNewsDetailZoomScale(scale) - NEWS_DETAIL_ZOOM_MIN)) / 2;
+}
+
+export function calculatePageZoomMaxScrollY({
+  scaledContentHeight,
+  viewportHeight,
+  topPadding = 0,
+  bottomPadding = 0,
+}: {
+  scaledContentHeight: number;
+  viewportHeight: number;
+  topPadding?: number;
+  bottomPadding?: number;
+}): number {
+  if (scaledContentHeight <= 0 || viewportHeight <= 0) {
+    return 0;
+  }
+  const totalContentHeight = topPadding + scaledContentHeight + bottomPadding;
+  return Math.max(0, totalContentHeight - viewportHeight);
+}
+
+export function clampPageZoomScrollY(scrollY: number, maxScrollY: number): number {
+  if (!Number.isFinite(scrollY)) {
+    return 0;
+  }
+  return Math.min(Math.max(0, scrollY), Math.max(0, maxScrollY));
+}
+
 /**
  * `resizeMode="contain"` geometry for an image inside a viewport box.
  */

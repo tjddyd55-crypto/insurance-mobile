@@ -14,6 +14,17 @@ describe('newsDetailPageZoom', () => {
     expect(hook).not.toMatch(/Gesture\.Tap/);
     expect(hook).toMatch(/clampNewsDetailZoomScale/);
     expect(hook).toMatch(/\[resetKey\]/);
+    expect(hook).toMatch(/getScaledContentHeight/);
+    expect(hook).toMatch(/getPageZoomTopOriginTranslateY/);
+    expect(hook).toMatch(/calculatePageZoomMaxScrollY/);
+    expect(hook).toMatch(/clampPageZoomScrollY/);
+  });
+
+  it('aligns scroll spacer height with scaled content', () => {
+    const content = readSource('NewsDetailPageZoomContent.tsx');
+    expect(content).toMatch(/spacerStyle/);
+    expect(content).toMatch(/onLayout=\{handleContentLayout\}/);
+    expect(content).toMatch(/setBaseHeight/);
   });
 
   it('wraps body images and attachments in one zoom container', () => {
@@ -27,6 +38,10 @@ describe('newsDetailPageZoom', () => {
     expect(screen).not.toMatch(/detailScrollEnabled/);
     expect(screen).not.toMatch(/inlineZoomActiveUrlsRef/);
     expect(screen).toMatch(/setZoomImageUrl\(url\)/);
+    expect(screen).toMatch(/detailScrollRef/);
+    expect(screen).toMatch(/detailScrollYRef/);
+    expect(screen).toMatch(/viewportHeight=\{detailViewportHeight\}/);
+    expect(screen).toMatch(/bottomPadding=\{detailScrollBottomPadding\}/);
   });
 
   it('keeps header outside zoomable content', () => {
