@@ -23,9 +23,10 @@ export type NewsletterItem = {
   gaCode: string;
   insurerCode: string;
   insurerName: string;
-  publisherName?: string;
   insurerSlug: string;
   boardLabel?: string;
+  authorName?: string;
+  authorOrganizationName?: string;
   authorDisplayName?: string;
   title: string;
   summary: string;
@@ -33,8 +34,6 @@ export type NewsletterItem = {
   heroImageObjectKey?: string | null;
   publishedAt: string;
   status: 'DRAFT' | 'PUBLISHED';
-  imageCount?: number;
-  fileCount?: number;
   hasImages: boolean;
   hasPdf: boolean;
   hasTextBody: boolean;

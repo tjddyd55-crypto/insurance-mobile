@@ -17,6 +17,8 @@ import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
+import { ModalCloseButton } from '../../components/ModalCloseButton';
+import { NewsDetailImageViewerModal } from '../../components/NewsDetailImageViewerModal';
 import { SearchControlRow } from '../../components/SearchControlRow';
 import { CustomerNewsImageCarousel } from '../customer-news/customerNewsImageCarousel';
 import {
@@ -42,12 +44,13 @@ import {
   isNewsletterImageAttachment,
   resolveNewsletterAttachmentDisplayUrl,
 } from './newslettersImageUtils';
-import { formatPublishedAt, sortPublishedNews } from './newslettersModel';
+import { sortPublishedNews } from './newslettersModel';
+import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
 import {
   newsletterDetailBodyText,
   newsletterListPreviewText,
-  resolveNewsletterPublisherName,
-} from './newsletterPresentation';
+  resolveNewsletterAuthorLabel,
+} from './utils/insurerNewsPresentation';
 import type { NewsChannel, NewsletterAttachment, NewsletterDetail, NewsletterItem } from './types';
 
 export type NewslettersScreenProps =
@@ -98,7 +101,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
       return true;
     }
     const haystack = [
-      resolveNewsletterPublisherName(row),
+      resolveNewsletterAuthorLabel(row),
       newsletterListPreviewText(row),
       row.boardLabel ?? '',
     ]
@@ -218,7 +221,7 @@ function NewsletterListCard({
 }) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const publisher = resolveNewsletterPublisherName(item);
+  const publisher = resolveNewsletterAuthorLabel(item);
   const preview = newsletterListPreviewText(item);
 
   return (
@@ -235,12 +238,14 @@ function NewsletterListCard({
               {publisher}
             </AppText>
             <AppText variant="caption" color="textSecondary" style={styles.listDate}>
-              {formatPublishedAt(item.publishedAt)}
+              {formatInsurerNewsDateLabel(item.publishedAt)}
             </AppText>
           </Inline>
-          <AppText variant="body" color="textSecondary" numberOfLines={5}>
-            {preview}
-          </AppText>
+          {preview ? (
+            <AppText variant="body" color="textSecondary" numberOfLines={5}>
+              {preview}
+            </AppText>
+          ) : null}
         </Stack>
       </Card>
     </Pressable>
@@ -268,6 +273,7 @@ function NewsletterDetailModal({
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const contentWidth = windowWidth - theme.spacing.lg * 2;
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const detail = useQuery({
     queryKey: ['newsletter', channel, boardSlug, gaCode, item?.id],
     queryFn: () =>
@@ -297,9 +303,9 @@ function NewsletterDetailModal({
   );
 
   const publisher = detail.data
-    ? resolveNewsletterPublisherName(detail.data)
+    ? resolveNewsletterAuthorLabel(detail.data)
     : item
-      ? resolveNewsletterPublisherName(item)
+      ? resolveNewsletterAuthorLabel(item)
       : '—';
   const bodyText = detail.data ? newsletterDetailBodyText(detail.data) : '';
 
@@ -308,7 +314,7 @@ function NewsletterDetailModal({
       <View style={[styles.modal, { paddingTop: insets.top }]}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">소식지 상세</AppText>
-          <Button label="닫기" size="sm" variant="secondary" onPress={onClose} />
+          <ModalCloseButton onPress={onClose} />
         </View>
         <ScrollView
           contentContainerStyle={[
@@ -334,11 +340,18 @@ function NewsletterDetailModal({
           {detail.data ? (
             <>
               <Stack gap="md" style={styles.detailBody}>
-                <AppText variant="caption">
-                  {publisher} · {formatPublishedAt(detail.data.publishedAt)}
-                </AppText>
+                <Stack gap="xs">
+                  <AppText variant="bodyStrong">{publisher}</AppText>
+                  <AppText variant="caption" color="textSecondary">
+                    {formatInsurerNewsDateTime(detail.data.publishedAt)}
+                  </AppText>
+                </Stack>
                 {galleryUrls.length ? (
-                  <CustomerNewsImageCarousel imageUrls={galleryUrls} contentWidth={contentWidth} />
+                  <CustomerNewsImageCarousel
+                    imageUrls={galleryUrls}
+                    contentWidth={contentWidth}
+                    onImagePress={(url) => setZoomImageUrl(url)}
+                  />
                 ) : null}
                 {bodyText ? <AppText>{bodyText}</AppText> : null}
                 {detail.data.linkPreview?.url ? (
@@ -374,6 +387,11 @@ function NewsletterDetailModal({
             </>
           ) : null}
         </ScrollView>
+        <NewsDetailImageViewerModal
+          visible={Boolean(zoomImageUrl)}
+          imageUrl={zoomImageUrl}
+          onClose={() => setZoomImageUrl(null)}
+        />
       </View>
     </Modal>
   );

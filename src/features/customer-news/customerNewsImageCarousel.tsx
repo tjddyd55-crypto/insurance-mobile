@@ -15,9 +15,10 @@ import { customerNewsCarouselMode } from './customerNewsContent';
 type Props = {
   imageUrls: string[];
   contentWidth: number;
+  onImagePress?: (url: string, index: number) => void;
 };
 
-export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
+export function CustomerNewsImageCarousel({ imageUrls, contentWidth, onImagePress }: Props) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const urls = imageUrls.map((url) => String(url ?? '').trim()).filter(Boolean);
@@ -35,15 +36,33 @@ export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
     setIndex(Math.min(Math.max(next, 0), urls.length - 1));
   };
 
-  if (mode === 'single') {
-    return (
+  const renderImage = (url: string, itemIndex: number) => {
+    const image = (
       <Image
-        source={{ uri: urls[0] }}
+        source={{ uri: url }}
         style={[styles.image, { width: contentWidth }]}
         resizeMode="contain"
         accessibilityLabel="소식 이미지"
       />
     );
+
+    if (!onImagePress) {
+      return image;
+    }
+
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="이미지 확대"
+        onPress={() => onImagePress(url, itemIndex)}
+      >
+        {image}
+      </Pressable>
+    );
+  };
+
+  if (mode === 'single') {
+    return renderImage(urls[0], 0);
   }
 
   return (
@@ -63,14 +82,7 @@ export function CustomerNewsImageCarousel({ imageUrls, contentWidth }: Props) {
           offset: contentWidth * itemIndex,
           index: itemIndex,
         })}
-        renderItem={({ item }) => (
-          <Image
-            source={{ uri: item }}
-            style={[styles.image, { width: contentWidth }]}
-            resizeMode="contain"
-            accessibilityLabel="소식 이미지"
-          />
-        )}
+        renderItem={({ item, index: itemIndex }) => renderImage(item, itemIndex)}
       />
       <View style={styles.meta} accessibilityLiveRegion="polite">
         <AppText variant="caption" align="center">
