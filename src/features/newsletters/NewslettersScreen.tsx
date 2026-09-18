@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Image,
   Linking,
   Modal,
   Pressable,
@@ -11,6 +10,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -18,17 +18,17 @@ import { AppHeader } from '../../components/AppHeader';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { SearchControlRow } from '../../components/SearchControlRow';
+import { CustomerNewsImageCarousel } from '../customer-news/customerNewsImageCarousel';
 import {
   AppText,
   Badge,
   Button,
   Card,
-  Divider,
   Inline,
   Screen,
   Stack,
-  TextField,
   useAppTheme,
+  useBottomSafeInset,
   type AppTheme,
 } from '../../design-system';
 import {
@@ -41,17 +41,18 @@ import {
   buildNewsletterGalleryUrls,
   isNewsletterImageAttachment,
   resolveNewsletterAttachmentDisplayUrl,
-  resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
-import { formatPublishedAt, sortPublishedNews, stripUnsafeMarkup } from './newslettersModel';
+import { formatPublishedAt, sortPublishedNews } from './newslettersModel';
+import {
+  newsletterDetailBodyText,
+  newsletterListPreviewText,
+  resolveNewsletterPublisherName,
+} from './newsletterPresentation';
 import type { NewsChannel, NewsletterAttachment, NewsletterDetail, NewsletterItem } from './types';
 
 export type NewslettersScreenProps =
   | { mode?: 'channel'; channel: NewsChannel; boardSlug?: never; initialNewsletterId?: string }
   | { mode: 'board'; boardSlug: string; channel?: never; initialNewsletterId?: string };
-
-const GRID_COLUMNS = 2;
-const GRID_GAP = 12;
 
 export function NewslettersScreen(props: NewslettersScreenProps) {
   const isBoard = props.mode === 'board';
@@ -59,8 +60,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
   const boardSlug = isBoard ? props.boardSlug.trim() : '';
   const { token, user } = useAuth();
   const theme = useAppTheme();
-  const { width: windowWidth } = useWindowDimensions();
-  const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [insurer, setInsurer] = useState('');
@@ -90,14 +90,22 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
       ? '원수사소식지'
       : '손해사정사 소식지';
 
-  const items = sortPublishedNews(newsletters).filter(
-    (row) =>
-      (!insurer || row.insurerSlug === insurer) &&
-      (!search.trim() ||
-        `${row.title} ${row.summary} ${row.insurerName} ${row.boardLabel ?? ''}`
-          .toLowerCase()
-          .includes(search.trim().toLowerCase())),
-  );
+  const items = sortPublishedNews(newsletters).filter((row) => {
+    if (insurer && row.insurerSlug !== insurer) {
+      return false;
+    }
+    if (!search.trim()) {
+      return true;
+    }
+    const haystack = [
+      resolveNewsletterPublisherName(row),
+      newsletterListPreviewText(row),
+      row.boardLabel ?? '',
+    ]
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(search.trim().toLowerCase());
+  });
 
   const applySearch = useCallback(() => {
     setSearch(searchDraft.trim());
@@ -114,7 +122,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
   const listHeader = (
     <Stack gap="md" style={styles.listHeader}>
       <SearchControlRow
-        placeholder="제목 · 내용 · 게시처 검색"
+        placeholder="내용 · 게시처 검색"
         value={searchDraft}
         onChangeText={setSearchDraft}
         onSubmit={applySearch}
@@ -172,11 +180,8 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
       <Screen padded={false}>
         <FlatList
           data={items}
-          key={GRID_COLUMNS}
-          numColumns={GRID_COLUMNS}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.content}
-          columnWrapperStyle={styles.gridRow}
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={listHeader}
           refreshControl={
@@ -188,7 +193,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
             />
           }
           renderItem={({ item }) => (
-            <NewsletterGridCard item={item} title={title} onPress={() => setSelected(item)} />
+            <NewsletterListCard item={item} onPress={() => setSelected(item)} />
           )}
         />
       </Screen>
@@ -204,44 +209,38 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
   );
 }
 
-function NewsletterGridCard({
+function NewsletterListCard({
   item,
-  title,
   onPress,
 }: {
   item: NewsletterItem;
-  title: string;
   onPress: () => void;
 }) {
   const theme = useAppTheme();
-  const { width: windowWidth } = useWindowDimensions();
-  const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
-  const imageUrl = resolveNewsletterListCardImageUrl(item);
-  const headline = stripUnsafeMarkup(item.summary) || stripUnsafeMarkup(item.title);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const publisher = resolveNewsletterPublisherName(item);
+  const preview = newsletterListPreviewText(item);
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${publisher} 소식지`}
       onPress={onPress}
-      style={styles.gridCard}
       testID={`newsletter-card-${item.id}`}
     >
-      <Card variant="outlined" padding="none" style={styles.gridCardInner}>
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.gridImage} resizeMode="cover" />
-        ) : (
-          <View style={[styles.gridImage, styles.gridImagePlaceholder]}>
-            <AppText variant="caption" color="textSecondary" numberOfLines={4}>
-              {headline}
+      <Card variant="outlined">
+        <Stack gap="sm">
+          <Inline justify="space-between" align="flex-start">
+            <AppText variant="bodyStrong" style={styles.publisherName} numberOfLines={1}>
+              {publisher}
             </AppText>
-          </View>
-        )}
-        <Stack gap="xs" style={styles.gridMeta}>
-          <AppText variant="caption" numberOfLines={1}>
-            {item.insurerName || item.boardLabel || title}
+            <AppText variant="caption" color="textSecondary" style={styles.listDate}>
+              {formatPublishedAt(item.publishedAt)}
+            </AppText>
+          </Inline>
+          <AppText variant="body" color="textSecondary" numberOfLines={5}>
+            {preview}
           </AppText>
-          <AppText variant="bodyStrong" numberOfLines={2}>{headline}</AppText>
-          <AppText variant="caption">{formatPublishedAt(item.publishedAt)}</AppText>
         </Stack>
       </Card>
     </Pressable>
@@ -264,8 +263,11 @@ function NewsletterDetailModal({
   onClose: () => void;
 }) {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomSafeInset();
   const { width: windowWidth } = useWindowDimensions();
-  const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const contentWidth = windowWidth - theme.spacing.lg * 2;
   const detail = useQuery({
     queryKey: ['newsletter', channel, boardSlug, gaCode, item?.id],
     queryFn: () =>
@@ -283,10 +285,6 @@ function NewsletterDetailModal({
       : undefined,
   });
 
-  const headline =
-    String(detail.data?.summary ?? item?.summary ?? detail.data?.title ?? item?.title ?? '').trim() ||
-    '소식지';
-
   const galleryUrls = detail.data
     ? buildNewsletterGalleryUrls({
         heroImageUrl: detail.data.heroImageUrl,
@@ -298,14 +296,27 @@ function NewsletterDetailModal({
     (file) => !isNewsletterImageAttachment(file),
   );
 
+  const publisher = detail.data
+    ? resolveNewsletterPublisherName(detail.data)
+    : item
+      ? resolveNewsletterPublisherName(item)
+      : '—';
+  const bodyText = detail.data ? newsletterDetailBodyText(detail.data) : '';
+
   return (
     <Modal visible={Boolean(item)} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modal}>
+      <View style={[styles.modal, { paddingTop: insets.top }]}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">소식지 상세</AppText>
-          <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
+          <Button label="닫기" size="sm" variant="secondary" onPress={onClose} />
         </View>
-        <ScrollView contentContainerStyle={[styles.content, styles.detailContent]}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            styles.detailContent,
+            { paddingBottom: bottomInset + theme.spacing.lg },
+          ]}
+        >
           {detail.isError ? (
             <ErrorState
               title="상세를 불러오지 못했습니다"
@@ -324,30 +335,12 @@ function NewsletterDetailModal({
             <>
               <Stack gap="md" style={styles.detailBody}>
                 <AppText variant="caption">
-                  {detail.data.insurerName} · {formatPublishedAt(detail.data.publishedAt)}
+                  {publisher} · {formatPublishedAt(detail.data.publishedAt)}
                 </AppText>
-                <AppText variant="title">{headline}</AppText>
-                <Divider />
                 {galleryUrls.length ? (
-                  <Stack gap="sm">
-                    {galleryUrls.map((url) => (
-                      <Pressable
-                        key={url}
-                        accessibilityRole="imagebutton"
-                        onPress={() => void Linking.openURL(url)}
-                      >
-                        <Image
-                          source={{ uri: url }}
-                          style={styles.detailGalleryImage}
-                          resizeMode="contain"
-                        />
-                      </Pressable>
-                    ))}
-                  </Stack>
+                  <CustomerNewsImageCarousel imageUrls={galleryUrls} contentWidth={contentWidth} />
                 ) : null}
-                <AppText>
-                  {stripUnsafeMarkup(detail.data.bodyText || detail.data.summary)}
-                </AppText>
+                {bodyText ? <AppText>{bodyText}</AppText> : null}
                 {detail.data.linkPreview?.url ? (
                   <Button
                     label={detail.data.linkPreview.title || '관련 링크 열기'}
@@ -386,9 +379,8 @@ function NewsletterDetailModal({
   );
 }
 
-function makeStyles(theme: AppTheme, windowWidth: number) {
+function makeStyles(theme: AppTheme) {
   const horizontalPadding = theme.spacing.lg;
-  const cardWidth = (windowWidth - horizontalPadding * 2 - GRID_GAP) / GRID_COLUMNS;
 
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
@@ -402,48 +394,20 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
       paddingTop: theme.spacing.md,
       marginBottom: theme.spacing.sm,
     },
-    searchRow: {
-      width: '100%',
-    },
-    searchField: {
+    publisherName: {
       flex: 1,
       minWidth: 0,
+      paddingRight: theme.spacing.sm,
+    },
+    listDate: {
+      flexShrink: 0,
     },
     filters: { gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
-    gridRow: {
-      gap: GRID_GAP,
-      marginBottom: GRID_GAP,
-    },
-    gridCard: {
-      width: cardWidth,
-    },
-    gridCardInner: {
-      overflow: 'hidden',
-    },
-    gridImage: {
-      width: '100%',
-      aspectRatio: 3 / 4,
-      backgroundColor: theme.colors.surfaceSubtle,
-    },
-    gridImagePlaceholder: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: theme.spacing.sm,
-    },
-    gridMeta: {
-      padding: theme.spacing.sm,
-    },
     detailContent: {
       paddingTop: theme.spacing.md,
     },
     detailBody: {
       width: '100%',
-    },
-    detailGalleryImage: {
-      width: '100%',
-      minHeight: 220,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.surfaceSubtle,
     },
     detailAttachmentRow: {
       width: '100%',

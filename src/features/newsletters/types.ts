@@ -18,6 +18,26 @@ export type NewsletterAttachment = {
   mimeType?: string;
   size?: number;
 };
-export type NewsletterItem = { id: string; gaCode: string; insurerCode: string; insurerName: string; insurerSlug: string; boardLabel?: string; authorDisplayName?: string; title: string; summary: string; heroImageUrl: string | null; heroImageObjectKey?: string | null; publishedAt: string; status: 'DRAFT' | 'PUBLISHED'; hasImages: boolean; hasPdf: boolean; hasTextBody: boolean };
+export type NewsletterItem = {
+  id: string;
+  gaCode: string;
+  insurerCode: string;
+  insurerName: string;
+  publisherName?: string;
+  insurerSlug: string;
+  boardLabel?: string;
+  authorDisplayName?: string;
+  title: string;
+  summary: string;
+  heroImageUrl: string | null;
+  heroImageObjectKey?: string | null;
+  publishedAt: string;
+  status: 'DRAFT' | 'PUBLISHED';
+  imageCount?: number;
+  fileCount?: number;
+  hasImages: boolean;
+  hasPdf: boolean;
+  hasTextBody: boolean;
+};
 export type NewsletterDetail = NewsletterItem & { bodyText: string; attachments: NewsletterAttachment[]; linkPreview?: { url: string; title?: string | null; description?: string | null; imageUrl?: string | null; siteName?: string | null } | null };
 export type NewsletterFeed = { newsletters: NewsletterItem[]; insurers: InsurerSummary[] };
