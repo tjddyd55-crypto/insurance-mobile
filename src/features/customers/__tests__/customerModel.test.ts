@@ -1,4 +1,5 @@
 import {
+  buildCustomerPhoneSchemeUrl,
   customerMatchesSearch,
   formatCustomerPhone,
   normalizeCustomer,
@@ -62,5 +63,12 @@ describe('customerModel', () => {
   it('formats Korean phone numbers', () => {
     expect(formatCustomerPhone('01012345678')).toBe('010-1234-5678');
     expect(formatCustomerPhone('0101234567')).toBe('010-123-4567');
+  });
+
+  it('builds tel and sms scheme urls from raw phone digits', () => {
+    expect(buildCustomerPhoneSchemeUrl('010-1234-5678', 'tel')).toBe('tel:01012345678');
+    expect(buildCustomerPhoneSchemeUrl('010-1234-5678', 'sms')).toBe('sms:01012345678');
+    expect(buildCustomerPhoneSchemeUrl('', 'tel')).toBeNull();
+    expect(buildCustomerPhoneSchemeUrl('123', 'sms')).toBeNull();
   });
 });

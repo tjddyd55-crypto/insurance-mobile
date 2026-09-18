@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText, useAppTheme, useBottomSafeInset, type AppTheme } from '../../design-system';
+import { CustomerActionIcon, openPhoneUrl } from '../customers/CustomerActionIcon';
+import { buildCustomerPhoneSchemeUrl } from '../customers/customerModel';
 import {
   buildCustomerMapPanelPresentation,
   buildGroupSelectionTitle,
@@ -21,15 +23,15 @@ function CustomerMapInfoPanel({
   onOpenDetail,
   styles,
   theme,
-  detailOnly = false,
 }: {
   customer: CustomerMapItem;
   onOpenDetail: (customerId: number) => void;
   styles: ReturnType<typeof createStyles>;
   theme: AppTheme;
-  detailOnly?: boolean;
 }) {
   const presentation = buildCustomerMapPanelPresentation(customer);
+  const telUrl = buildCustomerPhoneSchemeUrl(customer.phone, 'tel');
+  const smsUrl = buildCustomerPhoneSchemeUrl(customer.phone, 'sms');
   const genderColor =
     presentation.genderTone === 'male'
       ? theme.colors.info
@@ -77,7 +79,23 @@ function CustomerMapInfoPanel({
         <AppText variant="caption" color="textSecondary" style={styles.infoLabel}>
           연락처
         </AppText>
-        <AppText variant="body" style={styles.infoValue}>{presentation.phone}</AppText>
+        <AppText variant="body" style={styles.infoValue} numberOfLines={1}>
+          {presentation.phone}
+        </AppText>
+        <View style={styles.phoneActions}>
+          <CustomerActionIcon
+            kind="sms"
+            disabled={!smsUrl}
+            accessibilityLabel="문자 보내기"
+            onPress={() => openPhoneUrl(smsUrl)}
+          />
+          <CustomerActionIcon
+            kind="tel"
+            disabled={!telUrl}
+            accessibilityLabel="전화 걸기"
+            onPress={() => openPhoneUrl(telUrl)}
+          />
+        </View>
       </View>
       <View style={styles.addressBlock}>
         <AppText variant="caption" color="textSecondary" style={styles.infoLabel}>
@@ -90,20 +108,7 @@ function CustomerMapInfoPanel({
     </>
   );
 
-  if (detailOnly) {
-    return <View style={styles.infoBody}>{content}</View>;
-  }
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="고객 상세 보기"
-      onPress={() => onOpenDetail(customer.id)}
-      style={styles.infoBody}
-    >
-      {content}
-    </Pressable>
-  );
+  return <View style={styles.infoBody}>{content}</View>;
 }
 
 export function CustomerMapSelectionOverlay({
@@ -160,7 +165,6 @@ export function CustomerMapSelectionOverlay({
             onOpenDetail={onOpenDetail}
             styles={styles}
             theme={theme}
-            detailOnly
           />
         </>
       ) : (
@@ -237,8 +241,14 @@ function createStyles(theme: AppTheme, bottomInset: number) {
     },
     infoRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       gap: theme.spacing.md,
+    },
+    phoneActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexShrink: 0,
+      marginRight: -theme.spacing.xxs,
     },
     infoLabel: {
       width: 72,

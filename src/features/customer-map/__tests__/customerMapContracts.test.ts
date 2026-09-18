@@ -32,6 +32,28 @@ describe('customerMapContracts', () => {
     expect(presentationSource).toMatch(/formatCustomerGenderParenthetical/);
   });
 
+  it('does not navigate from panel body taps', () => {
+    const overlaySource = readSource('CustomerMapSelectionOverlay.tsx');
+    const infoPanelSource = overlaySource
+      .split('function CustomerMapInfoPanel')[1]
+      .split('export function CustomerMapSelectionOverlay')[0];
+    expect(infoPanelSource).toContain('return <View style={styles.infoBody}>{content}</View>');
+    expect(infoPanelSource).not.toMatch(
+      /<Pressable[\s\S]*style={styles\.infoBody}[\s\S]*onOpenDetail/,
+    );
+    expect(infoPanelSource).toMatch(/style={styles\.detailAction}/);
+  });
+
+  it('adds sms and tel actions on the contact row', () => {
+    const overlaySource = readSource('CustomerMapSelectionOverlay.tsx');
+    expect(overlaySource).toMatch(/kind="sms"/);
+    expect(overlaySource).toMatch(/kind="tel"/);
+    expect(overlaySource).toMatch(/accessibilityLabel="문자 보내기"/);
+    expect(overlaySource).toMatch(/accessibilityLabel="전화 걸기"/);
+    expect(overlaySource).toMatch(/buildCustomerPhoneSchemeUrl/);
+    expect(overlaySource).toMatch(/openPhoneUrl/);
+  });
+
   it('posts marker_select and map_click bridge messages from web html', () => {
     const htmlSource = readSource('naverMapHtml.ts');
     expect(htmlSource).toMatch(/marker_select/);

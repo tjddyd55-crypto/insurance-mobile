@@ -159,6 +159,14 @@ export function formatCustomerPhone(value: string): string {
   return value;
 }
 
+export function buildCustomerPhoneSchemeUrl(
+  phone: string,
+  scheme: 'tel' | 'sms',
+): string | null {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 8 ? `${scheme}:${digits}` : null;
+}
+
 export function customerGenderLabel(gender: CustomerGender): string {
   return gender === 'male' ? '남' : gender === 'female' ? '여' : '성별 미지정';
 }
