@@ -393,6 +393,7 @@ function NewsletterDetailModal({
                           accessibilityRole="button"
                           accessibilityLabel="이미지 확대"
                           onPress={() => setZoomImageUrl(url)}
+                          style={styles.detailGalleryFrame}
                         >
                           <Image
                             source={{ uri: url }}
@@ -447,6 +448,8 @@ function NewsletterDetailModal({
 function makeStyles(theme: AppTheme, windowWidth: number) {
   const horizontalPadding = theme.spacing.lg;
   const cardWidth = (windowWidth - horizontalPadding * 2 - GRID_GAP) / GRID_COLUMNS;
+  const detailGalleryWidth = windowWidth - horizontalPadding * 2;
+  const detailGalleryHeight = detailGalleryWidth / NEWSLETTER_IMAGE_ASPECT_RATIO;
 
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
@@ -490,11 +493,15 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
     detailBody: {
       width: '100%',
     },
-    detailGalleryImage: {
+    detailGalleryFrame: {
       width: '100%',
-      aspectRatio: NEWSLETTER_IMAGE_ASPECT_RATIO,
+      height: detailGalleryHeight,
       borderRadius: theme.radius.md,
+      overflow: 'hidden',
       backgroundColor: theme.colors.surfaceSubtle,
+    },
+    detailGalleryImage: {
+      ...StyleSheet.absoluteFill,
     },
     attachmentSection: {
       width: '100%',

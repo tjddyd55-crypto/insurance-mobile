@@ -30,6 +30,29 @@ describe('newslettersImageUtils', () => {
     expect(url).toContain('insurer-news/hero.jpg');
   });
 
+  test('dedupes hero and attachment when they reference the same object key', () => {
+    const objectKey = 'crm-platform/dev/insurance/yjasset/shared/insurer-newsletters/test/2026/09/1.png';
+    const urls = buildNewsletterGalleryUrls({
+      heroImageObjectKey: objectKey,
+      heroImageUrl: `https://cdn.example/${objectKey}`,
+      attachments: [
+        {
+          id: '1',
+          kind: 'image',
+          mimeType: 'image/png',
+          fileName: '1.png',
+          url: `https://cdn.example/${objectKey}`,
+          objectKey,
+          openUrl: '/api/insurer-news/id/attachments/1/open?accessToken=abc',
+          sortOrder: 0,
+        },
+      ],
+    });
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).toContain(objectKey);
+    expect(urls[0]).not.toContain('/api/insurer-news/');
+  });
+
   test('builds gallery urls from hero and image attachments in order', () => {
     const urls = buildNewsletterGalleryUrls({
       heroImageUrl: 'https://example.com/hero.jpg',

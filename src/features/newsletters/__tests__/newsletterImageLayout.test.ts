@@ -16,9 +16,10 @@ describe('newsletterImageLayout', () => {
     const screen = readSource('NewslettersScreen.tsx');
     expect(screen).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(screen).toMatch(/newsletterImageFrame/);
-    expect(screen).toMatch(
-      /detailGalleryImage:\s*\{[^}]*aspectRatio:\s*NEWSLETTER_IMAGE_ASPECT_RATIO/,
-    );
+    expect(screen).toMatch(/detailGalleryHeight = detailGalleryWidth \/ NEWSLETTER_IMAGE_ASPECT_RATIO/);
+    expect(screen).toMatch(/style=\{styles\.detailGalleryFrame\}/);
+    expect(screen).toMatch(/detailGalleryFrame:\s*\{[^}]*height:\s*detailGalleryHeight/);
+    expect(screen).toMatch(/detailGalleryImage:\s*\{[^}]*absoluteFill/);
     expect(screen).not.toMatch(/detailGalleryImage:\s*\{[^}]*minHeight/);
   });
 

@@ -56,6 +56,17 @@ export function resolveNewsletterAttachmentDisplayUrl(
   return resolveNewsletterImageUrl(pickAttachmentUrl(row));
 }
 
+/** 상세 gallery 표시용 — openUrl 대신 CDN/objectKey를 우선해 list 썸네일과 동일 URL을 쓴다. */
+export function resolveNewsletterGalleryAttachmentUrl(
+  row: Pick<NewsletterAttachment, 'url' | 'objectKey'>,
+): string {
+  const objectKey = String(row.objectKey ?? '').trim();
+  if (objectKey) {
+    return resolveNewsletterImageUrl(objectKey);
+  }
+  return resolveNewsletterImageUrl(row.url);
+}
+
 export function resolveNewsletterListCardImageUrl(item: {
   heroImageObjectKey?: string | null;
   heroImageUrl?: string | null;
@@ -76,7 +87,7 @@ export function buildNewsletterGalleryUrls(params: {
     .filter(isNewsletterImageAttachment)
     .sort((a, b) => a.sortOrder - b.sortOrder);
   const fromAttachments = imageAttachments
-    .map((row) => resolveNewsletterAttachmentDisplayUrl(row))
+    .map((row) => resolveNewsletterGalleryAttachmentUrl(row))
     .filter(Boolean);
 
   const out: string[] = [];
