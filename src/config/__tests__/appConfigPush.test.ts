@@ -11,9 +11,10 @@ describe('appConfigPush', () => {
     expect(identity.development.applicationId).toBe('com.onefc.app.dev');
     expect(identity.production.applicationId).toBe('com.onefc.app');
     expect(appConfig).toMatch(/bundleIdentifier: identity\.applicationId/);
+    expect(appConfig).toMatch(/resolveGoogleServicesFile/);
+    expect(appConfig).toMatch(/resolveGoogleServiceInfoPlist/);
+    expect(appConfig).toMatch(/googleServicesFile: googleServiceInfoPlist/);
     expect(appConfig).toMatch(/android:\s*\{[\s\S]*googleServicesFile/);
-    const iosBlock = appConfig.match(/ios:\s*\{([\s\S]*?)\n    \},/)?.[1] ?? '';
-    expect(iosBlock).not.toMatch(/googleServicesFile/);
   });
 
   it('does not commit production GoogleService-Info plist paths', () => {

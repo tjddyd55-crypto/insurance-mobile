@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
     "test": "jest",
+    "release:preflight": "node scripts/release-preflight.mjs",
+    "release:preflight:release": "node scripts/release-preflight.mjs --release",
+    "release:preflight:full": "node scripts/release-preflight.mjs --full",
     "check": "npm run typecheck && npm run lint && npm test -- --runInBand"
   },
   "dependencies": {

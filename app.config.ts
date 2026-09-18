@@ -17,23 +17,35 @@ function resolveBuildEnvironment(
   return normalize(appVariant) ?? normalize(publicEnvironment) ?? 'development';
 }
 
-function resolveGoogleServicesFile(environment: AppEnvironment): string | undefined {
-  if (environment === 'production') {
-    return process.env.GOOGLE_SERVICES_JSON?.trim() || undefined;
-  }
-
-  // Never commit these files. Local/EAS secret path only.
+function resolveLocalConfigFile(candidates: string[]): string | undefined {
+  // Never commit secret config files. Local/EAS secret path only.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fs = require('fs') as { existsSync: (path: string) => boolean };
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require('path') as { resolve: (...parts: string[]) => string };
-  const candidates = ['./google-services.dev.json', './google-services.json'];
   for (const candidate of candidates) {
     if (fs.existsSync(path.resolve(process.cwd(), candidate))) {
       return candidate;
     }
   }
   return undefined;
+}
+
+function resolveGoogleServicesFile(environment: AppEnvironment): string | undefined {
+  if (environment === 'production') {
+    return process.env.GOOGLE_SERVICES_JSON?.trim() || undefined;
+  }
+  return resolveLocalConfigFile(['./google-services.dev.json', './google-services.json']);
+}
+
+function resolveGoogleServiceInfoPlist(environment: AppEnvironment): string | undefined {
+  if (environment === 'production') {
+    return (
+      process.env.GOOGLE_SERVICES_INFO_PLIST?.trim() ||
+      resolveLocalConfigFile(['./GoogleService-Info.prod.plist', './GoogleService-Info.plist'])
+    );
+  }
+  return resolveLocalConfigFile(['./GoogleService-Info.dev.plist', './GoogleService-Info.plist']);
 }
 
 /**
@@ -50,6 +62,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   );
   const identity = appIdentities[environment];
   const googleServicesFile = resolveGoogleServicesFile(environment);
+  const googleServiceInfoPlist = resolveGoogleServiceInfoPlist(environment);
 
   // Play Store listing com.onefc.app is currently 1.0.2 (versionCode 4).
   // Production updates must continue that sequence; DEV stays on its own low codes.
@@ -71,6 +84,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supportsTablet: false,
       bundleIdentifier: identity.applicationId,
       buildNumber: iosBuildNumber,
+      googleServicesFile: googleServiceInfoPlist,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
