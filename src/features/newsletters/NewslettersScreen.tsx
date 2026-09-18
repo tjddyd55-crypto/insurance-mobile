@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -6,11 +6,11 @@ import {
   Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
 } from 'react-native';
-import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
@@ -45,7 +45,6 @@ import {
   resolveNewsletterAttachmentDisplayUrl,
   resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
-import { NewsletterDetailInlineZoomImage } from './NewsletterDetailInlineZoomImage';
 import { NEWSLETTER_IMAGE_ASPECT_RATIO } from './newsletterImageLayout';
 import { sortPublishedNews } from './newslettersModel';
 import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
@@ -295,21 +294,8 @@ function NewsletterDetailModal({
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
-  const [detailScrollEnabled, setDetailScrollEnabled] = useState(true);
-  const inlineZoomActiveUrlsRef = useRef(new Set<string>());
-
-  const handleInlineZoomActiveChange = useCallback((url: string, active: boolean) => {
-    if (active) {
-      inlineZoomActiveUrlsRef.current.add(url);
-    } else {
-      inlineZoomActiveUrlsRef.current.delete(url);
-    }
-    setDetailScrollEnabled(inlineZoomActiveUrlsRef.current.size === 0);
-  }, []);
 
   useEffect(() => {
-    inlineZoomActiveUrlsRef.current.clear();
-    setDetailScrollEnabled(true);
     setZoomImageUrl(null);
   }, [item?.id]);
   const detail = useQuery({
@@ -356,20 +342,18 @@ function NewsletterDetailModal({
 
   return (
     <Modal visible={Boolean(item)} animationType="slide" onRequestClose={onClose}>
-      <GestureHandlerRootView style={styles.gestureRoot}>
-        <View style={[styles.modal, { paddingTop: insets.top }]}>
-          <View style={styles.modalHeader}>
-            <AppText variant="heading">소식지 상세</AppText>
-            <ModalCloseButton onPress={onClose} />
-          </View>
-          <ScrollView
-            scrollEnabled={detailScrollEnabled}
-            contentContainerStyle={[
-              styles.content,
-              styles.detailContent,
-              { paddingBottom: bottomInset + theme.spacing.lg },
-            ]}
-          >
+      <View style={[styles.modal, { paddingTop: insets.top }]}>
+        <View style={styles.modalHeader}>
+          <AppText variant="heading">소식지 상세</AppText>
+          <ModalCloseButton onPress={onClose} />
+        </View>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            styles.detailContent,
+            { paddingBottom: bottomInset + theme.spacing.lg },
+          ]}
+        >
           {detail.isError ? (
             <ErrorState
               title="상세를 불러오지 못했습니다"
@@ -408,14 +392,19 @@ function NewsletterDetailModal({
                   return (
                     <Stack key="gallery" gap="sm">
                       {galleryUrls.map((url) => (
-                        <NewsletterDetailInlineZoomImage
+                        <Pressable
                           key={url}
-                          imageUrl={url}
-                          frameStyle={styles.detailGalleryFrame}
-                          resetKey={item?.id ?? null}
+                          accessibilityRole="button"
+                          accessibilityLabel="이미지 확대"
                           onPress={() => setZoomImageUrl(url)}
-                          onZoomActiveChange={(active) => handleInlineZoomActiveChange(url, active)}
-                        />
+                          style={styles.detailGalleryFrame}
+                        >
+                          <Image
+                            source={{ uri: url }}
+                            style={styles.detailGalleryImage}
+                            resizeMode="cover"
+                          />
+                        </Pressable>
                       ))}
                     </Stack>
                   );
@@ -449,14 +438,13 @@ function NewsletterDetailModal({
               })}
             </Stack>
           ) : null}
-          </ScrollView>
-          <NewsDetailImageViewerModal
-            visible={Boolean(zoomImageUrl)}
-            imageUrl={zoomImageUrl}
-            onClose={() => setZoomImageUrl(null)}
-          />
-        </View>
-      </GestureHandlerRootView>
+        </ScrollView>
+        <NewsDetailImageViewerModal
+          visible={Boolean(zoomImageUrl)}
+          imageUrl={zoomImageUrl}
+          onClose={() => setZoomImageUrl(null)}
+        />
+      </View>
     </Modal>
   );
 }
@@ -469,7 +457,6 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
 
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    gestureRoot: { flex: 1 },
     grow: { flex: 1 },
     content: {
       paddingHorizontal: horizontalPadding,
@@ -516,6 +503,9 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
       borderRadius: theme.radius.md,
       overflow: 'hidden',
       backgroundColor: theme.colors.surfaceSubtle,
+    },
+    detailGalleryImage: {
+      ...StyleSheet.absoluteFill,
     },
     attachmentSection: {
       width: '100%',

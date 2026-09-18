@@ -1,12 +1,23 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated from 'react-native-reanimated';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ModalCloseButton } from './ModalCloseButton';
-import { useNewsDetailImageZoomGestures } from './useNewsDetailImageZoomGestures';
 import { useAppTheme, type AppTheme } from '../design-system';
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 3;
+
+function clampScale(value: number): number {
+  'worklet';
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+}
 
 type Props = {
   visible: boolean;
@@ -20,11 +31,77 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
   const { width, height } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  const uri = String(imageUrl ?? '').trim();
-  const { composedGesture, animatedStyle } = useNewsDetailImageZoomGestures({
-    resetKey: visible && uri ? uri : null,
-  });
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
 
+  const resetTransform = () => {
+    scale.value = 1;
+    savedScale.value = 1;
+    translateX.value = 0;
+    translateY.value = 0;
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  };
+
+  useEffect(() => {
+    if (!visible) {
+      resetTransform();
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    resetTransform();
+  }, [imageUrl]);
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((event) => {
+      'worklet';
+      scale.value = clampScale(savedScale.value * event.scale);
+    })
+    .onEnd(() => {
+      'worklet';
+      savedScale.value = scale.value;
+      if (scale.value <= MIN_SCALE) {
+        scale.value = withTiming(MIN_SCALE);
+        savedScale.value = MIN_SCALE;
+        translateX.value = withTiming(0);
+        translateY.value = withTiming(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      }
+    });
+
+  const panGesture = Gesture.Pan()
+    .maxPointers(1)
+    .onUpdate((event) => {
+      'worklet';
+      if (scale.value <= MIN_SCALE) {
+        return;
+      }
+      translateX.value = savedTranslateX.value + event.translationX;
+      translateY.value = savedTranslateY.value + event.translationY;
+    })
+    .onEnd(() => {
+      'worklet';
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+
+  const imageStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  const uri = String(imageUrl ?? '').trim();
   const imageHeight = height * 0.72;
 
   return (
@@ -47,7 +124,7 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
                   source={{ uri }}
                   resizeMode="contain"
                   accessibilityLabel="확대된 소식지 이미지"
-                  style={[styles.image, { width, height: imageHeight }, animatedStyle]}
+                  style={[styles.image, { width, height: imageHeight }, imageStyle]}
                 />
               ) : null}
             </Animated.View>

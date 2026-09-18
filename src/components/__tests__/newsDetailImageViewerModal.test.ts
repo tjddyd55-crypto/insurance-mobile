@@ -10,12 +10,14 @@ describe('NewsDetailImageViewerModal', () => {
   it('wraps modal content with GestureHandlerRootView for pinch gestures', () => {
     const source = readSource('NewsDetailImageViewerModal.tsx');
     expect(source).toMatch(/GestureHandlerRootView/);
-    expect(source).toMatch(/GestureDetector/);
-    expect(source).toMatch(/useNewsDetailImageZoomGestures/);
+    expect(source).toMatch(/Gesture\.Pinch/);
+    expect(source).toMatch(/Gesture\.Pan/);
+    expect(source).toMatch(/Gesture\.Simultaneous/);
   });
 
-  it('resets transform when image url changes via shared hook resetKey', () => {
+  it('resets transform when image url changes', () => {
     const source = readSource('NewsDetailImageViewerModal.tsx');
-    expect(source).toMatch(/resetKey: visible && uri \? uri : null/);
+    expect(source).toMatch(/resetTransform/);
+    expect(source).toMatch(/\[imageUrl\]/);
   });
 });
