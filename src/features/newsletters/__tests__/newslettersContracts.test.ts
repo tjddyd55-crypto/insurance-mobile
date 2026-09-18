@@ -25,8 +25,11 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/resolveNewsletterListCardImageUrl/);
   });
 
-  it('uses vertical stacked detail images with zoom viewer and safe area', () => {
+  it('uses text-first stacked detail images with zoom viewer and safe area', () => {
     const source = readSource('NewslettersScreen.tsx');
+    expect(source).toMatch(/newsletterDetailSegmentOrder/);
+    expect(source).toMatch(/segment === 'body'/);
+    expect(source).toMatch(/segment === 'gallery'/);
     expect(source).toMatch(/ModalCloseButton/);
     expect(source).toMatch(/NewsDetailImageViewerModal/);
     expect(source).toMatch(/detailGalleryImage/);

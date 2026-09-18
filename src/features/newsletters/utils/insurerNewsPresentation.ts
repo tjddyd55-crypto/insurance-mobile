@@ -58,6 +58,27 @@ export function newsletterListPreviewText(item: NewsletterItem): string {
   return mediaFallbackPreview(item);
 }
 
+export type NewsletterDetailSegment = 'body' | 'gallery' | 'files';
+
+/** 상세 렌더 순서: 본문 → 이미지 → 첨부파일 (존재하는 section만). */
+export function newsletterDetailSegmentOrder(input: {
+  bodyText?: string | null;
+  galleryUrlCount: number;
+  fileCount: number;
+}): NewsletterDetailSegment[] {
+  const segments: NewsletterDetailSegment[] = [];
+  if (String(input.bodyText ?? '').trim()) {
+    segments.push('body');
+  }
+  if (input.galleryUrlCount > 0) {
+    segments.push('gallery');
+  }
+  if (input.fileCount > 0) {
+    segments.push('files');
+  }
+  return segments;
+}
+
 /** Native 상세 본문 — bodyText 우선, summary는 title 중복 시 미사용. */
 export function newsletterDetailBodyText(item: {
   bodyText?: string | null;

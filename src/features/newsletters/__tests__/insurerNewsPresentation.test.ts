@@ -1,5 +1,6 @@
 import {
   newsletterDetailBodyText,
+  newsletterDetailSegmentOrder,
   newsletterListPreviewText,
   resolveNewsletterAuthorLabel,
 } from '../utils/insurerNewsPresentation';
@@ -106,5 +107,45 @@ describe('insurerNewsPresentation', () => {
         title: '제목',
       }),
     ).toBe('실제 본문 내용');
+  });
+
+  it('orders detail segments as body then gallery then files', () => {
+    expect(
+      newsletterDetailSegmentOrder({
+        bodyText: '본문',
+        galleryUrlCount: 2,
+        fileCount: 1,
+      }),
+    ).toEqual(['body', 'gallery', 'files']);
+  });
+
+  it('renders body-only detail segments', () => {
+    expect(
+      newsletterDetailSegmentOrder({
+        bodyText: '본문',
+        galleryUrlCount: 0,
+        fileCount: 0,
+      }),
+    ).toEqual(['body']);
+  });
+
+  it('renders image-only detail segments', () => {
+    expect(
+      newsletterDetailSegmentOrder({
+        bodyText: '',
+        galleryUrlCount: 3,
+        fileCount: 0,
+      }),
+    ).toEqual(['gallery']);
+  });
+
+  it('renders file-only detail segments', () => {
+    expect(
+      newsletterDetailSegmentOrder({
+        bodyText: '',
+        galleryUrlCount: 0,
+        fileCount: 2,
+      }),
+    ).toEqual(['files']);
   });
 });

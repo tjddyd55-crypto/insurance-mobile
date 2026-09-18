@@ -49,6 +49,7 @@ import { sortPublishedNews } from './newslettersModel';
 import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
 import {
   newsletterDetailBodyText,
+  newsletterDetailSegmentOrder,
   newsletterListPreviewText,
   resolveNewsletterAuthorLabel,
 } from './utils/insurerNewsPresentation';
@@ -322,6 +323,13 @@ function NewsletterDetailModal({
       ? resolveNewsletterAuthorLabel(item)
       : '—';
   const bodyText = detail.data ? newsletterDetailBodyText(detail.data) : '';
+  const detailSegments = detail.data
+    ? newsletterDetailSegmentOrder({
+        bodyText,
+        galleryUrlCount: galleryUrls.length,
+        fileCount: fileAttachments.length,
+      })
+    : [];
 
   return (
     <Modal visible={Boolean(item)} animationType="slide" onRequestClose={onClose}>
@@ -356,58 +364,68 @@ function NewsletterDetailModal({
               <AppText variant="caption">
                 {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
               </AppText>
-              {galleryUrls.length ? (
-                <Stack gap="sm">
-                  {galleryUrls.map((url) => (
-                    <Pressable
-                      key={url}
-                      accessibilityRole="button"
-                      accessibilityLabel="이미지 확대"
-                      onPress={() => setZoomImageUrl(url)}
-                    >
-                      <Image
-                        source={{ uri: url }}
-                        style={styles.detailGalleryImage}
-                        resizeMode="contain"
-                      />
-                    </Pressable>
-                  ))}
-                </Stack>
-              ) : null}
-              {bodyText ? <AppText>{bodyText}</AppText> : null}
-              {detail.data.linkPreview?.url ? (
-                <Button
-                  label={detail.data.linkPreview.title || '관련 링크 열기'}
-                  variant="secondary"
-                  onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
-                />
-              ) : null}
-              {fileAttachments.length ? (
-                <Stack gap="sm" style={styles.attachmentSection}>
-                  <AppText variant="heading">첨부자료</AppText>
-                  {fileAttachments.map((file: NewsletterAttachment) => (
-                    <View key={file.id} style={styles.detailAttachmentRow}>
-                      <Inline justify="space-between">
-                        <View style={styles.grow}>
-                          <AppText variant="bodyStrong">{file.fileName}</AppText>
-                          <AppText variant="caption">
-                            파일
-                            {file.size ? ` · ${(file.size / 1024 / 1024).toFixed(1)} MB` : ''}
-                          </AppText>
-                        </View>
+              {detailSegments.map((segment) => {
+                if (segment === 'body') {
+                  return (
+                    <Stack key="body" gap="md">
+                      <AppText>{bodyText}</AppText>
+                      {detail.data.linkPreview?.url ? (
                         <Button
-                          label="열기"
-                          size="sm"
+                          label={detail.data.linkPreview.title || '관련 링크 열기'}
                           variant="secondary"
-                          onPress={() =>
-                            void Linking.openURL(resolveNewsletterAttachmentDisplayUrl(file))
-                          }
+                          onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
                         />
-                      </Inline>
-                    </View>
-                  ))}
-                </Stack>
-              ) : null}
+                      ) : null}
+                    </Stack>
+                  );
+                }
+                if (segment === 'gallery') {
+                  return (
+                    <Stack key="gallery" gap="sm">
+                      {galleryUrls.map((url) => (
+                        <Pressable
+                          key={url}
+                          accessibilityRole="button"
+                          accessibilityLabel="이미지 확대"
+                          onPress={() => setZoomImageUrl(url)}
+                        >
+                          <Image
+                            source={{ uri: url }}
+                            style={styles.detailGalleryImage}
+                            resizeMode="contain"
+                          />
+                        </Pressable>
+                      ))}
+                    </Stack>
+                  );
+                }
+                return (
+                  <Stack key="files" gap="sm" style={styles.attachmentSection}>
+                    <AppText variant="heading">첨부자료</AppText>
+                    {fileAttachments.map((file: NewsletterAttachment) => (
+                      <View key={file.id} style={styles.detailAttachmentRow}>
+                        <Inline justify="space-between">
+                          <View style={styles.grow}>
+                            <AppText variant="bodyStrong">{file.fileName}</AppText>
+                            <AppText variant="caption">
+                              파일
+                              {file.size ? ` · ${(file.size / 1024 / 1024).toFixed(1)} MB` : ''}
+                            </AppText>
+                          </View>
+                          <Button
+                            label="열기"
+                            size="sm"
+                            variant="secondary"
+                            onPress={() =>
+                              void Linking.openURL(resolveNewsletterAttachmentDisplayUrl(file))
+                            }
+                          />
+                        </Inline>
+                      </View>
+                    ))}
+                  </Stack>
+                );
+              })}
             </Stack>
           ) : null}
         </ScrollView>
