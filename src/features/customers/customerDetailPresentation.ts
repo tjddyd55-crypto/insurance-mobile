@@ -1,6 +1,12 @@
-import { formatDateForDisplay } from '../../utils/dateInput';
+import {
+  addYearsToYmd,
+  coerceStoredDateValue,
+  diffCalendarDaysYmd,
+  formatDateForDisplay,
+  todayInSeoul,
+} from '../../utils/dateInput';
 import { formatKoreanResidentNumber } from '../../utils/inputFormatters';
-import type { CustomerRecord } from './types';
+import type { CustomerGender, CustomerRecord } from './types';
 
 export const CUSTOMER_DETAIL_EMPTY_VALUE = '—';
 
@@ -21,6 +27,80 @@ export function formatCustomerDetailDate(
 ): string {
   const formatted = formatDateForDisplay(value);
   return formatted || CUSTOMER_DETAIL_EMPTY_VALUE;
+}
+
+export type CustomerGenderPresentationTone = 'male' | 'female';
+
+/** 기본정보 이름 옆 `(남)` / `(여)` — gender SSOT(`male`/`female`)만 사용 */
+export function formatCustomerGenderParenthetical(
+  gender: CustomerGender,
+): string | null {
+  if (gender === 'male') {
+    return '(남)';
+  }
+  if (gender === 'female') {
+    return '(여)';
+  }
+  return null;
+}
+
+export function getCustomerGenderPresentationTone(
+  gender: CustomerGender,
+): CustomerGenderPresentationTone | null {
+  if (gender === 'male' || gender === 'female') {
+    return gender;
+  }
+  return null;
+}
+
+/**
+ * API `nextAgeDate` 기준. 이미 지난 상령일이면 동일 월·일의 다음 회차로 롤포워드.
+ * 보험나이/상령일 자체는 재계산하지 않는다.
+ */
+export function resolveInsuranceAgeTargetDate(
+  nextAgeDate: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  const stored = coerceStoredDateValue(nextAgeDate);
+  if (!stored) {
+    return null;
+  }
+  const todayYmd = todayInSeoul(now);
+  let cursor = stored;
+  for (let guard = 0; guard < 120; guard += 1) {
+    const diff = diffCalendarDaysYmd(cursor, todayYmd);
+    if (diff === null) {
+      return null;
+    }
+    if (diff >= 0) {
+      return cursor;
+    }
+    const rolled = addYearsToYmd(cursor, 1);
+    if (!rolled) {
+      return null;
+    }
+    cursor = rolled;
+  }
+  return null;
+}
+
+/** 상령일 D-day 표시 — `D-N` 또는 당일 `오늘` */
+export function getInsuranceAgeDdayLabel(
+  nextAgeDate: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  const targetYmd = resolveInsuranceAgeTargetDate(nextAgeDate, now);
+  if (!targetYmd) {
+    return null;
+  }
+  const diff = diffCalendarDaysYmd(targetYmd, todayInSeoul(now));
+  if (diff === null || diff < 0) {
+    return null;
+  }
+  if (diff === 0) {
+    return '오늘';
+  }
+  return `D-${diff}`;
 }
 
 export function hasCustomerSsnDigits(value: string): boolean {

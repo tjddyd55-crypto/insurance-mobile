@@ -4,6 +4,10 @@ import {
   formatCustomerDetailDate,
   formatCustomerDetailValue,
   formatCustomerDriver,
+  formatCustomerGenderParenthetical,
+  getCustomerGenderPresentationTone,
+  getInsuranceAgeDdayLabel,
+  resolveInsuranceAgeTargetDate,
   formatCustomerSsn,
   formatCustomerSsnForDisplay,
   formatCustomerSsnFull,
@@ -56,6 +60,39 @@ describe('customer detail presentation', () => {
     expect(hasCustomerSsnDigits('')).toBe(false);
     expect(getCustomerSsnVisibilityMeta('', false).canToggle).toBe(false);
     expect(getCustomerSsnVisibilityMeta('900101', false).canToggle).toBe(false);
+  });
+
+  test('formats gender parenthetical labels from stored gender only', () => {
+    expect(formatCustomerGenderParenthetical('male')).toBe('(남)');
+    expect(formatCustomerGenderParenthetical('female')).toBe('(여)');
+    expect(formatCustomerGenderParenthetical(null)).toBeNull();
+    expect(getCustomerGenderPresentationTone('male')).toBe('male');
+    expect(getCustomerGenderPresentationTone(null)).toBeNull();
+  });
+
+  test('computes insurance age d-day labels from nextAgeDate SSOT', () => {
+    const now = new Date('2026-09-18T15:00:00+09:00');
+    expect(getInsuranceAgeDdayLabel('2026-09-23', now)).toBe('D-5');
+    expect(getInsuranceAgeDdayLabel('2026-09-19', now)).toBe('D-1');
+    expect(getInsuranceAgeDdayLabel('2026-09-18', now)).toBe('오늘');
+    expect(getInsuranceAgeDdayLabel('2026-09-18T00:00:00.000Z', now)).toBe('오늘');
+    expect(getInsuranceAgeDdayLabel(null, now)).toBeNull();
+    expect(getInsuranceAgeDdayLabel('', now)).toBeNull();
+    expect(getInsuranceAgeDdayLabel('2026-09-18', now)).not.toBe('D-0');
+    expect(getInsuranceAgeDdayLabel('2026-09-18', now)).not.toBe('D-Day');
+  });
+
+  test('rolls past nextAgeDate forward to the next occurrence', () => {
+    const now = new Date('2026-09-18T09:00:00+09:00');
+    expect(resolveInsuranceAgeTargetDate('2026-03-15', now)).toBe('2027-03-15');
+    expect(getInsuranceAgeDdayLabel('2026-03-15', now)).toBe('D-178');
+    expect(getInsuranceAgeDdayLabel('2026-09-23', now)).toBe('D-5');
+  });
+
+  test('handles year boundary without timezone drift', () => {
+    const now = new Date('2026-12-31T23:30:00+09:00');
+    expect(getInsuranceAgeDdayLabel('2027-01-01', now)).toBe('D-1');
+    expect(getInsuranceAgeDdayLabel('2026-12-31', now)).toBe('오늘');
   });
 
   test('describes body size and driving without hiding partial data', () => {

@@ -56,3 +56,43 @@ export function ymdToDate(value: string): Date | null {
   const [year, month, day] = stored.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
+
+/** Asia/Seoul 기준 오늘 YYYY-MM-DD */
+export function todayInSeoul(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** UTC calendar day 기준 일수 차이 (target - base) */
+export function diffCalendarDaysYmd(targetYmd: string, baseYmd: string): number | null {
+  const target = coerceStoredDateValue(targetYmd);
+  const base = coerceStoredDateValue(baseYmd);
+  if (!target || !base) {
+    return null;
+  }
+  const utcDay = (value: string) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((utcDay(target) - utcDay(base)) / 86_400_000);
+}
+
+export function addYearsToYmd(ymd: string, years: number): string | null {
+  const parsed = ymdToDate(ymd);
+  if (!parsed) {
+    return null;
+  }
+  const next = new Date(
+    parsed.getFullYear() + years,
+    parsed.getMonth(),
+    parsed.getDate(),
+  );
+  return dateToYmd(next);
+}

@@ -21,10 +21,11 @@ import {
 import { formatCustomerPhone } from "./customerModel";
 import {
   formatCustomerBodySize,
-  formatCustomerDetailDate,
   formatCustomerDetailValue,
   formatCustomerDriver,
 } from "./customerDetailPresentation";
+import { CustomerNameDetailRow } from "./CustomerNameDetailRow";
+import { CustomerNextAgeDateDetailRow } from "./CustomerNextAgeDateDetailRow";
 import { CustomerSsnDetailRow } from "./CustomerSsnDetailRow";
 import { formatCustomerMobileCarrierDisplay } from "./customerCarrier";
 import { buildKakaoCustomerCopyText } from "./customerCopyText";
@@ -274,7 +275,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               sectionId="basic"
               defaultExpanded
             >
-              <DetailRow label="이름" value={formatCustomerDetailValue(customer.name)} />
+              <CustomerNameDetailRow name={customer.name} gender={customer.gender} />
               <DetailRow
                 label="연락처"
                 value={formatCustomerDetailValue(
@@ -282,7 +283,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
                 )}
               />
               <CustomerSsnDetailRow customerId={customer.id} ssn={customer.ssn} />
-              <DetailRow label="상령일" value={formatCustomerDetailDate(customer.nextAgeDate)} />
+              <CustomerNextAgeDateDetailRow nextAgeDate={customer.nextAgeDate} />
               <DetailRow
                 label="보험나이"
                 value={
