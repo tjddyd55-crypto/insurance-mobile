@@ -21,7 +21,8 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/numColumns=\{GRID_COLUMNS\}/);
     expect(source).toMatch(/columnWrapperStyle=\{styles\.gridRow\}/);
     expect(source).toMatch(/NewsletterGridCard/);
-    expect(source).toMatch(/aspectRatio: 3 \/ 4/);
+    expect(source).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
+    expect(source).toMatch(/newsletterImageFrame/);
     expect(source).toMatch(/resolveNewsletterListCardImageUrl/);
   });
 

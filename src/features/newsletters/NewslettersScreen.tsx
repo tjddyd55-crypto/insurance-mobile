@@ -45,6 +45,7 @@ import {
   resolveNewsletterAttachmentDisplayUrl,
   resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
+import { NEWSLETTER_IMAGE_ASPECT_RATIO } from './newsletterImageLayout';
 import { sortPublishedNews } from './newslettersModel';
 import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
 import {
@@ -245,9 +246,13 @@ function NewsletterGridCard({
     >
       <Card variant="outlined" padding="none" style={styles.gridCardInner}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.gridImage} resizeMode="cover" />
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.newsletterImageFrame}
+            resizeMode="cover"
+          />
         ) : (
-          <View style={[styles.gridImage, styles.gridImagePlaceholder]}>
+          <View style={[styles.newsletterImageFrame, styles.gridImagePlaceholder]}>
             {placeholderText ? (
               <AppText variant="caption" color="textSecondary" numberOfLines={4}>
                 {placeholderText}
@@ -392,7 +397,7 @@ function NewsletterDetailModal({
                           <Image
                             source={{ uri: url }}
                             style={styles.detailGalleryImage}
-                            resizeMode="contain"
+                            resizeMode="cover"
                           />
                         </Pressable>
                       ))}
@@ -466,9 +471,9 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
     gridCardInner: {
       overflow: 'hidden',
     },
-    gridImage: {
+    newsletterImageFrame: {
       width: '100%',
-      aspectRatio: 3 / 4,
+      aspectRatio: NEWSLETTER_IMAGE_ASPECT_RATIO,
       backgroundColor: theme.colors.surfaceSubtle,
     },
     gridImagePlaceholder: {
@@ -487,7 +492,7 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
     },
     detailGalleryImage: {
       width: '100%',
-      minHeight: 220,
+      aspectRatio: NEWSLETTER_IMAGE_ASPECT_RATIO,
       borderRadius: theme.radius.md,
       backgroundColor: theme.colors.surfaceSubtle,
     },
