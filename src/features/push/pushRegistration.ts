@@ -141,13 +141,31 @@ export function getInstallationId(): string {
   return `onefc-native-${packageId}-${buildId || session || 'dev'}`;
 }
 
-function resolvePushPlatform(): 'ANDROID' | 'IOS' {
-  return Platform.OS === 'ios' ? 'IOS' : 'ANDROID';
+export function resolvePushPlatform(os: typeof Platform.OS): 'ANDROID' | 'IOS' {
+  return os === 'ios' ? 'IOS' : 'ANDROID';
 }
 
-function resolvePushAppPackage(): string {
-  const env = getEnvironmentConfig();
-  return Platform.OS === 'ios' ? env.iosBundleIdentifier : env.androidPackage;
+export function resolvePushAppPackage(
+  os: typeof Platform.OS,
+  env: ReturnType<typeof getEnvironmentConfig>,
+): string {
+  return os === 'ios' ? env.iosBundleIdentifier : env.androidPackage;
+}
+
+export function buildPushDeviceRegistrationBody(params: {
+  deviceToken: string;
+  platform: 'ANDROID' | 'IOS';
+  installationId: string;
+  appPackage: string;
+  appVersion: string;
+}) {
+  return {
+    token: params.deviceToken,
+    platform: params.platform,
+    installationId: params.installationId,
+    appPackage: params.appPackage,
+    appVersion: params.appVersion,
+  };
 }
 
 export async function registerPushDeviceWithServer(params: {
@@ -162,13 +180,15 @@ export async function registerPushDeviceWithServer(params: {
     await apiRequest('/api/push/devices/register', {
       method: 'POST',
       token: authToken,
-      body: JSON.stringify({
-        token: deviceToken,
-        platform: resolvePushPlatform(),
-        installationId: getInstallationId(),
-        appPackage: resolvePushAppPackage(),
-        appVersion: String(Constants.expoConfig?.version ?? ''),
-      }),
+      body: JSON.stringify(
+        buildPushDeviceRegistrationBody({
+          deviceToken,
+          platform: resolvePushPlatform(Platform.OS),
+          installationId: getInstallationId(),
+          appPackage: resolvePushAppPackage(Platform.OS, env),
+          appVersion: String(Constants.expoConfig?.version ?? ''),
+        }),
+      ),
     });
     return true;
   } catch (error) {

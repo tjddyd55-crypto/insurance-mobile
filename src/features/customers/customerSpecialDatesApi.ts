@@ -146,6 +146,25 @@ export async function deleteCustomerSpecialDate(
   );
 }
 
+export function validateCustomerSpecialDateInput(payload: {
+  title: string;
+  dateValue: string;
+}): string | null {
+  if (!payload.title.trim()) {
+    return "라벨을 입력해 주세요.";
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.dateValue.trim())) {
+    return "날짜는 YYYY-MM-DD 형식이어야 합니다.";
+  }
+  return null;
+}
+
+export function filterPersistableSpecialDateFormItems(
+  formItems: CustomerSpecialDateFormItem[],
+): CustomerSpecialDateFormItem[] {
+  return formItems.filter((item) => item.title.trim() || item.dateValue.trim());
+}
+
 export async function saveCustomerSpecialDatesForCustomer(params: {
   token: string | null;
   customerId: number;
@@ -153,9 +172,7 @@ export async function saveCustomerSpecialDatesForCustomer(params: {
 }): Promise<void> {
   const { token, customerId, formItems } = params;
   const current = await listCustomerSpecialDates(token, customerId);
-  const next = formItems.filter(
-    (item) => item.title.trim() || item.dateValue.trim(),
-  );
+  const next = filterPersistableSpecialDateFormItems(formItems);
   const matched = new Set<number>();
 
   for (const item of next) {

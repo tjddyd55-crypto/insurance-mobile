@@ -15,6 +15,7 @@ import {
   deleteCustomerSpecialDate,
   type CustomerSpecialDateRecord,
   updateCustomerSpecialDate,
+  validateCustomerSpecialDateInput,
 } from "../customerSpecialDatesApi";
 import { CollapsibleDetailSection } from "../CollapsibleDetailSection";
 import { CustomerSectionEditModal } from "./CustomerSectionEditModal";
@@ -54,9 +55,9 @@ export function CustomerAlertDatesDetailSection({
         title: label.trim(),
         dateValue: dateValue.trim(),
       };
-      if (!payload.title) throw new Error("라벨을 입력해 주세요.");
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.dateValue)) {
-        throw new Error("날짜는 YYYY-MM-DD 형식이어야 합니다.");
+      const validation = validateCustomerSpecialDateInput(payload);
+      if (validation) {
+        throw new Error(validation);
       }
       if (editMode?.kind === "edit") {
         return updateCustomerSpecialDate(token, customerId, editMode.specialDateId, payload);

@@ -24,7 +24,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { getInsuranceCompanyDirectory } from './insuranceContactsApi';
-import { categoryOf, companyMatches, formatPhone, normalizePhone } from './insuranceContactsModel';
+import { buildTelHref, categoryOf, companyMatches, formatPhone } from './insuranceContactsModel';
 import type { CompanyDirectoryEntry, InsuranceCategory } from './types';
 
 const TABS: { id: InsuranceCategory; label: string }[] = [
@@ -224,8 +224,7 @@ function PhoneRow({
   onCopy: (phone: string) => void;
   styles: ReturnType<typeof createStyles>;
 }) {
-  const callable = normalizePhone(phone);
-  const telHref = callable ? `tel:${callable}` : null;
+  const telHref = buildTelHref(phone);
   return (
     <Inline align="center" style={styles.phoneRow}>
       <View style={styles.label}>

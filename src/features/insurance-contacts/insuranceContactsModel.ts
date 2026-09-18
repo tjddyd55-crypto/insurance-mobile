@@ -26,6 +26,11 @@ export function normalizePhone(value: string): string {
   return value.replace(/[^0-9+]/g, '');
 }
 
+export function buildTelHref(phone: string): string | null {
+  const callable = normalizePhone(phone);
+  return callable ? `tel:${callable}` : null;
+}
+
 export function categoryOf(entry: CompanyDirectoryEntry): InsuranceCategory {
   const raw = entry.category.toUpperCase();
   if (raw === 'NON_LIFE' || raw.includes('손해')) return 'NON_LIFE';

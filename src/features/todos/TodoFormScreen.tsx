@@ -30,11 +30,7 @@ import {
 import { customerMatchesSearch, formatCustomerPhone } from '../customers/customerModel';
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
-import {
-  firstLineTodoTitle,
-  isValidOptionalYmd,
-  suggestTodoDueDate,
-} from './todoModel';
+import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
 import { createTodo, deleteTodo, listTodos, updateTodo } from './todosApi';
 import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
@@ -212,26 +208,11 @@ export function TodoFormScreen({
               }}
               placeholder="할 일을 입력하세요."
             />
-            <Stack gap="xs">
-              <DateField
-                label="마감일"
-                value={form.dueDate}
-                onChange={(dueDate) => setForm((previous) => ({ ...previous, dueDate }))}
-                helperText="본문에 오늘·내일·모레가 있으면 제안으로 마감일을 채울 수 있습니다."
-              />
-              <Button
-                label="제안"
-                size="sm"
-                variant="ghost"
-                style={styles.suggestButton}
-                onPress={() => {
-                  const suggested = suggestTodoDueDate(form.description);
-                  if (suggested && !form.dueDate) {
-                    setForm((previous) => ({ ...previous, dueDate: suggested }));
-                  }
-                }}
-              />
-            </Stack>
+            <DateField
+              label="마감일"
+              value={form.dueDate}
+              onChange={(dueDate) => setForm((previous) => ({ ...previous, dueDate }))}
+            />
           </Stack>
         </Card>
 
@@ -353,6 +334,5 @@ function createStyles(theme: AppTheme) {
     },
     footer: { flexDirection: 'row', gap: theme.spacing.sm, padding: theme.spacing.md },
     grow: { flex: 1 },
-    suggestButton: { alignSelf: 'flex-end', marginTop: -theme.spacing.xs },
   });
 }
