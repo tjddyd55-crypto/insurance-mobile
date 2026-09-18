@@ -17,10 +17,9 @@ describe('newsletterImageLayout', () => {
     expect(screen).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(screen).toMatch(/newsletterImageFrame/);
     expect(screen).toMatch(/detailGalleryHeight = detailGalleryWidth \/ NEWSLETTER_IMAGE_ASPECT_RATIO/);
-    expect(screen).toMatch(/style=\{styles\.detailGalleryFrame\}/);
+    expect(screen).toMatch(/frameStyle=\{styles\.detailGalleryFrame\}/);
     expect(screen).toMatch(/detailGalleryFrame:\s*\{[^}]*height:\s*detailGalleryHeight/);
-    expect(screen).toMatch(/detailGalleryImage:\s*\{[^}]*absoluteFill/);
-    expect(screen).not.toMatch(/detailGalleryImage:\s*\{[^}]*minHeight/);
+    expect(screen).toMatch(/NewsletterDetailInlineZoomImage/);
   });
 
   it('keeps zoom viewer separate from list aspect ratio', () => {
