@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -11,7 +11,6 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
@@ -21,7 +20,6 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { ModalCloseButton } from '../../components/ModalCloseButton';
 import { NewsDetailImageViewerModal } from '../../components/NewsDetailImageViewerModal';
-import { NewsDetailPageZoomContent } from '../../components/NewsDetailPageZoomContent';
 import { SearchControlRow } from '../../components/SearchControlRow';
 import {
   AppText,
@@ -296,16 +294,9 @@ function NewsletterDetailModal({
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
-  const detailScrollRef = useRef<ScrollView>(null);
-  const detailScrollYRef = useRef(0);
-  const [detailViewportHeight, setDetailViewportHeight] = useState(0);
-  const detailScrollTopPadding = theme.spacing.md;
-  const detailScrollBottomPadding = bottomInset + theme.spacing.lg;
 
   useEffect(() => {
     setZoomImageUrl(null);
-    detailScrollYRef.current = 0;
-    detailScrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [item?.id]);
   const detail = useQuery({
     queryKey: ['newsletter', channel, boardSlug, gaCode, item?.id],
@@ -356,20 +347,13 @@ function NewsletterDetailModal({
           <AppText variant="heading">소식지 상세</AppText>
           <ModalCloseButton onPress={onClose} />
         </View>
-        <GestureHandlerRootView style={styles.detailGestureRoot}>
-          <ScrollView
-            ref={detailScrollRef}
-            scrollEventThrottle={16}
-            onLayout={(event) => setDetailViewportHeight(event.nativeEvent.layout.height)}
-            onScroll={(event) => {
-              detailScrollYRef.current = event.nativeEvent.contentOffset.y;
-            }}
-            contentContainerStyle={[
-              styles.content,
-              styles.detailContent,
-              { paddingBottom: detailScrollBottomPadding },
-            ]}
-          >
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            styles.detailContent,
+            { paddingBottom: bottomInset + theme.spacing.lg },
+          ]}
+        >
           {detail.isError ? (
             <ErrorState
               title="상세를 불러오지 못했습니다"
@@ -385,19 +369,11 @@ function NewsletterDetailModal({
             <LoadingState message="상세를 불러오는 중…" />
           ) : null}
           {detail.data ? (
-            <NewsDetailPageZoomContent
-              resetKey={item?.id ?? null}
-              scrollRef={detailScrollRef}
-              scrollYRef={detailScrollYRef}
-              viewportHeight={detailViewportHeight}
-              topPadding={detailScrollTopPadding}
-              bottomPadding={detailScrollBottomPadding}
-            >
-              <Stack gap="md" style={styles.detailBody}>
-                <AppText variant="caption">
-                  {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
-                </AppText>
-                {detailSegments.map((segment) => {
+            <Stack gap="md" style={styles.detailBody}>
+              <AppText variant="caption">
+                {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
+              </AppText>
+              {detailSegments.map((segment) => {
                 if (segment === 'body') {
                   return (
                     <Stack key="body" gap="md">
@@ -459,12 +435,10 @@ function NewsletterDetailModal({
                     ))}
                   </Stack>
                 );
-                })}
-              </Stack>
-            </NewsDetailPageZoomContent>
+              })}
+            </Stack>
           ) : null}
-          </ScrollView>
-        </GestureHandlerRootView>
+        </ScrollView>
         <NewsDetailImageViewerModal
           visible={Boolean(zoomImageUrl)}
           imageUrl={zoomImageUrl}
@@ -483,7 +457,6 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
 
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    detailGestureRoot: { flex: 1 },
     grow: { flex: 1 },
     content: {
       paddingHorizontal: horizontalPadding,

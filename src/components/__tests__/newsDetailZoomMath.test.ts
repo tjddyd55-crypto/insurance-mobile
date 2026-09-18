@@ -4,12 +4,8 @@ const {
   NEWS_DETAIL_ZOOM_MAX,
   clampNewsDetailZoomScale,
   calculateContainRenderedSize,
-  calculatePageZoomMaxScrollY,
   calculatePanBounds,
-  clampPageZoomScrollY,
   clampTranslation,
-  getPageZoomTopOriginTranslateY,
-  getScaledContentHeight,
 } = require('../newsDetailZoomMath');
 
 describe('newsDetailZoomMath', () => {
@@ -65,60 +61,5 @@ describe('newsDetailZoomMath', () => {
     const clamped = clampTranslation(120, 80, { maxX: 0, maxY: 0 });
     expect(clamped.x).toBe(0);
     expect(clamped.y).toBe(0);
-  });
-
-  it('calculates scaled content height from base height and scale', () => {
-    expect(getScaledContentHeight(1000, 1)).toBe(1000);
-    expect(getScaledContentHeight(1000, 2)).toBe(2000);
-    expect(getScaledContentHeight(1000, 3)).toBe(3000);
-  });
-
-  it('anchors page zoom from the top edge', () => {
-    expect(getPageZoomTopOriginTranslateY(1000, 1)).toBe(0);
-    expect(getPageZoomTopOriginTranslateY(1000, 2)).toBe(500);
-    expect(getPageZoomTopOriginTranslateY(1000, 3)).toBe(1000);
-  });
-
-  it('calculates page zoom max scroll for scale 1', () => {
-    const maxScrollY = calculatePageZoomMaxScrollY({
-      scaledContentHeight: 1200,
-      viewportHeight: 700,
-      topPadding: 16,
-      bottomPadding: 24,
-    });
-    expect(maxScrollY).toBe(540);
-  });
-
-  it('calculates larger max scroll when content is zoomed', () => {
-    const maxScrollY = calculatePageZoomMaxScrollY({
-      scaledContentHeight: 2400,
-      viewportHeight: 700,
-      topPadding: 16,
-      bottomPadding: 24,
-    });
-    expect(maxScrollY).toBe(1740);
-  });
-
-  it('clamps page zoom scroll offset to top and bottom', () => {
-    expect(clampPageZoomScrollY(-10, 500)).toBe(0);
-    expect(clampPageZoomScrollY(700, 500)).toBe(500);
-    expect(clampPageZoomScrollY(250, 500)).toBe(250);
-  });
-
-  it('reclamps scroll offset when scale decreases', () => {
-    const maxAtScale2 = calculatePageZoomMaxScrollY({
-      scaledContentHeight: 2000,
-      viewportHeight: 700,
-      topPadding: 0,
-      bottomPadding: 0,
-    });
-    const maxAtScale1 = calculatePageZoomMaxScrollY({
-      scaledContentHeight: 1000,
-      viewportHeight: 700,
-      topPadding: 0,
-      bottomPadding: 0,
-    });
-    expect(clampPageZoomScrollY(1500, maxAtScale2)).toBe(maxAtScale2);
-    expect(clampPageZoomScrollY(1500, maxAtScale1)).toBe(maxAtScale1);
   });
 });
