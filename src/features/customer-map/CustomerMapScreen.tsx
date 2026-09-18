@@ -7,6 +7,7 @@ import { SymbolView } from 'expo-symbols';
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { SearchControlRow } from '../../components/SearchControlRow';
 import {
   AppText,
@@ -155,6 +156,11 @@ export function CustomerMapScreen({
       />
       <Screen padded={false} style={styles.screen}>
         <View style={styles.mapArea}>
+          {query.isLoading && !query.isError ? (
+            <View style={styles.errorOverlay}>
+              <LoadingState compact message="고객 위치를 불러오는 중…" />
+            </View>
+          ) : null}
           {query.isError ? (
             <View style={styles.errorOverlay}>
               <ErrorState

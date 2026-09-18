@@ -103,7 +103,11 @@ export function ClaimDetailModal({
       {loadError ? (
         <ErrorState
           title="청구 상세를 불러오지 못했습니다"
-          message={loadError.message}
+          message={
+            loadError instanceof Error
+              ? loadError.message
+              : '청구 상세를 불러오지 못했습니다.'
+          }
           onRetry={onRetryLoad}
         />
       ) : loading || !detail ? (
@@ -223,7 +227,9 @@ export function ClaimDetailModal({
                   maxLength={255}
                 />
                 {error ? (
-                  <AppText color="danger">{error.message}</AppText>
+                  <AppText color="danger">
+                    {error instanceof Error ? error.message : '상태를 저장하지 못했습니다.'}
+                  </AppText>
                 ) : null}
                 {statusNotice ? (
                   <AppText color="success">{statusNotice}</AppText>

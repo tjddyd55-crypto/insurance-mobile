@@ -297,7 +297,11 @@ export function CustomerFilesScreen({ customerId }: { customerId: number }) {
                 />
               </Inline>
               {upload.error ? (
-                <AppText color="danger">{upload.error.message}</AppText>
+                <AppText color="danger">
+                  {upload.error instanceof Error
+                    ? upload.error.message
+                    : '파일을 업로드하지 못했습니다.'}
+                </AppText>
               ) : null}
               {actionError ? <AppText color="danger">{actionError}</AppText> : null}
               {isError ? (

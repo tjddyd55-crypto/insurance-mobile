@@ -16,6 +16,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import {
   AppText,
   Badge,
@@ -324,11 +325,13 @@ export function CustomerNewsScreen({
           )}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
-            !news.isLoading ? (
+            news.isLoading ? (
+              <LoadingState compact message="소식지를 불러오는 중…" />
+            ) : (
               <Card variant="outlined">
                 <AppText color="textSecondary" align="center">게시된 소식지가 없습니다.</AppText>
               </Card>
-            ) : null
+            )
           }
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -510,7 +513,11 @@ function NewsFormModal({
               ) : (
                 <AppText variant="caption" color="textSecondary">첨부된 파일이 없습니다.</AppText>
               )}
-              {error ? <AppText color="danger">{error.message}</AppText> : null}
+              {error ? (
+                <AppText color="danger">
+                  {error instanceof Error ? error.message : '저장하지 못했습니다. 다시 시도해 주세요.'}
+                </AppText>
+              ) : null}
               <Button
                 label="고객 앱 미리보기"
                 variant="secondary"
