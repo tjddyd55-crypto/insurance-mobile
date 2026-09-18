@@ -23,6 +23,11 @@ import { getCustomerMap } from './customerMapApi';
 import { CustomerMapSelectionOverlay } from './CustomerMapSelectionOverlay';
 import { requestMyLocation } from './customerMapMyLocation';
 import {
+  findCustomerMapSearchFocusGroup,
+  resolveCustomerMapBridgeAction,
+  shouldClearCustomerMapSelection,
+} from './customerMapInteraction';
+import {
   buildCustomerMapMarkerGroups,
   type CustomerMapMarkerGroup,
 } from './customerMapMarkerModel';
@@ -96,11 +101,10 @@ export function CustomerMapScreen({
   }, []);
 
   useEffect(() => {
-    if (!selectedGroupKey) return;
-    const stillExists = markerGroups.some((group) => group.groupKey === selectedGroupKey);
-    if (!stillExists) {
-      clearSelection();
+    if (!shouldClearCustomerMapSelection(selectedGroupKey, markerGroups)) {
+      return;
     }
+    clearSelection();
   }, [clearSelection, markerGroups, selectedGroupKey]);
 
   const applySearch = () => {
@@ -122,27 +126,22 @@ export function CustomerMapScreen({
 
   const handleBridgeMessage = useCallback(
     (message: NaverMapBridgeMessage) => {
-      if (message.type === 'map_click') {
+      const action = resolveCustomerMapBridgeAction(message, markerGroups);
+      if (action.type === 'clear_selection') {
         clearSelection();
         return;
       }
-      if (message.type !== 'marker_select') {
-        return;
+      if (action.type === 'select_group') {
+        selectGroup(action.group, action.customerId);
       }
-      const group = markerGroups.find((item) => item.groupKey === message.groupKey);
-      if (!group) return;
-      selectGroup(group, message.customerId);
     },
     [clearSelection, markerGroups, selectGroup],
   );
 
   useEffect(() => {
-    if (!keyword.trim() || markerGroups.length === 0) return;
-    const exact = markerGroups.find((group) =>
-      group.customers.some((customer) => customer.name.includes(keyword)),
-    );
-    if (exact) {
-      selectGroup(exact, exact.customers[0].id);
+    const focusGroup = findCustomerMapSearchFocusGroup(keyword, markerGroups);
+    if (focusGroup) {
+      selectGroup(focusGroup, focusGroup.customers[0].id);
     }
   }, [keyword, markerGroups, selectGroup]);
 
