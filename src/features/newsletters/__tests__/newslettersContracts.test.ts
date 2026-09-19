@@ -33,6 +33,7 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/segment === 'gallery'/);
     expect(source).toMatch(/ModalCloseButton/);
     expect(source).toMatch(/NewsDetailImageViewerModal/);
+    expect(source).toMatch(/NewsletterDetailImagePressable/);
     expect(source).toMatch(/setZoomImageUrl\(url\)/);
     expect(source).toMatch(/detailGalleryFrame/);
     expect(source).toMatch(/detailGalleryImage/);

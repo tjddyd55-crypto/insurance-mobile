@@ -45,6 +45,7 @@ import {
   resolveNewsletterAttachmentDisplayUrl,
   resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
+import { NewsletterDetailImagePressable } from './NewsletterDetailImagePressable';
 import { NEWSLETTER_IMAGE_ASPECT_RATIO } from './newsletterImageLayout';
 import { sortPublishedNews } from './newslettersModel';
 import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
@@ -392,10 +393,8 @@ function NewsletterDetailModal({
                   return (
                     <Stack key="gallery" gap="sm">
                       {galleryUrls.map((url) => (
-                        <Pressable
+                        <NewsletterDetailImagePressable
                           key={url}
-                          accessibilityRole="button"
-                          accessibilityLabel="이미지 확대"
                           onPress={() => setZoomImageUrl(url)}
                           style={styles.detailGalleryFrame}
                         >
@@ -404,7 +403,7 @@ function NewsletterDetailModal({
                             style={styles.detailGalleryImage}
                             resizeMode="cover"
                           />
-                        </Pressable>
+                        </NewsletterDetailImagePressable>
                       ))}
                     </Stack>
                   );
