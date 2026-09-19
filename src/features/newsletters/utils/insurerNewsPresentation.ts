@@ -79,7 +79,7 @@ export function newsletterDetailSegmentOrder(input: {
   return segments;
 }
 
-/** Native 상세 본문 — bodyText 우선, summary는 title 중복 시 미사용. */
+/** Native 상세 본문 — bodyText 우선, 없으면 summary fallback. */
 export function newsletterDetailBodyText(item: {
   bodyText?: string | null;
   summary?: string | null;
@@ -89,10 +89,5 @@ export function newsletterDetailBodyText(item: {
   if (body) {
     return body;
   }
-  const summary = normalizeInsurerNewsText(stripUnsafeMarkup(String(item.summary ?? '')));
-  const title = stripUnsafeMarkup(String(item.title ?? '')).trim();
-  if (summary && summary !== title) {
-    return summary;
-  }
-  return '';
+  return normalizeInsurerNewsText(stripUnsafeMarkup(String(item.summary ?? '')));
 }

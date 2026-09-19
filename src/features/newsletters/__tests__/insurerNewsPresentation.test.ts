@@ -89,14 +89,24 @@ describe('insurerNewsPresentation', () => {
     ).toBe('첨부파일 2개');
   });
 
-  it('omits title from detail body fallback', () => {
+  it('falls back to summary when bodyText is empty', () => {
+    expect(
+      newsletterDetailBodyText({
+        bodyText: '',
+        summary: '보험금 청구 심사 관련 변경사항을 안내드립니다.',
+        title: '제목은 노출하지 않음',
+      }),
+    ).toBe('보험금 청구 심사 관련 변경사항을 안내드립니다.');
+  });
+
+  it('shows summary even when summary equals title', () => {
     expect(
       newsletterDetailBodyText({
         bodyText: '',
         summary: '[QA] 소식지 카드 테스트 1',
         title: '[QA] 소식지 카드 테스트 1',
       }),
-    ).toBe('');
+    ).toBe('[QA] 소식지 카드 테스트 1');
   });
 
   it('keeps real detail body text', () => {
