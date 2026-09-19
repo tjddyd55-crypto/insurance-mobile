@@ -93,9 +93,19 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
     viewportHeight.value = imageLayoutHeight;
   }, [imageLayoutWidth, imageLayoutHeight, naturalSize.width, naturalSize.height]);
 
-  const applyClampedTranslation = (nextX: number, nextY: number) => {
+  const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
     'worklet';
-    if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
+    const hasValidGeometry =
+      Number.isFinite(renderedWidth.value) &&
+      Number.isFinite(renderedHeight.value) &&
+      Number.isFinite(viewportWidth.value) &&
+      Number.isFinite(viewportHeight.value) &&
+      renderedWidth.value > 0 &&
+      renderedHeight.value > 0 &&
+      viewportWidth.value > 0 &&
+      viewportHeight.value > 0;
+
+    if (scale.value <= NEWS_DETAIL_ZOOM_MIN || !hasValidGeometry) {
       translateX.value = 0;
       translateY.value = 0;
       savedTranslateX.value = 0;
@@ -113,15 +123,17 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
     const clamped = clampTranslation(nextX, nextY, bounds);
     translateX.value = clamped.x;
     translateY.value = clamped.y;
-    savedTranslateX.value = clamped.x;
-    savedTranslateY.value = clamped.y;
+    if (commit) {
+      savedTranslateX.value = clamped.x;
+      savedTranslateY.value = clamped.y;
+    }
   };
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
       'worklet';
       scale.value = clampNewsDetailZoomScale(savedScale.value * event.scale);
-      applyClampedTranslation(translateX.value, translateY.value);
+      applyClampedTranslation(translateX.value, translateY.value, true);
     })
     .onEnd(() => {
       'worklet';
@@ -135,7 +147,7 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
         savedTranslateY.value = 0;
         return;
       }
-      applyClampedTranslation(translateX.value, translateY.value);
+      applyClampedTranslation(translateX.value, translateY.value, true);
     });
 
   const panGesture = Gesture.Pan()
@@ -148,11 +160,12 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
       applyClampedTranslation(
         savedTranslateX.value + event.translationX,
         savedTranslateY.value + event.translationY,
+        false,
       );
     })
     .onEnd(() => {
       'worklet';
-      applyClampedTranslation(translateX.value, translateY.value);
+      applyClampedTranslation(translateX.value, translateY.value, true);
     });
 
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);

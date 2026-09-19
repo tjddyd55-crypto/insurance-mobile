@@ -26,7 +26,18 @@ describe('NewsDetailImageViewerModal', () => {
     expect(source).toMatch(/calculateContainRenderedSize/);
     expect(source).toMatch(/calculatePanBounds/);
     expect(source).toMatch(/clampTranslation/);
+    expect(source).toMatch(/hasValidGeometry/);
     expect(source).toMatch(/Image\.getSize/);
     expect(source).toMatch(/resizeMode="contain"/);
+  });
+
+  it('does not commit the saved pan offset during pan updates', () => {
+    const source = readSource('NewsDetailImageViewerModal.tsx');
+    expect(source).toMatch(
+      /savedTranslateX\.value \+ event\.translationX,[\s\S]*savedTranslateY\.value \+ event\.translationY,[\s\S]*false/,
+    );
+    expect(source).toMatch(
+      /\.onEnd\(\(\) => \{[\s\S]*applyClampedTranslation\(translateX\.value, translateY\.value, true\)/,
+    );
   });
 });

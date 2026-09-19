@@ -44,6 +44,27 @@ describe('newsDetailZoomMath', () => {
     expect(bounds.maxY).toBe(0);
   });
 
+  it.each([
+    [0, 400, 2, 400, 800],
+    [300, 0, 2, 400, 800],
+    [300, 400, Number.NaN, 400, 800],
+    [300, 400, 2, 0, 800],
+    [300, 400, 2, 400, Number.POSITIVE_INFINITY],
+  ])(
+    'returns zero pan bounds for invalid geometry',
+    (renderedWidth, renderedHeight, scale, viewportWidth, viewportHeight) => {
+      expect(
+        calculatePanBounds(
+          renderedWidth,
+          renderedHeight,
+          scale,
+          viewportWidth,
+          viewportHeight,
+        ),
+      ).toEqual({ maxX: 0, maxY: 0 });
+    },
+  );
+
   it('calculates max X and Y pan bounds when zoomed', () => {
     const bounds = calculatePanBounds(300, 400, 2, 400, 800);
     expect(bounds.maxX).toBe(100);
@@ -61,5 +82,14 @@ describe('newsDetailZoomMath', () => {
     const clamped = clampTranslation(120, 80, { maxX: 0, maxY: 0 });
     expect(clamped.x).toBe(0);
     expect(clamped.y).toBe(0);
+  });
+
+  it('normalizes invalid translation and bounds', () => {
+    expect(
+      clampTranslation(Number.NaN, Number.POSITIVE_INFINITY, {
+        maxX: Number.NaN,
+        maxY: -10,
+      }),
+    ).toEqual({ x: 0, y: 0 });
   });
 });
