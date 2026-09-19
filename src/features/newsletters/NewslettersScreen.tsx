@@ -11,6 +11,12 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
@@ -55,6 +61,8 @@ import {
   newsletterListPreviewText,
   resolveNewsletterAuthorLabel,
 } from './utils/insurerNewsPresentation';
+import { useNewsletterDetailPageZoom } from './useNewsletterDetailPageZoom';
+import { NewsletterDetailPageZoomContent } from './NewsletterDetailPageZoomContent';
 import type { NewsChannel, NewsletterAttachment, NewsletterDetail, NewsletterItem } from './types';
 
 export type NewslettersScreenProps =
@@ -294,6 +302,21 @@ function NewsletterDetailModal({
   const bottomInset = useBottomSafeInset();
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
+  const detailContentWidth = windowWidth - theme.spacing.lg * 2;
+  const detailScrollGesture = useMemo(() => Gesture.Native(), []);
+  const {
+    pageGesture: detailPageGesture,
+    scale: detailZoomScale,
+    scrollHandler: detailScrollHandler,
+    scrollRef: detailScrollRef,
+    translateX: detailTranslateX,
+  } = useNewsletterDetailPageZoom({
+    availableWidth: detailContentWidth,
+    contentLeft: theme.spacing.lg,
+    contentTop: theme.spacing.md,
+    resetKey: item?.id ?? null,
+    scrollGesture: detailScrollGesture,
+  });
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -343,107 +366,123 @@ function NewsletterDetailModal({
 
   return (
     <Modal visible={Boolean(item)} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.modal, { paddingTop: insets.top }]}>
-        <View style={styles.modalHeader}>
-          <AppText variant="heading">소식지 상세</AppText>
-          <ModalCloseButton onPress={onClose} />
-        </View>
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            styles.detailContent,
-            { paddingBottom: bottomInset + theme.spacing.lg },
-          ]}
-        >
-          {detail.isError ? (
-            <ErrorState
-              title="상세를 불러오지 못했습니다"
-              message={
-                detail.error instanceof Error
-                  ? detail.error.message
-                  : '잠시 후 다시 시도해 주세요.'
-              }
-              onRetry={() => void detail.refetch()}
-            />
-          ) : null}
-          {detail.isPending && !detail.data ? (
-            <LoadingState message="상세를 불러오는 중…" />
-          ) : null}
-          {detail.data ? (
-            <Stack gap="md" style={styles.detailBody}>
-              <AppText variant="caption">
-                {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
-              </AppText>
-              {detailSegments.map((segment) => {
-                if (segment === 'body') {
-                  return (
-                    <Stack key="body" gap="md">
-                      <AppText>{bodyText}</AppText>
-                      {detail.data.linkPreview?.url ? (
-                        <Button
-                          label={detail.data.linkPreview.title || '관련 링크 열기'}
-                          variant="secondary"
-                          onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
-                        />
-                      ) : null}
-                    </Stack>
-                  );
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <View style={[styles.modal, { paddingTop: insets.top }]}>
+          <View style={styles.modalHeader}>
+            <AppText variant="heading">소식지 상세</AppText>
+            <ModalCloseButton onPress={onClose} />
+          </View>
+          <GestureDetector gesture={detailPageGesture}>
+            <GestureDetector gesture={detailScrollGesture}>
+              <Animated.ScrollView
+                ref={detailScrollRef}
+                onScroll={detailScrollHandler}
+                scrollEventThrottle={16}
+                contentContainerStyle={[
+                  styles.content,
+                  styles.detailContent,
+                  { paddingBottom: bottomInset + theme.spacing.lg },
+                ]}
+              >
+            {detail.isError ? (
+              <ErrorState
+                title="상세를 불러오지 못했습니다"
+                message={
+                  detail.error instanceof Error
+                    ? detail.error.message
+                    : '잠시 후 다시 시도해 주세요.'
                 }
-                if (segment === 'gallery') {
-                  return (
-                    <Stack key="gallery" gap="sm">
-                      {galleryUrls.map((url) => (
-                        <NewsletterDetailImagePressable
-                          key={url}
-                          onPress={() => setZoomImageUrl(url)}
-                          style={styles.detailGalleryFrame}
-                        >
-                          <Image
-                            source={{ uri: url }}
-                            style={styles.detailGalleryImage}
-                            resizeMode="cover"
+                onRetry={() => void detail.refetch()}
+              />
+            ) : null}
+            {detail.isPending && !detail.data ? (
+              <LoadingState message="상세를 불러오는 중…" />
+            ) : null}
+            {detail.data ? (
+              <NewsletterDetailPageZoomContent
+                availableWidth={detailContentWidth}
+                resetKey={item?.id ?? null}
+                scale={detailZoomScale}
+                translateX={detailTranslateX}
+              >
+                <Stack gap="md" style={styles.detailBody}>
+                <AppText variant="caption">
+                  {publisher} · {formatInsurerNewsDateTime(detail.data.publishedAt)}
+                </AppText>
+                {detailSegments.map((segment) => {
+                  if (segment === 'body') {
+                    return (
+                      <Stack key="body" gap="md">
+                        <AppText>{bodyText}</AppText>
+                        {detail.data.linkPreview?.url ? (
+                          <Button
+                            label={detail.data.linkPreview.title || '관련 링크 열기'}
+                            variant="secondary"
+                            onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
                           />
-                        </NewsletterDetailImagePressable>
+                        ) : null}
+                      </Stack>
+                    );
+                  }
+                  if (segment === 'gallery') {
+                    return (
+                      <Stack key="gallery" gap="sm">
+                        {galleryUrls.map((url) => (
+                          <NewsletterDetailImagePressable
+                            key={url}
+                            onPress={() => setZoomImageUrl(url)}
+                            style={styles.detailGalleryFrame}
+                          >
+                            <Image
+                              source={{ uri: url }}
+                              style={styles.detailGalleryImage}
+                              resizeMode="cover"
+                            />
+                          </NewsletterDetailImagePressable>
+                        ))}
+                      </Stack>
+                    );
+                  }
+                  return (
+                    <Stack key="files" gap="sm" style={styles.attachmentSection}>
+                      <AppText variant="heading">첨부자료</AppText>
+                      {fileAttachments.map((file: NewsletterAttachment) => (
+                        <View key={file.id} style={styles.detailAttachmentRow}>
+                          <Inline justify="space-between">
+                            <View style={styles.grow}>
+                              <AppText variant="bodyStrong">{file.fileName}</AppText>
+                              <AppText variant="caption">
+                                파일
+                                {file.size ? ` · ${(file.size / 1024 / 1024).toFixed(1)} MB` : ''}
+                              </AppText>
+                            </View>
+                            <Button
+                              label="열기"
+                              size="sm"
+                              variant="secondary"
+                              onPress={() =>
+                                void Linking.openURL(resolveNewsletterAttachmentDisplayUrl(file))
+                              }
+                            />
+                          </Inline>
+                        </View>
                       ))}
                     </Stack>
                   );
-                }
-                return (
-                  <Stack key="files" gap="sm" style={styles.attachmentSection}>
-                    <AppText variant="heading">첨부자료</AppText>
-                    {fileAttachments.map((file: NewsletterAttachment) => (
-                      <View key={file.id} style={styles.detailAttachmentRow}>
-                        <Inline justify="space-between">
-                          <View style={styles.grow}>
-                            <AppText variant="bodyStrong">{file.fileName}</AppText>
-                            <AppText variant="caption">
-                              파일
-                              {file.size ? ` · ${(file.size / 1024 / 1024).toFixed(1)} MB` : ''}
-                            </AppText>
-                          </View>
-                          <Button
-                            label="열기"
-                            size="sm"
-                            variant="secondary"
-                            onPress={() =>
-                              void Linking.openURL(resolveNewsletterAttachmentDisplayUrl(file))
-                            }
-                          />
-                        </Inline>
-                      </View>
-                    ))}
-                  </Stack>
-                );
-              })}
-            </Stack>
-          ) : null}
-        </ScrollView>
-        <NewsDetailImageViewerModal
-          visible={Boolean(zoomImageUrl)}
-          imageUrl={zoomImageUrl}
-          onClose={() => setZoomImageUrl(null)}
-        />
-      </View>
+                })}
+                </Stack>
+              </NewsletterDetailPageZoomContent>
+            ) : null}
+              </Animated.ScrollView>
+            </GestureDetector>
+          </GestureDetector>
+          <NewsDetailImageViewerModal
+            visible={Boolean(zoomImageUrl)}
+            imageUrl={zoomImageUrl}
+            onClose={() => setZoomImageUrl(null)}
+          />
+        </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -451,11 +490,10 @@ function NewsletterDetailModal({
 function makeStyles(theme: AppTheme, windowWidth: number) {
   const horizontalPadding = theme.spacing.lg;
   const cardWidth = (windowWidth - horizontalPadding * 2 - GRID_GAP) / GRID_COLUMNS;
-  const detailGalleryWidth = windowWidth - horizontalPadding * 2;
-  const detailGalleryHeight = detailGalleryWidth / NEWSLETTER_IMAGE_ASPECT_RATIO;
 
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
+    gestureRoot: { flex: 1 },
     grow: { flex: 1 },
     content: {
       paddingHorizontal: horizontalPadding,
@@ -498,7 +536,7 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
     },
     detailGalleryFrame: {
       width: '100%',
-      height: detailGalleryHeight,
+      aspectRatio: NEWSLETTER_IMAGE_ASPECT_RATIO,
       borderRadius: theme.radius.md,
       overflow: 'hidden',
       backgroundColor: theme.colors.surfaceSubtle,

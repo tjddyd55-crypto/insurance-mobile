@@ -34,6 +34,7 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/ModalCloseButton/);
     expect(source).toMatch(/NewsDetailImageViewerModal/);
     expect(source).toMatch(/NewsletterDetailImagePressable/);
+    expect(source).toMatch(/NewsletterDetailPageZoomContent/);
     expect(source).toMatch(/setZoomImageUrl\(url\)/);
     expect(source).toMatch(/detailGalleryFrame/);
     expect(source).toMatch(/detailGalleryImage/);
@@ -41,8 +42,9 @@ describe('newslettersContracts', () => {
     expect(source).not.toMatch(/NewsDetailPageZoomContent/);
     expect(source).not.toMatch(/detailScrollEnabled/);
     expect(source).not.toMatch(/inlineZoomActiveUrlsRef/);
-    expect(source).not.toMatch(/GestureHandlerRootView/);
+    expect(source).toMatch(/GestureHandlerRootView/);
     expect(source).not.toMatch(/getScaledContentHeight/);
+    expect(source).not.toMatch(/scrollEnabled=/);
     expect(source).not.toMatch(/NewsletterImageCarousel/);
     expect(source).not.toMatch(/CustomerNewsImageCarousel/);
     expect(source).toMatch(/useSafeAreaInsets/);
