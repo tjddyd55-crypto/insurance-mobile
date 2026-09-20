@@ -198,7 +198,9 @@ function checkOtaConfig(appConfigSource, packageJsonSource) {
   );
 
   const projectId = '5e46e0bc-2885-4455-88ce-9ca1623df305';
-  const hasUpdatesUrl = appConfigSource.includes(`https://u.expo.dev/${projectId}`);
+  const hasUpdatesUrl =
+    appConfigSource.includes(`https://u.expo.dev/${projectId}`) ||
+    /url:\s*`https:\/\/u\.expo\.dev\/\$\{projectId\}`/.test(appConfigSource);
   addCheck(
     'ota.updatesUrl',
     hasUpdatesUrl ? 'PASS' : 'BLOCKED',
