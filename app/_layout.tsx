@@ -13,6 +13,7 @@ import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 import { getEnvironmentConfig } from '../src/config/environment';
 import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
+import { checkForAppUpdateOnce } from '../src/services/appUpdates';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -53,6 +54,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    void checkForAppUpdateOnce();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>

@@ -179,6 +179,52 @@ function checkBackendCompatibilityNote() {
   );
 }
 
+function checkOtaConfig(appConfigSource, packageJsonSource) {
+  const packageJson = JSON.parse(packageJsonSource);
+  const hasExpoUpdates =
+    Boolean(packageJson.dependencies?.['expo-updates']) ||
+    Boolean(packageJson.devDependencies?.['expo-updates']);
+  addCheck(
+    'ota.expoUpdatesDependency',
+    hasExpoUpdates ? 'PASS' : 'BLOCKED',
+    hasExpoUpdates ? 'expo-updates dependency present' : 'expo-updates dependency missing',
+  );
+
+  const updatesEnabled = /updates:\s*\{[^}]*enabled:\s*true/.test(appConfigSource);
+  addCheck(
+    'ota.updatesEnabled',
+    updatesEnabled ? 'PASS' : 'BLOCKED',
+    `updates.enabled=${updatesEnabled ? 'true' : 'false'}`,
+  );
+
+  const projectId = '5e46e0bc-2885-4455-88ce-9ca1623df305';
+  const hasUpdatesUrl = appConfigSource.includes(`https://u.expo.dev/${projectId}`);
+  addCheck(
+    'ota.updatesUrl',
+    hasUpdatesUrl ? 'PASS' : 'BLOCKED',
+    hasUpdatesUrl ? `updates.url uses projectId=${projectId}` : 'updates.url missing or wrong projectId',
+  );
+
+  const hasAppVersionPolicy = /runtimeVersion:\s*\{[^}]*policy:\s*'appVersion'/.test(
+    appConfigSource,
+  );
+  addCheck(
+    'ota.runtimePolicy',
+    hasAppVersionPolicy ? 'PASS' : 'BLOCKED',
+    hasAppVersionPolicy ? 'runtimeVersion.policy=appVersion' : 'runtimeVersion policy missing',
+  );
+
+  const easJson = JSON.parse(readText('eas.json'));
+  const hasProductionStaging = Boolean(easJson.build?.['production-staging']);
+  addCheck(
+    'ota.productionStagingProfile',
+    hasProductionStaging ? 'PASS' : 'WARN',
+    hasProductionStaging
+      ? 'production-staging profile present'
+      : 'production-staging profile missing (recommended for PROD OTA validation)',
+  );
+}
+
 function runFullValidation() {
   try {
     execSync('npm run typecheck', { cwd: root, stdio: 'inherit' });
@@ -198,9 +244,11 @@ function main() {
   console.log('ONE FC Native — Release Preflight');
   console.log(`mode=${releaseMode ? 'release' : 'audit'} full=${fullMode}`);
   const appConfigSource = readText('app.config.ts');
+  const packageJsonSource = readText('package.json');
   checkVersion(appConfigSource);
   checkIdentity();
   checkEnvironmentFiles();
+  checkOtaConfig(appConfigSource, packageJsonSource);
   checkGit();
   checkBackendCompatibilityNote();
   if (fullMode) {

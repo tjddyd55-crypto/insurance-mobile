@@ -59,4 +59,12 @@ No direct application dependency can safely resolve these today. Navigation inpu
 
 ## Release boundary
 
-`updates.enabled` remains `false`. Production payment, messaging, DB mutations, OTA publication, and store release are outside automated QA and must remain manually approved release operations.
+`expo-updates` is configured with `updates.enabled: true` (see [`native-ota.md`](./native-ota.md)). Production payment, messaging, DB mutations, **Production channel OTA publication** (`native-production`), and store release remain manually approved release operations.
+
+### OTA verification (before Production channel publish)
+
+- [ ] `expo-updates` included in new Store Build (versionCode/buildNumber bump)
+- [ ] Preview or staging channel: download → cold restart → update applied
+- [ ] Offline launch: no crash, embedded bundle runs
+- [ ] Runtime mismatch update: existing bundle preserved
+- [ ] `eas update:rollback` tested on staging channel

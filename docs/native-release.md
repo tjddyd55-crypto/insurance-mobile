@@ -17,8 +17,9 @@ ONE FC Native v1.0.3 릴리스 운영 가이드. **Production rollout은 별도 
 
 - Slug: `one-fc-native`
 - **Legacy WebView EAS projectId는 M1에서 재사용하지 않음** (OTA 충돌 방지). 신규 프로젝트 ID는 EAS 대시보드에서 발급 후 `eas.json` / `app.config.ts`에 반영.
-- 프로필 예: `device`, `development`, `preview`, `production` (`eas.json`)
-- DEV 채널: `native-development` — PROD 채널: `native-production`
+- 프로필 예: `device`, `development`, `preview`, `production-staging`, `production` (`eas.json`)
+- DEV 채널: `native-development` / preview: `native-preview`
+- PROD staging: `native-production-staging` — PROD: `native-production`
 
 ## Android 서명
 
@@ -57,5 +58,9 @@ eas build --profile production --platform android
 
 ## OTA
 
-- `runtimeVersion`·channel이 WebView 레거시와 격리되어야 함 (`docs/eas-ota-isolation.md`)
-- PROD OTA는 스토어 빌드와 runtime 정책 검토 후에만
+- SSOT: [`docs/native-ota.md`](./native-ota.md)
+- `runtimeVersion`·channel이 WebView 레거시와 격리 (`docs/eas-ota-isolation.md`)
+- `expo-updates` 포함 **새 Store Build** 선행 후 PROD OTA 가능
+- 배포 흐름: staging channel 검증 → 승인 → `native-production` publish (또는 `eas update:republish`)
+- 초기 rollout: `--rollout-percentage 10` 권장
+- Rollback: `eas update:rollback`

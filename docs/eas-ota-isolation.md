@@ -15,14 +15,14 @@
 
 Publishing an OTA update from this Native repo to the same projectId + runtimeVersion `"production"` + channel `main` could deliver a Native bundle to the existing production WebView app.
 
-## M1 decision
+## M1 decision (historical)
 
 1. **Do not embed** legacy `projectId` in Native app config.
 2. **Do not** run `eas init` against the legacy project without explicit approval.
 3. Native `runtimeVersion` uses `appVersion` policy (not the string `"production"`).
-4. Native channels use `native-development` / `native-preview` only.
-5. `updates.enabled: false` in M1 app config.
-6. **Production OTA publish: forbidden** in M1.
+4. Native channels: `native-development`, `native-preview`, `native-production-staging`, `native-production`.
+5. M1 initially had `updates.enabled: false`; OTA is now enabled per [`native-ota.md`](./native-ota.md).
+6. **Production OTA publish** (`native-production`) requires explicit approval after staging verification.
 
 ## Development identity
 

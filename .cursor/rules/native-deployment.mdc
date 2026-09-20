@@ -1,0 +1,32 @@
+---
+description: Native 변경 배포 방식(OTA vs Store Build) 보고 규칙
+globs:
+  - src/**
+  - app/**
+  - app.config.ts
+  - eas.json
+---
+
+# Native 배포 방식 보고
+
+모든 Native 개발 작업 보고·PR 설명·완료 메시지 **마지막 줄**에 반드시 다음 중 하나를 포함한다:
+
+- `배포 방식: OTA 가능`
+- `배포 방식: Store Build 필요 — <이유>`
+
+## 판별 기준 (SSOT: docs/native-ota.md)
+
+**OTA 가능**: JS/TS UI·로직, 번들 assets, presentation layer, API endpoint 코드 상수 변경
+
+**Store Build 필요**:
+
+- 네이티브 모듈 추가/변경 (`expo-updates` 최초 도입 포함)
+- `app.config.ts` plugin·permissions 변경
+- `version` / `versionCode` / `buildNumber` bump
+- `runtimeVersion` 호환성 깨짐
+- iOS Push / Firebase native 설정 변경
+
+## Production OTA
+
+- channel `native-production` publish는 **별도 승인 후만**
+- staging `native-production-staging`에서 검증 선행
