@@ -5,6 +5,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { getVisibleNewsletterBoards } from '../features/newsletters/newslettersApi';
 import { getTeamMembers } from '../features/team/teamApi';
 import { teamQueryKeys } from '../features/team/queryKeys';
+import { billingCheckoutSummaryQueryKey, getCheckoutSummary } from '../features/billing/billingApi';
+import { resolveHasActivePaidAccess } from '../features/entitlements/featureEntitlementGuard';
 import { buildNativeMenuForSession } from './nativeMenuPolicy';
 
 const newsletterBoardsQueryKey = ['newsletters', 'visible-boards'] as const;
@@ -24,12 +26,20 @@ export function useNativeMenu() {
     enabled: Boolean(token && isUser),
     staleTime: 60_000,
   });
+  const billingSummary = useQuery({
+    queryKey: billingCheckoutSummaryQueryKey,
+    queryFn: () => getCheckoutSummary(token),
+    enabled: Boolean(token && isUser),
+    staleTime: 60_000,
+  });
+  const hasActivePaidAccess = resolveHasActivePaidAccess(user, billingSummary.data);
 
   return useMemo(
     () => buildNativeMenuForSession(user, {
       isTeamOwner: Boolean(user && team.data?.ownerId === user.id),
       dynamicNewsletterBoards: boards.data,
+      hasActivePaidAccess,
     }),
-    [boards.data, team.data?.ownerId, user],
+    [boards.data, team.data?.ownerId, user, hasActivePaidAccess],
   );
 }

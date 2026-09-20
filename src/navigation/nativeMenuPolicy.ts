@@ -1,5 +1,11 @@
 import type { AuthUser } from '../api/authApi';
-import { isBillingUiVisibleForUser } from '../features/billing/billingAccessPolicy';
+import {
+  isInsuranceBillingAccessEnforced,
+  isInsuranceBillingEnabled,
+  isBillingUiVisibleForUser,
+} from '../features/billing/billingAccessPolicy';
+import { applyEntitlementMenuBadges } from '../features/entitlements/applyEntitlementMenuBadges';
+import { isGaMemberUser } from '../features/entitlements/featureEntitlementPolicy';
 import {
   dedupeNewsletterBoardMenuItems,
   partitionNewsletterBoardsForMenu,
@@ -18,15 +24,14 @@ export type { DynamicNewsletterBoardMenuItem } from '../features/newsletters/new
 export type NativeMenuCapabilities = {
   isTeamOwner: boolean;
   dynamicNewsletterBoards?: DynamicNewsletterBoardMenuItem[];
+  hasActivePaidAccess?: boolean;
 };
 
 const EXPIRED_ALLOWED_NATIVE_PATHS = ['/profile', '/billing', '/feature-request'] as const;
 const PUBLIC_ACCOUNT_GA_ONLY_PREFIXES = [
   '/application',
-  '/team',
   '/portal/newsletters',
   '/portal/adjuster-news',
-  '/portal/boards',
 ] as const;
 const NATIVE_CRM_MENU_ROLES = new Set<AuthUser['role']>(['USER', 'SUPER_ADMIN']);
 
@@ -44,11 +49,7 @@ function cloneUserMenu(): NativeMenuSection[] {
 }
 
 export function isPublicGeneralAccount(user: AuthUser): boolean {
-  const gaCode = user.gaCode.trim().toUpperCase().replace(/\s+/g, '');
-  const gaName = user.gaName.trim();
-  return gaCode === 'GENERAL'
-    || gaName.toUpperCase() === 'GENERAL'
-    || gaName.includes('공용');
+  return !isGaMemberUser(user);
 }
 
 export function isPublicAccountGaOnlyPath(path: string): boolean {
@@ -140,22 +141,33 @@ function applyExpiredPolicy(
     .filter((section) => section.children.length > 0);
 }
 
-function applyPublicAccountPolicy(
+function buildNewsletterBoardScopeHints(
+  boards: DynamicNewsletterBoardMenuItem[] = [],
+): { path: string; boardScope: string | null }[] {
+  return boards
+    .filter((board) => board.slug.trim())
+    .map((board) => ({
+      path: buildNewsletterBoardViewPath(board.slug.trim()),
+      boardScope: board.boardScope ?? null,
+    }));
+}
+
+function applyEntitlementPolicy(
   sections: NativeMenuSection[],
-  publicAccount: boolean,
+  user: AuthUser,
+  capabilities: NativeMenuCapabilities,
 ): NativeMenuSection[] {
-  if (!publicAccount) return sections;
-  return sections.map((section) => ({
-    ...section,
-    children: section.children.map((child) => {
-      if (child.disabled || !isPublicAccountGaOnlyPath(child.nativePath)) return child;
-      return {
-        ...child,
-        nativePath: `/public-account-restricted?from=${encodeURIComponent(child.nativePath)}`,
-        badge: child.badge ?? 'GA 소속 계정 전용',
-      };
-    }),
-  }));
+  const billingEnforced = isInsuranceBillingEnabled() && isInsuranceBillingAccessEnforced();
+  return applyEntitlementMenuBadges(
+    sections,
+    {
+      hasActivePaidAccess: billingEnforced
+        ? capabilities.hasActivePaidAccess === true
+        : true,
+      isGaMember: isGaMemberUser(user),
+    },
+    buildNewsletterBoardScopeHints(capabilities.dynamicNewsletterBoards),
+  );
 }
 
 function applyPcOnlyMenuPolicy(sections: NativeMenuSection[]): NativeMenuSection[] {
@@ -183,9 +195,6 @@ export function buildNativeMenuForSession(
     withBillingPolicy,
     user.subscription?.effectiveStatus === 'EXPIRED',
   );
-  const withPublicAccount = applyPublicAccountPolicy(
-    withExpiredPolicy,
-    isPublicGeneralAccount(user),
-  );
-  return normalizeNativeMenuSections(applyPcOnlyMenuPolicy(withPublicAccount));
+  const withEntitlement = applyEntitlementPolicy(withExpiredPolicy, user, capabilities);
+  return normalizeNativeMenuSections(applyPcOnlyMenuPolicy(withEntitlement));
 }

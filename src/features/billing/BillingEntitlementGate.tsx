@@ -11,6 +11,10 @@ import {
   isInsuranceBillingEnabled,
 } from './billingAccessPolicy';
 import { billingCheckoutSummaryQueryKey, getCheckoutSummary } from './billingApi';
+import {
+  buildFeatureAccessContext,
+  evaluateRouteFeatureAccess,
+} from '../entitlements/featureEntitlementGuard';
 import { resolveBillingStartupAccess } from './billingStartupAccess';
 
 export function BillingEntitlementGate({ children }: { children: ReactNode }) {
@@ -30,15 +34,22 @@ export function BillingEntitlementGate({ children }: { children: ReactNode }) {
     enabled: policyApplies && !allowedPath && Boolean(token),
     retry: 1,
   });
-  const access = resolveBillingStartupAccess({
-    policyApplies,
-    allowedPath,
-    isLoading: summary.isLoading,
-    isError: summary.isError,
-    error: summary.error,
-    summary: summary.data,
-    environment,
-  });
+  const ctx = buildFeatureAccessContext(user, summary.data);
+  const routeVerdict = evaluateRouteFeatureAccess(pathname, ctx).verdict;
+  const featureAllowsWithoutPaid =
+    routeVerdict?.allowed === true || routeVerdict?.reason === 'ga_required';
+
+  const access = featureAllowsWithoutPaid
+    ? 'allow'
+    : resolveBillingStartupAccess({
+      policyApplies,
+      allowedPath,
+      isLoading: summary.isLoading,
+      isError: summary.isError,
+      error: summary.error,
+      summary: summary.data,
+      environment,
+    });
 
   useEffect(() => {
     if (access === 'redirect_billing') {

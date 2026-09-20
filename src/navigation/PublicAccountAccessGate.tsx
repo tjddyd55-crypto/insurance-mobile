@@ -1,22 +1,36 @@
 import { useEffect, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../auth/AuthProvider';
 import { LoadingState } from '../components/LoadingState';
 import {
-  isPublicAccountGaOnlyPath,
-  isPublicGeneralAccount,
-} from './nativeMenuPolicy';
+  isInsuranceBillingAccessEnforced,
+  isInsuranceBillingEnabled,
+} from '../features/billing/billingAccessPolicy';
+import { billingCheckoutSummaryQueryKey, getCheckoutSummary } from '../features/billing/billingApi';
+import {
+  buildFeatureAccessContext,
+  evaluateRouteFeatureAccess,
+} from '../features/entitlements/featureEntitlementGuard';
 
 export function PublicAccountAccessGate({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const restricted = Boolean(
-    user
-    && isPublicGeneralAccount(user)
-    && isPublicAccountGaOnlyPath(pathname),
-  );
+  const policyApplies =
+    isInsuranceBillingEnabled()
+    && isInsuranceBillingAccessEnforced()
+    && user?.role === 'USER';
+  const summary = useQuery({
+    queryKey: billingCheckoutSummaryQueryKey,
+    queryFn: () => getCheckoutSummary(token),
+    enabled: policyApplies && Boolean(token),
+    retry: 1,
+  });
+  const ctx = buildFeatureAccessContext(user, summary.data);
+  const { verdict } = evaluateRouteFeatureAccess(pathname, ctx);
+  const restricted = Boolean(verdict && !verdict.allowed && verdict.reason === 'ga_required');
 
   useEffect(() => {
     if (restricted) {

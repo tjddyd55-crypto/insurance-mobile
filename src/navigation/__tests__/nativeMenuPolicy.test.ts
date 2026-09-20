@@ -189,20 +189,26 @@ describe('native session menu policy', () => {
     }), capabilities))).toContain('구독 및 결제');
   });
 
-  test('routes public-account GA-only links to one restriction screen', () => {
+  test('shows entitlement badges for GENERAL users without rewriting paths', () => {
     const menu = buildNativeMenuForSession(user({
       gaCode: 'GENERAL',
       gaName: '공용',
-    }), capabilities);
+    }), {
+      ...capabilities,
+      hasActivePaidAccess: false,
+    });
     const links = menu.flatMap((section) => section.children);
     const team = links.find((link) => link.id === 'team-members');
     const customers = links.find((link) => link.id === 'customer-list');
-    expect(team?.nativePath).toEqual(
-      expect.stringContaining('/public-account-restricted?from='),
-    );
-    expect(team?.badge).toBe('GA 소속 계정 전용');
-    expect(customers?.nativePath).toBe('/customers');
-    expect(isPublicAccountGaOnlyPath('/team/files')).toBe(true);
+    const contacts = links.find((link) => link.id === 'insurance-contacts');
+    const insurerNews = links.find((link) => link.id === 'insurer-newsletters');
+    expect(team?.nativePath).toBe('/team/members');
+    expect(team?.badge).toBe('유료');
+    expect(customers?.badge).toBe('유료');
+    expect(contacts?.badge).toBeUndefined();
+    expect(insurerNews?.badge).toBe('GA 전용');
+    expect(isPublicAccountGaOnlyPath('/team/files')).toBe(false);
+    expect(isPublicAccountGaOnlyPath('/portal/newsletters')).toBe(true);
     expect(isPublicAccountGaOnlyPath('/customers')).toBe(false);
   });
 });

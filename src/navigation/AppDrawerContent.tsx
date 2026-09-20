@@ -13,6 +13,8 @@ import { getUnreadNotificationCount } from '../features/notifications/notificati
 import { notificationQueryKeys } from '../features/notifications/queryKeys';
 import { type NativeMenuLink } from './menuConfig';
 import { formatGaBannerLabel } from './gaTenantLabel';
+import { billingCheckoutSummaryQueryKey, getCheckoutSummary } from '../features/billing/billingApi';
+import { resolveEntitlementMenuNavigationPath } from '../features/entitlements/featureEntitlementGuard';
 import { useNativeMenu } from './useNativeMenu';
 
 export function AppDrawerContent(props: DrawerContentComponentProps) {
@@ -24,6 +26,12 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
   const menu = useNativeMenu();
+  const billingSummary = useQuery({
+    queryKey: billingCheckoutSummaryQueryKey,
+    queryFn: () => getCheckoutSummary(token),
+    enabled: Boolean(token && user?.role === 'USER'),
+    staleTime: 60_000,
+  });
   const unreadQuery = useQuery({
     queryKey: [...notificationQueryKeys.all, 'unread-count'],
     queryFn: () => getUnreadNotificationCount(token),
@@ -35,7 +43,8 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   const onPressLink = (item: NativeMenuLink) => {
     if (item.disabled || item.mode === 'DISABLED' || item.mode === 'PC_ONLY') return;
     props.navigation.closeDrawer();
-    router.push(item.nativePath as '/customers');
+    const target = resolveEntitlementMenuNavigationPath(item, billingSummary.data);
+    router.push(target as '/customers');
   };
 
   return (
@@ -82,6 +91,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
                     >
                       {child.label}
                     </AppText>
+                    {child.badge ? <Badge label={child.badge} tone="default" /> : null}
                     {child.id === 'notifications' && unreadCount > 0 ? (
                       <Badge label={`${unreadCount}`} tone="warning" />
                     ) : null}
