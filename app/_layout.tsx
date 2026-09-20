@@ -13,6 +13,7 @@ import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 import { getEnvironmentConfig } from '../src/config/environment';
 import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
+import { OTA_BUILD_MARKER } from '../src/config/otaBuildMarker';
 import { checkForAppUpdateOnce } from '../src/services/appUpdates';
 
 void SplashScreen.preventAutoHideAsync();
@@ -55,6 +56,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   useEffect(() => {
+    if (!__DEV__) {
+      console.info('[AppBootstrap] otaBuildMarker', OTA_BUILD_MARKER);
+    }
     void checkForAppUpdateOnce();
   }, []);
 
