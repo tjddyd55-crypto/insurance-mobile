@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Link } from 'expo-router';
 
@@ -7,7 +7,6 @@ import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import { consumeNativeUpgradeReLoginNotice } from '../../auth/nativeUpgradeMigration';
 import { getEnvironmentConfig } from '../../config/environment';
-import { brandLogoImage } from '../../branding/brandAssets';
 import { AppText, Button, Card, Inline, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
 
 export function LoginForm() {
@@ -51,12 +50,6 @@ export function LoginForm() {
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
       <View style={styles.brandBlock}>
-        <Image
-          source={brandLogoImage}
-          style={styles.brandLogo}
-          resizeMode="contain"
-          accessibilityLabel="ONE FC"
-        />
         <AppText style={styles.brand}>{env.appDisplayName.replace(/\s+(NATIVE\s+)?DEV$/i, '')}</AppText>
         <AppText color="textSecondary" style={styles.brandCopy}>고객 관리 · 상담 기록 · 파일 작업을 한 화면에서 이어서 처리합니다.</AppText>
       </View>
@@ -96,8 +89,7 @@ export function LoginForm() {
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     wrap: { flexGrow: 1, paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.xl, paddingBottom: theme.spacing.xl, backgroundColor: theme.colors.background, gap: theme.spacing.lg },
-    brandBlock: { gap: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, paddingBottom: theme.spacing.lg, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-    brandLogo: { width: 88, height: 88, alignSelf: 'center' },
+    brandBlock: { gap: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     brand: { fontSize: 18, lineHeight: 24, fontWeight: '800', color: theme.colors.text },
     brandCopy: { fontSize: 14, lineHeight: 20 },
     card: { gap: theme.spacing.md, padding: theme.spacing.lg },
