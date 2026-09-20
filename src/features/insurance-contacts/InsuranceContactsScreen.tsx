@@ -4,6 +4,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
+import { isGaMemberUser } from '../entitlements/featureEntitlementPolicy';
+import { LegacyWebScreen } from '../legacy/LegacyWebScreen';
 import { AppHeader } from '../../components/AppHeader';
 import { CopyIconButton } from '../../components/CopyIconButton';
 import {
@@ -34,7 +36,10 @@ const TABS: { id: InsuranceCategory; label: string }[] = [
 ];
 
 export function InsuranceContactsScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  if (!isGaMemberUser(user)) {
+    return <LegacyWebScreen title="원수사 연락처" legacyWebPath="/insurance/contacts" />;
+  }
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [category, setCategory] = useState<InsuranceCategory>('LIFE');
