@@ -70,6 +70,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const appVersion = isProduction ? '1.0.3' : '1.0.0';
   const androidVersionCode = isProduction ? 5 : 1;
   const iosBuildNumber = isProduction ? '5' : '1';
+  const projectId =
+    process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 
   const expoConfig: ExpoConfig = {
     ...config,
@@ -157,15 +159,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       appVariant: environment,
       isDevApp: environment !== 'production',
       eas: {
-        projectId:
-          process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305',
+        projectId,
       },
     },
     runtimeVersion: {
       policy: 'appVersion',
     },
     updates: {
-      enabled: false,
+      enabled: true,
+      url: `https://u.expo.dev/${projectId}`,
+      checkAutomatically: 'NEVER',
+      fallbackToCacheTimeout: 0,
     },
   };
 

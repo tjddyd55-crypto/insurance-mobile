@@ -45,6 +45,20 @@
         "buildType": "apk"
       }
     },
+    "production-staging": {
+      "distribution": "store",
+      "channel": "native-production-staging",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
     "production": {
       "distribution": "store",
       "channel": "native-production",
