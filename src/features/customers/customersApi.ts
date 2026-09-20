@@ -1,5 +1,8 @@
 import { ApiError, apiRequest } from '../../api/client';
-import type { CustomerRegistrationAlimtalkResult } from './customerRegistrationShareModel';
+import {
+  normalizeCustomerRegistrationAlimtalkResult,
+  type CustomerRegistrationAlimtalkResult,
+} from './customerRegistrationShareModel';
 import type { CustomerBusinessInfo } from './customerBusinessInfo';
 import {
   customerBusinessInfoToForm,
@@ -111,15 +114,15 @@ export async function sendCustomerRegistrationAlimtalk(
         body: JSON.stringify({ receiver }),
       },
     );
-    return data;
+    return normalizeCustomerRegistrationAlimtalkResult(data);
   } catch (error) {
     if (error instanceof ApiError && error.data && typeof error.data === 'object') {
       const status = String((error.data as { status?: string }).status ?? '').trim();
       if (status === 'blocked' || status === 'failed') {
-        return {
+        return normalizeCustomerRegistrationAlimtalkResult({
           ...(error.data as CustomerRegistrationAlimtalkResult),
           status: status as CustomerRegistrationAlimtalkResult['status'],
-        };
+        });
       }
     }
     throw error;

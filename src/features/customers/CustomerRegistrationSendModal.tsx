@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { Keyboard, StyleSheet } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 
 import { ApiError } from '../../api/client';
@@ -71,7 +71,12 @@ export function CustomerRegistrationSendModal({
     setInlineTone(tone);
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   const handleCopy = async () => {
+    dismissKeyboard();
     setCopying(true);
     setInlineMessage('');
     try {
@@ -95,6 +100,7 @@ export function CustomerRegistrationSendModal({
   };
 
   const handleSendAlimtalk = async () => {
+    dismissKeyboard();
     if (phoneError) {
       showInline(phoneError, 'error');
       return;
@@ -120,6 +126,7 @@ export function CustomerRegistrationSendModal({
 
   const requestClose = () => {
     if (!busy) {
+      dismissKeyboard();
       onClose();
     }
   };
@@ -129,32 +136,18 @@ export function CustomerRegistrationSendModal({
       open={open}
       title="고객등록 발송"
       presentation="dialog"
-      scroll={false}
+      scroll
       keyboardAvoiding
       busy={busy}
       closeOnBackdrop={false}
       dismissOnAndroidBack={!busy}
       dialogHeaderCompact
       dialogBodyPadding={theme.spacing.lg}
+      dialogMaxHeight="92%"
       onRequestClose={requestClose}
       headerAction={<ModalCloseButton onPress={requestClose} />}
-    >
-      <Stack gap="lg" style={styles.body} testID="customer-registration-send-modal">
-        <AppText color="textSecondary">
-          휴대폰번호를 입력한 뒤 링크를 복사하거나 카카오톡으로 고객등록 링크를 발송할 수 있습니다.
-        </AppText>
-        <TextField
-          label="휴대폰번호"
-          value={phone}
-          onChangeText={(value) => setPhone(applyFormInputFormat('phone', value))}
-          placeholder={PHONE_INPUT_PLACEHOLDER}
-          maxLength={PHONE_INPUT_MAX_LENGTH}
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          editable={!busy}
-          accessibilityLabel="휴대폰번호"
-        />
-        <Inline gap="sm">
+      footer={
+        <Inline gap="sm" style={styles.footerActions}>
           <Button
             label="링크 복사"
             variant="secondary"
@@ -172,6 +165,26 @@ export function CustomerRegistrationSendModal({
             style={styles.actionBtn}
           />
         </Inline>
+      }
+    >
+      <Stack gap="md" style={styles.body} testID="customer-registration-send-modal">
+        <AppText color="textSecondary">
+          휴대폰번호를 입력한 뒤 링크를 복사하거나 카카오톡으로 고객등록 링크를 발송할 수 있습니다.
+        </AppText>
+        <TextField
+          label="휴대폰번호"
+          value={phone}
+          onChangeText={(value) => setPhone(applyFormInputFormat('phone', value))}
+          placeholder={PHONE_INPUT_PLACEHOLDER}
+          maxLength={PHONE_INPUT_MAX_LENGTH}
+          keyboardType="phone-pad"
+          returnKeyType="done"
+          blurOnSubmit
+          onSubmitEditing={dismissKeyboard}
+          autoComplete="tel"
+          editable={!busy}
+          accessibilityLabel="휴대폰번호"
+        />
         {inlineMessage ? (
           <AppText
             variant="caption"
@@ -188,6 +201,9 @@ export function CustomerRegistrationSendModal({
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     body: {
+      alignSelf: 'stretch',
+    },
+    footerActions: {
       alignSelf: 'stretch',
     },
     actionBtn: {

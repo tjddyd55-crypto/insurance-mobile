@@ -28,6 +28,7 @@ import {
   useAppTheme,
   type AppTheme,
 } from "../../design-system";
+import { resolveCustomerAppAlimtalkFeedback } from "../customers/customerAppShareModel";
 import { listCustomers } from "../customers/customersApi";
 import { CUSTOMER_LIST_STALE_MS, customerQueryKeys } from "../customers/queryKeys";
 import { formatCustomerPhone } from "../customers/customerModel";
@@ -151,11 +152,7 @@ export function ClaimsScreen({
     mutationFn: () => sendCustomerAppAlimtalk(token, customerId!),
     onSuccess: (result) => {
       setSendConfirm(false);
-      setNotice(
-        result.status === "sent"
-          ? `${result.receiverMasked ?? "고객"}에게 연결 알림톡을 발송했습니다.`
-          : `발송 결과: ${result.status}`,
-      );
+      setNotice(resolveCustomerAppAlimtalkFeedback(result).message);
     },
   });
   const linkValue = link.data?.universalUrl || link.data?.connectUrl || "";

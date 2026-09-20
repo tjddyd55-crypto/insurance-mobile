@@ -25,13 +25,17 @@ describe('customerRegistrationShareModel', () => {
     expect(resolveCustomerRegistrationPhoneError('01012345678', true)).toBeNull();
   });
 
-  it('maps alimtalk success statuses', () => {
+  it('maps alimtalk success statuses (Web SSOT)', () => {
     expect(resolveCustomerRegistrationAlimtalkFeedback({ status: 'sent' })).toEqual({
       tone: 'success',
-      message: '카카오톡으로 고객등록 링크를 발송했습니다.',
+      message: '고객등록 카카오톡 발송 요청이 접수되었습니다.',
       closeModal: true,
     });
-    expect(resolveCustomerRegistrationAlimtalkFeedback({ status: 'dry_run' }).closeModal).toBe(true);
+    expect(resolveCustomerRegistrationAlimtalkFeedback({ status: 'dry_run' })).toEqual({
+      tone: 'success',
+      message: '고객등록 카카오톡 발송 테스트가 완료되었습니다.',
+      closeModal: false,
+    });
     expect(resolveCustomerRegistrationAlimtalkFeedback({ status: 'blocked' }).closeModal).toBe(false);
   });
 

@@ -17,6 +17,9 @@ describe('CustomerRegistrationSendModal', () => {
     expect(source).toMatch(/고객등록 발송/);
     expect(source).toMatch(/링크 복사/);
     expect(source).toMatch(/카카오톡 발송/);
+    expect(source).toMatch(/keyboardAvoiding/);
+    expect(source).toMatch(/footer=\{/);
+    expect(source).toMatch(/Keyboard\.dismiss/);
   });
 });
 

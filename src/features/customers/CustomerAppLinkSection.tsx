@@ -17,6 +17,10 @@ import {
   getCustomerAppLink,
   sendCustomerAppAlimtalk,
 } from "../claims/claimsApi";
+import {
+  resolveCustomerAppAlimtalkError,
+  resolveCustomerAppAlimtalkFeedback,
+} from "./customerAppShareModel";
 
 /**
  * 고객 상세 업무 패널 상단 — 고객앱 상태 row.
@@ -37,6 +41,7 @@ export function CustomerAppLinkStatusRow({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [sendConfirm, setSendConfirm] = useState(false);
   const [notice, setNotice] = useState("");
+  const [noticeTone, setNoticeTone] = useState<"success" | "info" | "error">("success");
   const [busyAction, setBusyAction] = useState<"copy" | "send" | null>(null);
 
   const link = useQuery({
@@ -73,16 +78,20 @@ export function CustomerAppLinkStatusRow({
   const handleCopy = async () => {
     setBusyAction("copy");
     setNotice("");
+    setNoticeTone("success");
     try {
       const value = await ensureLinkValue();
       if (!value) {
         setNotice("링크를 준비하지 못했습니다.");
+        setNoticeTone("error");
         return;
       }
       await Clipboard.setStringAsync(value);
       setNotice("링크를 복사했습니다.");
+      setNoticeTone("success");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "링크 복사에 실패했습니다.");
+      setNoticeTone("error");
     } finally {
       setBusyAction(null);
     }
@@ -94,13 +103,12 @@ export function CustomerAppLinkStatusRow({
       await ensureLinkValue();
       const result = await sendLink.mutateAsync();
       setSendConfirm(false);
-      setNotice(
-        result.status === "sent"
-          ? `${result.receiverMasked ?? "고객"}에게 연결 알림톡을 발송했습니다.`
-          : `발송 결과: ${result.status}`,
-      );
+      const feedback = resolveCustomerAppAlimtalkFeedback(result);
+      setNotice(feedback.message);
+      setNoticeTone(feedback.tone);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "알림톡 발송에 실패했습니다.");
+      setNotice(resolveCustomerAppAlimtalkError(error));
+      setNoticeTone("error");
     } finally {
       setBusyAction(null);
     }
@@ -146,7 +154,10 @@ export function CustomerAppLinkStatusRow({
         </Inline>
       </Inline>
       {notice ? (
-        <AppText variant="caption" color="success">
+        <AppText
+          variant="caption"
+          color={noticeTone === "error" ? "danger" : noticeTone === "info" ? "textSecondary" : "success"}
+        >
           {notice}
         </AppText>
       ) : null}

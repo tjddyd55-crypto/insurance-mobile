@@ -1,4 +1,8 @@
 import { ApiError, apiRequest } from "../../api/client";
+import {
+  normalizeCustomerAppAlimtalkResult,
+  type CustomerAppAlimtalkResult,
+} from "../customers/customerAppShareModel";
 import type {
   ClaimDetail,
   ClaimListItem,
@@ -64,15 +68,28 @@ export async function sendCustomerAppAlimtalk(
   customerId: number,
   receiver?: string,
 ) {
-  return apiRequest<{
-    status: string;
-    receiverMasked?: string;
-    providerMessage?: string;
-  }>(`/api/agent/customers/${customerId}/customer-app/alimtalk`, {
-    method: "POST",
-    token: auth(token),
-    body: JSON.stringify(receiver?.trim() ? { receiver: receiver.trim() } : {}),
-  });
+  try {
+    const data = await apiRequest<CustomerAppAlimtalkResult>(
+      `/api/agent/customers/${customerId}/customer-app/alimtalk`,
+      {
+        method: "POST",
+        token: auth(token),
+        body: JSON.stringify(receiver?.trim() ? { receiver: receiver.trim() } : {}),
+      },
+    );
+    return normalizeCustomerAppAlimtalkResult(data);
+  } catch (error) {
+    if (error instanceof ApiError && error.data && typeof error.data === "object") {
+      const status = String((error.data as { status?: string }).status ?? "").trim();
+      if (status === "blocked" || status === "missing_receiver" || status === "failed") {
+        return normalizeCustomerAppAlimtalkResult({
+          ...(error.data as CustomerAppAlimtalkResult),
+          status: status as CustomerAppAlimtalkResult["status"],
+        });
+      }
+    }
+    throw error;
+  }
 }
 
 export async function getClaimBundleDownloadUrl(
