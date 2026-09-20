@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Clipboard from 'expo-clipboard';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -29,7 +28,8 @@ import {
   sortCustomerList,
   type CustomerListFilters,
 } from './customerListFilters';
-import { getCustomerRegistrationLink, listCustomers, setCustomerFavorite } from './customersApi';
+import { CustomerRegistrationSendModal } from './CustomerRegistrationSendModal';
+import { listCustomers, setCustomerFavorite } from './customersApi';
 import { CustomerListCard } from './CustomerListCard';
 import {
   buildCustomerListCountText,
@@ -62,6 +62,7 @@ export function CustomersScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterError, setFilterError] = useState('');
   const [status, setStatus] = useState('');
+  const [registrationSendOpen, setRegistrationSendOpen] = useState(false);
 
   useEffect(() => {
     if (filterOpen) {
@@ -96,17 +97,6 @@ export function CustomersScreen() {
       );
     },
   });
-  const inviteMutation = useMutation({
-    mutationFn: () => getCustomerRegistrationLink(token),
-    onSuccess: async (url) => {
-      await Clipboard.setStringAsync(url);
-      setStatus('고객등록 링크를 복사했습니다.');
-    },
-    onError: (error) => {
-      setStatus(error instanceof Error ? error.message : '고객등록 링크를 만들 수 없습니다.');
-    },
-  });
-
   const customers = useMemo(() => {
     const rows = filterCustomerList(query.data?.customers ?? [], search, appliedFilters);
     return sortCustomerList(rows, appliedFilters);
@@ -163,8 +153,7 @@ export function CustomersScreen() {
                   label="고객 등록 발송"
                   size="sm"
                   variant="action"
-                  loading={inviteMutation.isPending}
-                  onPress={() => inviteMutation.mutate()}
+                  onPress={() => setRegistrationSendOpen(true)}
                   style={styles.topActionButton}
                 />
               </Inline>
@@ -232,6 +221,13 @@ export function CustomersScreen() {
           }
         />
       </Screen>
+
+      <CustomerRegistrationSendModal
+        open={registrationSendOpen}
+        token={token}
+        onClose={() => setRegistrationSendOpen(false)}
+        onFeedback={setStatus}
+      />
 
       <CustomerListFilterModal
         open={filterOpen}

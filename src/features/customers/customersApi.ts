@@ -1,4 +1,5 @@
 import { ApiError, apiRequest } from '../../api/client';
+import type { CustomerRegistrationAlimtalkResult } from './customerRegistrationShareModel';
 import type { CustomerBusinessInfo } from './customerBusinessInfo';
 import {
   customerBusinessInfoToForm,
@@ -93,6 +94,36 @@ export async function getCustomerRegistrationLink(token: string | null): Promise
   const url = String(result.registrationUrl ?? '').trim();
   if (!url) throw new ApiError('고객등록 링크를 만들 수 없습니다.', 400);
   return url;
+}
+
+export type { CustomerRegistrationAlimtalkResult } from './customerRegistrationShareModel';
+
+export async function sendCustomerRegistrationAlimtalk(
+  token: string | null,
+  receiver: string,
+): Promise<CustomerRegistrationAlimtalkResult> {
+  try {
+    const data = await apiRequest<CustomerRegistrationAlimtalkResult>(
+      '/api/agent/customer-registration/alimtalk',
+      {
+        token: requireToken(token),
+        method: 'POST',
+        body: JSON.stringify({ receiver }),
+      },
+    );
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.data && typeof error.data === 'object') {
+      const status = String((error.data as { status?: string }).status ?? '').trim();
+      if (status === 'blocked' || status === 'failed') {
+        return {
+          ...(error.data as CustomerRegistrationAlimtalkResult),
+          status: status as CustomerRegistrationAlimtalkResult['status'],
+        };
+      }
+    }
+    throw error;
+  }
 }
 
 export async function getCustomer(token: string | null, customerId: number): Promise<CustomerRecord> {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Link } from 'expo-router';
 
@@ -67,11 +67,6 @@ export function LoginForm() {
           <Inline gap="xs" wrap><AppText variant="caption">비밀번호를 잊으셨나요?</AppText><Link href="/(auth)/password-reset" style={styles.link}>비밀번호 재설정</Link></Inline>
         </Stack>
       </Card>
-      <Inline justify="center" style={styles.downloads}>
-        <Button label="PC버전" size="sm" variant="secondary" onPress={() => void Linking.openURL('https://cdn.platform-assets.com/insurance/download/one-fc-pc.exe')} />
-        <Button label="안드로이드" size="sm" variant="secondary" onPress={() => void Linking.openURL('https://play.google.com/store/apps/details?id=com.onefc.app')} />
-        <Button label="아이폰" size="sm" variant="secondary" onPress={() => void Linking.openURL('https://apps.apple.com/app/one-fc/id6785336968')} />
-      </Inline>
       <AppText variant="caption" color="textMuted" align="center">
         버전: {appVersion}
       </AppText>
@@ -94,7 +89,6 @@ function createStyles(theme: AppTheme) {
     brandCopy: { fontSize: 14, lineHeight: 20 },
     card: { gap: theme.spacing.md, padding: theme.spacing.lg },
     link: { color: theme.colors.primary, fontSize: 12, lineHeight: 17, fontWeight: '600', textDecorationLine: 'underline' },
-    downloads: { marginTop: theme.spacing.xs },
     business: { marginTop: theme.spacing.md, padding: theme.spacing.md, paddingTop: theme.spacing.lg, gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border },
   });
 }
