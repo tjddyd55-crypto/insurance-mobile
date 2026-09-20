@@ -139,7 +139,7 @@ export function CustomerRegistrationSendModal({
       onRequestClose={requestClose}
       headerAction={<ModalCloseButton onPress={requestClose} />}
     >
-      <Stack gap="lg" style={styles.body}>
+      <Stack gap="lg" style={styles.body} testID="customer-registration-send-modal">
         <AppText color="textSecondary">
           휴대폰번호를 입력한 뒤 링크를 복사하거나 카카오톡으로 고객등록 링크를 발송할 수 있습니다.
         </AppText>

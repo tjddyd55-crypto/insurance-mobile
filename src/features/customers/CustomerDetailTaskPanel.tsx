@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { AppText, useAppTheme, type AppTheme } from "../../design-system";
+import { AppText, Button, useAppTheme, type AppTheme } from "../../design-system";
 import { CustomerAppLinkStatusRow } from "./CustomerAppLinkSection";
 import { CustomerWorkspaceActionGrid } from "./CustomerWorkspaceActionGrid";
 import { customerTaskPanelTheme } from "./customerSectionTheme";
@@ -16,6 +16,7 @@ type CustomerDetailTaskPanelProps = {
   customerPhone: string;
   actions: CustomerWorkspaceAction[];
   onAction: (actionId: CustomerWorkspaceActionId) => void;
+  onRegistrationSend?: () => void;
   copyNotice?: string;
 };
 
@@ -25,6 +26,7 @@ export function CustomerDetailTaskPanel({
   customerPhone,
   actions,
   onAction,
+  onRegistrationSend,
   copyNotice,
 }: CustomerDetailTaskPanelProps) {
   const theme = useAppTheme();
@@ -38,6 +40,16 @@ export function CustomerDetailTaskPanel({
         customerName={customerName}
         customerPhone={customerPhone}
       />
+      {onRegistrationSend ? (
+        <Button
+          label="고객 등록 발송"
+          size="sm"
+          variant="action"
+          onPress={onRegistrationSend}
+          testID="customer-detail-registration-send-button"
+          accessibilityLabel="고객 등록 발송"
+        />
+      ) : null}
       <View style={styles.divider} accessibilityElementsHidden />
       <CustomerWorkspaceActionGrid actions={actions} onAction={onAction} />
       {copyNotice ? (

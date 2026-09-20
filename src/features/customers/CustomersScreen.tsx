@@ -155,6 +155,8 @@ export function CustomersScreen() {
                   variant="action"
                   onPress={() => setRegistrationSendOpen(true)}
                   style={styles.topActionButton}
+                  testID="customers-registration-send-button"
+                  accessibilityLabel="고객 등록 발송"
                 />
               </Inline>
               <SearchControlRow

@@ -25,8 +25,27 @@ describe('CustomersScreen registration send entry', () => {
     const source = readSource('CustomersScreen.tsx');
     expect(source).toMatch(/CustomerRegistrationSendModal/);
     expect(source).toMatch(/setRegistrationSendOpen\(true\)/);
+    expect(source).toMatch(/customers-registration-send-button/);
     expect(source).not.toMatch(/getCustomerRegistrationLink/);
     expect(source).not.toMatch(/inviteMutation/);
+    expect(source).not.toMatch(/Clipboard/);
+  });
+});
+
+describe('CustomerDetailScreen registration send entry', () => {
+  it('opens modal with customer phone prefill', () => {
+    const source = readSource('CustomerDetailScreen.tsx');
+    expect(source).toMatch(/CustomerRegistrationSendModal/);
+    expect(source).toMatch(/prefilledPhone=\{customer\?\.phone/);
+    expect(source).toMatch(/onRegistrationSend=\{\(\) => setRegistrationSendOpen\(true\)\}/);
+    expect(source).not.toMatch(/getCustomerRegistrationLink/);
+    expect(source).not.toMatch(/inviteMutation/);
+  });
+
+  it('renders detail task panel registration send button', () => {
+    const source = readSource('CustomerDetailTaskPanel.tsx');
+    expect(source).toMatch(/customer-detail-registration-send-button/);
+    expect(source).toMatch(/고객 등록 발송/);
   });
 });
 

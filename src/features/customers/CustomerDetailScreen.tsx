@@ -40,6 +40,7 @@ import type { ListCustomersResult } from "./types";
 import { CustomerActionIcon } from "./CustomerActionIcon";
 import { CustomerDetailTaskPanel } from "./CustomerDetailTaskPanel";
 import { CustomerGaDataModal } from "./CustomerGaDataModal";
+import { CustomerRegistrationSendModal } from "./CustomerRegistrationSendModal";
 import { CustomerRelationsPanel } from "./CustomerRelationsPanel";
 import {
   CollapsibleDetailSection,
@@ -95,6 +96,8 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
     setDeleteConfirm(resetCustomerDeleteConfirmForCustomerChange());
   }, [customerId]);
   const [gaOpen, setGaOpen] = useState(false);
+  const [registrationSendOpen, setRegistrationSendOpen] = useState(false);
+  const [registrationSendNotice, setRegistrationSendNotice] = useState("");
   const [copyNotice, setCopyNotice] = useState("");
   const [sectionExpanded, setSectionExpanded] = useState<Partial<Record<CustomerSectionId, boolean>>>(
     {},
@@ -266,7 +269,8 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
               customerPhone={customer.phone}
               actions={actions}
               onAction={(actionId) => void handleAction(actionId)}
-              copyNotice={copyNotice}
+              onRegistrationSend={() => setRegistrationSendOpen(true)}
+              copyNotice={copyNotice || registrationSendNotice}
             />
 
             <CollapsibleDetailSection
@@ -405,6 +409,13 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
         customerId={customerId}
         customerName={customer?.name ?? "고객"}
         onClose={() => setGaOpen(false)}
+      />
+      <CustomerRegistrationSendModal
+        open={registrationSendOpen}
+        token={token}
+        prefilledPhone={customer?.phone ?? ""}
+        onClose={() => setRegistrationSendOpen(false)}
+        onFeedback={setRegistrationSendNotice}
       />
       <ConfirmDialog
         open={isCustomerDeleteConfirmVisible(deleteConfirm, customerId)}
