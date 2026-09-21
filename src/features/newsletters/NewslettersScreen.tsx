@@ -52,6 +52,7 @@ import {
   resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
 import { NewsletterDetailGalleryImage } from './NewsletterDetailGalleryImage';
+import { getNewsletterLinkPreview } from './getNewsletterLinkPreview';
 import { NewsletterLinkPreviewCard } from './NewsletterLinkPreviewCard';
 import { NEWSLETTER_IMAGE_ASPECT_RATIO } from './newsletterImageLayout';
 import { sortPublishedNews } from './newslettersModel';
@@ -416,7 +417,7 @@ function NewsletterDetailModal({
                     return (
                       <Stack key="body" gap="md">
                         <AppText>{bodyText}</AppText>
-                        <NewsletterLinkPreviewCard preview={detail.data.linkPreview} />
+                        <NewsletterLinkPreviewCard preview={getNewsletterLinkPreview(detail.data)} />
                       </Stack>
                     );
                   }

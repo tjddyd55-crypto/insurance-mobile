@@ -1,51 +1,49 @@
 import { useMemo, useState } from 'react';
-import { Image, Linking, Pressable, StyleSheet } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText, Card, Stack, useAppTheme, type AppTheme } from '../../design-system';
+import { normalizeNewsletterLinkPreview } from './getNewsletterLinkPreview';
 import {
   NEWSLETTER_LINK_PREVIEW_IMAGE_ASPECT_RATIO,
-  canRenderNewsletterLinkPreview,
-  resolveNewsletterLinkPreviewDescription,
-  resolveNewsletterLinkPreviewDomain,
-  resolveNewsletterLinkPreviewHref,
-  resolveNewsletterLinkPreviewImageUrl,
-  resolveNewsletterLinkPreviewTitle,
+  NEWSLETTER_LINK_PREVIEW_PLACEHOLDER_HEIGHT,
+  resolveNewsletterLinkPreviewCardModel,
 } from './newsletterLinkPreviewPresentation';
-import type { NewsletterLinkPreview } from './types';
 
 type Props = {
-  preview?: NewsletterLinkPreview | null;
+  preview?: unknown;
 };
 
 export function NewsletterLinkPreviewCard({ preview }: Props) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [imageFailed, setImageFailed] = useState(false);
-  const href = preview ? resolveNewsletterLinkPreviewHref(preview) : null;
+  const model = resolveNewsletterLinkPreviewCardModel(normalizeNewsletterLinkPreview(preview));
 
-  if (!canRenderNewsletterLinkPreview(preview) || !href) {
+  if (!model) {
     return null;
   }
 
-  const title = resolveNewsletterLinkPreviewTitle(preview);
-  const description = resolveNewsletterLinkPreviewDescription(preview);
-  const domain = resolveNewsletterLinkPreviewDomain(preview);
-  const imageUrl = imageFailed ? null : resolveNewsletterLinkPreviewImageUrl(preview);
+  const imageUrl = imageFailed ? null : model.imageUrl;
+  const showPlaceholder = !imageUrl;
 
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${title} 링크 미리보기`}
+      accessibilityLabel={`${model.title} 링크 미리보기`}
       testID="newsletter-link-preview-card"
-      onPress={() => void Linking.openURL(href)}
+      onPress={() => void Linking.openURL(model.href)}
       style={({ pressed }) => [pressed && styles.pressed]}
     >
       <Card variant="outlined" padding="none" style={styles.card}>
-        <NewsletterLinkPreviewMedia imageUrl={imageUrl} onError={() => setImageFailed(true)} />
+        <NewsletterLinkPreviewMedia
+          imageUrl={imageUrl}
+          showPlaceholder={showPlaceholder}
+          onError={() => setImageFailed(true)}
+        />
         <NewsletterLinkPreviewCopy
-          description={description}
-          domain={domain}
-          title={title}
+          description={model.description}
+          domain={model.domain}
+          title={model.title}
         />
       </Card>
     </Pressable>
@@ -54,26 +52,45 @@ export function NewsletterLinkPreviewCard({ preview }: Props) {
 
 function NewsletterLinkPreviewMedia({
   imageUrl,
+  showPlaceholder,
   onError,
 }: {
   imageUrl: string | null;
+  showPlaceholder: boolean;
   onError: () => void;
 }) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  if (!imageUrl) {
+  if (imageUrl) {
+    return (
+      <Image
+        accessibilityIgnoresInvertColors
+        onError={onError}
+        resizeMode="cover"
+        source={{ uri: imageUrl }}
+        style={styles.image}
+      />
+    );
+  }
+
+  if (!showPlaceholder) {
     return null;
   }
 
   return (
-    <Image
-      accessibilityIgnoresInvertColors
-      onError={onError}
-      resizeMode="cover"
-      source={{ uri: imageUrl }}
-      style={styles.image}
-    />
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.placeholder}
+      testID="newsletter-link-preview-placeholder"
+    >
+      <View style={styles.placeholderMark}>
+        <AppText color="textMuted" variant="caption">
+          링크
+        </AppText>
+      </View>
+    </View>
   );
 }
 
@@ -90,7 +107,7 @@ function NewsletterLinkPreviewCopy({
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
-    <Stack gap="xs" style={styles.meta}>
+    <Stack gap="sm" style={styles.meta}>
       <AppText numberOfLines={2} variant="cardTitle">
         {title}
       </AppText>
@@ -99,11 +116,14 @@ function NewsletterLinkPreviewCopy({
           {description}
         </AppText>
       ) : null}
-      {domain ? (
-        <AppText color="textMuted" numberOfLines={1} variant="helper">
-          {domain}
-        </AppText>
-      ) : null}
+      <AppText
+        color="textMuted"
+        numberOfLines={1}
+        testID="newsletter-link-preview-domain"
+        variant="helper"
+      >
+        {`${domain} ↗`}
+      </AppText>
     </Stack>
   );
 }
@@ -111,6 +131,7 @@ function NewsletterLinkPreviewCopy({
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     card: {
+      borderColor: theme.colors.borderStrong,
       overflow: 'hidden',
       width: '100%',
     },
@@ -119,8 +140,26 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.colors.surfaceSubtle,
       width: '100%',
     },
+    placeholder: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surfaceSubtle,
+      height: NEWSLETTER_LINK_PREVIEW_PLACEHOLDER_HEIGHT,
+      justifyContent: 'center',
+      width: '100%',
+    },
+    placeholderMark: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: theme.spacing.xxl,
+      minWidth: theme.spacing.xxxl,
+      paddingHorizontal: theme.spacing.sm,
+    },
     meta: {
-      padding: theme.spacing.md,
+      padding: theme.spacing.lg,
     },
     pressed: {
       opacity: theme.opacity.pressed,
