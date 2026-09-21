@@ -23,8 +23,7 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/NewsletterGridCard/);
     expect(source).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(source).toMatch(/newsletterImageFrame/);
-    expect(source).toMatch(/resizeMode="contain"/);
-    expect(source).not.toMatch(/resizeMode="cover"/);
+    expect(source).toMatch(/resizeMode="cover"/);
     expect(source).toMatch(/resolveNewsletterListCardImageUrl/);
     expect(source).not.toMatch(/NewsletterIntrinsicImage/);
   });

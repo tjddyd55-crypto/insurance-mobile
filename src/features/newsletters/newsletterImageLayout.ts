@@ -1,7 +1,7 @@
 /**
- * 소식지 목록 썸네일 프레임 SSOT.
- * 2열 카드 높이를 맞추기 위해 NewsletterGridCard 만 이 비율을 쓴다.
- * 상세 갤러리는 원본 비율을 쓰며 이 상수를 적용하지 않는다.
+ * 소식지 목록 썸네일 비율 SSOT.
+ * NewsletterGridCard 의 newsletterImageFrame 만 이 값을 사용한다.
+ * 상세 갤러리는 원본 이미지 비율을 사용하며 이 상수를 적용하지 않는다.
  */
 export const NEWSLETTER_IMAGE_ASPECT_RATIO = 3 / 4;
 
