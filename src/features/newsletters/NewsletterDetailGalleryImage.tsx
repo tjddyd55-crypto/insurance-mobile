@@ -26,7 +26,6 @@ function makeStyles(theme: AppTheme) {
     frame: {
       width: '100%',
       borderRadius: theme.radius.md,
-      overflow: 'hidden',
       backgroundColor: theme.colors.surfaceSubtle,
     },
   });

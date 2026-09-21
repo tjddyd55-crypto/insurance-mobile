@@ -15,21 +15,22 @@ describe('newsletterImageLayout', () => {
     expect(source).toMatch(/export function resolveNewsletterDetailImageAspectRatio/);
   });
 
-  it('uses 3:4 cover thumbnails only for list cards', () => {
+  it('keeps list cards on a fixed 3:4 frame with contain so flyers are not cropped', () => {
     const screen = readSource('NewslettersScreen.tsx');
     expect(screen).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(screen).toMatch(/newsletterImageFrame/);
     expect(screen).toMatch(
       /newsletterImageFrame:\s*\{[^}]*aspectRatio:\s*NEWSLETTER_IMAGE_ASPECT_RATIO/,
     );
-    expect(screen).toMatch(/resizeMode="cover"/);
+    expect(screen).toMatch(/resizeMode="contain"/);
+    expect(screen).not.toMatch(/resizeMode="cover"/);
     expect(screen).toMatch(/NewsletterDetailGalleryImage/);
     expect(screen).not.toMatch(/NewsletterIntrinsicImage/);
     expect(screen).not.toMatch(/detailGalleryFrame/);
     expect(screen).not.toMatch(/detailGalleryImage/);
   });
 
-  it('sizes detail gallery from intrinsic onLoad ratio without cropping', () => {
+  it('sizes detail gallery from Image.getSize ratio without cropping', () => {
     const intrinsic = readSource('NewsletterIntrinsicImage.tsx');
     const gallery = readSource('NewsletterDetailGalleryImage.tsx');
 
@@ -38,15 +39,17 @@ describe('newsletterImageLayout', () => {
     expect(gallery).not.toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(gallery).not.toMatch(/resizeMode="cover"/);
     expect(gallery).not.toMatch(/absoluteFill/);
+    expect(gallery).not.toMatch(/overflow:\s*['"]hidden['"]/);
 
-    expect(intrinsic).toMatch(/onLoad/);
+    expect(intrinsic).toMatch(/Image\.getSize/);
     expect(intrinsic).toMatch(/resolveNewsletterDetailImageAspectRatio/);
     expect(intrinsic).toMatch(/resizeMode="contain"/);
-    expect(intrinsic).toMatch(/nativeEvent\.source\.width/);
-    expect(intrinsic).toMatch(/nativeEvent\.source\.height/);
+    expect(intrinsic).toMatch(/minHeight:\s*220/);
+    expect(intrinsic).not.toMatch(/onLoad=\{/);
     expect(intrinsic).not.toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(intrinsic).not.toMatch(/resizeMode="cover"/);
     expect(intrinsic).not.toMatch(/absoluteFill/);
+    expect(intrinsic).not.toMatch(/overflow:\s*['"]hidden['"]/);
   });
 
   it('resolves intrinsic detail aspect from image dimensions', () => {
