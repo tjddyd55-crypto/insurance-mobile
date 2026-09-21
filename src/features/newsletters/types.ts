@@ -41,5 +41,16 @@ export type NewsletterItem = {
   hasPdf: boolean;
   hasTextBody: boolean;
 };
-export type NewsletterDetail = NewsletterItem & { bodyText: string; attachments: NewsletterAttachment[]; linkPreview?: { url: string; title?: string | null; description?: string | null; imageUrl?: string | null; siteName?: string | null } | null };
+export type NewsletterLinkPreview = {
+  url: string;
+  title?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  siteName?: string | null;
+};
+export type NewsletterDetail = NewsletterItem & {
+  bodyText: string;
+  attachments: NewsletterAttachment[];
+  linkPreview?: NewsletterLinkPreview | null;
+};
 export type NewsletterFeed = { newsletters: NewsletterItem[]; insurers: InsurerSummary[] };

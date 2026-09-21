@@ -52,6 +52,7 @@ import {
   resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
 import { NewsletterDetailGalleryImage } from './NewsletterDetailGalleryImage';
+import { NewsletterLinkPreviewCard } from './NewsletterLinkPreviewCard';
 import { NEWSLETTER_IMAGE_ASPECT_RATIO } from './newsletterImageLayout';
 import { sortPublishedNews } from './newslettersModel';
 import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
@@ -415,13 +416,7 @@ function NewsletterDetailModal({
                     return (
                       <Stack key="body" gap="md">
                         <AppText>{bodyText}</AppText>
-                        {detail.data.linkPreview?.url ? (
-                          <Button
-                            label={detail.data.linkPreview.title || '관련 링크 열기'}
-                            variant="secondary"
-                            onPress={() => void Linking.openURL(detail.data.linkPreview!.url)}
-                          />
-                        ) : null}
+                        <NewsletterLinkPreviewCard preview={detail.data.linkPreview} />
                       </Stack>
                     );
                   }
