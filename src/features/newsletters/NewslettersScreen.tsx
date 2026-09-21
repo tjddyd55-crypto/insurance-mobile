@@ -258,7 +258,7 @@ function NewsletterGridCard({
           <Image
             source={{ uri: imageUrl }}
             style={styles.newsletterImageFrame}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         ) : (
           <View style={[styles.newsletterImageFrame, styles.gridImagePlaceholder]}>
