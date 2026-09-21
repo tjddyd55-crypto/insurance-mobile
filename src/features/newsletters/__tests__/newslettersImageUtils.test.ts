@@ -30,6 +30,40 @@ describe('newslettersImageUtils', () => {
     expect(url).toContain('insurer-news/hero.jpg');
   });
 
+  test('falls back to heroImageOpenUrl when CDN fields are missing', () => {
+    const url = resolveNewsletterListCardImageUrl({
+      heroImageUrl: null,
+      heroImageOpenUrl: '/api/insurer-news/id/attachments/1/open?accessToken=abc',
+    });
+    expect(url).toContain('/api/insurer-news/id/attachments/1/open');
+  });
+
+  test('encodes unicode path segments for production CDN urls', () => {
+    const url = resolveNewsletterListCardImageUrl({
+      heroImageUrl: 'https://cdn.platform-assets.com/insurer/yjasset/news/2026-04/삼성화재/file.png',
+    });
+    expect(url).toContain('%EC%82%BC%EC%84%B1%ED%99%94%EC%9E%AC');
+    expect(url).not.toContain('삼성화재');
+  });
+
+  test('uses signed openUrl for gallery when object key is absent', () => {
+    const urls = buildNewsletterGalleryUrls({
+      attachments: [
+        {
+          id: '1',
+          kind: 'image',
+          mimeType: 'image/png',
+          fileName: '1.png',
+          url: '',
+          openUrl: '/api/insurer-news/id/attachments/1/open?accessToken=abc',
+          sortOrder: 0,
+        },
+      ],
+    });
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).toContain('/api/insurer-news/id/attachments/1/open');
+  });
+
   test('dedupes hero and attachment when they reference the same object key', () => {
     const objectKey = 'crm-platform/dev/insurance/yjasset/shared/insurer-newsletters/test/2026/09/1.png';
     const urls = buildNewsletterGalleryUrls({

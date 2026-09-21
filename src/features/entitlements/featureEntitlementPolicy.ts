@@ -66,6 +66,29 @@ export type FeatureAccessVerdict = {
   badges: string[];
 };
 
+export function resolveUserAccessTier(ctx: FeatureAccessContext): UserAccessTier {
+  if (ctx.hasActivePaidAccess && ctx.isGaMember) return 'ACTIVE_GA';
+  if (ctx.hasActivePaidAccess) return 'ACTIVE_GENERAL';
+  if (ctx.isGaMember) return 'FREE_GA';
+  return 'FREE_GENERAL';
+}
+
+export function getMissingEntitlementBadges(params: {
+  requiresPaid: boolean;
+  requiresGa: boolean;
+  hasActivePaidAccess: boolean;
+  isGaMember: boolean;
+}): string[] {
+  const badges: string[] = [];
+  if (params.requiresPaid && !params.hasActivePaidAccess) {
+    badges.push('유료');
+  }
+  if (params.requiresGa && !params.isGaMember) {
+    badges.push('GA 전용');
+  }
+  return badges;
+}
+
 export function isGaMemberUser(userLike: {
   gaCode?: string | null;
   gaName?: string | null;
@@ -92,16 +115,35 @@ export function evaluateFeatureAccess(
   if (policy.freeAllowed) {
     return { allowed: true, reason: null, badges: [] };
   }
-  const badges: string[] = [];
-  if (policy.requiresPaid) badges.push('유료');
-  if (policy.requiresGa) badges.push('GA 전용');
+  const badges = getMissingEntitlementBadges({
+    requiresPaid: policy.requiresPaid,
+    requiresGa: policy.requiresGa,
+    hasActivePaidAccess: ctx.hasActivePaidAccess,
+    isGaMember: ctx.isGaMember,
+  });
   if (policy.requiresPaid && !ctx.hasActivePaidAccess) {
     return { allowed: false, reason: 'paid_required', badges };
   }
   if (policy.requiresGa && !ctx.isGaMember) {
     return { allowed: false, reason: 'ga_required', badges };
   }
-  return { allowed: true, reason: null, badges };
+  return { allowed: true, reason: null, badges: [] };
+}
+
+export function getFeatureAccessBadges(
+  featureKey: FeatureKey | string,
+  ctx: FeatureAccessContext,
+): string[] {
+  const policy = FEATURE_POLICIES[featureKey as FeatureKey];
+  if (!policy || policy.freeAllowed) {
+    return [];
+  }
+  return getMissingEntitlementBadges({
+    requiresPaid: policy.requiresPaid,
+    requiresGa: policy.requiresGa,
+    hasActivePaidAccess: ctx.hasActivePaidAccess,
+    isGaMember: ctx.isGaMember,
+  });
 }
 
 export function formatFeatureAccessBadge(badges: string[]): string | undefined {

@@ -189,7 +189,25 @@ describe('native session menu policy', () => {
     }), capabilities))).toContain('구독 및 결제');
   });
 
+  test('does not show paid badges for ACTIVE_GENERAL users', () => {
+    process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENABLED = 'true';
+    process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENFORCE_ACCESS = 'true';
+    const menu = buildNativeMenuForSession(user({
+      gaCode: 'GENERAL',
+      gaName: '공용',
+    }), {
+      ...capabilities,
+      hasActivePaidAccess: true,
+    });
+    const links = menu.flatMap((section) => section.children);
+    expect(links.find((link) => link.id === 'customer-list')?.badge).toBeUndefined();
+    expect(links.find((link) => link.id === 'customer-map')?.badge).toBeUndefined();
+    expect(links.find((link) => link.id === 'insurer-newsletters')?.badge).toBe('GA 전용');
+  });
+
   test('shows entitlement badges for GENERAL users without rewriting paths', () => {
+    process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENABLED = 'true';
+    process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENFORCE_ACCESS = 'true';
     const menu = buildNativeMenuForSession(user({
       gaCode: 'GENERAL',
       gaName: '공용',

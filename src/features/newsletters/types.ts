@@ -32,6 +32,7 @@ export type NewsletterItem = {
   summary: string;
   heroImageUrl: string | null;
   heroImageObjectKey?: string | null;
+  heroImageOpenUrl?: string | null;
   publishedAt: string;
   status: 'DRAFT' | 'PUBLISHED';
   imageCount?: number;

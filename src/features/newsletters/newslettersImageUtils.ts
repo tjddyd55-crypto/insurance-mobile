@@ -15,6 +15,31 @@ function looksLikeObjectKey(path: string): boolean {
   return OBJECT_KEY_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
+function encodeHttpUriPath(url: string): string {
+  if (!/^https?:\/\//i.test(url)) {
+    return url;
+  }
+  try {
+    const parsed = new URL(url);
+    parsed.pathname = parsed.pathname
+      .split('/')
+      .map((segment) => {
+        if (!segment) {
+          return '';
+        }
+        try {
+          return encodeURIComponent(decodeURIComponent(segment));
+        } catch {
+          return encodeURIComponent(segment);
+        }
+      })
+      .join('/');
+    return parsed.toString();
+  } catch {
+    return encodeURI(url);
+  }
+}
+
 export function isNewsletterImageAttachment(row: Pick<NewsletterAttachment, 'kind' | 'mimeType' | 'fileName'>): boolean {
   if (row.kind === 'image') {
     return true;
@@ -27,11 +52,10 @@ export function isNewsletterImageAttachment(row: Pick<NewsletterAttachment, 'kin
   return /\.(jpe?g|png|webp|gif|heic|heif)$/.test(name);
 }
 
-function pickAttachmentUrl(row: Pick<NewsletterAttachment, 'url' | 'objectKey' | 'openUrl'>): string {
-  const openUrl = String(row.openUrl ?? '').trim();
-  if (openUrl) {
-    return openUrl;
-  }
+/** attachment 표시용 raw URL: objectKey(CDN) → url(CDN) */
+function pickNewsletterAttachmentCdnUrl(
+  row: Pick<NewsletterAttachment, 'url' | 'objectKey'>,
+): string {
   const objectKey = String(row.objectKey ?? '').trim();
   if (objectKey) {
     return cdnUrlForObjectKey(objectKey);
@@ -45,42 +69,72 @@ export function resolveNewsletterImageUrl(raw?: string | null): string {
     return '';
   }
   if (looksLikeObjectKey(trimmed)) {
-    return resolveApiUrl(cdnUrlForObjectKey(trimmed.replace(/^\//, '')));
+    return encodeHttpUriPath(resolveApiUrl(cdnUrlForObjectKey(trimmed.replace(/^\//, ''))));
   }
-  return resolveApiUrl(trimmed);
+  return encodeHttpUriPath(resolveApiUrl(trimmed));
+}
+
+function resolveNewsletterAccessibleImageUrl(
+  row: Pick<NewsletterAttachment, 'url' | 'objectKey' | 'openUrl'>,
+): string {
+  const cdnRaw = pickNewsletterAttachmentCdnUrl(row);
+  if (cdnRaw) {
+    const resolved = resolveNewsletterImageUrl(cdnRaw);
+    if (resolved) {
+      return resolved;
+    }
+  }
+  const openUrl = String(row.openUrl ?? '').trim();
+  if (openUrl) {
+    return resolveNewsletterImageUrl(openUrl);
+  }
+  return '';
 }
 
 export function resolveNewsletterAttachmentDisplayUrl(
   row: Pick<NewsletterAttachment, 'url' | 'objectKey' | 'openUrl'>,
 ): string {
-  return resolveNewsletterImageUrl(pickAttachmentUrl(row));
+  const openUrl = String(row.openUrl ?? '').trim();
+  if (openUrl) {
+    return resolveNewsletterImageUrl(openUrl);
+  }
+  return resolveNewsletterImageUrl(pickNewsletterAttachmentCdnUrl(row));
 }
 
-/** 상세 gallery 표시용 — openUrl 대신 CDN/objectKey를 우선해 list 썸네일과 동일 URL을 쓴다. */
+/** 상세 gallery 표시용 — CDN/objectKey 우선, 실패 시 signed openUrl fallback */
 export function resolveNewsletterGalleryAttachmentUrl(
-  row: Pick<NewsletterAttachment, 'url' | 'objectKey'>,
+  row: Pick<NewsletterAttachment, 'url' | 'objectKey' | 'openUrl'>,
 ): string {
-  const objectKey = String(row.objectKey ?? '').trim();
-  if (objectKey) {
-    return resolveNewsletterImageUrl(objectKey);
-  }
-  return resolveNewsletterImageUrl(row.url);
+  return resolveNewsletterAccessibleImageUrl(row);
 }
 
 export function resolveNewsletterListCardImageUrl(item: {
   heroImageObjectKey?: string | null;
   heroImageUrl?: string | null;
+  heroImageOpenUrl?: string | null;
 }): string {
   const heroObjectKey = String(item.heroImageObjectKey ?? '').trim();
   if (heroObjectKey) {
-    return resolveNewsletterImageUrl(heroObjectKey);
+    const resolved = resolveNewsletterImageUrl(heroObjectKey);
+    if (resolved) {
+      return resolved;
+    }
   }
-  return resolveNewsletterImageUrl(item.heroImageUrl);
+  const heroUrl = resolveNewsletterImageUrl(item.heroImageUrl);
+  if (heroUrl) {
+    return heroUrl;
+  }
+  const heroOpenUrl = String(item.heroImageOpenUrl ?? '').trim();
+  if (heroOpenUrl) {
+    return resolveNewsletterImageUrl(heroOpenUrl);
+  }
+  return '';
 }
 
 export function buildNewsletterGalleryUrls(params: {
   heroImageUrl?: string | null;
   heroImageObjectKey?: string | null;
+  heroImageOpenUrl?: string | null;
   attachments?: NewsletterAttachment[] | null;
 }): string[] {
   const imageAttachments = [...(params.attachments ?? [])]

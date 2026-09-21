@@ -343,6 +343,7 @@ function NewsletterDetailModal({
     ? buildNewsletterGalleryUrls({
         heroImageUrl: detail.data.heroImageUrl,
         heroImageObjectKey: detail.data.heroImageObjectKey,
+        heroImageOpenUrl: detail.data.heroImageOpenUrl,
         attachments: detail.data.attachments,
       })
     : [];

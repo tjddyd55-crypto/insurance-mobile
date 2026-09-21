@@ -31,8 +31,13 @@ export function applyEntitlementMenuBadges(
       });
       if (!featureKey) return child;
       const verdict = evaluateFeatureAccess(featureKey as FeatureKey, ctx);
+      if (verdict.allowed) {
+        return child;
+      }
       const badge = formatFeatureAccessBadge(verdict.badges);
-      if (!badge) return child;
+      if (!badge) {
+        return child;
+      }
       return {
         ...child,
         badge: child.badge ? `${child.badge} · ${badge}` : badge,
