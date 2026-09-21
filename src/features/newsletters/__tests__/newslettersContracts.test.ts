@@ -54,6 +54,23 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/useBottomSafeInset/);
   });
 
+  it('renders detail linkPreview as a rich card instead of a secondary button', () => {
+    const source = readSource('NewslettersScreen.tsx');
+    const card = readSource('NewsletterLinkPreviewCard.tsx');
+    expect(source).toMatch(/NewsletterLinkPreviewCard/);
+    expect(source).toMatch(/preview=\{detail\.data\.linkPreview\}/);
+    expect(source).not.toMatch(/label=\{detail\.data\.linkPreview/);
+    expect(source).not.toMatch(/관련 링크 열기/);
+    expect(card).toMatch(/resolveNewsletterLinkPreviewImageUrl/);
+    expect(card).toMatch(/resolveNewsletterLinkPreviewTitle/);
+    expect(card).toMatch(/resolveNewsletterLinkPreviewDescription/);
+    expect(card).toMatch(/resolveNewsletterLinkPreviewDomain/);
+    expect(card).toMatch(/Linking\.openURL/);
+    expect(card).toMatch(/variant="outlined"/);
+    expect(card).toMatch(/variant="cardTitle"/);
+    expect(card).not.toMatch(/variant="secondary"/);
+  });
+
   it('keeps customer-news carousel free of newsletter zoom hooks', () => {
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'customer-news', 'customerNewsImageCarousel.tsx'),
