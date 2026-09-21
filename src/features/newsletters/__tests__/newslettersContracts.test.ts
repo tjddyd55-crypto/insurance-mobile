@@ -23,7 +23,9 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/NewsletterGridCard/);
     expect(source).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(source).toMatch(/newsletterImageFrame/);
+    expect(source).toMatch(/resizeMode="cover"/);
     expect(source).toMatch(/resolveNewsletterListCardImageUrl/);
+    expect(source).not.toMatch(/NewsletterIntrinsicImage/);
   });
 
   it('uses text-first stacked detail images with tap-to-fullscreen zoom viewer', () => {
@@ -33,11 +35,12 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/segment === 'gallery'/);
     expect(source).toMatch(/ModalCloseButton/);
     expect(source).toMatch(/NewsDetailImageViewerModal/);
-    expect(source).toMatch(/NewsletterDetailImagePressable/);
+    expect(source).toMatch(/NewsletterDetailGalleryImage/);
     expect(source).toMatch(/NewsletterDetailPageZoomContent/);
     expect(source).toMatch(/setZoomImageUrl\(url\)/);
-    expect(source).toMatch(/detailGalleryFrame/);
-    expect(source).toMatch(/detailGalleryImage/);
+    expect(readSource('NewsletterDetailGalleryImage.tsx')).toMatch(
+      /NewsletterDetailImagePressable/,
+    );
     expect(source).not.toMatch(/NewsletterDetailInlineZoomImage/);
     expect(source).not.toMatch(/NewsDetailPageZoomContent/);
     expect(source).not.toMatch(/detailScrollEnabled/);

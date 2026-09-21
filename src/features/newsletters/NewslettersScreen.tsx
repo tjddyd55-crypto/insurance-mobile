@@ -51,7 +51,7 @@ import {
   resolveNewsletterAttachmentDisplayUrl,
   resolveNewsletterListCardImageUrl,
 } from './newslettersImageUtils';
-import { NewsletterDetailImagePressable } from './NewsletterDetailImagePressable';
+import { NewsletterDetailGalleryImage } from './NewsletterDetailGalleryImage';
 import { NEWSLETTER_IMAGE_ASPECT_RATIO } from './newsletterImageLayout';
 import { sortPublishedNews } from './newslettersModel';
 import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
@@ -429,17 +429,11 @@ function NewsletterDetailModal({
                     return (
                       <Stack key="gallery" gap="sm">
                         {galleryUrls.map((url) => (
-                          <NewsletterDetailImagePressable
+                          <NewsletterDetailGalleryImage
                             key={url}
+                            uri={url}
                             onPress={() => setZoomImageUrl(url)}
-                            style={styles.detailGalleryFrame}
-                          >
-                            <Image
-                              source={{ uri: url }}
-                              style={styles.detailGalleryImage}
-                              resizeMode="cover"
-                            />
-                          </NewsletterDetailImagePressable>
+                          />
                         ))}
                       </Stack>
                     );
@@ -534,16 +528,6 @@ function makeStyles(theme: AppTheme, windowWidth: number) {
     },
     detailBody: {
       width: '100%',
-    },
-    detailGalleryFrame: {
-      width: '100%',
-      aspectRatio: NEWSLETTER_IMAGE_ASPECT_RATIO,
-      borderRadius: theme.radius.md,
-      overflow: 'hidden',
-      backgroundColor: theme.colors.surfaceSubtle,
-    },
-    detailGalleryImage: {
-      ...StyleSheet.absoluteFill,
     },
     attachmentSection: {
       width: '100%',
