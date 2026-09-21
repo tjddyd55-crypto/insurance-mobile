@@ -47,6 +47,7 @@ export type NewsletterLinkPreview = {
   description?: string | null;
   imageUrl?: string | null;
   siteName?: string | null;
+  domain?: string | null;
 };
 export type NewsletterDetail = NewsletterItem & {
   bodyText: string;

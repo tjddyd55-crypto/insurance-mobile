@@ -1,6 +1,7 @@
 import {
   NEWSLETTER_LINK_PREVIEW_FALLBACK_TITLE,
   canRenderNewsletterLinkPreview,
+  resolveNewsletterLinkPreviewCardModel,
   resolveNewsletterLinkPreviewDescription,
   resolveNewsletterLinkPreviewDomain,
   resolveNewsletterLinkPreviewHref,
@@ -18,6 +19,7 @@ function preview(
     description: partial.description,
     imageUrl: partial.imageUrl,
     siteName: partial.siteName,
+    domain: partial.domain,
   };
 }
 
@@ -71,8 +73,47 @@ describe('newsletterLinkPreviewPresentation', () => {
     ).toBe('news.example.com');
   });
 
-  it('returns empty domain when the url is not a web address', () => {
-    expect(resolveNewsletterLinkPreviewDomain(preview({ url: 'not-a-url' }))).toBe('');
+  it('uses explicit domain then falls back to the raw url text', () => {
+    expect(
+      resolveNewsletterLinkPreviewDomain(
+        preview({ url: 'not-a-url', domain: '  www.blog.naver.com  ' }),
+      ),
+    ).toBe('blog.naver.com');
+    expect(resolveNewsletterLinkPreviewDomain(preview({ url: 'not-a-url' }))).toBe('not-a-url');
+  });
+
+  it('builds a sparse card model with title, domain, and placeholder', () => {
+    const model = resolveNewsletterLinkPreviewCardModel(
+      preview({
+        url: 'https://m.blog.naver.com/minihelper/223499024370',
+        title: '교통사고 후유장해. 보험사에서 기왕증으로 합의',
+      }),
+    );
+    expect(model).toMatchObject({
+      title: '교통사고 후유장해. 보험사에서 기왕증으로 합의',
+      description: '',
+      domain: 'm.blog.naver.com',
+      imageUrl: null,
+      showPlaceholder: true,
+    });
+  });
+
+  it('hides the placeholder when a safe image url exists', () => {
+    const model = resolveNewsletterLinkPreviewCardModel(
+      preview({
+        url: 'https://news.example.com/a',
+        title: '안내',
+        description: '본문 요약',
+        imageUrl: 'https://cdn.example.com/og.png',
+        siteName: '매일경제',
+      }),
+    );
+    expect(model).toMatchObject({
+      description: '본문 요약',
+      domain: '매일경제',
+      imageUrl: 'https://cdn.example.com/og.png',
+      showPlaceholder: false,
+    });
   });
 
   it('keeps only http image urls', () => {

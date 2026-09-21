@@ -58,17 +58,21 @@ describe('newslettersContracts', () => {
     const source = readSource('NewslettersScreen.tsx');
     const card = readSource('NewsletterLinkPreviewCard.tsx');
     expect(source).toMatch(/NewsletterLinkPreviewCard/);
-    expect(source).toMatch(/preview=\{detail\.data\.linkPreview\}/);
+    expect(source).toMatch(/getNewsletterLinkPreview\(detail\.data\)/);
+    expect(source).not.toMatch(/preview=\{detail\.data\.linkPreview\}/);
     expect(source).not.toMatch(/label=\{detail\.data\.linkPreview/);
     expect(source).not.toMatch(/관련 링크 열기/);
-    expect(card).toMatch(/resolveNewsletterLinkPreviewImageUrl/);
-    expect(card).toMatch(/resolveNewsletterLinkPreviewTitle/);
-    expect(card).toMatch(/resolveNewsletterLinkPreviewDescription/);
-    expect(card).toMatch(/resolveNewsletterLinkPreviewDomain/);
+    expect(card).toMatch(/normalizeNewsletterLinkPreview/);
+    expect(card).toMatch(/resolveNewsletterLinkPreviewCardModel/);
+    expect(card).toMatch(/newsletter-link-preview-placeholder/);
+    expect(card).toMatch(/newsletter-link-preview-domain/);
+    expect(card).toMatch(/NEWSLETTER_LINK_PREVIEW_PLACEHOLDER_HEIGHT/);
+    expect(card).toMatch(/theme\.spacing\.lg/);
     expect(card).toMatch(/Linking\.openURL/);
     expect(card).toMatch(/variant="outlined"/);
     expect(card).toMatch(/variant="cardTitle"/);
     expect(card).not.toMatch(/variant="secondary"/);
+    expect(card).not.toMatch(/numberOfLines=\{1\}[\s\S]*variant="cardTitle"/);
   });
 
   it('keeps customer-news carousel free of newsletter zoom hooks', () => {
