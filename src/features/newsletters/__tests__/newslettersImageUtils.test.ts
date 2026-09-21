@@ -30,6 +30,31 @@ describe('newslettersImageUtils', () => {
     expect(url).toContain('insurer-news/hero.jpg');
   });
 
+  test('resolves production insurance/ object keys to CDN, not the API host', () => {
+    const objectKey = 'insurance/yjasset/shared/insurer-newsletters/삼성생명/2026/07/x.jpg';
+    const url = resolveNewsletterListCardImageUrl({
+      heroImageObjectKey: objectKey,
+      heroImageUrl: 'https://insurance-production-7bd8.up.railway.app/insurance/yjasset/shared/insurer-newsletters/삼성생명/2026/07/x.jpg',
+    });
+    expect(url).toContain('https://cdn.platform-assets.com/insurance/yjasset/shared/insurer-newsletters/');
+    expect(url).toContain('%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85');
+    expect(url).not.toContain('삼성생명');
+    expect(url).not.toContain('insurance-production-7bd8.up.railway.app');
+    expect(url).not.toContain('insurance-dev.up.railway.app');
+  });
+
+  test('keeps CDN when both insurance/ objectKey and heroImageUrl CDN are present', () => {
+    const objectKey = 'insurance/global/shared/insurer-newsletters/samsung/2026/07/x.jpg';
+    const cdnUrl = `https://cdn.platform-assets.com/${objectKey}`;
+    const url = resolveNewsletterListCardImageUrl({
+      heroImageObjectKey: objectKey,
+      heroImageUrl: cdnUrl,
+    });
+    expect(url).toBe(cdnUrl);
+    expect(url.startsWith('https://cdn.platform-assets.com/insurance/')).toBe(true);
+    expect(url).not.toMatch(/up\.railway\.app/);
+  });
+
   test('falls back to heroImageOpenUrl when CDN fields are missing', () => {
     const url = resolveNewsletterListCardImageUrl({
       heroImageUrl: null,

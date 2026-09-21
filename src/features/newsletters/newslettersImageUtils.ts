@@ -2,7 +2,14 @@ import { resolveApiUrl } from '../../api/client';
 import { cdnUrlForObjectKey } from '../team/teamAttachmentUpload';
 import type { NewsletterAttachment } from './types';
 
-const OBJECT_KEY_PREFIXES = ['crm-platform/', 'insurer/', 'insurer-news/', 'files/', 'platform-assets/'];
+const OBJECT_KEY_PREFIXES = [
+  'insurance/',
+  'crm-platform/',
+  'insurer/',
+  'insurer-news/',
+  'files/',
+  'platform-assets/',
+];
 
 function looksLikeObjectKey(path: string): boolean {
   if (!path || /^https?:\/\//i.test(path)) {
