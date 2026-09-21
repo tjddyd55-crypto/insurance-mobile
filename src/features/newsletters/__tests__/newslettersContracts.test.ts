@@ -33,11 +33,12 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/segment === 'gallery'/);
     expect(source).toMatch(/ModalCloseButton/);
     expect(source).toMatch(/NewsDetailImageViewerModal/);
-    expect(source).toMatch(/NewsletterDetailImagePressable/);
+    expect(source).toMatch(/NewsletterDetailGalleryImage/);
     expect(source).toMatch(/NewsletterDetailPageZoomContent/);
     expect(source).toMatch(/setZoomImageUrl\(url\)/);
-    expect(source).toMatch(/detailGalleryFrame/);
-    expect(source).toMatch(/detailGalleryImage/);
+    expect(readSource('NewsletterDetailGalleryImage.tsx')).toMatch(
+      /NewsletterDetailImagePressable/,
+    );
     expect(source).not.toMatch(/NewsletterDetailInlineZoomImage/);
     expect(source).not.toMatch(/NewsDetailPageZoomContent/);
     expect(source).not.toMatch(/detailScrollEnabled/);
