@@ -22,6 +22,7 @@ import {
 import {
   getOsNotificationPermissionGranted,
   openOsNotificationSettings,
+  syncPushRegistrationIfPermitted,
 } from '../push/pushRegistration';
 import { DEFAULT_ALERT_SETTINGS } from './notificationModel';
 import { getNotificationSettings, saveNotificationSettings } from './notificationsApi';
@@ -57,6 +58,11 @@ export function NotificationSettingsScreen() {
     });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => {
+    if (!token || osPermissionGranted !== true) return;
+    void syncPushRegistrationIfPermitted(token);
+  }, [osPermissionGranted, token]);
 
   useEffect(() => {
     if (!query.data || initialized) return;

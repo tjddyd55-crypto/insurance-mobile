@@ -213,14 +213,27 @@ export async function unregisterPushDeviceWithServer(authToken: string | null): 
   }
 }
 
+export async function syncPushRegistrationIfPermitted(authToken: string): Promise<boolean> {
+  const token = String(authToken ?? '').trim();
+  if (!token || !isPushSupportedPlatform()) return false;
+  if (!Device.isDevice) return false;
+
+  await ensureWorkNotificationChannel();
+  const granted = await getOsNotificationPermissionGranted();
+  if (!granted) return false;
+
+  const deviceToken = await getNativeDevicePushToken();
+  if (!deviceToken) return false;
+
+  return registerPushDeviceWithServer({ authToken: token, deviceToken });
+}
+
 export async function syncPushRegistrationAfterLogin(authToken: string): Promise<void> {
   if (!isPushSupportedPlatform()) return;
   await ensureWorkNotificationChannel();
   const granted = await promptNotificationPermissionOnce();
   if (!granted) return;
-  const deviceToken = await getNativeDevicePushToken();
-  if (!deviceToken) return;
-  await registerPushDeviceWithServer({ authToken, deviceToken });
+  await syncPushRegistrationIfPermitted(authToken);
 }
 
 export function openOsNotificationSettings(): void {

@@ -15,8 +15,10 @@ import { fetchMe, loginRequest, type AuthUser } from '../api/authApi';
 import { resetUnauthorizedLatch, setUnauthorizedHandler } from '../api/client';
 import {
   syncPushRegistrationAfterLogin,
+  syncPushRegistrationIfPermitted,
   unregisterPushDeviceWithServer,
 } from '../features/push/pushRegistration';
+import { usePushRegistrationLifecycle } from '../features/push/usePushRegistrationLifecycle';
 import { ensureNativeUpgradeMigration } from './nativeUpgradeMigration';
 import {
   clearAuthSession,
@@ -39,6 +41,11 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function PushRegistrationLifecycle() {
+  usePushRegistrationLifecycle();
+  return null;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -107,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(stored.user);
       setStatus('authenticated');
       resetUnauthorizedLatch();
+      void syncPushRegistrationIfPermitted(stored.token);
     }
   }, [clearLocalSession]);
 
@@ -164,7 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [status, user, token, login, logout, restoreSession, handleUnauthorized, updateUser],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <PushRegistrationLifecycle />
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {
