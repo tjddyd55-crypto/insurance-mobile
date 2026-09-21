@@ -24,21 +24,29 @@ describe('newsletterImageLayout', () => {
     );
     expect(screen).toMatch(/resizeMode="cover"/);
     expect(screen).toMatch(/NewsletterDetailGalleryImage/);
+    expect(screen).not.toMatch(/NewsletterIntrinsicImage/);
     expect(screen).not.toMatch(/detailGalleryFrame/);
     expect(screen).not.toMatch(/detailGalleryImage/);
   });
 
   it('sizes detail gallery from intrinsic onLoad ratio without cropping', () => {
+    const intrinsic = readSource('NewsletterIntrinsicImage.tsx');
     const gallery = readSource('NewsletterDetailGalleryImage.tsx');
-    expect(gallery).toMatch(/onLoad/);
-    expect(gallery).toMatch(/resolveNewsletterDetailImageAspectRatio/);
+
+    expect(gallery).toMatch(/NewsletterIntrinsicImage/);
     expect(gallery).toMatch(/NewsletterDetailImagePressable/);
-    expect(gallery).toMatch(/resizeMode="contain"/);
-    expect(gallery).toMatch(/nativeEvent\.source\.width/);
-    expect(gallery).toMatch(/nativeEvent\.source\.height/);
     expect(gallery).not.toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(gallery).not.toMatch(/resizeMode="cover"/);
     expect(gallery).not.toMatch(/absoluteFill/);
+
+    expect(intrinsic).toMatch(/onLoad/);
+    expect(intrinsic).toMatch(/resolveNewsletterDetailImageAspectRatio/);
+    expect(intrinsic).toMatch(/resizeMode="contain"/);
+    expect(intrinsic).toMatch(/nativeEvent\.source\.width/);
+    expect(intrinsic).toMatch(/nativeEvent\.source\.height/);
+    expect(intrinsic).not.toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
+    expect(intrinsic).not.toMatch(/resizeMode="cover"/);
+    expect(intrinsic).not.toMatch(/absoluteFill/);
   });
 
   it('resolves intrinsic detail aspect from image dimensions', () => {
@@ -58,5 +66,6 @@ describe('newsletterImageLayout', () => {
       'utf8',
     );
     expect(viewer).not.toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
+    expect(viewer).not.toMatch(/resolveNewsletterDetailImageAspectRatio/);
   });
 });

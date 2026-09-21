@@ -23,7 +23,9 @@ describe('newslettersContracts', () => {
     expect(source).toMatch(/NewsletterGridCard/);
     expect(source).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(source).toMatch(/newsletterImageFrame/);
+    expect(source).toMatch(/resizeMode="cover"/);
     expect(source).toMatch(/resolveNewsletterListCardImageUrl/);
+    expect(source).not.toMatch(/NewsletterIntrinsicImage/);
   });
 
   it('uses text-first stacked detail images with tap-to-fullscreen zoom viewer', () => {
