@@ -68,8 +68,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   // Production updates must continue that sequence; DEV stays on its own low codes.
   const isProduction = environment === 'production';
   const appVersion = isProduction ? '1.0.3' : '1.0.0';
-  const androidVersionCode = isProduction ? 5 : 1;
-  const iosBuildNumber = isProduction ? '5' : '1';
+  const androidVersionCode = isProduction ? 6 : 1;
+  const iosBuildNumber = isProduction ? '6' : '1';
   const projectId =
     process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 
