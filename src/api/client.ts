@@ -115,9 +115,19 @@ function mustUseHttps(hostname: string, baseUrl: string): boolean {
 }
 
 /**
- * Claim PDF / download-all (전체 다운로드) URLs are absolute. The API builds them with
- * `req.protocol`, which is `http` behind Railway's TLS proxy. Android then
- * blocks cleartext. Upgrade only the API host; leave other http URLs alone.
+ * Native regression against the pre-migration claim download.
+ *
+ * PC web (`insurance` `fetchClaimRequestBundleBlob`) never follows the absolute
+ * bundle URL. It fetches Bearer + `resolveApiUrl('/api/.../files.pdf|files.zip')`
+ * on the HTTPS origin.
+ *
+ * Mobile web assigns that absolute URL (`window.location.assign`). The legacy
+ * WebView (`insurance/apps/mobile`) then opens `*.pdf` with `Linking` (Chrome).
+ * Chrome is outside this app's cleartext policy and can follow Railway's
+ * http→https redirect. `shareRemoteFile` instead `fetch`es the URL in-app, and
+ * OkHttp rejects `http://` before any redirect.
+ *
+ * Upgrade only the API host. Leave other http URLs alone.
  */
 function upgradeCleartextApiUrl(url: string, baseUrl: string): string {
   const parsed = parseCleartextUrl(url);
