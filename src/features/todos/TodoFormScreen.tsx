@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BackHandler,
   KeyboardAvoidingView,
@@ -7,7 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,7 +31,7 @@ import { customerMatchesSearch, formatCustomerPhone } from '../customers/custome
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
-import { todoEditScreenId } from './todoNavigation';
+import { returnToTodoList, todoEditScreenId } from './todoNavigation';
 import {
   cloneTodoFormDraft,
   EMPTY_TODO_FORM_DRAFT,
@@ -53,13 +53,17 @@ export function TodoFormScreen(props: TodoFormProps) {
   if (!screenId) {
     return <ErrorState title="잘못된 할 일 주소입니다" message="할 일 id를 확인해 주세요." />;
   }
-  // Drawer가 같은 화면을 재사용해도 id가 바뀌면 폼·뮤테이션·다이얼로그를 새로 만든다.
+  // 같은 화면 인스턴스가 남아도 id가 바뀌면 폼·뮤테이션·다이얼로그를 새로 만든다.
   return <TodoFormEditor key={screenId} mode="edit" todoId={screenId} />;
 }
 
 function TodoFormEditor({ mode, todoId }: TodoFormProps) {
   const { token } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
+  const leaveToList = useCallback(() => {
+    returnToTodoList(navigation, router);
+  }, [navigation, router]);
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -134,32 +138,34 @@ function TodoFormEditor({ mode, todoId }: TodoFormProps) {
     onSuccess: async () => {
       setInitialSnapshot(JSON.stringify(form));
       await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
-      router.replace('/todos');
+      leaveToList();
     },
   });
   const deleteMutation = useMutation({
     mutationFn: () => deleteTodo(token, todoId ?? ''),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
-      router.replace('/todos');
+      leaveToList();
     },
   });
 
-  const requestBack = () => {
+  const requestBack = useCallback(() => {
     if (dirty && !saveMutation.isPending) {
       setDiscardOpen(true);
-    } else {
-      router.back();
+      return;
     }
-  };
+    leaveToList();
+  }, [dirty, leaveToList, saveMutation.isPending]);
 
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      requestBack();
-      return true;
-    });
-    return () => subscription.remove();
-  });
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        requestBack();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [requestBack]),
+  );
 
   const submit = () => {
     if (!form.description.trim()) {
@@ -316,7 +322,7 @@ function TodoFormEditor({ mode, todoId }: TodoFormProps) {
         onConfirm={() => {
           setDiscardOpen(false);
           setInitialSnapshot(JSON.stringify(form));
-          router.back();
+          leaveToList();
         }}
       />
       <ConfirmDialog

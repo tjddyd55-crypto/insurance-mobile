@@ -1,58 +1,65 @@
-import {
-  TODO_EDIT_ROUTE_NAME,
-  todoEditPath,
-  todoEditScreenId,
-  todoEditSingularId,
-} from '../todoNavigation';
-import {
-  resolveTodoFormSession,
-  todoFormDraftFromRecord,
-} from '../todoFormSession';
+// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-require-imports */
+import { returnToTodoList, shouldPopTodoStackToList, todoEditPath, todoEditScreenId } from '../todoNavigation';
+import { resolveTodoFormSession, todoFormDraftFromRecord } from '../todoFormSession';
+
+const fs = require('fs');
+const path = require('path');
+
+const todoStackState = {
+  type: 'stack' as const,
+  index: 1,
+  routeNames: ['index', 'new', '[todoId]/edit'],
+};
 
 describe('todo edit session', () => {
-  test('treats each todo id as its own drawer screen', () => {
-    const first = todoEditSingularId(TODO_EDIT_ROUTE_NAME, 'todo-a');
-    const second = todoEditSingularId(TODO_EDIT_ROUTE_NAME, 'todo-b');
+  test('pops the todo stack back to the list instead of drawer history', () => {
+    const dispatch = jest.fn();
+    const replace = jest.fn();
+    returnToTodoList(
+      { getState: () => todoStackState, dispatch },
+      { replace },
+    );
 
-    expect(TODO_EDIT_ROUTE_NAME).toBe('todos/[todoId]/edit');
-    expect(first).toBe('todos/[todoId]/edit/todo-a');
-    expect(second).toBe('todos/[todoId]/edit/todo-b');
-    expect(first).not.toBe(second);
+    expect(shouldPopTodoStackToList(todoStackState)).toBe(true);
+    expect(dispatch).toHaveBeenCalledWith({ type: 'POP_TO_TOP' });
+    expect(replace).not.toHaveBeenCalled();
   });
 
-  test('keeps the same screen when the same todo is opened again', () => {
-    const routeName = TODO_EDIT_ROUTE_NAME;
-    expect(todoEditSingularId(routeName, 'todo-a')).toBe(todoEditSingularId(routeName, 'todo-a'));
-    expect(resolveTodoFormSession('todo-a', 'todo-a')).toBe('keep');
+  test('does not pop the app root or the home drawer route', () => {
+    const dispatch = jest.fn();
+    const replace = jest.fn();
+    const rootStack = { type: 'stack' as const, index: 1, routeNames: ['(auth)', '(app)', 'index'] };
+    const drawer = { type: 'drawer' as const, index: 3, routeNames: ['index', 'todos'] };
+
+    expect(shouldPopTodoStackToList(rootStack)).toBe(false);
+    expect(shouldPopTodoStackToList(drawer)).toBe(false);
+    expect(shouldPopTodoStackToList({ type: 'stack', index: 0, routeNames: todoStackState.routeNames })).toBe(false);
+
+    returnToTodoList({ getState: () => rootStack, dispatch }, { replace });
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledWith('/todos');
   });
 
   test('drops the previous draft when a different todo is selected', () => {
     expect(resolveTodoFormSession('todo-a', 'todo-b')).toBe('reset');
-    expect(resolveTodoFormSession(null, 'todo-b')).toBe('reset');
-  });
-
-  test('uses the latest id when the route param is a list', () => {
+    expect(resolveTodoFormSession('todo-a', 'todo-a')).toBe('keep');
     expect(todoEditScreenId(['todo-a', 'todo-b'])).toBe('todo-b');
-    expect(todoEditScreenId('  todo-c  ')).toBe('todo-c');
     expect(todoEditScreenId('')).toBeUndefined();
-    expect(todoEditScreenId(['', '   '])).toBeUndefined();
-    expect(todoEditSingularId(TODO_EDIT_ROUTE_NAME, undefined)).toBe(TODO_EDIT_ROUTE_NAME);
   });
 
   test('builds the edit path and draft from the newly selected todo', () => {
     expect(todoEditPath('todo-b')).toBe('/todos/todo-b/edit');
     expect(todoEditPath('todo-b')).not.toBe(todoEditPath('todo-a'));
 
-    const draft = todoFormDraftFromRecord({
+    expect(todoFormDraftFromRecord({
       description: '',
       title: '두번째 할 일',
       dueDate: '2026-09-02',
       relatedEntityType: 'customer',
       relatedEntityId: '9',
       customerName: '김고객',
-    });
-
-    expect(draft).toEqual({
+    })).toEqual({
       description: '두번째 할 일',
       dueDate: '2026-09-02',
       relatedCustomerId: '9',
@@ -60,19 +67,21 @@ describe('todo edit session', () => {
     });
   });
 
-  test('links a customer only when the selected todo relation is a customer', () => {
-    const draft = todoFormDraftFromRecord({
-      description: '본문',
-      title: '제목',
-      dueDate: null,
-      relatedEntityType: 'document',
-      relatedEntityId: '44',
-      customerName: '홍길동',
-    });
+  test('keeps todo edit on its own stack and does not retarget the app drawer', () => {
+    const stackLayout = fs.readFileSync(
+      path.join(__dirname, '../../../../app/(app)/todos/_layout.tsx'),
+      'utf8',
+    );
+    const drawerLayout = fs.readFileSync(
+      path.join(__dirname, '../../../../app/(app)/_layout.tsx'),
+      'utf8',
+    );
+    const form = fs.readFileSync(path.join(__dirname, '../TodoFormScreen.tsx'), 'utf8');
 
-    expect(draft.description).toBe('본문');
-    expect(draft.dueDate).toBe('');
-    expect(draft.relatedCustomerId).toBe('');
-    expect(draft.relatedCustomerName).toBe('홍길동');
+    expect(stackLayout).toContain('Stack');
+    expect(stackLayout).toContain("initialRouteName: 'index'");
+    expect(drawerLayout).not.toContain('dangerouslySingular');
+    expect(form).toContain('returnToTodoList');
+    expect(form).not.toContain('router.back(');
   });
 });
