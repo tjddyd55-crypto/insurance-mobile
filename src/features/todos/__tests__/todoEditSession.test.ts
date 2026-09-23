@@ -84,4 +84,72 @@ describe('todo edit session', () => {
     expect(form).toContain('returnToTodoList');
     expect(form).not.toContain('router.back(');
   });
+
+  test('route modules do not import react-navigation', () => {
+    const navigation = fs.readFileSync(path.join(__dirname, '../todoNavigation.ts'), 'utf8');
+    const drawer = fs.readFileSync(path.join(__dirname, '../../../navigation/openAppDrawer.ts'), 'utf8');
+    const specifiers = collectRouteImportSpecifiers();
+    expect(navigation).not.toMatch(/@react-navigation\//);
+    expect(drawer).not.toMatch(/@react-navigation\//);
+    expect(specifiers).toContain('../../../../src/features/todos/todoNavigation');
+    expect(specifiers).toContain('../navigation/openAppDrawer');
+    expect(specifiers.filter((specifier) => specifier.startsWith('@react-navigation/'))).toEqual([]);
+  });
 });
+
+function collectRouteImportSpecifiers() {
+  const appDir = path.join(__dirname, '../../../../app');
+  const specifiers = new Set();
+  const seen = new Set();
+
+  function visit(filePath) {
+    const resolved = resolveSourceFile(filePath);
+    if (!resolved || seen.has(resolved)) return;
+    seen.add(resolved);
+    const source = fs.readFileSync(resolved, 'utf8');
+    for (const specifier of readImportSpecifiers(source)) {
+      specifiers.add(specifier);
+      if (specifier.startsWith('.')) {
+        visit(path.resolve(path.dirname(resolved), specifier));
+      } else if (specifier.startsWith('@/')) {
+        visit(path.join(__dirname, '../../../..', specifier.slice(2)));
+      }
+    }
+  }
+
+  for (const file of walkFiles(appDir)) visit(file);
+  return [...specifiers];
+}
+
+function walkFiles(directory) {
+  const files = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...walkFiles(fullPath));
+    else if (/\.[cm]?[jt]sx?$/.test(entry.name)) files.push(fullPath);
+  }
+  return files;
+}
+
+function resolveSourceFile(filePath) {
+  const candidates = [
+    filePath,
+    `${filePath}.ts`,
+    `${filePath}.tsx`,
+    path.join(filePath, 'index.ts'),
+    path.join(filePath, 'index.tsx'),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
+}
+
+function readImportSpecifiers(source) {
+  const withoutComments = source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  const specifiers = [];
+  const pattern = /(?:import|export)\s+(?:type\s+)?(?:[^;]*?\sfrom\s+)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]\s*\)/g;
+  for (const match of withoutComments.matchAll(pattern)) {
+    specifiers.push(match[1] || match[2]);
+  }
+  return specifiers;
+}

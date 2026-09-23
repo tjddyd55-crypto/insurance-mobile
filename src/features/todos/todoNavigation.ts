@@ -1,4 +1,8 @@
-import { StackActions } from '@react-navigation/native';
+/**
+ * 할 일 스택의 popToTop.
+ * 라우트가 react-navigation 패키지를 직접 import 하면 SDK 56+ export가 실패한다.
+ */
+const POP_TODO_STACK_TO_LIST = { type: 'POP_TO_TOP' } as const;
 
 /** 할 일 스택 안의 수정 화면 이름. `app/(app)/todos/[todoId]/edit.tsx` */
 export const TODO_EDIT_STACK_SCREEN = '[todoId]/edit';
@@ -53,7 +57,7 @@ export function shouldPopTodoStackToList(state: TodoStackState | undefined): boo
  */
 export function returnToTodoList(navigation: TodoStackNavigation, router: TodoListRouter): void {
   if (shouldPopTodoStackToList(navigation.getState())) {
-    navigation.dispatch(StackActions.popToTop());
+    navigation.dispatch(POP_TODO_STACK_TO_LIST);
     return;
   }
   router.replace(TODO_LIST_HREF);
