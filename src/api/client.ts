@@ -9,7 +9,7 @@
  * - 401 callback (no infinite retry)
  */
 
-import { getEnvironmentConfig } from '../config/environment';
+import { getEnvironmentConfig, HTTPS_ONLY_API_HOSTS } from '../config/environment';
 import { safeApiResponse } from './safeApiResponse';
 
 export class ApiError extends Error {
@@ -74,18 +74,69 @@ function notifyUnauthorized(): void {
   unauthorizedHandler?.();
 }
 
+type CleartextUrl = {
+  hostname: string;
+  port: string;
+  suffix: string;
+};
+
+function parseCleartextUrl(url: string): CleartextUrl | null {
+  const match = /^http:\/\/([^/?#]+)([\s\S]*)$/i.exec(url.trim());
+  if (!match) {
+    return null;
+  }
+  const authority = match[1] ?? '';
+  const colon = authority.lastIndexOf(':');
+  const hasPort = colon > 0;
+  return {
+    hostname: (hasPort ? authority.slice(0, colon) : authority).toLowerCase(),
+    port: hasPort ? authority.slice(colon + 1) : '',
+    suffix: match[2] ?? '',
+  };
+}
+
+function originHostname(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function mustUseHttps(hostname: string, baseUrl: string): boolean {
+  if (!hostname) {
+    return false;
+  }
+  if (HTTPS_ONLY_API_HOSTS.has(hostname)) {
+    return true;
+  }
+  const base = baseUrl.trim();
+  return /^https:\/\//i.test(base) && hostname === originHostname(base);
+}
+
+/**
+ * Claim PDF / download-all (전체 다운로드) URLs are absolute. The API builds them with
+ * `req.protocol`, which is `http` behind Railway's TLS proxy. Android then
+ * blocks cleartext. Upgrade only the API host; leave other http URLs alone.
+ */
+function upgradeCleartextApiUrl(url: string, baseUrl: string): string {
+  const parsed = parseCleartextUrl(url);
+  if (!parsed || (parsed.port !== '' && parsed.port !== '80')) {
+    return url;
+  }
+  if (!mustUseHttps(parsed.hostname, baseUrl)) {
+    return url;
+  }
+  return `https://${parsed.hostname}${parsed.suffix}`;
+}
+
 export function resolveApiUrl(path: string, baseUrl = getEnvironmentConfig().apiBaseUrl): string {
   if (/^https?:\/\//i.test(path)) {
-    return path;
+    return upgradeCleartextApiUrl(path, baseUrl);
   }
   const origin = baseUrl.replace(/\/$/, '');
-  if (path.startsWith('/api/')) {
-    return `${origin}${path}`;
-  }
-  if (path.startsWith('/')) {
-    return `${origin}${path}`;
-  }
-  return `${origin}/${path}`;
+  const pathWithSlash = path.startsWith('/') ? path : `/${path}`;
+  return upgradeCleartextApiUrl(`${origin}${pathWithSlash}`, baseUrl);
 }
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {

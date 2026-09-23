@@ -16,6 +16,19 @@ export type { AppEnvironment } from './appIdentity';
 const DEFAULT_DEV_API = 'https://insurance-dev.up.railway.app';
 const DEFAULT_PROD_API = 'https://insurance-production-7bd8.up.railway.app';
 
+function originHostname(origin: string): string {
+  return new URL(origin).hostname.toLowerCase();
+}
+
+/**
+ * Public ONE FC API hosts. Railway terminates TLS, so these hosts are HTTPS-only.
+ * Android rejects cleartext to them.
+ */
+export const HTTPS_ONLY_API_HOSTS: ReadonlySet<string> = new Set([
+  originHostname(DEFAULT_DEV_API),
+  originHostname(DEFAULT_PROD_API),
+]);
+
 // Expo replaces EXPO_PUBLIC_* only when accessed statically.
 const PUBLIC_APP_ENV = process.env.EXPO_PUBLIC_APP_ENV;
 const PUBLIC_DEV_API = process.env.EXPO_PUBLIC_API_BASE_URL_DEV;
