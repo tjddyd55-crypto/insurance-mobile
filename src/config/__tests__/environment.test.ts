@@ -1,6 +1,7 @@
 import {
   assertApiEnvironmentAffinity,
   getEnvironmentConfig,
+  HTTPS_ONLY_API_HOSTS,
   resolveApiBaseUrl,
   resolveAppEnvironment,
 } from '../environment';
@@ -38,6 +39,9 @@ describe('environment', () => {
     expect(cfg.scheme).toBe('onefc');
     expect(cfg.apiBaseUrl).toContain('insurance-production');
     expect(cfg.apiBaseUrl).not.toContain('insurance-dev');
+    expect(cfg.apiBaseUrl.startsWith('https://')).toBe(true);
+    expect(HTTPS_ONLY_API_HOSTS.has('insurance-production-7bd8.up.railway.app')).toBe(true);
+    expect(HTTPS_ONLY_API_HOSTS.has('insurance-dev.up.railway.app')).toBe(true);
   });
 
   it('rejects a DEV identity connected to the Production API', () => {

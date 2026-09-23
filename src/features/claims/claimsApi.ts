@@ -1,4 +1,4 @@
-import { ApiError, apiRequest } from "../../api/client";
+import { ApiError, apiRequest, resolveApiUrl } from "../../api/client";
 import {
   normalizeCustomerAppAlimtalkResult,
   type CustomerAppAlimtalkResult,
@@ -92,21 +92,28 @@ export async function sendCustomerAppAlimtalk(
   }
 }
 
-export async function getClaimBundleDownloadUrl(
+/**
+ * PC `fetchClaimRequestBundleBlob`와 같은 GET.
+ * 서명된 절대 downloadUrl은 Railway 뒤에서 http://가 되므로 쓰지 않는다.
+ */
+export function claimBundleDownloadPath(
+  requestId: number,
+  customerId: number,
+  kind: "pdf" | "zip",
+): string {
+  const suffix = kind === "zip" ? "files.zip" : "files.pdf";
+  const customer = encodeURIComponent(String(customerId));
+  return `/api/agent/customer-claim-requests/${requestId}/${suffix}?customerId=${customer}`;
+}
+
+export function claimBundleRequest(
   token: string | null,
   requestId: number,
   customerId: number,
   kind: "pdf" | "zip",
-): Promise<string> {
-  const result = await apiRequest<{ downloadUrl: string }>(
-    `/api/agent/customer-claim-requests/${requestId}/bundle-download-url`,
-    {
-      method: "POST",
-      token: auth(token),
-      body: JSON.stringify({ customerId, kind }),
-    },
-  );
-  const url = String(result.downloadUrl ?? "").trim();
-  if (!url) throw new ApiError("다운로드 URL을 받지 못했습니다.", 502);
-  return url;
+): { url: string; headers: { Authorization: string } } {
+  return {
+    url: resolveApiUrl(claimBundleDownloadPath(requestId, customerId, kind)),
+    headers: { Authorization: `Bearer ${auth(token)}` },
+  };
 }

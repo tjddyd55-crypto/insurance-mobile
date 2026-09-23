@@ -9,7 +9,7 @@
  * - 401 callback (no infinite retry)
  */
 
-import { getEnvironmentConfig } from '../config/environment';
+import { getEnvironmentConfig, HTTPS_ONLY_API_HOSTS } from '../config/environment';
 import { safeApiResponse } from './safeApiResponse';
 
 export class ApiError extends Error {
@@ -74,18 +74,72 @@ function notifyUnauthorized(): void {
   unauthorizedHandler?.();
 }
 
+type CleartextUrl = {
+  hostname: string;
+  port: string;
+  suffix: string;
+};
+
+function parseCleartextUrl(url: string): CleartextUrl | null {
+  const match = /^http:\/\/([^/?#]+)([\s\S]*)$/i.exec(url.trim());
+  if (!match) {
+    return null;
+  }
+  const authority = match[1] ?? '';
+  const colon = authority.lastIndexOf(':');
+  const hasPort = colon > 0;
+  return {
+    hostname: (hasPort ? authority.slice(0, colon) : authority).toLowerCase(),
+    port: hasPort ? authority.slice(colon + 1) : '',
+    suffix: match[2] ?? '',
+  };
+}
+
+function originHostname(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function mustUseHttps(hostname: string, baseUrl: string): boolean {
+  if (!hostname) {
+    return false;
+  }
+  if (HTTPS_ONLY_API_HOSTS.has(hostname)) {
+    return true;
+  }
+  const base = baseUrl.trim();
+  return /^https:\/\//i.test(base) && hostname === originHostname(base);
+}
+
+/**
+ * Absolute attachment URLs from the API can be `http://` because the server
+ * builds them with `req.protocol` behind Railway. In-app fetch cannot follow
+ * the http→https redirect: OkHttp blocks cleartext first.
+ *
+ * Claim PDF / download-all does not use those URLs. It calls the same Bearer
+ * GET as PC. This upgrade still covers other absolute API-host links.
+ */
+function upgradeCleartextApiUrl(url: string, baseUrl: string): string {
+  const parsed = parseCleartextUrl(url);
+  if (!parsed || (parsed.port !== '' && parsed.port !== '80')) {
+    return url;
+  }
+  if (!mustUseHttps(parsed.hostname, baseUrl)) {
+    return url;
+  }
+  return `https://${parsed.hostname}${parsed.suffix}`;
+}
+
 export function resolveApiUrl(path: string, baseUrl = getEnvironmentConfig().apiBaseUrl): string {
   if (/^https?:\/\//i.test(path)) {
-    return path;
+    return upgradeCleartextApiUrl(path, baseUrl);
   }
   const origin = baseUrl.replace(/\/$/, '');
-  if (path.startsWith('/api/')) {
-    return `${origin}${path}`;
-  }
-  if (path.startsWith('/')) {
-    return `${origin}${path}`;
-  }
-  return `${origin}/${path}`;
+  const pathWithSlash = path.startsWith('/') ? path : `/${path}`;
+  return upgradeCleartextApiUrl(`${origin}${pathWithSlash}`, baseUrl);
 }
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
