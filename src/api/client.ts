@@ -115,19 +115,12 @@ function mustUseHttps(hostname: string, baseUrl: string): boolean {
 }
 
 /**
- * Native regression against the pre-migration claim download.
+ * Absolute attachment URLs from the API can be `http://` because the server
+ * builds them with `req.protocol` behind Railway. In-app fetch cannot follow
+ * the http→https redirect: OkHttp blocks cleartext first.
  *
- * PC web (`insurance` `fetchClaimRequestBundleBlob`) never follows the absolute
- * bundle URL. It fetches Bearer + `resolveApiUrl('/api/.../files.pdf|files.zip')`
- * on the HTTPS origin.
- *
- * Mobile web assigns that absolute URL (`window.location.assign`). The legacy
- * WebView (`insurance/apps/mobile`) then opens `*.pdf` with `Linking` (Chrome).
- * Chrome is outside this app's cleartext policy and can follow Railway's
- * http→https redirect. `shareRemoteFile` instead `fetch`es the URL in-app, and
- * OkHttp rejects `http://` before any redirect.
- *
- * Upgrade only the API host. Leave other http URLs alone.
+ * Claim PDF / download-all does not use those URLs. It calls the same Bearer
+ * GET as PC. This upgrade still covers other absolute API-host links.
  */
 function upgradeCleartextApiUrl(url: string, baseUrl: string): string {
   const parsed = parseCleartextUrl(url);

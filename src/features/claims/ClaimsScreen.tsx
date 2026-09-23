@@ -36,7 +36,7 @@ import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation"
 import { shareRemoteFile } from "../files/remoteFileSharing";
 import {
   createCustomerAppLink,
-  getClaimBundleDownloadUrl,
+  claimBundleRequest,
   getClaim,
   getCustomerAppLink,
   listClaims,
@@ -210,14 +210,15 @@ export function ClaimsScreen({
     setDetailActionError("");
     setBundleKind(kind);
     try {
-      const raw = await getClaimBundleDownloadUrl(
+      const request = claimBundleRequest(
         token,
         detail.data.id,
         detail.data.customerId,
         kind,
       );
       await shareRemoteFile({
-        url: resolveApiUrl(raw),
+        url: request.url,
+        headers: request.headers,
         fileName: `${detail.data.customerName || "고객"}-보험청구-${detail.data.id}.${kind}`,
         mimeType: kind === "pdf" ? "application/pdf" : "application/zip",
       });

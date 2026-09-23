@@ -13,14 +13,35 @@ export function buildRemoteCacheFileName(displayName: string): string {
   return `onefc-${Date.now()}${extension}`;
 }
 
+const DOWNLOAD_FAILURE_MESSAGE = "파일을 내려받지 못했습니다.";
+
+async function downloadFailureMessage(response: Response): Promise<string> {
+  const text = await response.text().catch(() => "");
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return DOWNLOAD_FAILURE_MESSAGE;
+  }
+  try {
+    const payload = JSON.parse(trimmed) as { message?: unknown };
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message.trim();
+    }
+  } catch {
+    return trimmed;
+  }
+  return trimmed;
+}
+
 export async function shareRemoteFile({
   url,
   fileName,
   mimeType,
+  headers,
 }: {
   url: string;
   fileName: string;
   mimeType: string | null;
+  headers?: Record<string, string>;
 }): Promise<string> {
   if (!(await Sharing.isAvailableAsync())) {
     throw new ApiError("이 기기에서는 파일 공유를 사용할 수 없습니다.", 400);
@@ -29,7 +50,7 @@ export async function shareRemoteFile({
   const timeout = setTimeout(() => controller.abort(), REMOTE_FILE_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(url, { signal: controller.signal });
+    response = await fetch(url, { signal: controller.signal, headers });
   } catch (error) {
     if (controller.signal.aborted) {
       throw new ApiError("파일 다운로드 시간이 초과되었습니다.", 408);
@@ -39,7 +60,7 @@ export async function shareRemoteFile({
     clearTimeout(timeout);
   }
   if (!response.ok) {
-    throw new ApiError("파일을 내려받지 못했습니다.", response.status);
+    throw new ApiError(await downloadFailureMessage(response), response.status);
   }
   const file = new File(Paths.cache, buildRemoteCacheFileName(fileName));
   file.create({ overwrite: true });
