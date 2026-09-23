@@ -31,40 +31,57 @@ import { customerMatchesSearch, formatCustomerPhone } from '../customers/custome
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
+import { todoEditScreenId } from './todoNavigation';
+import {
+  cloneTodoFormDraft,
+  EMPTY_TODO_FORM_DRAFT,
+  resolveTodoFormSession,
+  todoFormDraftFromRecord,
+  type TodoFormDraft,
+} from './todoFormSession';
 import { createTodo, deleteTodo, listTodos, updateTodo } from './todosApi';
 import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
-type TodoFormState = {
-  description: string;
-  dueDate: string;
-  relatedCustomerId: string;
-  relatedCustomerName: string;
-};
+type TodoFormProps = { mode: 'create'; todoId?: never } | { mode: 'edit'; todoId: string };
 
-const EMPTY_FORM: TodoFormState = {
-  description: '',
-  dueDate: '',
-  relatedCustomerId: '',
-  relatedCustomerName: '',
-};
+export function TodoFormScreen(props: TodoFormProps) {
+  if (props.mode === 'create') {
+    return <TodoFormEditor mode="create" />;
+  }
+  const screenId = todoEditScreenId(props.todoId);
+  if (!screenId) {
+    return <ErrorState title="잘못된 할 일 주소입니다" message="할 일 id를 확인해 주세요." />;
+  }
+  // Drawer가 같은 화면을 재사용해도 id가 바뀌면 폼·뮤테이션·다이얼로그를 새로 만든다.
+  return <TodoFormEditor key={screenId} mode="edit" todoId={screenId} />;
+}
 
-export function TodoFormScreen({
-  mode,
-  todoId,
-}: { mode: 'create'; todoId?: never } | { mode: 'edit'; todoId: string }) {
+function TodoFormEditor({ mode, todoId }: TodoFormProps) {
   const { token } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [form, setForm] = useState<TodoFormState>({ ...EMPTY_FORM });
-  const [initialSnapshot, setInitialSnapshot] = useState(JSON.stringify(EMPTY_FORM));
+  const activeTodoId = mode === 'edit' ? todoId : null;
+  const [boundTodoId, setBoundTodoId] = useState<string | null>(activeTodoId);
+  const [form, setForm] = useState<TodoFormDraft>(() => cloneTodoFormDraft());
+  const [initialSnapshot, setInitialSnapshot] = useState(() => JSON.stringify(EMPTY_TODO_FORM_DRAFT));
   const [initialized, setInitialized] = useState(mode === 'create');
   const [formError, setFormError] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [discardOpen, setDiscardOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  if (activeTodoId && resolveTodoFormSession(boundTodoId, activeTodoId) === 'reset') {
+    setBoundTodoId(activeTodoId);
+    setForm(cloneTodoFormDraft());
+    setInitialSnapshot(JSON.stringify(EMPTY_TODO_FORM_DRAFT));
+    setInitialized(false);
+    setFormError('');
+    setCustomerSearch('');
+    setDiscardOpen(false);
+    setDeleteOpen(false);
+  }
 
   const todosQuery = useQuery({
     queryKey: todoQueryKeys.list(ALL_TODOS_PARAMS),
@@ -82,18 +99,13 @@ export function TodoFormScreen({
   });
 
   useEffect(() => {
-    if (mode !== 'edit' || !editingTodo || initialized) return;
-    const next: TodoFormState = {
-      description: editingTodo.description.trim() || editingTodo.title,
-      dueDate: editingTodo.dueDate ?? '',
-      relatedCustomerId:
-        editingTodo.relatedEntityType === 'customer' ? editingTodo.relatedEntityId ?? '' : '',
-      relatedCustomerName: editingTodo.customerName ?? '',
-    };
+    if (mode !== 'edit' || !activeTodoId || !editingTodo || initialized) return;
+    if (editingTodo.id !== activeTodoId) return;
+    const next = todoFormDraftFromRecord(editingTodo);
     setForm(next);
     setInitialSnapshot(JSON.stringify(next));
     setInitialized(true);
-  }, [editingTodo, initialized, mode]);
+  }, [activeTodoId, editingTodo, initialized, mode]);
 
   const customerResults = useMemo(() => {
     if (customerSearch.trim().length < 2) return [];

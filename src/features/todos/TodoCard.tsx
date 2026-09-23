@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
 import {
   AppText,
@@ -11,6 +11,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { todoDisplayContent } from './todoModel';
+import { todoEditPath } from './todoNavigation';
 import {
   formatTodoCreatedDate,
   formatTodoDueLine,
@@ -57,9 +58,7 @@ export function TodoCard({
           accessibilityRole="button"
           accessibilityLabel={`${todoDisplayContent(todo)} 할 일 수정`}
           style={({ pressed }) => [styles.body, pressed && styles.pressed]}
-          onPress={() =>
-            router.push({ pathname: '/todos/[todoId]/edit', params: { todoId: todo.id } })
-          }
+          onPress={() => router.push(todoEditPath(todo.id) as Href)}
         >
           <Stack gap="xs">
             <AppText variant="bodyStrong" color="info" numberOfLines={3}>
