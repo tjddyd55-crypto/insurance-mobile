@@ -14,6 +14,7 @@ import {
   type AppTheme,
 } from '../design-system';
 import { formatGaBannerLabel } from '../navigation/gaTenantLabel';
+import { openAppDrawer } from '../navigation/openAppDrawer';
 
 /** @internal 테스트·스냅샷 검증용 */
 export const APP_HEADER_TITLE_TEXT_PROPS = {
@@ -40,7 +41,7 @@ export function AppHeader({
   rightAction,
   showBillingStatus,
 }: AppHeaderProps) {
-  const navigation = useNavigation() as ReturnType<typeof useNavigation> & { openDrawer: () => void };
+  const navigation = useNavigation();
   const router = useRouter();
   const { user } = useAuth();
   const { isDevApp } = getEnvironmentConfig();
@@ -67,7 +68,7 @@ export function AppHeader({
             ) : (
               <IconButton
                 accessibilityLabel="메뉴 열기"
-                onPress={() => navigation.openDrawer()}
+                onPress={() => openAppDrawer(navigation)}
                 icon={(color) => (
                   <AppText accessibilityElementsHidden style={[styles.menuIcon, { color }]}>☰</AppText>
                 )}
