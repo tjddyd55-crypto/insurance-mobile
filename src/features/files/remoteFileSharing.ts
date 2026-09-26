@@ -37,17 +37,19 @@ export async function shareRemoteFile({
   fileName,
   mimeType,
   headers,
+  timeoutMs = REMOTE_FILE_TIMEOUT_MS,
 }: {
   url: string;
   fileName: string;
   mimeType: string | null;
   headers?: Record<string, string>;
+  timeoutMs?: number;
 }): Promise<string> {
   if (!(await Sharing.isAvailableAsync())) {
     throw new ApiError("이 기기에서는 파일 공유를 사용할 수 없습니다.", 400);
   }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REMOTE_FILE_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
   try {
     response = await fetch(url, { signal: controller.signal, headers });
