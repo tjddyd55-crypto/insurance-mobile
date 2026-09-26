@@ -12,6 +12,16 @@ describe('coverage timeline axis', () => {
     expect('backgroundColor' in styles.compareSpine).toBe(false);
   });
 
+  it('shows a circle plus for insert, matching the mobile timeline control', () => {
+    expect(styles.addPlus.width).toBe(22);
+    expect(styles.addPlus.height).toBe(22);
+    expect(styles.addPlus.borderRadius).toBe(11);
+    expect(styles.addPlus.borderColor).toBe('#b8c8dc');
+    expect(styles.addPlus.backgroundColor).toBe('#ffffff');
+    expect(styles.addGlyph.color).toBe(simulatorTheme.primary);
+    expect(styles.addLine.backgroundColor).toBe('#dce3ec');
+  });
+
   it('keeps the period subtotal and time marker rows on the shared axis', () => {
     expect(styles.centerLine.top).toBe(0);
     expect(styles.centerLine.bottom).toBe(0);

@@ -66,8 +66,17 @@ export function CoverageTimeline({
               />
             )}
             {readOnly ? null : (
-              <Pressable accessibilityRole="button" onPress={() => onAddAfter(item.order)} style={styles.add}>
-                <Text style={styles.addLabel}>+ 항목 추가</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="항목 추가"
+                onPress={() => onAddAfter(item.order)}
+                style={styles.add}
+              >
+                <View style={styles.addLine} />
+                <View style={styles.addPlus}>
+                  <Text style={styles.addGlyph}>+</Text>
+                </View>
+                <View style={styles.addLine} />
               </Pressable>
             )}
           </View>
@@ -245,8 +254,26 @@ export const styles = StyleSheet.create({
   compareSpine: { width: 24 },
   amountCurrent: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: theme.current },
   amountProposed: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: theme.primary },
-  add: { paddingVertical: 8, paddingHorizontal: 16 },
-  addLabel: { textAlign: 'center', color: theme.muted, fontSize: 13, fontWeight: '600' },
+  /** PC 모바일 TimelineInsertControl. 보이는 것은 + 원이고, 접근성 이름만 '항목 추가'다. */
+  add: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 28,
+    paddingHorizontal: 12,
+    zIndex: 1,
+  },
+  addLine: { flex: 1, height: 1, backgroundColor: '#dce3ec' },
+  addPlus: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#b8c8dc',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addGlyph: { color: theme.primary, fontSize: 14, fontWeight: '700', lineHeight: 16, textAlign: 'center' },
   marker: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, backgroundColor: '#f8fafc' },
   markerLine: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
   markerSeg: { flex: 1, height: 1, backgroundColor: theme.border },
