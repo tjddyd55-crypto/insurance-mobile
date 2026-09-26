@@ -12,7 +12,7 @@ import {
   periodSubtotalLabelFromMarker,
 } from '../coverageAnalysis';
 import { createScenarioFromTemplate } from '../templates';
-import { appendCoverageItem } from '../scenarioEdits';
+import { appendCoverageItem, customerDisplayLabel, filterSavedByCustomer, filterSavedByDisease, insertCoverageItem } from '../scenarioEdits';
 
 describe('coverage simulation mapping', () => {
   it('builds the cancer consultation and totals in 만원', () => {
@@ -59,5 +59,19 @@ describe('coverage simulation mapping', () => {
     expect(store.size).toBe(1);
     const other = await listConsultationSummaries(webLocalConsultationStorage, 'user-2', 'cancer');
     expect(other).toEqual([]);
+  });
+
+  it('filters saved consultations the same way as the PC list', () => {
+    const rows = [
+      { id: '1', title: '암', diseaseType: 'cancer' as const, customerId: 'c1', customerNameSnapshot: '홍길동', consultationDate: '2026-09-26', createdAt: '', updatedAt: '' },
+      { id: '2', title: '심장', diseaseType: 'heart' as const, customerId: null, customerNameSnapshot: null, consultationDate: '2026-09-26', createdAt: '', updatedAt: '' },
+    ];
+    expect(customerDisplayLabel(rows[0]!)).toBe('홍길동 고객');
+    expect(customerDisplayLabel(rows[1]!)).toBe('고객 미지정');
+    expect(filterSavedByCustomer(rows, 'linked').map((row) => row.id)).toEqual(['1']);
+    expect(filterSavedByDisease(rows, 'heart').map((row) => row.id)).toEqual(['2']);
+    const scenario = createScenarioFromTemplate('cancer')!;
+    const inserted = insertCoverageItem(scenario, scenario.items[0]!.order, { label: '간병비', category: 'support' });
+    expect(inserted.items[1]?.label).toBe('간병비');
   });
 });

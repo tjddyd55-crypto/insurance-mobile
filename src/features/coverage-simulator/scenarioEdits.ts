@@ -1,4 +1,4 @@
-import { createScenarioId } from './templates';
+import { createScenarioFromTemplate, createScenarioId } from './templates';
 import type {
   CoverageScenario,
   CoverageScenarioItem,
@@ -134,6 +134,88 @@ export function appendTimeMarker(scenario: CoverageScenario, label: string): Cov
     ...scenario.items,
     { id: createScenarioId(), type: 'time-marker', label: trimmed, order: scenario.items.length },
   ]);
+}
+
+export type ConsultationCustomerFilter = 'all' | 'linked' | 'unassigned';
+
+export function customerDisplayLabel(row: {
+  customerId?: string | null;
+  customerNameSnapshot?: string | null;
+}): string {
+  if (row.customerId && row.customerNameSnapshot) return `${row.customerNameSnapshot} 고객`;
+  return '고객 미지정';
+}
+
+export function filterSavedByCustomer(
+  rows: SavedScenarioSummary[],
+  filter: ConsultationCustomerFilter,
+): SavedScenarioSummary[] {
+  if (filter === 'linked') return rows.filter((row) => Boolean(row.customerId));
+  if (filter === 'unassigned') return rows.filter((row) => !row.customerId);
+  return rows;
+}
+
+export function filterSavedByDisease(
+  rows: SavedScenarioSummary[],
+  filter: CoverageScenario['diseaseType'] | 'all',
+): SavedScenarioSummary[] {
+  if (filter === 'all') return rows;
+  return rows.filter((row) => row.diseaseType === filter);
+}
+
+export function resetScenarioItems(scenario: CoverageScenario): CoverageScenario {
+  const fresh = createScenarioFromTemplate(scenario.diseaseType);
+  if (!fresh) return scenario;
+  return touch(scenario, fresh.items);
+}
+
+export function insertCoverageItem(
+  scenario: CoverageScenario,
+  afterOrder: number,
+  input: { label: string; category: ScenarioItemCategory },
+): CoverageScenario {
+  const label = input.label.trim();
+  if (!label) return scenario;
+  return insertItem(scenario, afterOrder, {
+    id: createScenarioId(),
+    type: 'coverage',
+    category: input.category,
+    label,
+    currentAmount: null,
+    proposedAmount: null,
+    order: 0,
+  });
+}
+
+export function insertTimeMarker(scenario: CoverageScenario, afterOrder: number, label: string): CoverageScenario {
+  const trimmed = label.trim();
+  if (!trimmed) return scenario;
+  return insertItem(scenario, afterOrder, {
+    id: createScenarioId(),
+    type: 'time-marker',
+    label: trimmed,
+    order: 0,
+  });
+}
+
+export function updateCoverageItem(
+  scenario: CoverageScenario,
+  itemId: string,
+  patch: Partial<Pick<CoverageScenarioItem, 'label' | 'category' | 'currentAmount' | 'proposedAmount'>>,
+): CoverageScenario {
+  const items = scenario.items.map((item) => {
+    if (item.id !== itemId || item.type !== 'coverage') return item;
+    return { ...item, ...patch, label: patch.label?.trim() || item.label };
+  });
+  return touch(scenario, items);
+}
+
+function insertItem(scenario: CoverageScenario, afterOrder: number, item: ScenarioItem): CoverageScenario {
+  const sorted = sortAndReindex(scenario.items);
+  const index = sorted.findIndex((entry) => entry.order === afterOrder);
+  const next = [...sorted];
+  next.splice(index < 0 ? next.length : index + 1, 0, item);
+  return touch(scenario, next);
 }
 
 export function assignCustomer(

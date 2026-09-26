@@ -1,61 +1,57 @@
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { AppHeader } from '../../components/AppHeader';
-import { AppText, Button, Card, Screen, Stack, useAppTheme, type AppTheme } from '../../design-system';
 import { CoverageCustomerBar } from './CoverageCustomerBar';
+import { CoveragePrimaryButton, CoverageSimulatorHeader, CoverageSimulatorScreen } from './CoverageSimulatorChrome';
+import { simulatorTheme as theme } from './simulatorTheme';
 import { SCENARIO_TYPE_CARDS } from './templates';
 
 export function CoverageScenarioSelectScreen() {
   const router = useRouter();
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={styles.root}>
-      <AppHeader title="보장 시뮬레이션" />
-      <Screen padded={false}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <AppText color="textSecondary">상담할 시나리오를 선택하세요.</AppText>
-          <CoverageCustomerBar />
-          {SCENARIO_TYPE_CARDS.map((card) => (
-            <Pressable
-              key={card.diseaseType}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !card.enabled }}
-              disabled={!card.enabled}
-              onPress={() => router.push(`/customer-consulting/coverage-simulation/disease/${card.diseaseType}` as never)}
-              style={({ pressed }) => [pressed && styles.pressed, !card.enabled && styles.disabled]}
-            >
-              <Card>
-                <Stack gap="xs">
-                  <AppText variant="heading">{card.title}</AppText>
-                  <AppText color="textSecondary">{card.description}</AppText>
-                </Stack>
-              </Card>
-            </Pressable>
-          ))}
-          <Button
+    <CoverageSimulatorScreen>
+      <CoverageSimulatorHeader title="보장 시뮬레이션" onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={styles.content}>
+        <CoverageCustomerBar />
+        {SCENARIO_TYPE_CARDS.map((card) => (
+          <Pressable
+            key={card.diseaseType}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !card.enabled }}
+            disabled={!card.enabled}
+            onPress={() => router.push(`/customer-consulting/coverage-simulation/disease/${card.diseaseType}` as never)}
+            style={[styles.card, !card.enabled && styles.disabled]}
+          >
+            <Text style={styles.cardTitle}>{card.title}</Text>
+            <Text style={styles.cardDesc}>{card.description}</Text>
+          </Pressable>
+        ))}
+        <View style={styles.cta}>
+          <CoveragePrimaryButton
             label="저장된 상담 불러오기"
             onPress={() => router.push('/customer-consulting/coverage-simulation/saved' as never)}
           />
-        </ScrollView>
-      </Screen>
-    </View>
+        </View>
+      </ScrollView>
+    </CoverageSimulatorScreen>
   );
 }
 
-function createStyles(theme: AppTheme) {
-  return StyleSheet.create({
-    root: { flex: 1 },
-    content: {
-      paddingHorizontal: theme.layout.screenPaddingHorizontal,
-      paddingTop: theme.layout.screenPaddingTop,
-      paddingBottom: theme.layout.contentBottomInset,
-      gap: theme.spacing.md,
-    },
-    pressed: { opacity: theme.opacity.pressed },
-    disabled: { opacity: 0.45 },
-  });
-}
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
+  card: {
+    width: '100%',
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
+  },
+  disabled: { opacity: 0.55 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  cardDesc: { fontSize: 13, color: theme.muted, lineHeight: 19 },
+  cta: { marginTop: 8 },
+});
