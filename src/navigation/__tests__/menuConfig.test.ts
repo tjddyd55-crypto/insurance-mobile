@@ -11,6 +11,7 @@ describe('menuConfig', () => {
     expect(listPrimaryMenuLabels()).toEqual([
       '할일 및 알림',
       '고객관리',
+      '고객 상담',
       '소식지',
       '신청서',
       '팀관리',
@@ -42,6 +43,17 @@ describe('menuConfig', () => {
     expect(item?.label).toBe('고객리스트');
     expect(item?.legacyWebPath).toBe('/customers');
     expect(item?.mode).toBe('NATIVE');
+  });
+
+  it('puts exactly two native screens under 고객 상담', () => {
+    const section = USER_APP_MENU.find((entry) => entry.id === 'customer-consulting');
+    expect(section?.label).toBe('고객 상담');
+    expect(section?.children.map((child) => child.label)).toEqual(['내 바인더', '시뮬레이션']);
+    expect(section?.children.map((child) => child.nativePath)).toEqual([
+      '/customer-consulting/personal-binders',
+      '/customer-consulting/coverage-simulation',
+    ]);
+    expect(section?.children.every((child) => child.mode === 'NATIVE')).toBe(true);
   });
 
   it('marks rent as DISABLED', () => {

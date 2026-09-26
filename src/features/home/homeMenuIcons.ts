@@ -12,6 +12,8 @@ const MENU_ICON_BY_ID: Partial<Record<string, HomeMenuIconName>> = {
   'premium-payments': { ios: 'creditcard.fill', android: 'credit_card' },
   'customer-newsletter': { ios: 'newspaper.fill', android: 'newspaper' },
   'claim-requests': { ios: 'doc.text.fill', android: 'description' },
+  'personal-binder': { ios: 'book.closed.fill', android: 'menu_book' },
+  'coverage-simulation': { ios: 'chart.bar.fill', android: 'bar_chart' },
   'insurer-newsletters': { ios: 'newspaper.fill', android: 'newspaper' },
   'adjuster-news': { ios: 'newspaper.fill', android: 'newspaper' },
   billing: { ios: 'doc.text.fill', android: 'description' },

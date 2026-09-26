@@ -1,0 +1,26 @@
+/** PC `coverage-simulator` 토큰. 네이티브 화면은 이 색과 간격을 그대로 쓴다. */
+export const simulatorTheme = {
+  bg: '#f8fafc',
+  surface: '#ffffff',
+  border: '#e5e7eb',
+  text: '#111827',
+  muted: '#6b7280',
+  primary: '#16a34a',
+  primarySoft: '#dcfce7',
+  primaryBorder: '#bbf7d0',
+  danger: '#dc2626',
+  current: '#1f2937',
+  headerAxis: '#475569',
+  line: '#e2e8f0',
+  divider: '#e8edf3',
+  summaryBg: '#fafbfc',
+  summaryLine: '#dbe3ee',
+  marker: '#334155',
+  badge: {
+    diagnosis: { bg: '#fff1f2', fg: '#e11d48' },
+    treatment: { bg: '#fff7ed', fg: '#ea580c' },
+    recovery: { bg: '#dcfce7', fg: '#16a34a' },
+    support: { bg: '#f5f3ff', fg: '#7c3aed' },
+    other: { bg: '#f3f4f6', fg: '#4b5563' },
+  },
+} as const;
