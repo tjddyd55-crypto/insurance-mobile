@@ -52,11 +52,12 @@ describe('native session menu policy', () => {
     process.env = originalEnv;
   });
 
-  test('keeps the USER section and link order aligned with Web', () => {
+  test('keeps the USER section and link order, including the native consulting section', () => {
     const menu = buildNativeMenuForSession(user(), capabilities);
     expect(menu.map((section) => section.label)).toEqual([
       '할일 및 알림',
       '고객관리',
+      '고객 상담',
       '소식지',
       '신청서',
       '팀관리',
@@ -66,6 +67,7 @@ describe('native session menu policy', () => {
     expect(labels(menu)).toEqual([
       '오늘의 TA', '할일', '메모', '알림',
       '고객리스트', '고객 지도', '카드 수납', '고객소식지', '청구관리',
+      '보장 분석', '보장 시뮬레이션',
       '원수사소식지', '손해사정사 소식지',
       '신청서 작성', '신청서 작성내역', '렌트(사고대차)',
       '팀원리스트', '팀 게시판', '팀 자료',
@@ -92,13 +94,14 @@ describe('native session menu policy', () => {
     expect(menu.map((section) => section.label)).toEqual([
       '할일 및 알림',
       '고객관리',
+      '고객 상담',
       '소식지',
       '신청서',
       '팀관리',
       '업무편의',
       '내정보',
     ]);
-    expect(labels(menu)).toHaveLength(24);
+    expect(labels(menu)).toHaveLength(26);
   });
 
   test('injects team management only for the team owner', () => {
@@ -107,7 +110,7 @@ describe('native session menu policy', () => {
       ...capabilities,
       isTeamOwner: true,
     });
-    expect(labels(ownerMenu).slice(14, 18)).toEqual([
+    expect(labels(ownerMenu).slice(16, 20)).toEqual([
       '팀원리스트',
       '팀 게시판',
       '팀 자료',
@@ -175,8 +178,8 @@ describe('native session menu policy', () => {
           policyActive: true,
         },
       }), capabilities);
-      expect(menu).toHaveLength(7);
-      expect(labels(menu)).toHaveLength(24);
+      expect(menu).toHaveLength(8);
+      expect(labels(menu)).toHaveLength(26);
     },
   );
 

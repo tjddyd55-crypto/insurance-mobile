@@ -1,7 +1,13 @@
 /**
  * Native menu SSOT — labels/order mirrored from insurance `buildAppMenuForSession` USER menu.
  * Do not rename menu labels arbitrarily.
+ * 「고객 상담」은 웹 메뉴에 아직 없는 네이티브 전용 대분류다.
  */
+import {
+  CUSTOMER_CONSULTING_FEATURES,
+  CUSTOMER_CONSULTING_SECTION_ID,
+  CUSTOMER_CONSULTING_SECTION_LABEL,
+} from '../features/customer-consulting/customerConsultingCatalog';
 
 export type MenuImplementationMode = 'NATIVE' | 'WEBVIEW_TEMP' | 'PC_ONLY' | 'DISABLED';
 
@@ -149,6 +155,22 @@ export const USER_APP_MENU: NativeMenuSection[] = [
           ]
         : []),
     ],
+  },
+  {
+    type: 'section',
+    id: CUSTOMER_CONSULTING_SECTION_ID,
+    label: CUSTOMER_CONSULTING_SECTION_LABEL,
+    roles: USER_ROLES,
+    children: CUSTOMER_CONSULTING_FEATURES.map((feature) =>
+      link({
+        id: feature.id,
+        label: feature.label,
+        legacyWebPath: feature.legacyWebPath,
+        nativePath: feature.nativePath,
+        // 도착 화면은 네이티브 안내다. 보장 기능 자체는 아직 앱에서 열리지 않는다.
+        mode: 'NATIVE',
+      }),
+    ),
   },
   {
     type: 'section',

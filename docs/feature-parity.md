@@ -2,7 +2,8 @@
 
 Source of truth for native migration tracking. Code parity was audited against insurance `main`
 at `7efeb03a1959c7e119eb7074346b38a6c5be873f`.
-Menu labels/order mirror insurance `buildAppMenuForSession` (USER).
+Menu labels/order mirror insurance `buildAppMenuForSession` (USER), except the native-only
+`고객 상담` section requested ahead of the web menu.
 
 | Primary Menu | Secondary Menu | Web Path | Native Path | Source Component | API | Implementation Mode | Status | QA |
 |---|---|---|---|---|---|---|---|---|
@@ -15,6 +16,8 @@ Menu labels/order mirror insurance `buildAppMenuForSession` (USER).
 | 고객관리 | 카드 수납 | /premium-payments | /premium-payments | PremiumPaymentsScreen | 카드·수납대상 CRUD, 월 완료/재처리, 민감정보 마스킹·명시적 복사 | NATIVE | NATIVE | 카드 원문 기기 저장·로그 금지 |
 | 고객관리 | 고객소식지 | /claim-requests?claimTab=news-all | /claim-requests/news | CustomerNewsScreen | 전체/개인 게시·앱알림 확인·첨부·수정·삭제·댓글 | NATIVE | NATIVE | 이미지/PDF 10MB, 외부 알림 확인 필수 |
 | 고객관리 | 청구관리 | /claim-requests | /claim-requests | ClaimsScreen | 고객연결 링크·청구 목록/상세·첨부 열기·상태/이력·확인 후 알림톡 | NATIVE | NATIVE | 외부 발송은 사용자 확인 필수 |
+| 고객 상담 | 보장 분석 | — | /customer-consulting/coverage-analysis | CustomerConsultingUnavailableScreen | — | NATIVE | NOT_STARTED | 네이티브·웹 CRM(main/develop) 모두 화면 없음. 메뉴 진입은 안내만 |
+| 고객 상담 | 보장 시뮬레이션 | /coverage-simulator | /customer-consulting/coverage-simulation | CustomerConsultingUnavailableScreen | 웹 develop 전용. 프로덕션 main 미포함 | NATIVE | BLOCKED | PC DEV에만 구현. 세션 브리지 없음. 토큰 URL·WebView 미사용 |
 | 소식지 | 원수사소식지 | /portal/newsletters | /portal/newsletters | NewslettersScreen | 보험사 필터·검색·상세·이미지/첨부/외부링크 | NATIVE | PARITY | |
 | 소식지 | 손해사정사 소식지 | /portal/adjuster-news | /portal/adjuster-news | NewslettersScreen | 채널 분리·검색·상세·이미지/첨부/외부링크 | NATIVE | PARITY | LOSS_ADJUSTER 채널 고정; 보드 비활성 시 메뉴 숨김 |
 | 소식지 | 동적 게시판 | /portal/boards/:slug | /portal/boards/[slug] | NewslettersScreen(mode=board) | GET boards/:slug/newsletters | NATIVE | PARITY | LOSS_ADJUSTER 제외 메뉴 주입 |

@@ -11,6 +11,7 @@ describe('menuConfig', () => {
     expect(listPrimaryMenuLabels()).toEqual([
       '할일 및 알림',
       '고객관리',
+      '고객 상담',
       '소식지',
       '신청서',
       '팀관리',
@@ -23,6 +24,8 @@ describe('menuConfig', () => {
     const secondary = listSecondaryMenuLabels();
     expect(secondary).toContain('오늘의 TA');
     expect(secondary).toContain('고객리스트');
+    expect(secondary).toContain('보장 분석');
+    expect(secondary).toContain('보장 시뮬레이션');
     expect(secondary).toContain('구독 및 결제');
   });
 
