@@ -45,7 +45,7 @@ export function CoverageTimeline({
         <Text style={styles.colProposed}>제안 보장</Text>
       </View>
       <View style={styles.timeline}>
-        <View style={styles.centerLine} />
+        <View pointerEvents="none" style={styles.centerLine} />
         {items.map((item) => (
           <View key={item.id}>
             {item.type === 'time-marker' ? (
@@ -172,7 +172,7 @@ export function badgeColor(category: ScenarioItemCategory) {
   return BADGE[category];
 }
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   sheet: {
     backgroundColor: theme.surface,
     borderWidth: 1,
@@ -201,12 +201,30 @@ const styles = StyleSheet.create({
     width: 2,
     marginLeft: -1,
     backgroundColor: theme.line,
+    zIndex: 0,
   },
   event: { paddingHorizontal: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.divider },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 32, marginBottom: 12 },
+  /** PC 모바일과 같이 항목명 줄에 카드 배경을 깔아 축선이 글자를 관통하지 않게 한다. 금액 줄은 배경이 없어 선이 남는다. */
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 32,
+    marginBottom: 12,
+    backgroundColor: theme.surface,
+    zIndex: 1,
+  },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
-  eventTitle: { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '700', color: theme.text },
+  eventTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text,
+    backgroundColor: theme.surface,
+    paddingHorizontal: 8,
+  },
   menuBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   menuGlyph: { fontSize: 18, color: theme.muted },
   menu: {
