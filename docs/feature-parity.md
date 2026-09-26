@@ -17,7 +17,7 @@ Menu labels/order mirror insurance `buildAppMenuForSession` (USER), except the n
 | 고객관리 | 고객소식지 | /claim-requests?claimTab=news-all | /claim-requests/news | CustomerNewsScreen | 전체/개인 게시·앱알림 확인·첨부·수정·삭제·댓글 | NATIVE | NATIVE | 이미지/PDF 10MB, 외부 알림 확인 필수 |
 | 고객관리 | 청구관리 | /claim-requests | /claim-requests | ClaimsScreen | 고객연결 링크·청구 목록/상세·첨부 열기·상태/이력·확인 후 알림톡 | NATIVE | NATIVE | 외부 발송은 사용자 확인 필수 |
 | 고객 상담 | 보장 분석 | — | /customer-consulting/coverage-analysis | CustomerConsultingUnavailableScreen | — | NATIVE | NOT_STARTED | 네이티브·웹 CRM(main/develop) 모두 화면 없음. 메뉴 진입은 안내만 |
-| 고객 상담 | 보장 시뮬레이션 | /coverage-simulator | /customer-consulting/coverage-simulation | CustomerConsultingUnavailableScreen | 웹 develop 전용. 프로덕션 main 미포함 | NATIVE | BLOCKED | PC DEV에만 구현. 세션 브리지 없음. 토큰 URL·WebView 미사용 |
+| 고객 상담 | 보장 시뮬레이션 | /coverage-simulator | /customer-consulting/coverage-simulation | CustomerConsultingWebScreen | 웹 develop `/coverage-simulator`. 세션은 localStorage 주입 | NATIVE | WEBVIEW_TEMP | DEV 앱만. 토큰 URL 금지. 프로덕션 앱·프로덕션 호스트는 열지 않음 |
 | 소식지 | 원수사소식지 | /portal/newsletters | /portal/newsletters | NewslettersScreen | 보험사 필터·검색·상세·이미지/첨부/외부링크 | NATIVE | PARITY | |
 | 소식지 | 손해사정사 소식지 | /portal/adjuster-news | /portal/adjuster-news | NewslettersScreen | 채널 분리·검색·상세·이미지/첨부/외부링크 | NATIVE | PARITY | LOSS_ADJUSTER 채널 고정; 보드 비활성 시 메뉴 숨김 |
 | 소식지 | 동적 게시판 | /portal/boards/:slug | /portal/boards/[slug] | NewslettersScreen(mode=board) | GET boards/:slug/newsletters | NATIVE | PARITY | LOSS_ADJUSTER 제외 메뉴 주입 |

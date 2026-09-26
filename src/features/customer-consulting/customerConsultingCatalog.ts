@@ -1,8 +1,8 @@
 /**
  * 고객 상담 메뉴에 올릴 기능과, 지금 앱에서 열 수 있는지.
  *
- * 웹 CRM 세션 브리지가 없고 토큰을 URL에 넣지 않으므로,
- * 웹에만 있는 기능도 여기서는 안내 화면까지만 연다.
+ * 웹에 경로가 있는 기능은 DEV WebView로 연다.
+ * 세션은 localStorage에만 넣고, 토큰은 URL에 넣지 않는다.
  */
 
 export type CustomerConsultingFeatureId = 'coverage-analysis' | 'coverage-simulation';

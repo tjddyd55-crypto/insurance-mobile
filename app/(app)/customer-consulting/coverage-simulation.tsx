@@ -1,5 +1,5 @@
-import { CustomerConsultingUnavailableScreen } from '../../../src/features/customer-consulting/CustomerConsultingUnavailableScreen';
+import { CustomerConsultingWebScreen } from '../../../src/features/customer-consulting/CustomerConsultingWebScreen';
 
 export default function Screen() {
-  return <CustomerConsultingUnavailableScreen featureId="coverage-simulation" />;
+  return <CustomerConsultingWebScreen featureId="coverage-simulation" />;
 }
