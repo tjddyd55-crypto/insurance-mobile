@@ -38,18 +38,39 @@ export function CoverageSimulatorHeader({ title, onBack, rightLabel, onRight, ri
   );
 }
 
-export function CoveragePrimaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+type ActionButtonProps = {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  testID?: string;
+};
+
+export function CoveragePrimaryButton({ label, onPress, disabled = false, testID }: ActionButtonProps) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.primary}>
-      <Text style={styles.primaryLabel}>{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      testID={testID}
+      style={[styles.primary, disabled && styles.disabled]}
+    >
+      <Text style={styles.primaryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
     </Pressable>
   );
 }
 
-export function CoverageSecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+export function CoverageSecondaryButton({ label, onPress, disabled = false, testID }: ActionButtonProps) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.secondary}>
-      <Text style={styles.secondaryLabel}>{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      testID={testID}
+      style={[styles.secondary, disabled && styles.disabled]}
+    >
+      <Text style={styles.secondaryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
     </Pressable>
   );
 }
@@ -82,7 +103,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  primaryLabel: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
+  primaryLabel: { color: '#ffffff', fontSize: 13, fontWeight: '700', textAlign: 'center', width: '100%' },
   secondary: {
     height: 40,
     borderRadius: 8,
@@ -93,5 +114,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  secondaryLabel: { color: theme.text, fontSize: 13, fontWeight: '700' },
+  secondaryLabel: { color: theme.text, fontSize: 13, fontWeight: '700', textAlign: 'center', width: '100%' },
+  disabled: { opacity: 0.45 },
 });
