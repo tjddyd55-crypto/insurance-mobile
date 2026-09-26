@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
@@ -17,12 +17,23 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
-import { binderActionMessage } from './binderMessages';
+import {
+  binderActionMessage,
+  BINDER_API_UNAVAILABLE_MESSAGE,
+  BINDER_API_UNAVAILABLE_TITLE,
+  isBinderApiUnavailable,
+} from './binderMessages';
+import { BinderThumbnailStrip } from './BinderThumbnailStrip';
 import { BinderZoomSurface } from './BinderZoomSurface';
-import { getPersonalBinder, sharePersonalBinderPdf } from './personalBinderApi';
-import { binderSectionTitles, buildBinderViewerPages } from './personalBinderModel';
+import {
+  binderSectionJumps,
+  fetchBinderViewerPages,
+  fullPageImageWidth,
+  prefetchBinderPageLinks,
+} from './binderPageImage';
+import { sharePersonalBinderPdf } from './personalBinderApi';
 import { personalBinderQueryKeys } from './queryKeys';
-import { useBinderPageImage } from './useBinderPageImage';
+import { usePageImageLink } from './usePageImageLink';
 
 export function BinderViewerScreen({ binderId }: { binderId: string }) {
   const { token } = useAuth();
@@ -32,8 +43,8 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { width, height } = useWindowDimensions();
   const query = useQuery({
-    queryKey: personalBinderQueryKeys.detail(binderId),
-    queryFn: () => getPersonalBinder(token, binderId),
+    queryKey: personalBinderQueryKeys.pages(binderId),
+    queryFn: () => fetchBinderViewerPages(token, binderId),
     enabled: Boolean(token && binderId),
   });
   const [index, setIndex] = useState(0);
@@ -49,34 +60,52 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
   }, [navigation]);
 
   const binder = query.data;
-  const pages = useMemo(() => (binder ? buildBinderViewerPages(binder) : []), [binder]);
+  const pages = useMemo(() => binder?.pages ?? [], [binder]);
   const safeIndex = Math.min(index, Math.max(0, pages.length - 1));
   const current = pages[safeIndex];
   const pageWidth = pageSlot.width || width;
   const pageHeight = pageSlot.height || Math.max(280, height - (immersive ? 48 : 220));
-  const uri = useBinderPageImage(
-    token,
-    current?.material.fileId ?? null,
-    current?.material.id ?? '',
-    current?.pdfPageNumber ?? 0,
-    pageWidth,
+  const fullWidth = fullPageImageWidth(Math.round(width * PixelRatio.get()));
+  const imageRequest = useMemo(
+    () => (current ? { scope: 'binder' as const, binderId, index: current.index, width: fullWidth } : null),
+    [binderId, current, fullWidth],
   );
+  const { uri, refresh } = usePageImageLink(token, imageRequest);
+  const sectionJumps = useMemo(() => binderSectionJumps(pages), [pages]);
+
+  useEffect(() => {
+    if (!token || !current) return;
+    const neighbors = [current.index - 1, current.index + 1].filter((pageIndex) => pages.some((page) => page.index === pageIndex));
+    void prefetchBinderPageLinks(token, binderId, neighbors, fullWidth);
+  }, [binderId, current, fullWidth, pages, token]);
 
   if (query.isLoading) {
     return <View style={styles.root}><AppHeader title="상담 책자" showBack showMenu={false} /><LoadingState message="상담 책자를 준비하는 중…" /></View>;
   }
-  if (!binder || pages.length === 0) {
+  if (isBinderApiUnavailable(query.error)) {
     return (
       <View style={styles.root}>
-        <AppHeader title={binder?.title || '상담 책자'} showBack showMenu={false} />
-        {query.isError ? (
-          <ErrorState title="바인더를 불러오지 못했습니다" message={binderActionMessage(query.error, '잠시 후 다시 시도해 주세요.')} onRetry={() => void query.refetch()} />
-        ) : (
-          <Stack gap="md" style={styles.controls}>
-            <EmptyState title="상담할 페이지가 없습니다." message="편집에서 자료를 추가해 주세요." />
-            <Button label="편집으로" onPress={() => router.push(`/customer-consulting/personal-binders/${binderId}/edit` as never)} />
-          </Stack>
-        )}
+        <AppHeader title="상담 책자" showBack showMenu={false} />
+        <ErrorState title={BINDER_API_UNAVAILABLE_TITLE} message={BINDER_API_UNAVAILABLE_MESSAGE} onRetry={() => void query.refetch()} />
+      </View>
+    );
+  }
+  if (query.isError || !binder) {
+    return (
+      <View style={styles.root}>
+        <AppHeader title="상담 책자" showBack showMenu={false} />
+        <ErrorState title="바인더를 불러오지 못했습니다" message={binderActionMessage(query.error, '잠시 후 다시 시도해 주세요.')} onRetry={() => void query.refetch()} />
+      </View>
+    );
+  }
+  if (pages.length === 0 || !current) {
+    return (
+      <View style={styles.root}>
+        <AppHeader title={binder.title || '상담 책자'} showBack showMenu={false} />
+        <Stack gap="md" style={styles.controls}>
+          <EmptyState title="상담할 페이지가 없습니다." message="편집에서 자료를 추가해 주세요." />
+          <Button label="편집으로" onPress={() => router.push(`/customer-consulting/personal-binders/${binderId}/edit` as never)} />
+        </Stack>
       </View>
     );
   }
@@ -111,7 +140,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
           }}
         >
           <BinderZoomSurface
-            key={current.key}
+            key={`${current.itemId}:${current.index}`}
             uri={uri}
             pageLabel={`${safeIndex + 1} / ${pages.length}`}
             sectionTitle={current.sectionTitle}
@@ -119,11 +148,19 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
             height={pageHeight}
             onSwipe={move}
             onToggleChrome={() => setImmersive((value) => !value)}
+            onImageError={refresh}
           />
         </View>
       </View>
       {immersive ? null : (
         <View style={styles.controls}>
+          <BinderThumbnailStrip
+            token={token}
+            binderId={binderId}
+            pages={pages}
+            selectedPosition={safeIndex}
+            onSelect={setIndex}
+          />
           <Inline gap="sm" justify="space-between">
             <Button label="이전" size="sm" variant="secondary" disabled={safeIndex === 0} onPress={() => move(-1)} />
             <AppText variant="bodyStrong">{safeIndex + 1} / {pages.length}</AppText>
@@ -136,7 +173,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
             onPress={() => {
               setExporting(true);
               setNotice('');
-              void sharePersonalBinderPdf(token, binder.id, binder.title)
+              void sharePersonalBinderPdf(token, binder.binderId || binderId, binder.title)
                 .catch((error) => setNotice(binderActionMessage(error, '바인더 PDF를 만들지 못했습니다.')))
                 .finally(() => setExporting(false));
             }}
@@ -145,14 +182,13 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
       )}
       <ModalShell open={tocOpen} title="목차" presentation="dialog" onRequestClose={() => setTocOpen(false)} scroll>
         <Stack gap="sm">
-          {binderSectionTitles(binder).map((section) => (
+          {sectionJumps.map((section) => (
             <Button
-              key={section.id}
+              key={section.sectionId}
               label={section.title}
-              variant={section.id === current.sectionId ? 'primary' : 'secondary'}
+              variant={section.position === safeIndex || pages[safeIndex]?.sectionId === section.sectionId ? 'primary' : 'secondary'}
               onPress={() => {
-                const next = pages.findIndex((page) => page.sectionId === section.id);
-                if (next >= 0) setIndex(next);
+                setIndex(section.position);
                 setTocOpen(false);
               }}
             />

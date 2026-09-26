@@ -20,6 +20,7 @@ type Props = {
   height: number;
   onSwipe: (direction: -1 | 1) => void;
   onToggleChrome: () => void;
+  onImageError?: () => void;
 };
 
 const SWIPE_DISTANCE = 48;
@@ -32,6 +33,7 @@ export function BinderZoomSurface({
   height,
   onSwipe,
   onToggleChrome,
+  onImageError,
 }: Props) {
   const theme = useAppTheme();
   const scale = useSharedValue(NEWS_DETAIL_ZOOM_MIN);
@@ -142,6 +144,7 @@ export function BinderZoomSurface({
                 const source = event.nativeEvent.source;
                 if (source.width > 0 && source.height > 0) setAspect(source.width / source.height);
               }}
+              onError={() => onImageError?.()}
               style={styles.image}
             />
           ) : (
@@ -149,7 +152,7 @@ export function BinderZoomSurface({
               <AppText variant="heading">{pageLabel}</AppText>
               <AppText color="textSecondary">{sectionTitle}</AppText>
               <AppText variant="caption" color="textMuted" align="center">
-                {uri === undefined ? '페이지를 불러오는 중…' : '이 기기에서는 페이지 이미지를 만들지 못했습니다. 전체 PDF로 저장할 수 있습니다.'}
+                {uri === undefined ? '페이지를 불러오는 중…' : '페이지 이미지를 불러오지 못했습니다.'}
               </AppText>
             </View>
           )}

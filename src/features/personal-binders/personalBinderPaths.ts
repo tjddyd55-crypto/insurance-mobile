@@ -19,4 +19,8 @@ export const personalBinderPaths = {
   reorderItems: (sectionId: string) =>
     `/api/personal-binders/sections/${id(sectionId)}/items/reorder`,
   item: (itemId: string) => `/api/personal-binders/items/${id(itemId)}`,
+  binderPages: (binderId: string) => `/api/personal-binders/${id(binderId)}/pages`,
+  binderPage: (binderId: string, index: number) => `/api/personal-binders/${id(binderId)}/pages/${index}`,
+  materialPage: (materialId: string, page: number) =>
+    `/api/personal-binders/materials/${id(materialId)}/pages/${page}`,
 } as const;

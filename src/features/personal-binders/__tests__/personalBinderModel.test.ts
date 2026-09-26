@@ -36,6 +36,9 @@ describe('personal binder API mapping', () => {
     expect(personalBinderPaths.sectionItems('s1')).toBe('/api/personal-binders/sections/s1/items');
     expect(personalBinderPaths.reorderItems('s1')).toBe('/api/personal-binders/sections/s1/items/reorder');
     expect(personalBinderPaths.item('i1')).toBe('/api/personal-binders/items/i1');
+    expect(personalBinderPaths.binderPages('b1')).toBe('/api/personal-binders/b1/pages');
+    expect(personalBinderPaths.binderPage('b1', 2)).toBe('/api/personal-binders/b1/pages/2');
+    expect(personalBinderPaths.materialPage('m1', 1)).toBe('/api/personal-binders/materials/m1/pages/1');
   });
 
   it('treats a missing route as unavailable and keeps 409 copy', () => {

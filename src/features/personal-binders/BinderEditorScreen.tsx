@@ -42,7 +42,7 @@ import {
   pageSelectionForSave,
 } from './personalBinderModel';
 import { personalBinderQueryKeys } from './queryKeys';
-import { useBinderPageImage } from './useBinderPageImage';
+import { usePageImageLink } from './usePageImageLink';
 import { BinderPageSelectionModal } from './BinderPageSelectionModal';
 import type { PersonalBinderItem, PersonalBinderMaterial, PersonalBinderSection } from './types';
 
@@ -372,7 +372,11 @@ function PageThumb({
   material: PersonalBinderMaterial;
   pageNumber: number;
 }) {
-  const uri = useBinderPageImage(token, material.fileId, material.id, pageNumber, 120);
+  const request = useMemo(
+    () => ({ scope: 'material-thumb' as const, materialId: material.id, page: pageNumber }),
+    [material.id, pageNumber],
+  );
+  const { uri } = usePageImageLink(token, request);
   const theme = useAppTheme();
   return (
     <View style={{ width: 72, height: 96, borderRadius: theme.radius.md, overflow: 'hidden', backgroundColor: theme.colors.surfaceSubtle, alignItems: 'center', justifyContent: 'center' }}>
