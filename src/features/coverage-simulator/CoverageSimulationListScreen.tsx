@@ -23,7 +23,7 @@ import {
 import { CoverageCustomerBar } from './CoverageCustomerBar';
 import { useCoverageCustomer } from './CoverageCustomerContext';
 import { deleteConsultation, listConsultationSummaries, renameConsultation, saveConsultation } from './consultationRepository';
-import { fileConsultationStorage } from './consultationStorage';
+import { consultationStorage } from './consultationStorage';
 import { formatConsultationListDate } from './coverageAnalysis';
 import { createScenarioFromTemplate, diseaseTypeTitle, isKnownDiseaseType } from './templates';
 import type { DiseaseType, SavedScenarioSummary } from './types';
@@ -56,7 +56,7 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: [...coverageQueryKey(userId), diseaseType, customer.id],
-    queryFn: () => listConsultationSummaries(fileConsultationStorage, userId, diseaseType, customer.id),
+    queryFn: () => listConsultationSummaries(consultationStorage, userId, diseaseType, customer.id),
     enabled: Boolean(userId),
   });
   const [menuRow, setMenuRow] = useState<SavedScenarioSummary | null>(null);
@@ -139,7 +139,7 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
     if (!scenario || !userId) return;
     setNotice('');
     try {
-      const saved = await saveConsultation(fileConsultationStorage, userId, scenario);
+      const saved = await saveConsultation(consultationStorage, userId, scenario);
       await refresh();
       openScenario(saved.id);
     } catch {
@@ -151,7 +151,7 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
     if (!renameRow || !renameTitle.trim() || !userId) return;
     setBusy(true);
     try {
-      const updated = await renameConsultation(fileConsultationStorage, userId, renameRow.id, renameTitle);
+      const updated = await renameConsultation(consultationStorage, userId, renameRow.id, renameTitle);
       if (!updated) {
         setNotice('제목을 수정하지 못했습니다. 다시 시도해 주세요.');
         return;
@@ -167,7 +167,7 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
     if (!deleteRow || !userId) return;
     setBusy(true);
     try {
-      await deleteConsultation(fileConsultationStorage, userId, deleteRow.id);
+      await deleteConsultation(consultationStorage, userId, deleteRow.id);
       setDeleteRow(null);
       await refresh();
     } catch {
@@ -186,7 +186,7 @@ export function CoverageSavedScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const query = useQuery({
     queryKey: coverageQueryKey(userId),
-    queryFn: () => listConsultationSummaries(fileConsultationStorage, userId),
+    queryFn: () => listConsultationSummaries(consultationStorage, userId),
     enabled: Boolean(userId),
   });
 

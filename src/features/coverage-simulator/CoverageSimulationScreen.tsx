@@ -22,7 +22,7 @@ import { coverageQueryKey } from './CoverageSimulationListScreen';
 import { CoverageCustomerBar } from './CoverageCustomerBar';
 import { useCoverageCustomer } from './CoverageCustomerContext';
 import { getConsultation, saveConsultation } from './consultationRepository';
-import { fileConsultationStorage } from './consultationStorage';
+import { consultationStorage } from './consultationStorage';
 import {
   COVERAGE_ITEM_CATALOG,
   TIME_MARKER_PRESETS,
@@ -57,7 +57,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const styles = useMemo(() => createStyles(theme), [theme]);
   const query = useQuery({
     queryKey: [...coverageQueryKey(userId), scenarioId],
-    queryFn: () => getConsultation(fileConsultationStorage, userId, scenarioId),
+    queryFn: () => getConsultation(consultationStorage, userId, scenarioId),
     enabled: Boolean(userId && scenarioId),
   });
   const [amountTarget, setAmountTarget] = useState<CoverageScenarioItem | null>(null);
@@ -73,7 +73,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const persist = async (next: CoverageScenario) => {
     setNotice('');
     try {
-      await saveConsultation(fileConsultationStorage, userId, next);
+      await saveConsultation(consultationStorage, userId, next);
       await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
     } catch {
       setNotice('보장 분석을 저장하지 못했습니다.');

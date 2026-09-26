@@ -1,4 +1,4 @@
-import { createMemoryConsultationStorage } from '../consultationStorage';
+import { createMemoryConsultationStorage, webLocalConsultationStorage } from '../consultationStorage';
 import {
   deleteConsultation,
   listConsultationSummaries,
@@ -42,5 +42,22 @@ describe('coverage simulation mapping', () => {
     expect(renamed?.title).toBe('암 상담');
     await deleteConsultation(storage, 'user-1', created!.id);
     expect(await listConsultationSummaries(storage, 'user-1')).toEqual([]);
+  });
+
+  it('stores web consultations in localStorage for the signed-in user', async () => {
+    const store = new Map<string, string>();
+    Object.assign(globalThis, {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => store.set(key, value),
+      },
+    });
+    const created = createScenarioFromTemplate('cancer');
+    await saveConsultation(webLocalConsultationStorage, 'user-1', created!);
+    const rows = await listConsultationSummaries(webLocalConsultationStorage, 'user-1', 'cancer');
+    expect(rows).toHaveLength(1);
+    expect(store.size).toBe(1);
+    const other = await listConsultationSummaries(webLocalConsultationStorage, 'user-2', 'cancer');
+    expect(other).toEqual([]);
   });
 });
