@@ -362,7 +362,8 @@ export const styles = StyleSheet.create({
   marker: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, backgroundColor: '#f8fafc' },
   markerLine: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
   markerGutter: { width: 28 },
-  markerSeg: { flex: 1, height: 1, backgroundColor: theme.border },
+  /** PC 모바일 `.cs-axis-marker__hline-seg`: height 1px, `var(--cs-period-marker-line)` = `--primary-border` `#bbf7d0`. */
+  markerSeg: { flex: 1, height: 1, backgroundColor: theme.primaryBorder },
   markerLabel: { fontSize: 16, fontWeight: '800', color: theme.marker },
   markerMenu: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   period: {
