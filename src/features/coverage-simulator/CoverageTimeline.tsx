@@ -201,7 +201,7 @@ export const styles = StyleSheet.create({
     width: 2,
     marginLeft: -1,
     backgroundColor: theme.line,
-    zIndex: 0,
+    zIndex: -1,
   },
   event: { paddingHorizontal: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.divider },
   /** PC 모바일과 같이 항목명 줄에 카드 배경을 깔아 축선이 글자를 관통하지 않게 한다. 금액 줄은 배경이 없어 선이 남는다. */
@@ -211,6 +211,7 @@ export const styles = StyleSheet.create({
     gap: 8,
     minHeight: 32,
     marginBottom: 12,
+    position: 'relative',
     backgroundColor: theme.surface,
     zIndex: 1,
   },

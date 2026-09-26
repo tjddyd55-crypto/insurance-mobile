@@ -4,6 +4,7 @@ import { simulatorTheme } from '../simulatorTheme';
 describe('coverage timeline axis', () => {
   it('masks the center line on the item name row and leaves it between the amounts', () => {
     expect(styles.head.backgroundColor).toBe(simulatorTheme.surface);
+    expect(styles.centerLine.zIndex).toBeLessThan(0);
     expect(styles.head.zIndex).toBeGreaterThan(styles.centerLine.zIndex ?? 0);
     expect(styles.eventTitle.backgroundColor).toBe(simulatorTheme.surface);
     expect(styles.eventTitle.paddingHorizontal).toBe(8);
