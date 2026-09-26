@@ -12,9 +12,19 @@ import {
   pageSelectionForSave,
   parsePageRangeInput,
 } from '../personalBinderModel';
+import { edgeToEdgePageSize } from '../binderPageLayout';
 import { personalBinderPaths } from '../personalBinderPaths';
 import { sha256HexSync } from '../sha256Hex';
 import type { PersonalBinder } from '../types';
+
+describe('binder page layout', () => {
+  it('fills the device width and keeps the page aspect ratio', () => {
+    expect(edgeToEdgePageSize(390).width).toBe(390);
+    expect(edgeToEdgePageSize(390, 0.5)).toEqual({ width: 390, height: 780 });
+    expect(edgeToEdgePageSize(412, 1)).toEqual({ width: 412, height: 412 });
+    expect(edgeToEdgePageSize(360, 0).width).toBe(360);
+  });
+});
 
 describe('personal binder API mapping', () => {
   it('uses the same paths as the PC binder client', () => {

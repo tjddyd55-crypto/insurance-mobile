@@ -41,6 +41,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
   const [immersive, setImmersive] = useState(false);
   const [notice, setNotice] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [pageSlot, setPageSlot] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     setDrawerSwipe(navigation, false);
@@ -51,14 +52,14 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
   const pages = useMemo(() => (binder ? buildBinderViewerPages(binder) : []), [binder]);
   const safeIndex = Math.min(index, Math.max(0, pages.length - 1));
   const current = pages[safeIndex];
-  const imageWidth = Math.min(width, 412);
-  const imageHeight = Math.max(280, height - (immersive ? 48 : 220));
+  const pageWidth = pageSlot.width || width;
+  const pageHeight = pageSlot.height || Math.max(280, height - (immersive ? 48 : 220));
   const uri = useBinderPageImage(
     token,
     current?.material.fileId ?? null,
     current?.material.id ?? '',
     current?.pdfPageNumber ?? 0,
-    imageWidth,
+    pageWidth,
   );
 
   if (query.isLoading) {
@@ -97,17 +98,29 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
         />
       )}
       <View style={styles.stage}>
-        {notice ? <AppText color="danger" align="center">{notice}</AppText> : null}
-        <BinderZoomSurface
-          key={current.key}
-          uri={uri}
-          pageLabel={`${safeIndex + 1} / ${pages.length}`}
-          sectionTitle={current.sectionTitle}
-          width={imageWidth}
-          height={imageHeight}
-          onSwipe={move}
-          onToggleChrome={() => setImmersive((value) => !value)}
-        />
+        {notice ? <AppText color="danger" align="center" style={styles.notice}>{notice}</AppText> : null}
+        <View
+          style={styles.pageSlot}
+          onLayout={(event) => {
+            const next = event.nativeEvent.layout;
+            setPageSlot((currentSlot) => (
+              currentSlot.width === next.width && currentSlot.height === next.height
+                ? currentSlot
+                : { width: next.width, height: next.height }
+            ));
+          }}
+        >
+          <BinderZoomSurface
+            key={current.key}
+            uri={uri}
+            pageLabel={`${safeIndex + 1} / ${pages.length}`}
+            sectionTitle={current.sectionTitle}
+            width={pageWidth}
+            height={pageHeight}
+            onSwipe={move}
+            onToggleChrome={() => setImmersive((value) => !value)}
+          />
+        </View>
       </View>
       {immersive ? null : (
         <View style={styles.controls}>
@@ -174,7 +187,9 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     immersive: { backgroundColor: '#111111' },
-    stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    stage: { flex: 1, width: '100%' },
+    pageSlot: { flex: 1, width: '100%', overflow: 'hidden' },
+    notice: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.sm },
     controls: {
       paddingHorizontal: theme.layout.screenPaddingHorizontal,
       paddingBottom: theme.spacing.lg,
