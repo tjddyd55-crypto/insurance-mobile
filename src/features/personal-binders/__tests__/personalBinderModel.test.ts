@@ -43,6 +43,8 @@ describe('personal binder API mapping', () => {
 
   it('treats a missing route as unavailable and keeps 409 copy', () => {
     expect(isBinderApiUnavailable(new ApiError('요청한 API를 찾을 수 없습니다.', 404))).toBe(true);
+    expect(isBinderApiUnavailable(new ApiError('로그인이 필요합니다.', 401))).toBe(false);
+    expect(isBinderApiUnavailable(new ApiError('만료되었거나 유효하지 않은 링크입니다.', 410))).toBe(false);
     expect(isBinderConflict(new ApiError('이 자료는 2개의 바인더에서 사용 중입니다.', 409))).toBe(true);
     expect(binderActionMessage(new ApiError('이 자료는 2개의 바인더에서 사용 중입니다.', 409), '실패')).toBe(
       '이 자료는 2개의 바인더에서 사용 중입니다.',
