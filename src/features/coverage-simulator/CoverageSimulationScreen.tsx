@@ -13,7 +13,7 @@ import { CoverageAnalysisSaveSection } from './CoverageAnalysisSaveSection';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
 import { CoverageItemForm } from './CoverageItemForm';
 import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
-import { CoverageTimeline } from './CoverageTimeline';
+import { CoverageTimeline, CoverageTotalsDock } from './CoverageTimeline';
 import { useCoverageCustomer } from './CoverageCustomerContext';
 import { getConsultation, saveConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
@@ -22,16 +22,13 @@ import {
   assignCustomer,
   insertCoverageItem,
   insertTimeMarker,
+  moveScenarioItem,
   removeScenarioItem,
   resetScenarioItems,
   updateCoverageItem,
 } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenario, CoverageScenarioItem } from './types';
-
-const BLURB: Partial<Record<CoverageScenario['diseaseType'], string>> = {
-  cancer: '암 치료 과정에 따라 현재 보장과 제안 보장을 비교합니다.',
-};
 
 type FormState =
   | { type: 'add'; afterOrder: number }
@@ -118,6 +115,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   }
 
   const items = sortItems(scenario.items);
+  const totals = calculateScenarioTotals(scenario);
   const openEdit = (item: CoverageScenarioItem) => {
     setMenuItemId(null);
     setForm({ type: 'edit', item });
@@ -134,15 +132,16 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               notice={notice}
               onSave={() => void persist(assignCustomer(scenario, { id: customer.id, name: customer.name }))}
             />
-            <Text style={styles.lead}>{BLURB[scenario.diseaseType] ?? scenario.description}</Text>
             {toast ? <Text style={styles.toast}>{toast}</Text> : null}
             <CoverageTimeline
               items={items}
               periods={calculateScenarioPeriodTotals(scenario.items)}
-              totals={calculateScenarioTotals(scenario)}
+              totals={totals}
+              compactTotals
               menuItemId={menuItemId}
               onToggleMenu={setMenuItemId}
               onEdit={openEdit}
+              onMove={(itemId, direction) => void persist(moveScenarioItem(scenario, itemId, direction))}
               onRemove={(itemId) => {
                 setMenuItemId(null);
                 setDeleteId(itemId);
@@ -150,6 +149,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               onAddAfter={(afterOrder) => setForm({ type: 'add', afterOrder })}
             />
           </ScrollView>
+          <CoverageTotalsDock totals={totals} />
           <View style={styles.bottom}>
             <View style={styles.bottomBtn}><CoverageSecondaryButton label="초기화" onPress={() => setConfirmReset(true)} /></View>
             <View style={styles.bottomBtn}>
@@ -202,7 +202,6 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: theme.bg },
   body: { flex: 1 },
   content: { padding: 16, paddingBottom: 24, gap: 16 },
-  lead: { fontSize: 13, lineHeight: 19, color: theme.muted },
   toast: {
     alignSelf: 'center',
     paddingHorizontal: 16,

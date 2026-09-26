@@ -76,20 +76,54 @@ export function renameScenario(scenario: CoverageScenario, title: string): Cover
   return normalizeConsultation({ ...scenario, title: trimmed, updatedAt: new Date().toISOString() });
 }
 
+/** 보장 항목은 같은 시간 구간 안에서만 순서를 바꾼다. 시간 표시는 옮기지 않는다. */
+export function coverageItemMoveState(
+  items: ScenarioItem[],
+  itemId: string,
+): { canMoveUp: boolean; canMoveDown: boolean } {
+  const sorted = sortAndReindex(items);
+  const index = sorted.findIndex((item) => item.id === itemId);
+  if (index < 0 || sorted[index]?.type !== 'coverage') {
+    return { canMoveUp: false, canMoveDown: false };
+  }
+  const { start, end } = coveragePeriodBounds(sorted, index);
+  return { canMoveUp: index > start, canMoveDown: index < end };
+}
+
 export function moveScenarioItem(
   scenario: CoverageScenario,
   itemId: string,
   direction: -1 | 1,
 ): CoverageScenario {
+  const state = coverageItemMoveState(scenario.items, itemId);
+  if (direction < 0 && !state.canMoveUp) return scenario;
+  if (direction > 0 && !state.canMoveDown) return scenario;
   const sorted = sortAndReindex(scenario.items);
   const index = sorted.findIndex((item) => item.id === itemId);
   const target = index + direction;
-  if (index < 0 || target < 0 || target >= sorted.length) return scenario;
   const next = [...sorted];
   const [entry] = next.splice(index, 1);
   if (!entry) return scenario;
   next.splice(target, 0, entry);
-  return touch(scenario, next);
+  return touch(scenario, withSequentialOrder(next));
+}
+
+function coveragePeriodBounds(sortedItems: ScenarioItem[], coverageIndex: number): { start: number; end: number } {
+  let start = 0;
+  for (let index = coverageIndex - 1; index >= 0; index -= 1) {
+    if (sortedItems[index]?.type === 'time-marker') {
+      start = index + 1;
+      break;
+    }
+  }
+  let end = sortedItems.length - 1;
+  for (let index = coverageIndex + 1; index < sortedItems.length; index += 1) {
+    if (sortedItems[index]?.type === 'time-marker') {
+      end = index - 1;
+      break;
+    }
+  }
+  return { start, end };
 }
 
 export function removeScenarioItem(scenario: CoverageScenario, itemId: string): CoverageScenario {
@@ -215,7 +249,11 @@ function insertItem(scenario: CoverageScenario, afterOrder: number, item: Scenar
   const index = sorted.findIndex((entry) => entry.order === afterOrder);
   const next = [...sorted];
   next.splice(index < 0 ? next.length : index + 1, 0, item);
-  return touch(scenario, next);
+  return touch(scenario, withSequentialOrder(next));
+}
+
+function withSequentialOrder(items: ScenarioItem[]): ScenarioItem[] {
+  return items.map((item, order) => ({ ...item, order }));
 }
 
 export function assignCustomer(

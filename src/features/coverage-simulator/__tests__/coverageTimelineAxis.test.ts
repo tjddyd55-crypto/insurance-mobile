@@ -29,4 +29,13 @@ describe('coverage timeline axis', () => {
     expect(styles.marker.backgroundColor).toBe('#f8fafc');
     expect(styles.periodSpine.width).toBe(12);
   });
+
+  it('uses the mobile preview dock colors for the compact total bar', () => {
+    expect(styles.dock.height).toBe(54);
+    expect(styles.dockLabel.color).toBe(simulatorTheme.muted);
+    expect(styles.dockAmount.color).toBe('#0f172a');
+    expect(styles.dockProposed.color).toBe(simulatorTheme.primary);
+    expect(styles.reorderBtn.width).toBe(36);
+    expect(styles.reorderDisabled.opacity).toBe(0.28);
+  });
 });

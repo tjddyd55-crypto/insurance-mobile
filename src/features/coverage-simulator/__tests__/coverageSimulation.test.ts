@@ -12,7 +12,15 @@ import {
   periodSubtotalLabelFromMarker,
 } from '../coverageAnalysis';
 import { createScenarioFromTemplate } from '../templates';
-import { appendCoverageItem, customerDisplayLabel, filterSavedByCustomer, filterSavedByDisease, insertCoverageItem } from '../scenarioEdits';
+import {
+  appendCoverageItem,
+  coverageItemMoveState,
+  customerDisplayLabel,
+  filterSavedByCustomer,
+  filterSavedByDisease,
+  insertCoverageItem,
+  moveScenarioItem,
+} from '../scenarioEdits';
 
 describe('coverage simulation mapping', () => {
   it('builds the cancer consultation and totals in 만원', () => {
@@ -73,5 +81,24 @@ describe('coverage simulation mapping', () => {
     const scenario = createScenarioFromTemplate('cancer')!;
     const inserted = insertCoverageItem(scenario, scenario.items[0]!.order, { label: '간병비', category: 'support' });
     expect(inserted.items[1]?.label).toBe('간병비');
+  });
+
+  it('moves a coverage item only inside the same time period', () => {
+    const scenario = createScenarioFromTemplate('cancer')!;
+    const beforeMarker = scenario.items.find((item) => item.type === 'coverage' && item.label === '방사선치료');
+    const afterMarker = scenario.items.find((item) => item.type === 'coverage' && item.currentAmount == null);
+    expect(beforeMarker).toBeDefined();
+    expect(afterMarker).toBeDefined();
+    expect(coverageItemMoveState(scenario.items, beforeMarker!.id)).toEqual({ canMoveUp: true, canMoveDown: false });
+    expect(coverageItemMoveState(scenario.items, afterMarker!.id).canMoveUp).toBe(false);
+
+    const blocked = moveScenarioItem(scenario, beforeMarker!.id, 1);
+    expect(blocked.items.map((item) => item.id)).toEqual(scenario.items.map((item) => item.id));
+
+    const first = scenario.items.find((item) => item.label === '암 진단금')!;
+    const moved = moveScenarioItem(scenario, first.id, 1);
+    expect(moved.items[0]?.label).toBe('암 수술비');
+    expect(moved.items[1]?.label).toBe('암 진단금');
+    expect(moved.items.find((item) => item.type === 'time-marker')?.order).toBe(4);
   });
 });

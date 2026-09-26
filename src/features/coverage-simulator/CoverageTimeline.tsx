@@ -7,6 +7,7 @@ import {
   periodSubtotalLabelFromMarker,
   type ScenarioPeriodTotal,
 } from './coverageAnalysis';
+import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
 
@@ -21,6 +22,9 @@ type Props = {
   onEdit: (item: CoverageScenarioItem) => void;
   onRemove: (itemId: string) => void;
   onAddAfter: (afterOrder: number) => void;
+  onMove?: (itemId: string, direction: -1 | 1) => void;
+  /** 최신 모바일 미리보기. 시트 안 총합을 숨기고 하단 독 문구를 쓴다. */
+  compactTotals?: boolean;
   readOnly?: boolean;
 };
 
@@ -35,6 +39,8 @@ export function CoverageTimeline({
   onEdit,
   onRemove,
   onAddAfter,
+  onMove,
+  compactTotals = false,
   readOnly = false,
 }: Props) {
   return (
@@ -60,9 +66,11 @@ export function CoverageTimeline({
                 item={item}
                 readOnly={readOnly}
                 menuOpen={menuItemId === item.id}
+                move={readOnly || !onMove ? null : coverageItemMoveState(items, item.id)}
                 onToggleMenu={() => onToggleMenu(menuItemId === item.id ? null : item.id)}
                 onEdit={() => onEdit(item)}
                 onRemove={() => onRemove(item.id)}
+                onMove={onMove ? (direction) => onMove(item.id, direction) : undefined}
               />
             )}
             {readOnly ? null : (
@@ -82,30 +90,55 @@ export function CoverageTimeline({
           </View>
         ))}
       </View>
-      <View style={styles.summary}>
-        <View style={styles.summaryCol}>
-          <Text style={styles.summaryLabel}>기존 총 보장</Text>
-          <Text style={styles.summaryValue}>{formatTotalAmountLabel(totals.currentTotal)}</Text>
-        </View>
-        <View style={styles.summarySpine} />
-        <View style={styles.summaryCol}>
-          <Text style={styles.summaryLabel}>제안 총 보장</Text>
-          <Text style={[styles.summaryValue, styles.summaryProposed]}>{formatTotalAmountLabel(totals.proposedTotal)}</Text>
-        </View>
+      {compactTotals ? null : <SheetGrandTotal totals={totals} />}
+    </View>
+  );
+}
+
+/** 최신 모바일 미리보기 하단 독. 시트 안 ‘기존 총 보장’ 문구와 띄어쓰기가 다르다. */
+export function CoverageTotalsDock({ totals }: { totals: Totals }) {
+  return (
+    <View style={styles.dock}>
+      <View style={styles.dockCol}>
+        <Text style={styles.dockLabel}>기존 총보장</Text>
+        <Text style={styles.dockAmount}>{formatTotalAmountLabel(totals.currentTotal)}</Text>
+      </View>
+      <View style={styles.dockDivider} />
+      <View style={styles.dockCol}>
+        <Text style={styles.dockLabel}>제안 총보장</Text>
+        <Text style={[styles.dockAmount, styles.dockProposed]}>{formatTotalAmountLabel(totals.proposedTotal)}</Text>
+      </View>
+    </View>
+  );
+}
+
+function SheetGrandTotal({ totals }: { totals: Totals }) {
+  return (
+    <View style={styles.summary}>
+      <View style={styles.summaryCol}>
+        <Text style={styles.summaryLabel}>기존 총 보장</Text>
+        <Text style={styles.summaryValue}>{formatTotalAmountLabel(totals.currentTotal)}</Text>
+      </View>
+      <View style={styles.summarySpine} />
+      <View style={styles.summaryCol}>
+        <Text style={styles.summaryLabel}>제안 총 보장</Text>
+        <Text style={[styles.summaryValue, styles.summaryProposed]}>{formatTotalAmountLabel(totals.proposedTotal)}</Text>
       </View>
     </View>
   );
 }
 
 function CoverageBlock({
-  item, readOnly, menuOpen, onToggleMenu, onEdit, onRemove,
+  item, readOnly, menuOpen, move, onToggleMenu, onEdit, onRemove, onMove,
 }: {
   item: CoverageScenarioItem;
   readOnly: boolean;
   menuOpen: boolean;
+  move: { canMoveUp: boolean; canMoveDown: boolean } | null;
   onToggleMenu: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  onMove?: (direction: -1 | 1) => void;
 }) {
   const badge = BADGE[item.category];
   return (
@@ -115,10 +148,19 @@ function CoverageBlock({
           <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
         </View>
         <Text style={styles.eventTitle} numberOfLines={1}>{item.label}</Text>
-        {readOnly ? <View style={styles.menuBtn} /> : (
-          <Pressable accessibilityRole="button" accessibilityLabel={`${item.label} 메뉴`} onPress={onToggleMenu} style={styles.menuBtn}>
-            <Text style={styles.menuGlyph}>⋯</Text>
-          </Pressable>
+        {readOnly ? null : (
+          <View style={styles.actions}>
+            {move && onMove ? (
+              <ReorderButtons
+                canMoveUp={move.canMoveUp}
+                canMoveDown={move.canMoveDown}
+                onMove={onMove}
+              />
+            ) : null}
+            <Pressable accessibilityRole="button" accessibilityLabel="항목 메뉴" onPress={onToggleMenu} style={styles.menuBtn}>
+              <Text style={styles.menuGlyph}>⋯</Text>
+            </Pressable>
+          </View>
         )}
       </View>
       {menuOpen ? (
@@ -149,17 +191,55 @@ function MarkerBlock({
       {period ? <PeriodSubtotal label={item.label} current={period.currentTotal} proposed={period.proposedTotal} /> : null}
       <View style={styles.marker}>
         <View style={styles.markerLine}>
+          {readOnly ? null : <View style={styles.markerGutter} />}
           <View style={styles.markerSeg} />
           <Text style={styles.markerLabel}>{item.label} ↓</Text>
           <View style={styles.markerSeg} />
+          {readOnly ? null : (
+            <Pressable accessibilityRole="button" accessibilityLabel="시간 구간 메뉴" onPress={onRemove} style={styles.markerMenu}>
+              <Text style={styles.menuGlyph}>⋯</Text>
+            </Pressable>
+          )}
         </View>
-        {readOnly ? null : (
-          <Pressable accessibilityRole="button" onPress={onRemove}>
-            <Text style={styles.markerDelete}>삭제</Text>
-          </Pressable>
-        )}
       </View>
     </View>
+  );
+}
+
+function ReorderButtons({
+  canMoveUp, canMoveDown, onMove,
+}: {
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMove: (direction: -1 | 1) => void;
+}) {
+  return (
+    <View style={styles.reorder}>
+      <MoveButton label="위로 이동" glyph="↑" enabled={canMoveUp} onPress={() => onMove(-1)} />
+      <MoveButton label="아래로 이동" glyph="↓" enabled={canMoveDown} onPress={() => onMove(1)} />
+    </View>
+  );
+}
+
+function MoveButton({
+  label, glyph, enabled, onPress,
+}: {
+  label: string;
+  glyph: string;
+  enabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !enabled }}
+      disabled={!enabled}
+      onPress={onPress}
+      style={[styles.reorderBtn, !enabled && styles.reorderDisabled]}
+    >
+      <Text style={styles.reorderGlyph}>{glyph}</Text>
+    </Pressable>
   );
 }
 
@@ -235,7 +315,12 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     paddingHorizontal: 8,
   },
-  menuBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  actions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
+  reorder: { flexDirection: 'row', alignItems: 'center' },
+  reorderBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  reorderDisabled: { opacity: 0.28 },
+  reorderGlyph: { fontSize: 14, fontWeight: '700', color: theme.muted, lineHeight: 16 },
+  menuBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   menuGlyph: { fontSize: 18, color: theme.muted },
   menu: {
     alignSelf: 'flex-end',
@@ -276,9 +361,10 @@ export const styles = StyleSheet.create({
   addGlyph: { color: theme.primary, fontSize: 14, fontWeight: '700', lineHeight: 16, textAlign: 'center' },
   marker: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, backgroundColor: '#f8fafc' },
   markerLine: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
+  markerGutter: { width: 28 },
   markerSeg: { flex: 1, height: 1, backgroundColor: theme.border },
   markerLabel: { fontSize: 16, fontWeight: '800', color: theme.marker },
-  markerDelete: { marginTop: 8, fontSize: 13, color: theme.muted, textDecorationLine: 'underline' },
+  markerMenu: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   period: {
     marginHorizontal: 12,
     marginTop: 8,
@@ -305,4 +391,17 @@ export const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: theme.muted, marginBottom: 4 },
   summaryValue: { fontSize: 20, fontWeight: '800', color: theme.text },
   summaryProposed: { color: theme.primary },
+  dock: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    height: 54,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+  },
+  dockCol: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 2 },
+  dockDivider: { width: 1, marginVertical: 8, backgroundColor: theme.border },
+  dockLabel: { fontSize: 11, fontWeight: '600', color: theme.muted },
+  dockAmount: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  dockProposed: { color: theme.primary },
 });
