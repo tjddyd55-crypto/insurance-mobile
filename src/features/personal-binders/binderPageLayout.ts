@@ -14,3 +14,20 @@ export function edgeToEdgePageSize(
   const aspect = imageAspectWidthOverHeight > 0 ? imageAspectWidthOverHeight : BINDER_PAGE_WIDTH_OVER_HEIGHT;
   return { width, height: width / aspect };
 }
+
+/** RN은 source, 웹은 naturalWidth로 원본 크기를 준다. 둘 다 없으면 기본 A4 비율을 유지한다. */
+export function imageAspectFromLoadEvent(event: object): number | null {
+  const record = event as {
+    nativeEvent?: { source?: { width?: number; height?: number } | null } | null;
+    target?: { naturalWidth?: number; naturalHeight?: number } | null;
+  };
+  const source = record.nativeEvent?.source;
+  const width = positiveSize(source?.width) ?? positiveSize(record.target?.naturalWidth);
+  const height = positiveSize(source?.height) ?? positiveSize(record.target?.naturalHeight);
+  if (width == null || height == null) return null;
+  return width / height;
+}
+
+function positiveSize(value: number | undefined): number | null {
+  return typeof value === 'number' && value > 0 ? value : null;
+}

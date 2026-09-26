@@ -10,7 +10,7 @@ import {
   clampNewsDetailZoomScale,
   clampTranslation,
 } from '../../components/newsDetailZoomMath';
-import { edgeToEdgePageSize } from './binderPageLayout';
+import { edgeToEdgePageSize, imageAspectFromLoadEvent } from './binderPageLayout';
 
 type Props = {
   uri: string | null | undefined;
@@ -141,8 +141,8 @@ export function BinderZoomSurface({
               resizeMode="cover"
               accessibilityLabel={`${sectionTitle} ${pageLabel}`}
               onLoad={(event) => {
-                const source = event.nativeEvent.source;
-                if (source.width > 0 && source.height > 0) setAspect(source.width / source.height);
+                const aspect = imageAspectFromLoadEvent(event);
+                if (aspect) setAspect(aspect);
               }}
               onError={() => onImageError?.()}
               style={styles.image}
