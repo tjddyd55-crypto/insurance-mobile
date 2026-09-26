@@ -4,15 +4,22 @@ import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
+import { AppHeader } from '../../components/AppHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { LoadingState } from '../../components/LoadingState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { Screen } from '../../design-system';
+import { CoverageAnalysisSaveSection } from './CoverageAnalysisSaveSection';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
 import { CoverageItemForm } from './CoverageItemForm';
-import { CoveragePrimaryButton, CoverageSecondaryButton, CoverageSimulatorHeader, CoverageSimulatorScreen } from './CoverageSimulatorChrome';
+import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
 import { CoverageTimeline } from './CoverageTimeline';
+import { useCoverageCustomer } from './CoverageCustomerContext';
 import { getConsultation, saveConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { calculateScenarioPeriodTotals, calculateScenarioTotals, sortItems } from './coverageAnalysis';
 import {
+  assignCustomer,
   insertCoverageItem,
   insertTimeMarker,
   removeScenarioItem,
@@ -34,6 +41,7 @@ type FormState =
 export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string }) {
   const router = useRouter();
   const { user } = useAuth();
+  const customer = useCoverageCustomer();
   const userId = user?.id ?? '';
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -46,28 +54,34 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const [confirmReset, setConfirmReset] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const scenario = query.data;
   const persist = async (next: CoverageScenario, message = '') => {
+    setNotice('');
     try {
       await saveConsultation(consultationStorage, userId, next);
       await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
       if (message) showToast(message);
     } catch {
-      showToast('보장 분석을 저장하지 못했습니다.');
+      setNotice('보장 분석을 저장하지 못했습니다.');
     }
   };
 
   if (query.isLoading) {
-    return <CoverageSimulatorScreen><Text style={styles.status}>시나리오를 준비하는 중…</Text></CoverageSimulatorScreen>;
+    return (
+      <View style={styles.root}>
+        <AppHeader title="보장 분석" showBack showMenu={false} showBillingStatus={false} />
+        <LoadingState message="시뮬레이션을 불러오는 중…" />
+      </View>
+    );
   }
   if (!scenario) {
     return (
-      <CoverageSimulatorScreen>
-        <CoverageSimulatorHeader title="보장 시뮬레이션" onBack={() => router.back()} />
-        <Text style={styles.status}>시뮬레이션을 찾을 수 없습니다.</Text>
-      </CoverageSimulatorScreen>
+      <View style={styles.root}>
+        <AppHeader title="보장 분석" showBack showMenu={false} showBillingStatus={false} />
+        <EmptyState title="시뮬레이션을 찾을 수 없습니다." />
+      </View>
     );
   }
 
@@ -98,9 +112,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           void persist(updateCoverageItem(scenario, form.item.id, patch), '저장되었습니다.');
           setForm(null);
         }}
-        onDelete={() => {
-          setDeleteId(form.item.id);
-        }}
+        onDelete={() => setDeleteId(form.item.id)}
       />
     );
   }
@@ -112,37 +124,43 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   };
 
   return (
-    <CoverageSimulatorScreen>
-      <CoverageSimulatorHeader
-        title={scenario.title}
-        onBack={() => router.back()}
-        rightLabel={saving ? '저장 중…' : '저장'}
-        rightDisabled={saving}
-        onRight={() => void saveNow()}
-      />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.lead}>{BLURB[scenario.diseaseType] ?? scenario.description}</Text>
-        {toast ? <Text style={styles.toast}>{toast}</Text> : null}
-        <CoverageTimeline
-          items={items}
-          periods={calculateScenarioPeriodTotals(scenario.items)}
-          totals={calculateScenarioTotals(scenario)}
-          menuItemId={menuItemId}
-          onToggleMenu={setMenuItemId}
-          onEdit={openEdit}
-          onRemove={(itemId) => {
-            setMenuItemId(null);
-            setDeleteId(itemId);
-          }}
-          onAddAfter={(afterOrder) => setForm({ type: 'add', afterOrder })}
-        />
-      </ScrollView>
-      <View style={styles.bottom}>
-        <View style={styles.bottomBtn}><CoverageSecondaryButton label="초기화" onPress={() => setConfirmReset(true)} /></View>
-        <View style={styles.bottomBtn}>
-          <CoveragePrimaryButton label="PDF 미리보기" onPress={() => router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}/pdf` as never)} />
+    <View style={styles.root}>
+      <AppHeader title={scenario.title} subtitle="보장 분석" showBack showMenu={false} showBillingStatus={false} />
+      <Screen padded={false}>
+        <View style={styles.body}>
+          <ScrollView contentContainerStyle={styles.content}>
+            <CoverageAnalysisSaveSection
+              consultationDate={scenario.consultationDate}
+              notice={notice}
+              onSave={() => void persist(assignCustomer(scenario, { id: customer.id, name: customer.name }))}
+            />
+            <Text style={styles.lead}>{BLURB[scenario.diseaseType] ?? scenario.description}</Text>
+            {toast ? <Text style={styles.toast}>{toast}</Text> : null}
+            <CoverageTimeline
+              items={items}
+              periods={calculateScenarioPeriodTotals(scenario.items)}
+              totals={calculateScenarioTotals(scenario)}
+              menuItemId={menuItemId}
+              onToggleMenu={setMenuItemId}
+              onEdit={openEdit}
+              onRemove={(itemId) => {
+                setMenuItemId(null);
+                setDeleteId(itemId);
+              }}
+              onAddAfter={(afterOrder) => setForm({ type: 'add', afterOrder })}
+            />
+          </ScrollView>
+          <View style={styles.bottom}>
+            <View style={styles.bottomBtn}><CoverageSecondaryButton label="초기화" onPress={() => setConfirmReset(true)} /></View>
+            <View style={styles.bottomBtn}>
+              <CoveragePrimaryButton
+                label="PDF 미리보기"
+                onPress={() => router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}/pdf` as never)}
+              />
+            </View>
+          </View>
         </View>
-      </View>
+      </Screen>
       <ConfirmDialog
         open={confirmReset}
         title="작성 내용을 초기화할까요?"
@@ -171,29 +189,22 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           if (id) void persist(removeScenarioItem(scenario, id));
         }}
       />
-    </CoverageSimulatorScreen>
+    </View>
   );
 
   function showToast(message: string) {
     setToast(message);
     setTimeout(() => setToast(''), 1800);
   }
-
-  async function saveNow() {
-    if (!scenario) return;
-    setSaving(true);
-    await persist(scenario, '저장되었습니다.');
-    setSaving(false);
-  }
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 24 },
-  lead: { marginBottom: 16, fontSize: 13, lineHeight: 19, color: theme.muted },
-  status: { padding: 16, color: theme.muted },
+  root: { flex: 1, backgroundColor: theme.bg },
+  body: { flex: 1 },
+  content: { padding: 16, paddingBottom: 24, gap: 16 },
+  lead: { fontSize: 13, lineHeight: 19, color: theme.muted },
   toast: {
     alignSelf: 'center',
-    marginBottom: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
