@@ -66,6 +66,14 @@ describe('consulting web session handoff', () => {
       origin: DEV_ORIGIN,
       pageUrl: `${DEV_ORIGIN}/coverage-simulator`,
     });
+    expect(resolveConsultingWebTarget('/personal-binders', {
+      isDevApp: true,
+      apiBaseUrl: DEV_ORIGIN,
+    }, PROD_ORIGIN)).toEqual({
+      ok: true,
+      origin: DEV_ORIGIN,
+      pageUrl: `${DEV_ORIGIN}/personal-binders`,
+    });
     expect(resolveConsultingWebTarget('/coverage-simulator', {
       isDevApp: false,
       apiBaseUrl: DEV_ORIGIN,

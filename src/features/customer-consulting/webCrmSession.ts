@@ -9,10 +9,10 @@ import type { AuthUser } from '../../api/authApi';
  *
  * POST /api/auth/native-webview-handoff
  *   Authorization: Bearer <현재 액세스 토큰>
- *   Body: { "purpose": "customer-consulting", "path": "/coverage-simulator" }
+ *   Body: { "purpose": "customer-consulting", "path": "/personal-binders" }
  *   201: { "code": "<1회용>", "expiresInSec": 60 }
  *   서버는 code의 sha256만 저장하고, userId·path·만료를 묶는다. code와 Bearer는 로그에 남기지 않는다.
- *   path는 /coverage-simulator 접두사만 허용한다.
+ *   path는 /personal-binders 또는 /coverage-simulator 접두사만 허용한다.
  *
  * POST /api/auth/native-webview-handoff/redeem
  *   Body: { "code": "<1회용>" }

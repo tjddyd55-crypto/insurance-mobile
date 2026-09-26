@@ -167,7 +167,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: feature.label,
         legacyWebPath: feature.legacyWebPath,
         nativePath: feature.nativePath,
-        // 도착 화면은 네이티브 안내다. 보장 기능 자체는 아직 앱에서 열리지 않는다.
+        // 화면은 네이티브 라우트다. DEV에서만 CRM WebView로 연다.
         mode: 'NATIVE',
       }),
     ),
