@@ -25,7 +25,8 @@ export const CUSTOMER_CONSULTING_SECTION_LABEL = '고객 상담';
 /**
  * 배치: 고객관리 다음.
  * 웹 `buildAppMenuForSession`에는 아직 이 대분류가 없다.
- * 소유자 요청으로 하위 메뉴는 내 바인더, 보장 시뮬레이션 두 개만 둔다.
+ * 소유자 요청으로 하위 메뉴는 내 바인더, 시뮬레이션 두 개만 둔다.
+ * 시뮬레이션은 보장 시뮬레이션(보장 분석)이며, 진입은 시나리오 선택 화면이다.
  */
 export const CUSTOMER_CONSULTING_FEATURES: readonly CustomerConsultingFeature[] = [
   {
@@ -40,12 +41,12 @@ export const CUSTOMER_CONSULTING_FEATURES: readonly CustomerConsultingFeature[] 
   },
   {
     id: 'coverage-simulation',
-    label: '보장 시뮬레이션',
+    label: '시뮬레이션',
     nativePath: '/customer-consulting/coverage-simulation',
     legacyWebPath: '/coverage-simulator',
     nativeImplemented: false,
     webImplemented: true,
-    unavailableTitle: '보장 시뮬레이션은 PC에서 이용해 주세요.',
+    unavailableTitle: '시뮬레이션은 PC에서 이용해 주세요.',
     unavailableMessage: 'PC의 ONE FC에서 이용할 수 있습니다. 앱은 개발 환경에서만 이 화면을 연결합니다.',
   },
 ];

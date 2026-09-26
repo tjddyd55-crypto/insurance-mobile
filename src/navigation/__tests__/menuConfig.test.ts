@@ -25,7 +25,7 @@ describe('menuConfig', () => {
     expect(secondary).toContain('오늘의 TA');
     expect(secondary).toContain('고객리스트');
     expect(secondary).toContain('내 바인더');
-    expect(secondary).toContain('보장 시뮬레이션');
+    expect(secondary).toContain('시뮬레이션');
     expect(secondary).toContain('구독 및 결제');
   });
 

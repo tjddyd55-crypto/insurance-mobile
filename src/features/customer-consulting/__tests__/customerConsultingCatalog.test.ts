@@ -9,7 +9,7 @@ describe('customer consulting reachability', () => {
   it('exposes exactly the binder and the simulator', () => {
     expect(CUSTOMER_CONSULTING_FEATURES.map((item) => item.label)).toEqual([
       '내 바인더',
-      '보장 시뮬레이션',
+      '시뮬레이션',
     ]);
     expect(CUSTOMER_CONSULTING_FEATURES.map((item) => item.id)).toEqual([
       'personal-binder',
@@ -33,6 +33,7 @@ describe('customer consulting reachability', () => {
 
   it('routes coverage simulation through the DEV web handoff', () => {
     const feature = findCustomerConsultingFeature('coverage-simulation');
+    expect(feature.label).toBe('시뮬레이션');
     expect(feature.legacyWebPath).toBe('/coverage-simulator');
     expect(feature.webImplemented).toBe(true);
     const route = fs.readFileSync(
