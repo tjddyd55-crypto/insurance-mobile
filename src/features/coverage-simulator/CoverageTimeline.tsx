@@ -144,24 +144,28 @@ function CoverageBlock({
   return (
     <View style={styles.event}>
       <View style={styles.head}>
-        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-          <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
+        <View style={[styles.sideSlot, !readOnly && styles.sideSlotFixed]}>
+          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
+          </View>
         </View>
         <Text style={styles.eventTitle} numberOfLines={1}>{item.label}</Text>
-        {readOnly ? null : (
-          <View style={styles.actions}>
-            {move && onMove ? (
-              <ReorderButtons
-                canMoveUp={move.canMoveUp}
-                canMoveDown={move.canMoveDown}
-                onMove={onMove}
-              />
-            ) : null}
-            <Pressable accessibilityRole="button" accessibilityLabel="항목 메뉴" onPress={onToggleMenu} style={styles.menuBtn}>
-              <Text style={styles.menuGlyph}>⋯</Text>
-            </Pressable>
-          </View>
-        )}
+        <View style={[styles.sideSlot, styles.sideSlotEnd, !readOnly && styles.sideSlotFixed]}>
+          {readOnly ? null : (
+            <>
+              {move && onMove ? (
+                <ReorderButtons
+                  canMoveUp={move.canMoveUp}
+                  canMoveDown={move.canMoveDown}
+                  onMove={onMove}
+                />
+              ) : null}
+              <Pressable accessibilityRole="button" accessibilityLabel="항목 메뉴" onPress={onToggleMenu} style={styles.menuBtn}>
+                <Text style={styles.menuGlyph}>⋯</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
       </View>
       {menuOpen ? (
         <View style={styles.menu}>
@@ -306,6 +310,10 @@ export const styles = StyleSheet.create({
   },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
+  /** 배지와 조작 칸을 같은 100px로 두어 항목명 중심이 가운데 축과 만나게 한다. */
+  sideSlot: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
+  sideSlotFixed: { width: 100 },
+  sideSlotEnd: { justifyContent: 'flex-end' },
   eventTitle: {
     flex: 1,
     textAlign: 'center',
@@ -315,7 +323,6 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     paddingHorizontal: 8,
   },
-  actions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   reorder: { flexDirection: 'row', alignItems: 'center' },
   reorderBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   reorderDisabled: { opacity: 0.28 },
@@ -362,9 +369,8 @@ export const styles = StyleSheet.create({
   marker: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, backgroundColor: '#f8fafc' },
   markerLine: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
   markerGutter: { width: 28 },
-  /** PC 모바일 `.cs-axis-marker__hline-seg`: height 1px, `var(--cs-period-marker-line)` = `--primary-border` `#bbf7d0`. */
-  markerSeg: { flex: 1, height: 1, backgroundColor: theme.primaryBorder },
-  markerLabel: { fontSize: 16, fontWeight: '800', color: theme.marker },
+  markerSeg: { flex: 1, height: 2, backgroundColor: theme.primary },
+  markerLabel: { fontSize: 16, fontWeight: '900', color: '#0f172a' },
   markerMenu: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   period: {
     marginHorizontal: 12,
@@ -373,7 +379,7 @@ export const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'rgba(226, 232, 240, 0.35)',
   },
-  periodHeading: { textAlign: 'center', fontSize: 12, fontWeight: '600', color: theme.muted, marginBottom: 8 },
+  periodHeading: { textAlign: 'center', fontSize: 14, fontWeight: '600', color: theme.muted, marginBottom: 8 },
   periodRow: { flexDirection: 'row', alignItems: 'center' },
   periodSpine: { width: 12 },
   periodValue: { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '600', color: '#334155' },

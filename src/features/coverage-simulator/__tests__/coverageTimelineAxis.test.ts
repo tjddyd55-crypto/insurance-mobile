@@ -27,8 +27,13 @@ describe('coverage timeline axis', () => {
     expect(styles.centerLine.bottom).toBe(0);
     expect(styles.period.backgroundColor).not.toBe(simulatorTheme.surface);
     expect(styles.marker.backgroundColor).toBe('#f8fafc');
-    expect(styles.markerSeg.height).toBe(1);
-    expect(styles.markerSeg.backgroundColor).toBe('#bbf7d0');
+    expect(styles.sideSlotFixed.width).toBe(100);
+    expect(styles.eventTitle.textAlign).toBe('center');
+    expect(styles.periodHeading.fontSize).toBe(14);
+    expect(styles.markerSeg.height).toBe(2);
+    expect(styles.markerSeg.backgroundColor).toBe(simulatorTheme.primary);
+    expect(styles.markerLabel.fontWeight).toBe('900');
+    expect(styles.markerLabel.color).toBe('#0f172a');
     expect(styles.periodSpine.width).toBe(12);
   });
 
