@@ -1,6 +1,7 @@
 name: Manual OTA
 
 # push 로 실행하지 않는다. Actions 탭의 workflow_dispatch 만 허용한다.
+# github.ref_name 이 release/ 로 시작하지 않으면 첫 단계에서 즉시 실패한다.
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +29,16 @@ jobs:
       APP_VARIANT: production
       EXPO_PUBLIC_APP_ENV: production
     steps:
+      - name: Require release branch
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          IS_RELEASE_BRANCH: ${{ startsWith(github.ref_name, 'release/') }}
+        run: |
+          if [ "$IS_RELEASE_BRANCH" != "true" ]; then
+            echo "::error::Manual OTA는 github.ref_name이 release/ 로 시작할 때만 실행할 수 있습니다. 현재 ref: $REF_NAME"
+            exit 1
+          fi
+          echo "release 브랜치 확인: $REF_NAME"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
