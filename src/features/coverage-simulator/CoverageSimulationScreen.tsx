@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Screen } from '../../design-system';
 import { CoverageAnalysisSaveSection } from './CoverageAnalysisSaveSection';
+import { CoverageShareDialog } from './CoverageShareDialog';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
 import { CoverageItemForm } from './CoverageItemForm';
 import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
@@ -29,6 +30,7 @@ import {
 } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenario, CoverageScenarioItem } from './types';
+import { useCoverageShareSession } from './useCoverageShareSession';
 
 type FormState =
   | { type: 'add'; afterOrder: number }
@@ -37,7 +39,7 @@ type FormState =
 
 export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const customer = useCoverageCustomer();
   const userId = user?.id ?? '';
   const queryClient = useQueryClient();
@@ -52,6 +54,22 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [notice, setNotice] = useState('');
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(''), 1800);
+  }, []);
+  const share = useCoverageShareSession({
+    token,
+    scenario: query.data ?? null,
+    dirty: false,
+    persisted: Boolean(query.data),
+    showToast,
+    saveScenario: async (next) => {
+      const saved = await saveConsultation(consultationStorage, userId, next);
+      await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
+      return saved;
+    },
+  });
 
   const scenario = query.data;
   const persist = async (next: CoverageScenario, message = '') => {
@@ -153,6 +171,14 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           <View style={styles.bottom}>
             <View style={styles.bottomBtn}><CoverageSecondaryButton label="초기화" onPress={() => setConfirmReset(true)} /></View>
             <View style={styles.bottomBtn}>
+              <CoverageSecondaryButton
+                label={share.buttonLabel}
+                disabled={!share.canShare || share.sharing}
+                onPress={() => void share.openShare()}
+                testID="coverage-share-button"
+              />
+            </View>
+            <View style={styles.bottomBtn}>
               <CoveragePrimaryButton
                 label="PDF 미리보기"
                 onPress={() => router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}/pdf` as never)}
@@ -189,13 +215,9 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           if (id) void persist(removeScenarioItem(scenario, id));
         }}
       />
+      <CoverageShareDialog open={share.dialogOpen} {...share.dialog} />
     </View>
   );
-
-  function showToast(message: string) {
-    setToast(message);
-    setTimeout(() => setToast(''), 1800);
-  }
 }
 
 const styles = StyleSheet.create({
