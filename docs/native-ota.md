@@ -95,6 +95,38 @@ eas update --channel native-preview --environment development --message "OTA E2E
 
 Production channel에는 테스트 publish **금지**.
 
+### 5. PC 없이 수동 발행 (GitHub Actions)
+
+워크플로: [`.github/workflows/ota.yml`](../.github/workflows/ota.yml) (`Manual OTA`)
+
+`workflow_dispatch`만 있다. push·pull request로는 실행되지 않는다. 실행 브랜치의 워크플로 파일을 쓰므로, 이 문서가 들어 있는 커밋이 있는 브랜치(보통 `release/native-v1.0.3`)를 고른다.
+
+1. GitHub → Actions → **Manual OTA** → **Run workflow**
+2. 브랜치: 발행할 커밋이 있는 브랜치
+3. `platform`: `android` | `ios` | `all` (기본 `all`)
+4. `message`: EAS에 남길 설명
+5. Repository secret `EXPO_TOKEN`이 있어야 한다
+
+실행 순서:
+
+1. `npm ci`
+2. `npm run typecheck`와 `npm test -- --runInBand`가 통과해야 다음으로 간다. 이 릴리스 브랜치의 `npm run check`는 기존 eslint 오류로 이미 실패하므로, 워크플로는 그 대안으로 typecheck와 Jest를 게이트로 쓴다.
+3. `APP_VARIANT=production`, `EXPO_PUBLIC_APP_ENV=production`으로 읽은 runtime이 `1.0.3`이 아니면 **발행하지 않고 실패**한다. 값은 로그에 출력한다.
+4. 아래와 같이 production channel에 발행한다.
+
+```bash
+eas update \
+  --channel native-production \
+  --environment production \
+  --platform <android|ios|all> \
+  --message "<입력>" \
+  --non-interactive
+```
+
+5. 로그의 update group ID를 job summary에 남긴다. ID를 읽지 못하면 job은 실패한다.
+
+이 워크플로는 `native-production`에 바로 발행한다. 승인 없이 실행하지 않는다.
+
 ## Rollback
 
 ```bash
