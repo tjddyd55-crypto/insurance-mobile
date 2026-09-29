@@ -16,7 +16,7 @@ import { AppHeader } from '../../components/AppHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { LoadingState } from '../../components/LoadingState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { Screen } from '../../design-system';
+import { Button, Screen } from '../../design-system';
 import { CoverageAnalysisSaveSection } from './CoverageAnalysisSaveSection';
 import { CoverageShareDialog } from './CoverageShareDialog';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
@@ -68,6 +68,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [notice, setNotice] = useState('');
+  const [savingCustomer, setSavingCustomer] = useState(false);
   const showToast = useCallback((message: string) => {
     setToast(message);
     setTimeout(() => setToast(''), 1800);
@@ -169,9 +170,38 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     setForm({ type: 'edit', item });
   };
 
+  const dismissMenu = () => setMenuItemId(null);
+
+  const saveLinkedCustomer = async () => {
+    setSavingCustomer(true);
+    setNotice('');
+    try {
+      await persist(assignCustomer(scenario, { id: customer.id, name: customer.name }), '저장되었습니다.');
+    } finally {
+      setSavingCustomer(false);
+    }
+  };
+
+  const headerSave = (
+    <Button
+      label="저장"
+      size="sm"
+      variant="action"
+      loading={savingCustomer}
+      disabled={savingCustomer}
+      onPress={() => void saveLinkedCustomer()}
+    />
+  );
+
   return (
     <View style={styles.root}>
-      <AppHeader title={scenario.title} subtitle="보장 분석" showBack showMenu={false} showBillingStatus={false} />
+      <AppHeader
+        title={scenario.title}
+        showBack
+        showMenu={false}
+        showBillingStatus={false}
+        rightAction={headerSave}
+      />
       <Screen padded={false}>
         <View style={styles.body}>
           <KeyboardAvoidingView
@@ -185,17 +215,17 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               automaticallyAdjustKeyboardInsets
-              onScrollBeginDrag={Keyboard.dismiss}
+              onScrollBeginDrag={() => {
+                Keyboard.dismiss();
+                dismissMenu();
+              }}
+              onMomentumScrollBegin={dismissMenu}
               onScroll={(event) => {
                 scrollYOffsetRef.current = event.nativeEvent.contentOffset.y;
               }}
               scrollEventThrottle={16}
             >
-                <CoverageAnalysisSaveSection
-                  consultationDate={scenario.consultationDate}
-                  notice={notice}
-                  onSave={() => void persist(assignCustomer(scenario, { id: customer.id, name: customer.name }))}
-                />
+                <CoverageAnalysisSaveSection notice={notice} onDismissMenu={dismissMenu} />
                 {toast ? <Text style={styles.toast}>{toast}</Text> : null}
                 <CoverageTimeline
                   items={items}
@@ -226,12 +256,16 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                     void persist(updateCoverageItem(scenario, itemId, patch), '저장되었습니다.');
                     setInlineAmountEdit(null);
                   }}
-                  onMove={(itemId, direction) => void persist(moveScenarioItem(scenario, itemId, direction))}
+                  onMove={(itemId, direction) => {
+                    dismissMenu();
+                    void persist(moveScenarioItem(scenario, itemId, direction));
+                  }}
                   onRemove={(itemId) => {
-                    setMenuItemId(null);
+                    dismissMenu();
                     setDeleteId(itemId);
                   }}
                   onAddAfter={(afterOrder) => {
+                    dismissMenu();
                     setInlineAmountEdit(null);
                     setForm({ type: 'add', afterOrder });
                   }}

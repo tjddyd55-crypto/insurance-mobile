@@ -1,66 +1,61 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import {
-  AppText,
-  Button,
-  Inline,
-  Stack,
-  useAppTheme,
-  type AppTheme,
-} from '../../design-system';
+import { AppText, useAppTheme, type AppTheme } from '../../design-system';
 import { CustomerPickerDialog } from './CustomerPickerDialog';
+import { formatCoverageEditorCustomerLine } from './coverageEditorPresentation';
 import { useCoverageCustomer } from './CoverageCustomerContext';
-import { formatConsultationListDate } from './coverageAnalysis';
 
 type Props = {
-  consultationDate: string;
   notice: string;
-  onSave: () => void;
+  onDismissMenu?: () => void;
 };
 
-/** 분석 화면에서 제품이 확정한 상단. `이 고객으로 저장`까지만 담당한다. */
-export function CoverageAnalysisSaveSection({ consultationDate, notice, onSave }: Props) {
+/** 편집 화면 상단 — 고객 선택/표시 한 줄만 (저장은 AppHeader) */
+export function CoverageAnalysisSaveSection({ notice, onDismissMenu }: Props) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const customer = useCoverageCustomer();
   const [open, setOpen] = useState(false);
+  const linkedLine = formatCoverageEditorCustomerLine(customer);
 
   return (
-    <Stack gap="md">
-      <View style={styles.bar}>
-        <Stack gap="xs" style={styles.copy}>
-          <AppText variant="caption" color="textMuted">고객</AppText>
-          <AppText numberOfLines={1}>{customer.name || '고객 없음'}</AppText>
-        </Stack>
-        <Inline gap="sm">
-          <Button label="고객 선택" size="sm" variant="secondary" onPress={() => setOpen(true)} />
-          {customer.id ? (
-            <Button label="해제" size="sm" variant="ghost" onPress={() => customer.setCustomer({ id: null, name: null })} />
-          ) : null}
-        </Inline>
-      </View>
+    <View style={styles.wrap}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={linkedLine ? '고객 변경' : '고객 선택'}
+        onPress={() => {
+          onDismissMenu?.();
+          setOpen(true);
+        }}
+        style={styles.chip}
+      >
+        <AppText
+          variant="bodyStrong"
+          numberOfLines={1}
+          color={linkedLine ? 'text' : 'primary'}
+        >
+          {linkedLine ?? '+ 고객 선택'}
+        </AppText>
+      </Pressable>
       <CustomerPickerDialog open={open} onClose={() => setOpen(false)} />
-      <Inline justify="space-between">
-        <AppText variant="caption" color="textMuted">상담일 {formatConsultationListDate(consultationDate)}</AppText>
-        <Button label="이 고객으로 저장" size="sm" variant="action" onPress={onSave} />
-      </Inline>
       {notice ? <AppText color="danger">{notice}</AppText> : null}
-    </Stack>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    bar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: theme.spacing.sm,
-      padding: theme.spacing.md,
+    wrap: { gap: theme.spacing.xs },
+    chip: {
+      minHeight: 40,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
       borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.surfaceSubtle,
+      justifyContent: 'center',
     },
-    copy: { flex: 1, minWidth: 0 },
   });
 }
