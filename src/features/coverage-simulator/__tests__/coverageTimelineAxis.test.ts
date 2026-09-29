@@ -7,7 +7,7 @@ describe('coverage timeline axis', () => {
     expect(styles.centerLine.zIndex).toBeLessThan(0);
     expect(styles.head.zIndex).toBeGreaterThan(styles.centerLine.zIndex ?? 0);
     expect(styles.eventTitle.backgroundColor).toBe(simulatorTheme.surface);
-    expect(styles.eventTitle.paddingHorizontal).toBe(8);
+    expect(styles.eventTitle.paddingHorizontal).toBe(4);
     expect('backgroundColor' in styles.compare).toBe(false);
     expect('backgroundColor' in styles.compareSpine).toBe(false);
   });
@@ -27,8 +27,8 @@ describe('coverage timeline axis', () => {
     expect(styles.centerLine.bottom).toBe(0);
     expect(styles.period.backgroundColor).not.toBe(simulatorTheme.surface);
     expect(styles.marker.backgroundColor).toBe('#f8fafc');
-    expect(styles.sideSlotFixed.width).toBe(100);
-    expect(styles.eventTitle.textAlign).toBe('center');
+    expect(styles.reorderSlot.width).toBe(72);
+    expect(styles.eventTitle.textAlign).toBe('left');
     expect(styles.periodHeading.fontSize).toBe(14);
     expect(styles.markerSeg.height).toBe(2);
     expect(styles.markerSeg.backgroundColor).toBe(simulatorTheme.primary);

@@ -59,7 +59,12 @@ export function CustomerPickerDialog({ open, onClose }: Props) {
           key={item.id}
           accessibilityRole="button"
           onPress={() => {
-            customer.setCustomer({ id: item.id, name: item.name === '—' ? '' : item.name });
+            customer.setCustomer({
+              id: item.id,
+              name: item.name === '—' ? '' : item.name,
+              birthDate: item.birthDate,
+              phone: item.phone,
+            });
             onClose();
           }}
           style={styles.row}

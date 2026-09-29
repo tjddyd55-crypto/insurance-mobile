@@ -1,6 +1,11 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
-type CoverageCustomer = { id: string | null; name: string | null };
+type CoverageCustomer = {
+  id: string | null;
+  name: string | null;
+  birthDate: string | null;
+  phone: string | null;
+};
 
 type CoverageCustomerContextValue = CoverageCustomer & {
   setCustomer: (customer: CoverageCustomer) => void;
@@ -9,7 +14,12 @@ type CoverageCustomerContextValue = CoverageCustomer & {
 const CoverageCustomerContext = createContext<CoverageCustomerContextValue | null>(null);
 
 export function CoverageCustomerProvider({ children }: { children: ReactNode }) {
-  const [customer, setCustomer] = useState<CoverageCustomer>({ id: null, name: null });
+  const [customer, setCustomer] = useState<CoverageCustomer>({
+    id: null,
+    name: null,
+    birthDate: null,
+    phone: null,
+  });
   const value = useMemo(
     () => ({ ...customer, setCustomer }),
     [customer],
@@ -20,7 +30,13 @@ export function CoverageCustomerProvider({ children }: { children: ReactNode }) 
 export function useCoverageCustomer(): CoverageCustomerContextValue {
   const value = useContext(CoverageCustomerContext);
   if (!value) {
-    return { id: null, name: null, setCustomer: () => undefined };
+    return {
+      id: null,
+      name: null,
+      birthDate: null,
+      phone: null,
+      setCustomer: () => undefined,
+    };
   }
   return value;
 }

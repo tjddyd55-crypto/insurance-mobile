@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 
 import {
   categoryLabel,
@@ -11,6 +11,7 @@ import {
   type ScenarioPeriodTotal,
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
+import { resolveCoverageItemMenuToggle } from './coverageEditorPresentation';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
@@ -62,11 +63,16 @@ export function CoverageTimeline({
 }: Props) {
   return (
     <View style={styles.sheet}>
-      <View style={styles.colHeader}>
+      <Pressable
+        accessibilityRole="button"
+        disabled={readOnly || menuItemId == null}
+        onPress={() => onToggleMenu(null)}
+        style={styles.colHeader}
+      >
         <Text style={styles.colCurrent}>기존 보장</Text>
         <View style={styles.colTick} />
         <Text style={styles.colProposed}>제안 보장</Text>
-      </View>
+      </Pressable>
       <View style={styles.timeline}>
         <View pointerEvents="none" style={styles.centerLine} />
         {items.map((item) => (
@@ -82,6 +88,7 @@ export function CoverageTimeline({
               <CoverageBlock
                 item={item}
                 readOnly={readOnly}
+                menuItemId={menuItemId}
                 menuOpen={menuItemId === item.id}
                 move={readOnly || !onMove ? null : coverageItemMoveState(items, item.id)}
                 inlineAmountEdit={inlineAmountEdit}
@@ -89,25 +96,17 @@ export function CoverageTimeline({
                 onInlineAmountCommit={onInlineAmountCommit}
                 onInlineAmountEditFocus={onInlineAmountEditFocus}
                 onDismissMenu={() => onToggleMenu(null)}
-                onToggleMenu={() => onToggleMenu(menuItemId === item.id ? null : item.id)}
+                onToggleMenu={() => onToggleMenu(resolveCoverageItemMenuToggle(menuItemId, item.id))}
                 onEdit={() => onEdit(item)}
                 onRemove={() => onRemove(item.id)}
                 onMove={onMove ? (direction) => onMove(item.id, direction) : undefined}
               />
             )}
             {readOnly ? null : (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="항목 추가"
+              <TimelineInsertControl
                 onPress={() => onAddAfter(item.order)}
-                style={styles.add}
-              >
-                <View style={styles.addLine} />
-                <View style={styles.addPlus}>
-                  <Text style={styles.addGlyph}>+</Text>
-                </View>
-                <View style={styles.addLine} />
-              </Pressable>
+                onDismissMenu={() => onToggleMenu(null)}
+              />
             )}
           </View>
         ))}
@@ -153,6 +152,7 @@ function SheetGrandTotal({ totals }: { totals: Totals }) {
 function CoverageBlock({
   item,
   readOnly,
+  menuItemId,
   menuOpen,
   move,
   inlineAmountEdit,
@@ -167,6 +167,7 @@ function CoverageBlock({
 }: {
   item: CoverageScenarioItem;
   readOnly: boolean;
+  menuItemId: string | null;
   menuOpen: boolean;
   move: { canMoveUp: boolean; canMoveDown: boolean } | null;
   inlineAmountEdit: CoverageInlineAmountEditTarget;
@@ -181,36 +182,75 @@ function CoverageBlock({
 }) {
   const badge = BADGE[item.category];
   const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onInlineAmountEditChange);
+  const foreignMenuOpen = menuItemId != null && menuItemId !== item.id;
   return (
     <View style={styles.event}>
       <View style={styles.head}>
-        <View style={[styles.sideSlot, !readOnly && styles.sideSlotFixed]}>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
+        {menuOpen ? (
+          <Pressable
+            accessibilityLabel="메뉴 닫기"
+            onPress={onDismissMenu}
+            style={styles.headDismissBackdrop}
+          />
+        ) : null}
+        {!readOnly && move && onMove ? (
+          <View style={styles.reorderSlot}>
+            <ReorderButtons
+              canMoveUp={move.canMoveUp}
+              canMoveDown={move.canMoveDown}
+              onMove={(direction) => {
+                onDismissMenu();
+                onMove(direction);
+              }}
+            />
           </View>
+        ) : !readOnly ? (
+          <View style={styles.reorderSlot} />
+        ) : null}
+        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+          <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
         </View>
-        <Text style={styles.eventTitle} numberOfLines={1}>{item.label}</Text>
-        <View style={[styles.sideSlot, styles.sideSlotEnd, !readOnly && styles.sideSlotFixed]}>
-          {readOnly ? null : (
-            <>
-              {move && onMove ? (
-                <ReorderButtons
-                  canMoveUp={move.canMoveUp}
-                  canMoveDown={move.canMoveDown}
-                  onMove={onMove}
-                />
-              ) : null}
-              <Pressable accessibilityRole="button" accessibilityLabel="항목 메뉴" onPress={onToggleMenu} style={styles.menuBtn}>
-                <Text style={styles.menuGlyph}>⋯</Text>
-              </Pressable>
-            </>
-          )}
-        </View>
+        <Pressable
+          style={styles.titlePressable}
+          disabled={!foreignMenuOpen && !menuOpen}
+          onPress={() => {
+            if (menuOpen || foreignMenuOpen) {
+              onDismissMenu();
+            }
+          }}
+        >
+          <Text style={styles.eventTitle} numberOfLines={1} ellipsizeMode="tail">
+            {item.label}
+          </Text>
+        </Pressable>
+        {readOnly ? null : (
+          <Pressable accessibilityRole="button" accessibilityLabel="항목 메뉴" onPress={onToggleMenu} style={styles.menuBtn}>
+            <Text style={styles.menuGlyph}>⋯</Text>
+          </Pressable>
+        )}
       </View>
       {menuOpen && !(inlineAmountEdit?.itemId === item.id) ? (
         <View style={styles.menu}>
-          <Pressable accessibilityRole="button" onPress={onEdit} style={styles.menuItem}><Text style={styles.menuText}>항목 수정</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={onRemove} style={styles.menuItem}><Text style={styles.menuDanger}>삭제</Text></Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              onDismissMenu();
+              onEdit();
+            }}
+            style={styles.menuItem}
+          >
+            <Text style={styles.menuText}>항목 수정</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              onDismissMenu();
+              onRemove();
+            }}
+            style={styles.menuItem}
+          >
+            <Text style={styles.menuDanger}>삭제</Text>
+          </Pressable>
         </View>
       ) : null}
       <View style={styles.compare}>
@@ -246,6 +286,34 @@ function CoverageBlock({
           onCancel={() => onInlineAmountEditChange?.(null)}
         />
       </View>
+    </View>
+  );
+}
+
+/** + 원만 터치 가능 — 좌우 라인은 장식 */
+export function TimelineInsertControl({
+  onPress,
+  onDismissMenu,
+}: {
+  onPress: () => void;
+  onDismissMenu?: () => void;
+}) {
+  return (
+    <View style={styles.add}>
+      <View style={styles.addLine} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="항목 추가"
+        hitSlop={4}
+        onPress={() => {
+          onDismissMenu?.();
+          onPress();
+        }}
+        style={styles.addPlus}
+      >
+        <Text style={styles.addGlyph}>+</Text>
+      </Pressable>
+      <View style={styles.addLine} />
     </View>
   );
 }
@@ -458,33 +526,41 @@ export const styles = StyleSheet.create({
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     minHeight: 32,
     marginBottom: 12,
     position: 'relative',
     backgroundColor: theme.surface,
     zIndex: 1,
   },
-  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  headDismissBackdrop: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 0,
+  } as ViewStyle,
+  reorderSlot: { width: 72, flexShrink: 0, flexDirection: 'row', alignItems: 'center', zIndex: 1 },
+  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0, zIndex: 1 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
-  /** 배지와 조작 칸을 같은 100px로 두어 항목명 중심이 가운데 축과 만나게 한다. */
-  sideSlot: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
-  sideSlotFixed: { width: 100 },
-  sideSlotEnd: { justifyContent: 'flex-end' },
+  titlePressable: { flex: 1, minWidth: 0, zIndex: 1, justifyContent: 'center' },
   eventTitle: {
-    flex: 1,
-    textAlign: 'center',
+    textAlign: 'left',
     fontSize: 15,
     fontWeight: '700',
     color: theme.text,
     backgroundColor: theme.surface,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   reorder: { flexDirection: 'row', alignItems: 'center' },
   reorderBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   reorderDisabled: { opacity: 0.28 },
   reorderGlyph: { fontSize: 14, fontWeight: '700', color: theme.muted, lineHeight: 16 },
-  menuBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  menuBtn: {
+    width: 28,
+    height: 28,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
   menuGlyph: { fontSize: 18, color: theme.muted },
   menu: {
     alignSelf: 'flex-end',
@@ -520,7 +596,6 @@ export const styles = StyleSheet.create({
   inlineAmountSuffix: { fontSize: 13, fontWeight: '600', color: theme.muted },
   amountCurrent: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: theme.current },
   amountProposed: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: theme.primary },
-  /** PC 모바일 TimelineInsertControl. 보이는 것은 + 원이고, 접근성 이름만 '항목 추가'다. */
   add: {
     flexDirection: 'row',
     alignItems: 'center',

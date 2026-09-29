@@ -21,7 +21,12 @@ export function CoverageCustomerBar() {
           {linked ? <Text style={styles.chevron}>›</Text> : null}
         </Pressable>
         {linked ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="고객 연결 해제" onPress={() => customer.setCustomer({ id: null, name: null })} style={styles.clear}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="고객 연결 해제"
+            onPress={() => customer.setCustomer({ id: null, name: null, birthDate: null, phone: null })}
+            style={styles.clear}
+          >
             <Text style={styles.clearLabel}>×</Text>
           </Pressable>
         ) : null}
