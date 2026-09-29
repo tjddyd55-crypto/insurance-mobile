@@ -205,7 +205,7 @@ function CoverageBlock({
             }
           }}
         >
-          <Text style={styles.eventTitle} numberOfLines={1} ellipsizeMode="tail">
+          <Text style={styles.eventTitle} numberOfLines={2} ellipsizeMode="tail">
             {item.label}
           </Text>
         </Pressable>
@@ -527,14 +527,14 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.line,
     zIndex: -1,
   },
-  event: { paddingHorizontal: 12, paddingVertical: 14 },
+  event: { paddingHorizontal: 12, paddingVertical: 10 },
   /** PC 모바일과 같이 항목명 줄에 카드 배경을 깔아 축선이 글자를 관통하지 않게 한다. 금액 줄은 배경이 없어 선이 남는다. */
   head: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     minHeight: 32,
-    marginBottom: 8,
+    marginBottom: 6,
     position: 'relative',
     backgroundColor: theme.surface,
     zIndex: 1,
@@ -585,7 +585,13 @@ export const styles = StyleSheet.create({
   amountColumn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 },
   amountColumnProposed: { flex: 1, alignItems: 'center', justifyContent: 'center', minWidth: 0 },
   compareSpine: { width: 24 },
-  reorderVertical: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginRight: 2 },
+  reorderVertical: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    flexShrink: 0,
+  },
   amountPressable: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40 },
   inlineAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   inlineAmountInput: {

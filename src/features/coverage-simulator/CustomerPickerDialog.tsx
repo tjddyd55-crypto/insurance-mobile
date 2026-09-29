@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -53,29 +53,36 @@ export function CustomerPickerDialog({ open, onClose }: Props) {
         onChangeText={setSearch}
       />
       {query.isError ? <Text style={styles.error}>고객 목록을 불러오지 못했습니다.</Text> : null}
-      {rows.map((item) => {
-        const lines = formatCoveragePickerMobileRow(item);
-        return (
-          <Pressable
-            key={item.id}
-            accessibilityRole="button"
-            onPress={() => {
-              customer.setCustomer({
-                id: item.id,
-                name: item.name === '—' ? '' : item.name,
-                birthDate: item.birthDate,
-                phone: item.phone,
-              });
-              onClose();
-            }}
-            style={styles.row}
-          >
-            <Text style={styles.nameLine}>{lines.primary}</Text>
-            <Text style={styles.metaLine}>{lines.secondary}</Text>
-          </Pressable>
-        );
-      })}
-      {!query.isLoading && !rows.length ? <Text style={styles.empty}>표시할 고객이 없습니다.</Text> : null}
+      <FlatList
+        data={rows}
+        keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          !query.isLoading ? <Text style={styles.empty}>표시할 고객이 없습니다.</Text> : null
+        }
+        renderItem={({ item }) => {
+          const lines = formatCoveragePickerMobileRow(item);
+          return (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                customer.setCustomer({
+                  id: item.id,
+                  name: item.name === '—' ? '' : item.name,
+                  birthDate: item.birthDate,
+                  phone: item.phone,
+                });
+                onClose();
+              }}
+              style={styles.row}
+            >
+              <Text style={styles.nameLine}>{lines.primary}</Text>
+              <Text style={styles.metaLine}>{lines.secondary}</Text>
+            </Pressable>
+          );
+        }}
+      />
       </View>
     </ModalShell>
   );
@@ -83,14 +90,15 @@ export function CustomerPickerDialog({ open, onClose }: Props) {
 
 const styles = StyleSheet.create({
   close: { color: theme.primary, fontSize: 15, fontWeight: '600' },
+  listContent: { paddingBottom: 8 },
   row: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.border,
     gap: 4,
   },
-  nameLine: { fontSize: 15, fontWeight: '700', color: theme.text, flexShrink: 1 },
-  metaLine: { fontSize: 14, color: theme.muted, lineHeight: 20, flexShrink: 1 },
+  nameLine: { fontSize: 15, fontWeight: '700', color: theme.text },
+  metaLine: { fontSize: 14, color: theme.muted, lineHeight: 20, flexWrap: 'wrap' },
   empty: { textAlign: 'center', color: theme.muted, fontSize: 13, padding: 16 },
   error: { color: theme.danger, marginTop: 8 },
 });
