@@ -3,6 +3,7 @@ import {
   deleteConsultation,
   duplicateConsultation,
   listConsultationSummaries,
+  listConsultationsByCustomerId,
   renameConsultation,
   saveConsultation,
 } from '../consultationRepository';
@@ -74,6 +75,24 @@ describe('coverage simulation mapping', () => {
     expect(store.size).toBe(1);
     const other = await listConsultationSummaries(webLocalConsultationStorage, 'user-2', 'cancer');
     expect(other).toEqual([]);
+  });
+
+  it('lists simulations for a single customerId only', async () => {
+    const storage = createMemoryConsultationStorage();
+    const userId = 'user-customer-filter';
+    const linked = createScenarioFromTemplate('cancer')!;
+    linked.customerId = '42';
+    linked.customerNameSnapshot = '박성현';
+    await saveConsultation(storage, userId, linked);
+    const other = createScenarioFromTemplate('heart')!;
+    other.customerId = '99';
+    await saveConsultation(storage, userId, other);
+    const unassigned = createScenarioFromTemplate('cancer')!;
+    unassigned.customerId = null;
+    await saveConsultation(storage, userId, unassigned);
+    const rows = await listConsultationsByCustomerId(storage, userId, '42');
+    expect(rows.map((row) => row.customerId)).toEqual(['42']);
+    expect(rows).toHaveLength(1);
   });
 
   it('filters saved consultations the same way as the PC list', () => {

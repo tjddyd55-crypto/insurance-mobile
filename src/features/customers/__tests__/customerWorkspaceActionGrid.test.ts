@@ -15,10 +15,10 @@ describe('CustomerWorkspaceActionGrid presentation', () => {
 
   it('모든 업무 action button은 filledGreen 스타일이다', () => {
     const actions = buildCustomerWorkspaceActions('홍길동');
-    expect(actions).toHaveLength(8);
+    expect(actions).toHaveLength(9);
     expect(
       actions.map((action) => resolveWorkspaceActionButtonVariant(action.id)),
-    ).toEqual(Array.from({ length: 8 }, () => 'filledGreen'));
+    ).toEqual(Array.from({ length: 9 }, () => 'filledGreen'));
   });
 
   it('legacy emphasis flag가 없다', () => {

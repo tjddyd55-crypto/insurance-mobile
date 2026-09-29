@@ -10,7 +10,8 @@ export type CustomerWorkspaceActionId =
   | "claims"
   | "memos"
   | "copy"
-  | "premiumPayments";
+  | "premiumPayments"
+  | "coverageSimulations";
 
 export type CustomerWorkspaceAction = {
   id: CustomerWorkspaceActionId;
@@ -41,6 +42,7 @@ const CUSTOMER_WORKSPACE_ACTION_TEMPLATES: CustomerWorkspaceActionTemplate[] = [
   { id: "memos", label: "메모", accessibilitySuffix: "메모" },
   { id: "copy", label: "복사", accessibilitySuffix: "정보 복사" },
   { id: "premiumPayments", label: "카드 수납", accessibilitySuffix: "카드 수납" },
+  { id: "coverageSimulations", label: "시뮬레이션", accessibilitySuffix: "시뮬레이션" },
 ];
 
 function buildAction(
@@ -104,6 +106,8 @@ export function resolveCustomerWorkspaceActionHref(
         pathname: "/customers/[customerId]/premium-payments",
         params: { customerId: String(customerId) },
       };
+    case "coverageSimulations":
+      return `/customers/${customerId}/coverage-simulations`;
     case "copy":
     case "gaData":
       return null;

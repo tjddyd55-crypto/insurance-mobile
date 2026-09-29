@@ -38,6 +38,17 @@ export async function listConsultationSummaries(
   });
 }
 
+/** 고객 상세 — customerId가 정확히 일치하는 Simulation만 (null 제외) */
+export async function listConsultationsByCustomerId(
+  storage: ConsultationStoragePort,
+  userId: string,
+  customerId: string,
+): Promise<SavedScenarioSummary[]> {
+  const normalized = customerId.trim();
+  if (!normalized) return [];
+  return listConsultationSummaries(storage, userId, undefined, normalized);
+}
+
 export async function listScenarioLibrary(
   storage: ConsultationStoragePort,
   userId: string,
