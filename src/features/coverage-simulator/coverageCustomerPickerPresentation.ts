@@ -59,6 +59,17 @@ export function toCoverageCustomerPickerRow(customer: CustomerRecord): CoverageC
   };
 }
 
+/** 모바일 picker 2줄 row — ellipsis 없이 전체 표시 */
+export function formatCoveragePickerMobileRow(row: CoverageCustomerPickerRow): {
+  primary: string;
+  secondary: string;
+} {
+  return {
+    primary: row.name,
+    secondary: `${row.birthDate} · ${row.phone}`,
+  };
+}
+
 export function filterCoverageCustomerPickerRows(
   rows: CoverageCustomerPickerRow[],
   query: string,

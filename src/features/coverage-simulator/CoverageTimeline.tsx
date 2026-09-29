@@ -193,20 +193,6 @@ function CoverageBlock({
             style={styles.headDismissBackdrop}
           />
         ) : null}
-        {!readOnly && move && onMove ? (
-          <View style={styles.reorderSlot}>
-            <ReorderButtons
-              canMoveUp={move.canMoveUp}
-              canMoveDown={move.canMoveDown}
-              onMove={(direction) => {
-                onDismissMenu();
-                onMove(direction);
-              }}
-            />
-          </View>
-        ) : !readOnly ? (
-          <View style={styles.reorderSlot} />
-        ) : null}
         <View style={[styles.badge, { backgroundColor: badge.bg }]}>
           <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
         </View>
@@ -254,37 +240,52 @@ function CoverageBlock({
         </View>
       ) : null}
       <View style={styles.compare}>
-        <InlineAmountCell
-          itemId={item.id}
-          field="current"
-          amount={item.currentAmount}
-          readOnly={!inlineEditEnabled}
-          textStyle={styles.amountCurrent}
-          editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
-          onStartEdit={() => {
-            onDismissMenu();
-            onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
-          }}
-          onInlineAmountEditFocus={onInlineAmountEditFocus}
-          onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
-          onCancel={() => onInlineAmountEditChange?.(null)}
-        />
+        <View style={styles.amountColumn}>
+          {!readOnly && move && onMove ? (
+            <ReorderButtons
+              vertical
+              canMoveUp={move.canMoveUp}
+              canMoveDown={move.canMoveDown}
+              onMove={(direction) => {
+                onDismissMenu();
+                onMove(direction);
+              }}
+            />
+          ) : null}
+          <InlineAmountCell
+            itemId={item.id}
+            field="current"
+            amount={item.currentAmount}
+            readOnly={!inlineEditEnabled}
+            textStyle={styles.amountCurrent}
+            editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
+            onStartEdit={() => {
+              onDismissMenu();
+              onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
+            }}
+            onInlineAmountEditFocus={onInlineAmountEditFocus}
+            onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
+            onCancel={() => onInlineAmountEditChange?.(null)}
+          />
+        </View>
         <View style={styles.compareSpine} />
-        <InlineAmountCell
-          itemId={item.id}
-          field="proposed"
-          amount={item.proposedAmount}
-          readOnly={!inlineEditEnabled}
-          textStyle={styles.amountProposed}
-          editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
-          onStartEdit={() => {
-            onDismissMenu();
-            onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
-          }}
-          onInlineAmountEditFocus={onInlineAmountEditFocus}
-          onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
-          onCancel={() => onInlineAmountEditChange?.(null)}
-        />
+        <View style={styles.amountColumnProposed}>
+          <InlineAmountCell
+            itemId={item.id}
+            field="proposed"
+            amount={item.proposedAmount}
+            readOnly={!inlineEditEnabled}
+            textStyle={styles.amountProposed}
+            editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
+            onStartEdit={() => {
+              onDismissMenu();
+              onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
+            }}
+            onInlineAmountEditFocus={onInlineAmountEditFocus}
+            onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
+            onCancel={() => onInlineAmountEditChange?.(null)}
+          />
+        </View>
       </View>
     </View>
   );
@@ -436,27 +437,32 @@ function MarkerBlock({
 }
 
 function ReorderButtons({
-  canMoveUp, canMoveDown, onMove,
+  vertical = false,
+  canMoveUp,
+  canMoveDown,
+  onMove,
 }: {
+  vertical?: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onMove: (direction: -1 | 1) => void;
 }) {
   return (
-    <View style={styles.reorder}>
-      <MoveButton label="위로 이동" glyph="↑" enabled={canMoveUp} onPress={() => onMove(-1)} />
-      <MoveButton label="아래로 이동" glyph="↓" enabled={canMoveDown} onPress={() => onMove(1)} />
+    <View style={vertical ? styles.reorderVertical : styles.reorder}>
+      <MoveButton label="위로 이동" glyph="↑" enabled={canMoveUp} onPress={() => onMove(-1)} compact={vertical} />
+      <MoveButton label="아래로 이동" glyph="↓" enabled={canMoveDown} onPress={() => onMove(1)} compact={vertical} />
     </View>
   );
 }
 
 function MoveButton({
-  label, glyph, enabled, onPress,
+  label, glyph, enabled, onPress, compact = false,
 }: {
   label: string;
   glyph: string;
   enabled: boolean;
   onPress: () => void;
+  compact?: boolean;
 }) {
   return (
     <Pressable
@@ -465,7 +471,7 @@ function MoveButton({
       accessibilityState={{ disabled: !enabled }}
       disabled={!enabled}
       onPress={onPress}
-      style={[styles.reorderBtn, !enabled && styles.reorderDisabled]}
+      style={[compact ? styles.reorderBtnCompact : styles.reorderBtn, !enabled && styles.reorderDisabled]}
     >
       <Text style={styles.reorderGlyph}>{glyph}</Text>
     </Pressable>
@@ -521,14 +527,14 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.line,
     zIndex: -1,
   },
-  event: { paddingHorizontal: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.divider },
+  event: { paddingHorizontal: 12, paddingVertical: 14 },
   /** PC 모바일과 같이 항목명 줄에 카드 배경을 깔아 축선이 글자를 관통하지 않게 한다. 금액 줄은 배경이 없어 선이 남는다. */
   head: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     minHeight: 32,
-    marginBottom: 12,
+    marginBottom: 8,
     position: 'relative',
     backgroundColor: theme.surface,
     zIndex: 1,
@@ -537,7 +543,6 @@ export const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 0,
   } as ViewStyle,
-  reorderSlot: { width: 72, flexShrink: 0, flexDirection: 'row', alignItems: 'center', zIndex: 1 },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0, zIndex: 1 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
   titlePressable: { flex: 1, minWidth: 0, zIndex: 1, justifyContent: 'center' },
@@ -551,6 +556,7 @@ export const styles = StyleSheet.create({
   },
   reorder: { flexDirection: 'row', alignItems: 'center' },
   reorderBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  reorderBtnCompact: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   reorderDisabled: { opacity: 0.28 },
   reorderGlyph: { fontSize: 14, fontWeight: '700', color: theme.muted, lineHeight: 16 },
   menuBtn: {
@@ -575,8 +581,11 @@ export const styles = StyleSheet.create({
   menuItem: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8 },
   menuText: { fontSize: 13, color: theme.text },
   menuDanger: { fontSize: 13, color: theme.danger },
-  compare: { flexDirection: 'row', alignItems: 'center', minHeight: 72 },
+  compare: { flexDirection: 'row', alignItems: 'center', minHeight: 68 },
+  amountColumn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 },
+  amountColumnProposed: { flex: 1, alignItems: 'center', justifyContent: 'center', minWidth: 0 },
   compareSpine: { width: 24 },
+  reorderVertical: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginRight: 2 },
   amountPressable: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40 },
   inlineAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   inlineAmountInput: {
@@ -599,7 +608,8 @@ export const styles = StyleSheet.create({
   add: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 28,
+    minHeight: 32,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     zIndex: 1,
   },

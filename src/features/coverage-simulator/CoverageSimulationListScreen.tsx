@@ -13,6 +13,7 @@ import {
   deleteConsultation,
   duplicateConsultation,
   listConsultationSummaries,
+  listScenarioLibrary,
   renameConsultation,
   saveConsultation,
 } from './consultationRepository';
@@ -25,7 +26,8 @@ import {
 } from './scenarioEdits';
 import { SavedScenarioCrudPanel } from './SavedScenarioCrudPanel';
 import { simulatorTheme as theme } from './simulatorTheme';
-import { createScenarioFromTemplate, diseaseTypeTitle, isKnownDiseaseType } from './templates';
+import { createSimulationFromScenario } from './scenarioEdits';
+import { diseaseTypeTitle, isKnownDiseaseType } from './templates';
 import type { DiseaseType, SavedScenarioSummary } from './types';
 
 export function coverageQueryKey(userId: string) {
@@ -139,11 +141,22 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
   );
 
   async function createNew() {
-    const scenario = createScenarioFromTemplate(diseaseType, { id: customer.id, name: customer.name });
-    if (!scenario || !userId) return;
+    if (!userId) return;
     setNotice('');
     try {
-      const saved = await saveConsultation(consultationStorage, userId, scenario);
+      const library = await listScenarioLibrary(consultationStorage, userId);
+      const template =
+        library.find((row) => row.diseaseType === diseaseType && row.seedKey)
+        ?? library.find((row) => row.diseaseType === diseaseType);
+      if (!template) {
+        setNotice('시나리오를 찾지 못했습니다.');
+        return;
+      }
+      const simulation = createSimulationFromScenario(template, {
+        id: customer.id,
+        name: customer.name,
+      });
+      const saved = await saveConsultation(consultationStorage, userId, simulation);
       await refresh();
       openScenario(saved.id);
     } catch {

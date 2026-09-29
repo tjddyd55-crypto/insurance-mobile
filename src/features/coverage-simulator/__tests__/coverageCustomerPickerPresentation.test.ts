@@ -1,5 +1,6 @@
 import {
   formatCoveragePickerBirthDate,
+  formatCoveragePickerMobileRow,
   filterCoverageCustomerPickerRows,
   toCoverageCustomerPickerRow,
 } from '../coverageCustomerPickerPresentation';
@@ -35,5 +36,16 @@ describe('coverage customer picker presentation', () => {
     expect(row.phone).toContain('010');
     const filtered = filterCoverageCustomerPickerRows([row], '1988');
     expect(filtered).toHaveLength(1);
+  });
+
+  it('formats mobile picker rows without truncating phone', () => {
+    const lines = formatCoveragePickerMobileRow({
+      id: '1',
+      name: '박성현',
+      birthDate: '1968.09.14',
+      phone: '010-7112-3822',
+    });
+    expect(lines.primary).toBe('박성현');
+    expect(lines.secondary).toContain('010-7112-3822');
   });
 });

@@ -1,44 +1,63 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
+import { Button, ModalShell, TextField } from '../../design-system';
 import { CoverageCustomerBar } from './CoverageCustomerBar';
 import { CoveragePrimaryButton, CoverageSimulatorHeader, CoverageSimulatorScreen } from './CoverageSimulatorChrome';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
-import { listConsultationSummaries, saveConsultation } from './consultationRepository';
+import {
+  listConsultationSummaries,
+  listScenarioLibrarySummaries,
+  saveConsultation,
+} from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { SavedScenarioCrudPanel } from './SavedScenarioCrudPanel';
-import { useCoverageCustomer } from './CoverageCustomerContext';
-import { createScenarioFromTemplate, SCENARIO_TYPE_CARDS } from './templates';
+import { ScenarioLibraryCrudPanel } from './ScenarioLibraryCrudPanel';
+import { createUserScenario } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 
 export function CoverageScenarioSelectScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const customer = useCoverageCustomer();
   const userId = user?.id ?? '';
   const queryClient = useQueryClient();
-  const savedQuery = useQuery({
-    queryKey: [...coverageQueryKey(userId), 'home-saved', customer.id],
-    queryFn: () => listConsultationSummaries(consultationStorage, userId, undefined, customer.id || undefined),
+  const [addOpen, setAddOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const scenarioQuery = useQuery({
+    queryKey: [...coverageQueryKey(userId), 'scenario-library'],
+    queryFn: () => listScenarioLibrarySummaries(consultationStorage, userId),
     enabled: Boolean(userId),
   });
 
-  const refreshSaved = async () => {
+  const simulationQuery = useQuery({
+    queryKey: [...coverageQueryKey(userId), 'home-simulations'],
+    queryFn: () => listConsultationSummaries(consultationStorage, userId),
+    enabled: Boolean(userId),
+  });
+
+  const refreshAll = async () => {
     await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
-    await savedQuery.refetch();
+    await Promise.all([scenarioQuery.refetch(), simulationQuery.refetch()]);
   };
 
-  const addUserScenario = async () => {
-    const scenario = createScenarioFromTemplate('custom', {
-      id: customer.id,
-      name: customer.name,
-    });
+  const submitAddScenario = async () => {
+    const scenario = createUserScenario(newTitle);
     if (!scenario || !userId) return;
-    const saved = await saveConsultation(consultationStorage, userId, scenario);
-    await refreshSaved();
-    router.push(`/customer-consulting/coverage-simulation/scenarios/${saved.id}` as never);
+    setBusy(true);
+    try {
+      await saveConsultation(consultationStorage, userId, scenario);
+      setAddOpen(false);
+      setNewTitle('');
+      await refreshAll();
+      router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}` as never);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -47,27 +66,17 @@ export function CoverageScenarioSelectScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <CoverageCustomerBar />
 
-        <Text style={styles.sectionTitle}>시스템 시나리오</Text>
-        <Text style={styles.sectionHint}>질병 유형별 템플릿으로 새 시뮬레이션을 만들거나 저장 목록을 엽니다.</Text>
-        {SCENARIO_TYPE_CARDS.map((card) => (
-          <Pressable
-            key={card.diseaseType}
-            accessibilityRole="button"
-            onPress={() => router.push(`/customer-consulting/coverage-simulation/disease/${card.diseaseType}` as never)}
-            style={styles.card}
-          >
-            <Text style={styles.cardTitle}>{card.title}</Text>
-            <Text style={styles.cardDesc}>{card.description}</Text>
-          </Pressable>
-        ))}
-
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>내 시뮬레이션</Text>
-          <CoveragePrimaryButton label="+ 시나리오 추가" onPress={() => void addUserScenario()} />
+          <Text style={styles.sectionTitle}>시나리오</Text>
+          <CoveragePrimaryButton label="+ 시나리오 추가" onPress={() => setAddOpen(true)} />
         </View>
+        <ScenarioLibraryCrudPanel rows={scenarioQuery.data ?? []} onRefresh={refreshAll} />
+
+        <Text style={[styles.sectionTitle, styles.simulationHeading]}>저장된 시뮬레이션</Text>
         <SavedScenarioCrudPanel
-          rows={savedQuery.data ?? []}
-          onRefresh={refreshSaved}
+          rows={simulationQuery.data ?? []}
+          emptyLabel="저장된 시뮬레이션이 없습니다."
+          onRefresh={refreshAll}
         />
 
         <View style={styles.cta}>
@@ -77,25 +86,39 @@ export function CoverageScenarioSelectScreen() {
           />
         </View>
       </ScrollView>
+
+      <ModalShell
+        open={addOpen}
+        title="시나리오 추가"
+        presentation="dialog"
+        busy={busy}
+        closeOnBackdrop={false}
+        onRequestClose={() => setAddOpen(false)}
+        footer={
+          <Button
+            label="만들기"
+            loading={busy}
+            disabled={!newTitle.trim()}
+            onPress={() => void submitAddScenario()}
+          />
+        }
+      >
+        <TextField
+          accessibilityLabel="시나리오 제목"
+          placeholder="예: 갑상선암 치료"
+          value={newTitle}
+          onChangeText={setNewTitle}
+          error={!newTitle.trim() ? '제목을 입력해 주세요.' : undefined}
+        />
+      </ModalShell>
     </CoverageSimulatorScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
-  sectionTitle: { marginTop: 8, marginBottom: 4, fontSize: 15, fontWeight: '700', color: theme.text },
-  sectionHint: { fontSize: 13, color: theme.muted, lineHeight: 19, marginBottom: 12 },
-  sectionHeader: { marginTop: 20, marginBottom: 8, gap: 8 },
-  card: {
-    width: '100%',
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 4 },
-  cardDesc: { fontSize: 13, color: theme.muted, lineHeight: 19 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: theme.text },
+  sectionHeader: { marginTop: 8, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  simulationHeading: { marginTop: 20, marginBottom: 8 },
   cta: { marginTop: 16 },
 });

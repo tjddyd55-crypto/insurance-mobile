@@ -15,14 +15,64 @@ export function resolveCustomerNameSnapshot(
 
 export function normalizeConsultation(scenario: CoverageScenario): CoverageScenario {
   const snapshot = resolveCustomerNameSnapshot(scenario);
+  const recordType = scenario.recordType ?? 'simulation';
   return {
     ...scenario,
     customerId: scenario.customerId ?? null,
     customerNameSnapshot: snapshot,
     customerName: snapshot ?? undefined,
     kind: 'consultation',
+    recordType,
     items: sortAndReindex(scenario.items ?? []),
   };
+}
+
+export function isScenarioRecord(scenario: Pick<CoverageScenario, 'recordType'>): boolean {
+  return (scenario.recordType ?? 'simulation') === 'scenario';
+}
+
+export function isSimulationRecord(scenario: Pick<CoverageScenario, 'recordType'>): boolean {
+  return !isScenarioRecord(scenario);
+}
+
+/** User-created scenario template (not a saved simulation). */
+export function createUserScenario(title: string): CoverageScenario | null {
+  const trimmed = title.trim();
+  if (!trimmed) return null;
+  const draft = createScenarioFromTemplate('custom');
+  if (!draft) return null;
+  const now = new Date().toISOString();
+  return normalizeConsultation({
+    ...draft,
+    id: createScenarioId(),
+    title: trimmed,
+    recordType: 'scenario',
+    seedKey: undefined,
+    customerId: null,
+    customerNameSnapshot: null,
+    customerName: undefined,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+/** Deep-copied simulation snapshot — deleting source scenario does not remove this. */
+export function createSimulationFromScenario(
+  scenario: CoverageScenario,
+  customer?: { id: string | null; name: string | null },
+  title?: string,
+): CoverageScenario {
+  const base = duplicateScenario(scenario, title ?? scenario.title);
+  return normalizeConsultation({
+    ...base,
+    recordType: 'simulation',
+    seedKey: undefined,
+    templateId: scenario.id,
+    templateNameSnapshot: scenario.title,
+    customerId: customer?.id ?? null,
+    customerNameSnapshot: customer?.name ?? null,
+    customerName: customer?.name ?? undefined,
+  });
 }
 
 function sortAndReindex(items: ScenarioItem[]): ScenarioItem[] {
@@ -89,6 +139,8 @@ export function duplicateScenario(scenario: CoverageScenario, title?: string): C
     id: createScenarioId(),
     title: nextTitle,
     items,
+    recordType: scenario.recordType ?? 'simulation',
+    seedKey: scenario.seedKey,
     createdAt: now,
     updatedAt: now,
   });

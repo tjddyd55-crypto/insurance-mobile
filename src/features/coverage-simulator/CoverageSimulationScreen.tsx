@@ -31,6 +31,7 @@ import { consultationStorage } from './consultationStorage';
 import { calculateScenarioPeriodTotals, calculateScenarioTotals, sortItems } from './coverageAnalysis';
 import {
   assignCustomer,
+  isScenarioRecord,
   insertCoverageItem,
   insertTimeMarker,
   moveScenarioItem,
@@ -172,11 +173,17 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
 
   const dismissMenu = () => setMenuItemId(null);
 
-  const saveLinkedCustomer = async () => {
+  const editingScenarioTemplate = isScenarioRecord(scenario);
+
+  const saveFromHeader = async () => {
     setSavingCustomer(true);
     setNotice('');
     try {
-      await persist(assignCustomer(scenario, { id: customer.id, name: customer.name }), '저장되었습니다.');
+      if (editingScenarioTemplate) {
+        await persist(scenario, '저장되었습니다.');
+      } else {
+        await persist(assignCustomer(scenario, { id: customer.id, name: customer.name }), '저장되었습니다.');
+      }
     } finally {
       setSavingCustomer(false);
     }
@@ -189,7 +196,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
       variant="action"
       loading={savingCustomer}
       disabled={savingCustomer}
-      onPress={() => void saveLinkedCustomer()}
+      onPress={() => void saveFromHeader()}
     />
   );
 
@@ -225,7 +232,12 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               }}
               scrollEventThrottle={16}
             >
-                <CoverageAnalysisSaveSection notice={notice} onDismissMenu={dismissMenu} />
+                {editingScenarioTemplate ? null : (
+                  <CoverageAnalysisSaveSection notice={notice} onDismissMenu={dismissMenu} />
+                )}
+                {editingScenarioTemplate && notice ? (
+                  <Text style={styles.noticeInline}>{notice}</Text>
+                ) : null}
                 {toast ? <Text style={styles.toast}>{toast}</Text> : null}
                 <CoverageTimeline
                   items={items}
@@ -328,7 +340,8 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: theme.bg },
   body: { flex: 1 },
-  content: { padding: 16, paddingBottom: 24, gap: 16 },
+  content: { padding: 16, paddingBottom: 24, gap: 12 },
+  noticeInline: { color: theme.danger, fontSize: 13, marginBottom: 4 },
   toast: {
     alignSelf: 'center',
     paddingHorizontal: 16,

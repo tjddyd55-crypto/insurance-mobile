@@ -29,6 +29,9 @@ export type TimeMarkerScenarioItem = {
 
 export type ScenarioItem = CoverageScenarioItem | TimeMarkerScenarioItem;
 
+/** `scenario` = reusable template library. `simulation` = customer-linked saved run. */
+export type CoverageRecordType = 'scenario' | 'simulation';
+
 export type CoverageScenario = {
   id: string;
   title: string;
@@ -42,6 +45,9 @@ export type CoverageScenario = {
   createdAt: string;
   updatedAt: string;
   kind?: 'consultation';
+  recordType?: CoverageRecordType;
+  /** Present only for idempotent initial seeds (e.g. seed:cancer). */
+  seedKey?: string;
   templateId?: string;
   templateNameSnapshot?: string;
 };
