@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { AppText, useAppTheme, type AppTheme } from "../../design-system";
+import { DetailValueText } from "./CollapsibleDetailSection";
 import {
   CUSTOMER_DETAIL_EMPTY_VALUE,
   formatCustomerDetailDate,
@@ -21,23 +22,26 @@ export function CustomerNextAgeDateDetailRow({
   const hasDate = dateText !== CUSTOMER_DETAIL_EMPTY_VALUE;
   const ddayLabel = hasDate ? getInsuranceAgeDdayLabel(nextAgeDate) : null;
 
+  const valueAccessibilityLabel = ddayLabel
+    ? `상령일, ${dateText} ${ddayLabel}`
+    : `상령일, ${dateText}`;
+
   return (
-    <View
-      style={styles.row}
-      accessible
-      accessibilityLabel={
-        ddayLabel
-          ? `상령일, ${dateText} ${ddayLabel}`
-          : `상령일, ${dateText}`
-      }
-    >
+    <View style={styles.row}>
       <AppText variant="body" color="textSecondary" style={styles.label}>
         상령일
       </AppText>
       <View style={styles.valueRow}>
-        <AppText variant="bodyStrong" style={styles.date}>{dateText}</AppText>
+        <DetailValueText
+          style={styles.date}
+          accessibilityLabel={valueAccessibilityLabel}
+        >
+          {dateText}
+        </DetailValueText>
         {ddayLabel ? (
-          <AppText variant="caption" style={styles.dday}>{ddayLabel}</AppText>
+          <DetailValueText variant="caption" style={styles.dday}>
+            {ddayLabel}
+          </DetailValueText>
         ) : null}
       </View>
     </View>

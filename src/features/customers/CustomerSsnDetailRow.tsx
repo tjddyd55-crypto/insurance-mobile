@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
 import { AppText, IconButton, useAppTheme, type AppTheme } from "../../design-system";
+import { DetailValueText } from "./CollapsibleDetailSection";
 import { getCustomerSsnVisibilityMeta } from "./customerDetailPresentation";
 
 const EYE_ICONS = {
@@ -30,16 +31,17 @@ export function CustomerSsnDetailRow({
   }, [customerId, ssn]);
 
   return (
-    <View
-      style={styles.row}
-      accessible
-      accessibilityLabel={`주민번호, ${displayValue}`}
-    >
+    <View style={styles.row}>
       <AppText variant="body" color="textSecondary" style={styles.label}>
         주민번호
       </AppText>
       <View style={styles.valueRow}>
-        <AppText variant="bodyStrong" style={styles.value}>{displayValue}</AppText>
+        <DetailValueText
+          style={styles.value}
+          accessibilityLabel={`주민번호, ${displayValue}`}
+        >
+          {displayValue}
+        </DetailValueText>
         {canToggle ? (
           <IconButton
             accessibilityLabel={accessibilityLabel}

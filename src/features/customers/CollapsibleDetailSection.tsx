@@ -2,7 +2,15 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
-import { AppText, Card, Divider, Stack, useAppTheme, type AppTheme } from "../../design-system";
+import {
+  AppText,
+  Card,
+  Divider,
+  Stack,
+  useAppTheme,
+  type AppTextProps,
+  type AppTheme,
+} from "../../design-system";
 import {
   customerSectionBorderStyle,
   customerSectionTheme,
@@ -95,19 +103,34 @@ export function CollapsibleDetailSection({
 
 const DETAIL_LABEL_WIDTH = 88;
 
+/** 고객 상세 등 label/value 행의 값 텍스트 SSOT — OS 기본 선택·복사 지원 */
+export function DetailValueText({
+  variant = "bodyStrong",
+  style,
+  children,
+  ...rest
+}: AppTextProps) {
+  return (
+    <AppText variant={variant} style={style} selectable {...rest}>
+      {children}
+    </AppText>
+  );
+}
+
 export function DetailRow({ label, value }: { label: string; value: string }) {
   const theme = useAppTheme();
   const styles = useMemo(() => createDetailStyles(theme), [theme]);
   return (
-    <View
-      style={styles.row}
-      accessible
-      accessibilityLabel={`${label}, ${value}`}
-    >
+    <View style={styles.row}>
       <AppText variant="body" color="textSecondary" style={styles.label}>
         {label}
       </AppText>
-      <AppText variant="bodyStrong" style={styles.value}>{value}</AppText>
+      <DetailValueText
+        style={styles.value}
+        accessibilityLabel={`${label}, ${value}`}
+      >
+        {value}
+      </DetailValueText>
     </View>
   );
 }

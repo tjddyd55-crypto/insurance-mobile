@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../auth/AuthProvider";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { AppText, useAppTheme, type AppTheme } from "../../../design-system";
-import { DetailSubsectionLabel } from "../CollapsibleDetailSection";
+import { DetailSubsectionLabel, DetailValueText } from "../CollapsibleDetailSection";
 import {
   createCustomerCustomField,
   deleteCustomerCustomField,
@@ -100,19 +100,25 @@ export function CustomerBasicInlineCustomFields({
         ) : rows.length ? (
           rows.map((item) => (
             <View key={item.id} style={styles.row}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${item.label}, ${item.value}, 수정`}
-                style={styles.rowMain}
-                onPress={() => openEdit(item)}
-              >
-                <AppText variant="body" color="textSecondary" style={styles.label}>
-                  {item.label}
-                </AppText>
-                <AppText variant="bodyStrong" style={styles.value} numberOfLines={3}>
+              <View style={styles.rowMain}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.label} 수정`}
+                  style={styles.labelPress}
+                  onPress={() => openEdit(item)}
+                >
+                  <AppText variant="body" color="textSecondary" style={styles.label}>
+                    {item.label}
+                  </AppText>
+                </Pressable>
+                <DetailValueText
+                  style={styles.value}
+                  numberOfLines={3}
+                  accessibilityLabel={`${item.label}, ${item.value}`}
+                >
                   {item.value}
-                </AppText>
-              </Pressable>
+                </DetailValueText>
+              </View>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${item.label} 삭제`}
@@ -175,6 +181,10 @@ function createStyles(theme: AppTheme) {
       flexDirection: "row",
       alignItems: "flex-start",
       gap: theme.spacing.md,
+    },
+    labelPress: {
+      width: DETAIL_LABEL_WIDTH,
+      flexShrink: 0,
     },
     label: {
       width: DETAIL_LABEL_WIDTH,
