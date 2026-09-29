@@ -14,7 +14,7 @@ import {
 } from "../customerCarsApi";
 import { customerCarRecordToFormItem, createEmptyCustomerCar, type CustomerCarFormItem } from "../customerCarsModel";
 import { formatCustomerDetailDate } from "../customerDetailPresentation";
-import { CollapsibleDetailSection } from "../CollapsibleDetailSection";
+import { CollapsibleDetailSection, DetailValueText } from "../CollapsibleDetailSection";
 import type { CustomerRecord } from "../types";
 import { CustomerSectionEditModal } from "./CustomerSectionEditModal";
 import { SectionAddAction, SectionRowWithAction } from "./CustomerSectionActions";
@@ -138,16 +138,18 @@ export function CustomerCarDetailSection({
           displayCars.map((car, index) => (
             <SectionRowWithAction key={car.id || `legacy-${index}`} onEdit={() => openEdit(car)}>
               <Stack gap="xs">
-                <AppText variant="bodyStrong">{car.carNumber || `차량 ${index + 1}`}</AppText>
-                <AppText variant="body" color="textSecondary">
+                <DetailValueText>
+                  {car.carNumber || `차량 ${index + 1}`}
+                </DetailValueText>
+                <DetailValueText variant="body" color="textSecondary">
                   {[car.carType || car.carModel, car.carYear ? `${car.carYear}년` : ""]
                     .filter(Boolean)
                     .join(" · ")}
-                </AppText>
+                </DetailValueText>
                 {car.renewalDate ? (
-                  <AppText variant="caption" color="textSecondary">
-                    갱신일 {formatCustomerDetailDate(car.renewalDate)}
-                  </AppText>
+                  <DetailValueText variant="caption" color="textSecondary">
+                    {`갱신일 ${formatCustomerDetailDate(car.renewalDate)}`}
+                  </DetailValueText>
                 ) : null}
               </Stack>
             </SectionRowWithAction>

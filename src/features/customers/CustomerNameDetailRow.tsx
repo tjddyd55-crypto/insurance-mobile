@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { AppText, useAppTheme, type AppTheme } from "../../design-system";
+import { DetailValueText } from "./CollapsibleDetailSection";
 import {
   formatCustomerDetailValue,
   formatCustomerGenderParenthetical,
@@ -30,26 +31,29 @@ export function CustomerNameDetailRow({
         ? theme.colors.danger
         : undefined;
 
+  const valueAccessibilityLabel = genderLabel
+    ? `이름, ${displayName} ${genderLabel}`
+    : `이름, ${displayName}`;
+
   return (
-    <View
-      style={styles.row}
-      accessible
-      accessibilityLabel={
-        genderLabel ? `이름, ${displayName} ${genderLabel}` : `이름, ${displayName}`
-      }
-    >
+    <View style={styles.row}>
       <AppText variant="body" color="textSecondary" style={styles.label}>
         이름
       </AppText>
       <View style={styles.valueRow}>
-        <AppText variant="bodyStrong" style={styles.name}>{displayName}</AppText>
+        <DetailValueText
+          style={styles.name}
+          accessibilityLabel={valueAccessibilityLabel}
+        >
+          {displayName}
+        </DetailValueText>
         {genderLabel ? (
-          <AppText
+          <DetailValueText
             variant="body"
             style={[styles.gender, genderColor ? { color: genderColor } : null]}
           >
             {genderLabel}
-          </AppText>
+          </DetailValueText>
         ) : null}
       </View>
     </View>

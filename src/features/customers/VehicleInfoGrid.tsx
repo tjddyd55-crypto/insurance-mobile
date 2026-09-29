@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText, useAppTheme, type AppTheme } from '../../design-system';
+import { DetailValueText } from './CollapsibleDetailSection';
 import { formatCustomerDetailDate, formatCustomerDetailValue } from './customerDetailPresentation';
 
 type VehicleInfoValues = {
@@ -36,9 +37,9 @@ export function VehicleInfoGrid({ values }: { values: VehicleInfoValues }) {
           <AppText variant="body" color="textSecondary">
             {field.label}
           </AppText>
-          <AppText variant="bodyStrong" numberOfLines={2}>
+          <DetailValueText numberOfLines={2}>
             {formatValue(values[field.key], Boolean(field.date))}
-          </AppText>
+          </DetailValueText>
         </View>
       ))}
     </View>
