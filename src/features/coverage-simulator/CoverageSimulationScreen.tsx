@@ -14,7 +14,8 @@ import { CoverageShareDialog } from './CoverageShareDialog';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
 import { CoverageItemForm } from './CoverageItemForm';
 import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
-import { CoverageTimeline, CoverageTotalsDock } from './CoverageTimeline';
+import { CoverageTimeline, CoverageTotalsDock, type CoverageInlineAmountEditTarget } from './CoverageTimeline';
+import { coverageInlineAmountPatch } from './coverageInlineAmount';
 import { useCoverageCustomer } from './CoverageCustomerContext';
 import { getConsultation, saveConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
@@ -50,6 +51,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   });
   const [form, setForm] = useState<FormState>(null);
   const [menuItemId, setMenuItemId] = useState<string | null>(null);
+  const [inlineAmountEdit, setInlineAmountEdit] = useState<CoverageInlineAmountEditTarget>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -136,6 +138,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const totals = calculateScenarioTotals(scenario);
   const openEdit = (item: CoverageScenarioItem) => {
     setMenuItemId(null);
+    setInlineAmountEdit(null);
     setForm({ type: 'edit', item });
   };
 
@@ -159,12 +162,25 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               menuItemId={menuItemId}
               onToggleMenu={setMenuItemId}
               onEdit={openEdit}
+              inlineAmountEdit={inlineAmountEdit}
+              onInlineAmountEditChange={(target) => {
+                if (target) setForm(null);
+                setInlineAmountEdit(target);
+              }}
+              onInlineAmountCommit={(itemId, field, rawInput) => {
+                const patch = coverageInlineAmountPatch(field, rawInput);
+                void persist(updateCoverageItem(scenario, itemId, patch), '저장되었습니다.');
+                setInlineAmountEdit(null);
+              }}
               onMove={(itemId, direction) => void persist(moveScenarioItem(scenario, itemId, direction))}
               onRemove={(itemId) => {
                 setMenuItemId(null);
                 setDeleteId(itemId);
               }}
-              onAddAfter={(afterOrder) => setForm({ type: 'add', afterOrder })}
+              onAddAfter={(afterOrder) => {
+                setInlineAmountEdit(null);
+                setForm({ type: 'add', afterOrder });
+              }}
             />
           </ScrollView>
           <CoverageTotalsDock totals={totals} />

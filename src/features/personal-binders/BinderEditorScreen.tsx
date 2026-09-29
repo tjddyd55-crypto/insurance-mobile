@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -109,8 +109,8 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
         <ScrollView contentContainerStyle={styles.content}>
           <Card>
             <Stack gap="sm">
-              <TextField accessibilityLabel="바인더 이름" label="바인더 이름" value={titleValue} onChangeText={setTitle} />
-              <TextField accessibilityLabel="바인더 설명" label="설명" value={descriptionValue} onChangeText={setDescription} />
+              <TextField accessibilityLabel="바인더 제목" label="바인더 제목" placeholder="바인더 제목" value={titleValue} onChangeText={setTitle} />
+              <TextField accessibilityLabel="바인더 설명" label="바인더 설명" placeholder="바인더 설명" value={descriptionValue} onChangeText={setDescription} />
               <Inline gap="sm" wrap>
                 <Button label="저장" size="sm" loading={busy} onPress={() => void saveMeta()} />
                 <Button label="상담 시작" size="sm" variant="secondary" onPress={() => router.push(`/customer-consulting/personal-binders/${binder.id}/view` as never)} />
@@ -416,17 +416,66 @@ function MaterialPicker({
   onPick: (material: PersonalBinderMaterial) => void;
   onOpenLibrary: () => void;
 }) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createMaterialPickerStyles(theme), [theme]);
+  const pdfMaterials = useMemo(
+    () => materials.filter((material) => material.mimeType === 'application/pdf'),
+    [materials],
+  );
+
   return (
-    <ModalShell open={open} title="자료 선택" presentation="dialog" onRequestClose={onClose} scroll>
+    <ModalShell
+      open={open}
+      title="자료 추가"
+      subtitle="전체 페이지 또는 일부 페이지를 선택할 수 있습니다."
+      presentation="dialog"
+      closeOnBackdrop={false}
+      onRequestClose={onClose}
+      scroll
+      headerAction={<Button label="닫기" size="sm" variant="secondary" onPress={onClose} />}
+    >
       <Stack gap="sm">
-        {!materials.length ? <AppText color="textSecondary">자료 보관함이 비어 있습니다. PDF를 먼저 업로드해 주세요.</AppText> : null}
-        {materials.map((material) => (
-          <Button key={material.id} label={`${material.title} · ${material.pageCount}페이지`} variant="secondary" onPress={() => onPick(material)} />
-        ))}
+        {pdfMaterials.length === 0 ? (
+          <AppText color="textSecondary">
+            추가할 수 있는 PDF 자료가 없습니다. 이미지는 자료 업로드에서 PDF로 묶어 주세요.
+          </AppText>
+        ) : (
+          pdfMaterials.map((material) => (
+            <Pressable
+              key={material.id}
+              accessibilityRole="button"
+              onPress={() => onPick(material)}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            >
+              <AppText variant="bodyStrong" numberOfLines={2}>{material.title}</AppText>
+              <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                {material.originalFileName ? `${material.originalFileName} · ` : ''}
+                {material.pageCount}페이지
+              </AppText>
+            </Pressable>
+          ))
+        )}
         <Button label="자료 보관함" variant="action" onPress={onOpenLibrary} />
       </Stack>
     </ModalShell>
   );
+}
+
+function createMaterialPickerStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    row: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      gap: theme.spacing.xs,
+    },
+    rowPressed: {
+      backgroundColor: theme.colors.surfaceSubtle,
+    },
+  });
 }
 
 function createStyles(theme: AppTheme) {
