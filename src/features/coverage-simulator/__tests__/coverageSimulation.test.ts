@@ -27,7 +27,8 @@ describe('coverage simulation mapping', () => {
     const scenario = createScenarioFromTemplate('cancer');
     expect(scenario?.title).toBe('암 치료');
     expect(scenario?.diseaseType).toBe('cancer');
-    expect(createScenarioFromTemplate('heart')).toBeNull();
+    expect(createScenarioFromTemplate('heart')?.title).toBe('심장질환 치료');
+    expect(createScenarioFromTemplate('cerebrovascular')?.items.length).toBeGreaterThan(0);
     const totals = calculateScenarioTotals(scenario!);
     expect(totals.currentTotal).toBeGreaterThan(0);
     expect(totals.proposedTotal).toBeGreaterThan(totals.currentTotal);
