@@ -60,6 +60,10 @@ yarn-error.*
 /.expo-tmp-*/
 /qa-assets/
 /qa-screenshots/
+/store-screenshots/
+/now.xml
+/now2.xml
+/ota-publish-log.txt
 /qa-check-native.js
 /scripts/*
 !/scripts/release-preflight.mjs
