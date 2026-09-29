@@ -31,3 +31,17 @@ export function imageAspectFromLoadEvent(event: object): number | null {
 function positiveSize(value: number | undefined): number | null {
   return typeof value === 'number' && value > 0 ? value : null;
 }
+
+/** 뷰포트 안에 A4 페이지 전체가 들어오도록 하는 초기 배율 (최대 1). */
+export function computeBinderInitialScale(
+  viewportWidth: number,
+  viewportHeight: number,
+  pageWidth: number,
+  pageHeight: number,
+): number {
+  if (pageWidth <= 0 || pageHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0) {
+    return 1;
+  }
+  const fit = Math.min(viewportWidth / pageWidth, viewportHeight / pageHeight, 1);
+  return Math.max(0.25, fit);
+}

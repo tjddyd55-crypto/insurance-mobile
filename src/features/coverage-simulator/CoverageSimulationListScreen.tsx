@@ -9,15 +9,21 @@ import { Button, ModalShell, TextField } from '../../design-system';
 import { CoverageCustomerBar } from './CoverageCustomerBar';
 import { CoveragePrimaryButton, CoverageSimulatorHeader, CoverageSimulatorScreen } from './CoverageSimulatorChrome';
 import { useCoverageCustomer } from './CoverageCustomerContext';
-import { deleteConsultation, listConsultationSummaries, renameConsultation, saveConsultation } from './consultationRepository';
+import {
+  deleteConsultation,
+  duplicateConsultation,
+  listConsultationSummaries,
+  renameConsultation,
+  saveConsultation,
+} from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { formatConsultationListDate } from './coverageAnalysis';
 import {
-  customerDisplayLabel,
   filterSavedByCustomer,
   filterSavedByDisease,
   type ConsultationCustomerFilter,
 } from './scenarioEdits';
+import { SavedScenarioCrudPanel } from './SavedScenarioCrudPanel';
 import { simulatorTheme as theme } from './simulatorTheme';
 import { createScenarioFromTemplate, diseaseTypeTitle, isKnownDiseaseType } from './templates';
 import type { DiseaseType, SavedScenarioSummary } from './types';
@@ -104,7 +110,8 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
       <ModalShell open={menuRow != null} title={menuRow?.title ?? ''} presentation="dialog" onRequestClose={() => setMenuRow(null)}>
         <View style={styles.menuStack}>
           <Button label="열기" onPress={() => { if (menuRow) openScenario(menuRow.id); setMenuRow(null); }} />
-          <Button label="제목 수정" variant="secondary" onPress={() => { setRenameRow(menuRow); setRenameTitle(menuRow?.title ?? ''); setMenuRow(null); }} />
+          <Button label="이름 변경" variant="secondary" onPress={() => { setRenameRow(menuRow); setRenameTitle(menuRow?.title ?? ''); setMenuRow(null); }} />
+          <Button label="복제" variant="secondary" onPress={() => void submitDuplicate()} />
           <Button label="삭제" variant="danger" onPress={() => { setDeleteRow(menuRow); setMenuRow(null); }} />
         </View>
       </ModalShell>
@@ -141,6 +148,26 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
       openScenario(saved.id);
     } catch {
       setNotice('시뮬레이션을 만들지 못했습니다.');
+    }
+  }
+
+  async function submitDuplicate() {
+    if (!menuRow || !userId) return;
+    setBusy(true);
+    setNotice('');
+    try {
+      const copied = await duplicateConsultation(consultationStorage, userId, menuRow.id);
+      setMenuRow(null);
+      if (!copied) {
+        setNotice('복제하지 못했습니다.');
+        return;
+      }
+      await refresh();
+      openScenario(copied.id);
+    } catch {
+      setNotice('복제하지 못했습니다.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -199,24 +226,7 @@ export function CoverageSavedScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <FilterRow options={CUSTOMER_FILTERS} selected={customerFilter} onSelect={setCustomerFilter} />
         <FilterRow options={DISEASE_FILTERS} selected={diseaseFilter} onSelect={setDiseaseFilter} />
-        {!query.isLoading && !rows.length ? <Text style={styles.muted}>저장된 상담이 없습니다.</Text> : null}
-        {rows.map((row) => (
-          <Pressable
-            key={row.id}
-            accessibilityRole="button"
-            onPress={() => router.push(`/customer-consulting/coverage-simulation/scenarios/${row.id}` as never)}
-            style={styles.savedRow}
-          >
-            <View style={styles.listMain}>
-              <Text style={styles.listTitle}>{row.title}</Text>
-              <Text style={styles.meta}>{customerDisplayLabel(row)}</Text>
-              <Text style={styles.meta}>
-                상담일 {row.consultationDate} · 수정 {new Date(row.updatedAt).toLocaleString('ko-KR')}
-              </Text>
-            </View>
-            <Text style={styles.moreGlyph}>⋯</Text>
-          </Pressable>
-        ))}
+        <SavedScenarioCrudPanel rows={rows} emptyLabel="저장된 상담이 없습니다." onRefresh={async () => { await query.refetch(); }} />
       </ScrollView>
     </CoverageSimulatorScreen>
   );

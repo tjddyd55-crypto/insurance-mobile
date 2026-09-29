@@ -79,18 +79,31 @@ export function createScenarioFromTemplate(
   };
 }
 
+const CUSTOM_SCENARIO_CARD = {
+  diseaseType: 'custom' as const,
+  title: '기타',
+  description: '일반적인 진단·치료·회복 흐름을 비교합니다.',
+  enabled: true,
+};
+
 export const SCENARIO_TYPE_CARDS: {
   diseaseType: DiseaseType;
   title: string;
   description: string;
   enabled: boolean;
 }[] = [
-  { diseaseType: 'cancer', title: '암 치료', description: '기본 예시 준비됨', enabled: true },
-  { diseaseType: 'cerebrovascular', title: '뇌혈관 치료', description: '기본 예시 준비됨', enabled: true },
-  { diseaseType: 'heart', title: '심장질환 치료', description: '기본 예시 준비됨', enabled: true },
-  { diseaseType: 'care-dementia', title: '간병/치매', description: '기본 예시 준비됨', enabled: true },
-  { diseaseType: 'fracture-surgery', title: '골절/수술', description: '기본 예시 준비됨', enabled: true },
-  { diseaseType: 'custom', title: '기타', description: '기본 예시 준비됨', enabled: true },
+  ...(
+    Object.entries(SYSTEM_DEFAULT_META) as [
+      Exclude<DiseaseType, 'custom'>,
+      (typeof SYSTEM_DEFAULT_META)[Exclude<DiseaseType, 'custom'>],
+    ][]
+  ).map(([diseaseType, meta]) => ({
+    diseaseType,
+    title: meta.title,
+    description: meta.description,
+    enabled: true,
+  })),
+  CUSTOM_SCENARIO_CARD,
 ];
 
 export function diseaseTypeTitle(diseaseType: DiseaseType): string {

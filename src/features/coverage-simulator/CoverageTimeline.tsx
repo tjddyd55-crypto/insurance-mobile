@@ -280,11 +280,14 @@ function InlineAmountCell({
     if (!editing) return;
     committedRef.current = false;
     setDraft(formatManWonInputDisplay(amount));
-    const timer = setTimeout(() => {
-      inputRef.current?.focus();
-      onInlineAmountEditFocus?.(anchorRef);
-    }, 0);
-    return () => clearTimeout(timer);
+    inputRef.current?.focus();
+    onInlineAmountEditFocus?.(anchorRef);
+    const t1 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 120);
+    const t2 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 320);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [amount, editing, onInlineAmountEditFocus]);
 
   const commit = () => {

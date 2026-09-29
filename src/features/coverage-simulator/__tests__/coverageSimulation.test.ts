@@ -1,6 +1,7 @@
 import { createMemoryConsultationStorage, webLocalConsultationStorage } from '../consultationStorage';
 import {
   deleteConsultation,
+  duplicateConsultation,
   listConsultationSummaries,
   renameConsultation,
   saveConsultation,
@@ -49,7 +50,12 @@ describe('coverage simulation mapping', () => {
     expect(rows[0]?.customerNameSnapshot).toBe('홍길동');
     const renamed = await renameConsultation(storage, 'user-1', created!.id, '암 상담');
     expect(renamed?.title).toBe('암 상담');
+    const duplicated = await duplicateConsultation(storage, 'user-1', created!.id);
+    expect(duplicated?.id).not.toBe(created!.id);
+    expect(duplicated?.title).toContain('복사');
+    expect(await listConsultationSummaries(storage, 'user-1')).toHaveLength(2);
     await deleteConsultation(storage, 'user-1', created!.id);
+    await deleteConsultation(storage, 'user-1', duplicated!.id);
     expect(await listConsultationSummaries(storage, 'user-1')).toEqual([]);
   });
 
