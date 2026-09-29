@@ -48,9 +48,9 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     wrap: { gap: theme.spacing.xs },
     chip: {
-      minHeight: 40,
+      minHeight: 36,
       paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,

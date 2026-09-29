@@ -1,7 +1,7 @@
 import { createScenarioFromTemplate, SCENARIO_TYPE_CARDS } from '../templates';
 
 describe('coverage scenario templates', () => {
-  it('enables all system scenario cards like PC', () => {
+  it('exposes seed scenario cards for initial library', () => {
     expect(SCENARIO_TYPE_CARDS.every((card) => card.enabled)).toBe(true);
     expect(SCENARIO_TYPE_CARDS.some((card) => card.description.includes('준비 중'))).toBe(false);
     expect(SCENARIO_TYPE_CARDS.some((card) => card.description.includes('기본 예시 준비됨'))).toBe(false);

@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { ModalShell, TextField } from '../../design-system';
 import { listCustomers } from '../customers/customersApi';
 import {
   filterCoverageCustomerPickerRows,
+  formatCoveragePickerMobileRow,
   toCoverageCustomerPickerRow,
 } from './coverageCustomerPickerPresentation';
 import { useCoverageCustomer } from './CoverageCustomerContext';
@@ -20,6 +22,7 @@ type Props = {
 export function CustomerPickerDialog({ open, onClose }: Props) {
   const { token } = useAuth();
   const customer = useCoverageCustomer();
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const query = useQuery({
     queryKey: ['coverage-simulator', 'customers'],
@@ -42,66 +45,52 @@ export function CustomerPickerDialog({ open, onClose }: Props) {
       onRequestClose={onClose}
       headerAction={<Text accessibilityRole="button" onPress={onClose} style={styles.close}>닫기</Text>}
     >
+      <View style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
       <TextField
         accessibilityLabel="고객 검색"
         placeholder="이름 · 생년월일 · 연락처"
         value={search}
         onChangeText={setSearch}
       />
-      <View style={styles.headerRow}>
-        <Text style={[styles.headerCell, styles.nameCol]}>이름</Text>
-        <Text style={[styles.headerCell, styles.birthCol]}>생년월일</Text>
-        <Text style={[styles.headerCell, styles.phoneCol]}>연락처</Text>
-      </View>
       {query.isError ? <Text style={styles.error}>고객 목록을 불러오지 못했습니다.</Text> : null}
-      {rows.map((item) => (
-        <Pressable
-          key={item.id}
-          accessibilityRole="button"
-          onPress={() => {
-            customer.setCustomer({
-              id: item.id,
-              name: item.name === '—' ? '' : item.name,
-              birthDate: item.birthDate,
-              phone: item.phone,
-            });
-            onClose();
-          }}
-          style={styles.row}
-        >
-          <Text style={[styles.rowText, styles.nameCol]} numberOfLines={1}>{item.name}</Text>
-          <Text style={[styles.rowText, styles.birthCol]} numberOfLines={1}>{item.birthDate}</Text>
-          <Text style={[styles.rowText, styles.phoneCol]} numberOfLines={1}>{item.phone}</Text>
-        </Pressable>
-      ))}
+      {rows.map((item) => {
+        const lines = formatCoveragePickerMobileRow(item);
+        return (
+          <Pressable
+            key={item.id}
+            accessibilityRole="button"
+            onPress={() => {
+              customer.setCustomer({
+                id: item.id,
+                name: item.name === '—' ? '' : item.name,
+                birthDate: item.birthDate,
+                phone: item.phone,
+              });
+              onClose();
+            }}
+            style={styles.row}
+          >
+            <Text style={styles.nameLine}>{lines.primary}</Text>
+            <Text style={styles.metaLine}>{lines.secondary}</Text>
+          </Pressable>
+        );
+      })}
       {!query.isLoading && !rows.length ? <Text style={styles.empty}>표시할 고객이 없습니다.</Text> : null}
+      </View>
     </ModalShell>
   );
 }
 
 const styles = StyleSheet.create({
   close: { color: theme.primary, fontSize: 15, fontWeight: '600' },
-  headerRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 12,
-    paddingBottom: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.border,
-  },
-  headerCell: { fontSize: 12, fontWeight: '700', color: theme.muted },
   row: {
-    flexDirection: 'row',
-    gap: 8,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.border,
-    alignItems: 'center',
+    gap: 4,
   },
-  rowText: { fontSize: 14, color: theme.text },
-  nameCol: { flex: 1.1, minWidth: 0, fontWeight: '600' },
-  birthCol: { flex: 1, minWidth: 0 },
-  phoneCol: { flex: 1.1, minWidth: 0, textAlign: 'right' },
+  nameLine: { fontSize: 15, fontWeight: '700', color: theme.text, flexShrink: 1 },
+  metaLine: { fontSize: 14, color: theme.muted, lineHeight: 20, flexShrink: 1 },
   empty: { textAlign: 'center', color: theme.muted, fontSize: 13, padding: 16 },
   error: { color: theme.danger, marginTop: 8 },
 });

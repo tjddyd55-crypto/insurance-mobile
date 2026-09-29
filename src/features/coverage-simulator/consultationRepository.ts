@@ -1,4 +1,12 @@
-import { duplicateScenario, listSummaries, normalizeConsultation, renameScenario } from './scenarioEdits';
+import { compareScenarioLibraryRows, ensureSeedScenarios } from './scenarioSeed';
+import {
+  duplicateScenario,
+  isScenarioRecord,
+  isSimulationRecord,
+  listSummaries,
+  normalizeConsultation,
+  renameScenario,
+} from './scenarioEdits';
 import type { CoverageScenario, DiseaseType, SavedScenarioSummary } from './types';
 
 export type ConsultationStoragePort = {
@@ -20,12 +28,41 @@ export async function listConsultationSummaries(
   diseaseType?: DiseaseType,
   customerId?: string | null,
 ): Promise<SavedScenarioSummary[]> {
-  const summaries = listSummaries(await readConsultations(storage, userId));
+  const rows = await readConsultations(storage, userId);
+  const simulations = rows.filter(isSimulationRecord);
+  const summaries = listSummaries(simulations);
   return summaries.filter((row) => {
     if (diseaseType && row.diseaseType !== diseaseType) return false;
     if (customerId) return row.customerId === customerId;
     return true;
   });
+}
+
+export async function listScenarioLibrary(
+  storage: ConsultationStoragePort,
+  userId: string,
+): Promise<CoverageScenario[]> {
+  await ensureSeedScenarios(storage, userId);
+  const rows = await readConsultations(storage, userId);
+  return rows
+    .filter(isScenarioRecord)
+    .sort(compareScenarioLibraryRows);
+}
+
+export async function listScenarioLibrarySummaries(
+  storage: ConsultationStoragePort,
+  userId: string,
+): Promise<SavedScenarioSummary[]> {
+  return (await listScenarioLibrary(storage, userId)).map((row) => ({
+    id: row.id,
+    title: row.title,
+    diseaseType: row.diseaseType,
+    customerId: null,
+    customerNameSnapshot: null,
+    consultationDate: row.consultationDate,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
 }
 
 export async function getConsultation(

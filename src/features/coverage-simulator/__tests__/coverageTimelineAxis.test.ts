@@ -27,7 +27,8 @@ describe('coverage timeline axis', () => {
     expect(styles.centerLine.bottom).toBe(0);
     expect(styles.period.backgroundColor).not.toBe(simulatorTheme.surface);
     expect(styles.marker.backgroundColor).toBe('#f8fafc');
-    expect(styles.reorderSlot.width).toBe(72);
+    expect(styles.amountColumn.flex).toBe(1);
+    expect(styles.reorderVertical.flexDirection).toBe('column');
     expect(styles.eventTitle.textAlign).toBe('left');
     expect(styles.periodHeading.fontSize).toBe(14);
     expect(styles.markerSeg.height).toBe(2);
