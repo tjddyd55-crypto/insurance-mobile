@@ -1,4 +1,4 @@
-import { listSummaries, normalizeConsultation, renameScenario } from './scenarioEdits';
+import { duplicateScenario, listSummaries, normalizeConsultation, renameScenario } from './scenarioEdits';
 import type { CoverageScenario, DiseaseType, SavedScenarioSummary } from './types';
 
 export type ConsultationStoragePort = {
@@ -71,4 +71,14 @@ export async function renameConsultation(
   const renamed = renameScenario(current, title);
   if (!renamed) return null;
   return saveConsultation(storage, userId, renamed);
+}
+
+export async function duplicateConsultation(
+  storage: ConsultationStoragePort,
+  userId: string,
+  scenarioId: string,
+): Promise<CoverageScenario | null> {
+  const current = await getConsultation(storage, userId, scenarioId);
+  if (!current) return null;
+  return saveConsultation(storage, userId, duplicateScenario(current));
 }

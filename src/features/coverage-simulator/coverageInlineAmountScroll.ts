@@ -14,12 +14,18 @@ export function scrollInlineAmountIntoView(
   if (!scroll || !anchor || keyboardInset <= 0) return;
 
   const windowHeight = Dimensions.get('window').height;
-  anchor.measureInWindow((_x, y, _w, height) => {
-    const visibleBottom = windowHeight - keyboardInset;
-    const fieldBottom = y + height;
-    const padding = 32;
-    if (fieldBottom + padding <= visibleBottom) return;
-    const delta = fieldBottom + padding - visibleBottom;
-    scroll.scrollTo({ y: Math.max(0, scrollYOffset + delta), animated: true });
-  });
+  const scrollOnce = () => {
+    anchor.measureInWindow((_x, y, _w, height) => {
+      const visibleBottom = windowHeight - keyboardInset;
+      const fieldBottom = y + height;
+      const padding = 32;
+      if (fieldBottom + padding <= visibleBottom) return;
+      const delta = fieldBottom + padding - visibleBottom;
+      scroll.scrollTo({ y: Math.max(0, scrollYOffset + delta), animated: true });
+    });
+  };
+
+  scrollOnce();
+  setTimeout(scrollOnce, 120);
+  setTimeout(scrollOnce, 320);
 }

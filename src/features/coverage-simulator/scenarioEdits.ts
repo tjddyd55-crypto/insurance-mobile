@@ -76,6 +76,24 @@ export function renameScenario(scenario: CoverageScenario, title: string): Cover
   return normalizeConsultation({ ...scenario, title: trimmed, updatedAt: new Date().toISOString() });
 }
 
+/** 사용자 시나리오 복제 — 항목 id는 새로 발급한다. */
+export function duplicateScenario(scenario: CoverageScenario, title?: string): CoverageScenario {
+  const now = new Date().toISOString();
+  const nextTitle = (title ?? `${scenario.title.trim()} (복사)`).trim();
+  const items = scenario.items.map((item) => ({
+    ...item,
+    id: createScenarioId(),
+  }));
+  return normalizeConsultation({
+    ...scenario,
+    id: createScenarioId(),
+    title: nextTitle,
+    items,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 /** 보장 항목은 같은 시간 구간 안에서만 순서를 바꾼다. 시간 표시는 옮기지 않는다. */
 export function coverageItemMoveState(
   items: ScenarioItem[],

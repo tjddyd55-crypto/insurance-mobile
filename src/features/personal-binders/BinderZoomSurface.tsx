@@ -5,12 +5,11 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 
 
 import { AppText, useAppTheme } from '../../design-system';
 import {
-  NEWS_DETAIL_ZOOM_MIN,
+  NEWS_DETAIL_ZOOM_MAX,
   calculatePanBounds,
-  clampNewsDetailZoomScale,
   clampTranslation,
 } from '../../components/newsDetailZoomMath';
-import { edgeToEdgePageSize, imageAspectFromLoadEvent } from './binderPageLayout';
+import { computeBinderInitialScale, edgeToEdgePageSize, imageAspectFromLoadEvent } from './binderPageLayout';
 
 type Props = {
   uri: string | null | undefined;
@@ -37,8 +36,9 @@ export function BinderZoomSurface({
   onImageError,
 }: Props) {
   const theme = useAppTheme();
-  const scale = useSharedValue(NEWS_DETAIL_ZOOM_MIN);
-  const savedScale = useSharedValue(NEWS_DETAIL_ZOOM_MIN);
+  const fitScale = useSharedValue(1);
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const savedTranslateX = useSharedValue(0);
@@ -56,22 +56,24 @@ export function BinderZoomSurface({
   }, [page.height, page.width, renderedHeight, renderedWidth]);
 
   useEffect(() => {
-    scale.value = NEWS_DETAIL_ZOOM_MIN;
-    savedScale.value = NEWS_DETAIL_ZOOM_MIN;
+    const initial = computeBinderInitialScale(width, height, page.width, page.height);
+    fitScale.value = initial;
+    scale.value = initial;
+    savedScale.value = initial;
     translateX.value = 0;
     translateY.value = 0;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
     setScrollEnabled(true);
-  }, [uri, height, width, savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY]);
+  }, [uri, height, width, page.width, page.height, fitScale, savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY]);
 
-  const syncScrollEnabled = (nextScale: number) => {
-    setScrollEnabled(nextScale <= NEWS_DETAIL_ZOOM_MIN + ZOOM_EPSILON);
+  const syncScrollEnabled = (nextScale: number, min: number) => {
+    setScrollEnabled(nextScale <= min + ZOOM_EPSILON);
   };
 
   const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
     'worklet';
-    const zoomed = scale.value > NEWS_DETAIL_ZOOM_MIN + ZOOM_EPSILON;
+    const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
     if (!zoomed) {
       translateX.value = 0;
       translateY.value = 0;
@@ -91,14 +93,16 @@ export function BinderZoomSurface({
 
   const pinch = Gesture.Pinch()
     .onUpdate((event) => {
-      scale.value = clampNewsDetailZoomScale(savedScale.value * event.scale);
+      const next = savedScale.value * event.scale;
+      const clamped = Math.min(NEWS_DETAIL_ZOOM_MAX, Math.max(fitScale.value, next));
+      scale.value = clamped;
     })
     .onEnd(() => {
       savedScale.value = scale.value;
-      runOnJS(syncScrollEnabled)(scale.value);
-      if (scale.value <= NEWS_DETAIL_ZOOM_MIN + ZOOM_EPSILON) {
-        scale.value = withTiming(NEWS_DETAIL_ZOOM_MIN);
-        savedScale.value = NEWS_DETAIL_ZOOM_MIN;
+      runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
+      if (scale.value <= fitScale.value + ZOOM_EPSILON) {
+        scale.value = withTiming(fitScale.value);
+        savedScale.value = fitScale.value;
         translateX.value = withTiming(0);
         translateY.value = withTiming(0);
         savedTranslateX.value = 0;
@@ -112,7 +116,7 @@ export function BinderZoomSurface({
     .maxPointers(1)
     .minDistance(12)
     .onUpdate((event) => {
-      const zoomed = scale.value > NEWS_DETAIL_ZOOM_MIN + ZOOM_EPSILON;
+      const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
       if (!zoomed) return;
       applyClampedTranslation(
         savedTranslateX.value + event.translationX,
@@ -121,7 +125,7 @@ export function BinderZoomSurface({
       );
     })
     .onEnd((event) => {
-      const zoomed = scale.value > NEWS_DETAIL_ZOOM_MIN + ZOOM_EPSILON;
+      const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
       if (zoomed) {
         applyClampedTranslation(translateX.value, translateY.value, true);
         return;
