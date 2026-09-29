@@ -1,17 +1,26 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
   categoryLabel,
   formatCoverageAmountLabel,
+  formatManWonInputDisplay,
   formatTotalAmountLabel,
   periodSubtotalLabelFromMarker,
+  sanitizeManWonInputTyping,
   type ScenarioPeriodTotal,
 } from './coverageAnalysis';
+import type { CoverageInlineAmountField } from './coverageInlineAmount';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
 
 type Totals = { currentTotal: number; proposedTotal: number };
+
+export type CoverageInlineAmountEditTarget = {
+  itemId: string;
+  field: CoverageInlineAmountField;
+} | null;
 
 type Props = {
   items: ScenarioItem[];
@@ -23,6 +32,9 @@ type Props = {
   onRemove: (itemId: string) => void;
   onAddAfter: (afterOrder: number) => void;
   onMove?: (itemId: string, direction: -1 | 1) => void;
+  inlineAmountEdit?: CoverageInlineAmountEditTarget;
+  onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
+  onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
   /** 최신 모바일 미리보기. 시트 안 총합을 숨기고 하단 독 문구를 쓴다. */
   compactTotals?: boolean;
   readOnly?: boolean;
@@ -40,6 +52,9 @@ export function CoverageTimeline({
   onRemove,
   onAddAfter,
   onMove,
+  inlineAmountEdit = null,
+  onInlineAmountEditChange,
+  onInlineAmountCommit,
   compactTotals = false,
   readOnly = false,
 }: Props) {
@@ -67,6 +82,9 @@ export function CoverageTimeline({
                 readOnly={readOnly}
                 menuOpen={menuItemId === item.id}
                 move={readOnly || !onMove ? null : coverageItemMoveState(items, item.id)}
+                inlineAmountEdit={inlineAmountEdit}
+                onInlineAmountEditChange={onInlineAmountEditChange}
+                onInlineAmountCommit={onInlineAmountCommit}
                 onToggleMenu={() => onToggleMenu(menuItemId === item.id ? null : item.id)}
                 onEdit={() => onEdit(item)}
                 onRemove={() => onRemove(item.id)}
@@ -129,18 +147,32 @@ function SheetGrandTotal({ totals }: { totals: Totals }) {
 }
 
 function CoverageBlock({
-  item, readOnly, menuOpen, move, onToggleMenu, onEdit, onRemove, onMove,
+  item,
+  readOnly,
+  menuOpen,
+  move,
+  inlineAmountEdit,
+  onInlineAmountEditChange,
+  onInlineAmountCommit,
+  onToggleMenu,
+  onEdit,
+  onRemove,
+  onMove,
 }: {
   item: CoverageScenarioItem;
   readOnly: boolean;
   menuOpen: boolean;
   move: { canMoveUp: boolean; canMoveDown: boolean } | null;
+  inlineAmountEdit: CoverageInlineAmountEditTarget;
+  onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
+  onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
   onToggleMenu: () => void;
   onEdit: () => void;
   onRemove: () => void;
   onMove?: (direction: -1 | 1) => void;
 }) {
   const badge = BADGE[item.category];
+  const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onInlineAmountEditChange);
   return (
     <View style={styles.event}>
       <View style={styles.head}>
@@ -174,10 +206,112 @@ function CoverageBlock({
         </View>
       ) : null}
       <View style={styles.compare}>
-        <Text style={styles.amountCurrent}>{formatCoverageAmountLabel(item.currentAmount)}</Text>
+        <InlineAmountCell
+          itemId={item.id}
+          field="current"
+          amount={item.currentAmount}
+          readOnly={!inlineEditEnabled}
+          textStyle={styles.amountCurrent}
+          editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
+          onStartEdit={() => {
+            onToggleMenu();
+            onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
+          }}
+          onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
+          onCancel={() => onInlineAmountEditChange?.(null)}
+        />
         <View style={styles.compareSpine} />
-        <Text style={styles.amountProposed}>{formatCoverageAmountLabel(item.proposedAmount)}</Text>
+        <InlineAmountCell
+          itemId={item.id}
+          field="proposed"
+          amount={item.proposedAmount}
+          readOnly={!inlineEditEnabled}
+          textStyle={styles.amountProposed}
+          editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
+          onStartEdit={() => {
+            onToggleMenu();
+            onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
+          }}
+          onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
+          onCancel={() => onInlineAmountEditChange?.(null)}
+        />
       </View>
+    </View>
+  );
+}
+
+function InlineAmountCell({
+  readOnly,
+  amount,
+  textStyle,
+  editing,
+  onStartEdit,
+  onCommit,
+  onCancel,
+}: {
+  itemId: string;
+  field: CoverageInlineAmountField;
+  amount: number | null;
+  readOnly: boolean;
+  textStyle: object;
+  editing: boolean;
+  onStartEdit: () => void;
+  onCommit: (rawInput: string) => void;
+  onCancel: () => void;
+}) {
+  const inputRef = useRef<TextInput>(null);
+  const [draft, setDraft] = useState(() => formatManWonInputDisplay(amount));
+  const committedRef = useRef(false);
+
+  useEffect(() => {
+    if (!editing) return;
+    committedRef.current = false;
+    setDraft(formatManWonInputDisplay(amount));
+    const timer = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, [amount, editing]);
+
+  const commit = () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    onCommit(draft);
+  };
+
+  if (readOnly) {
+    return <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>;
+  }
+
+  if (!editing) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="금액 수정"
+        onPress={onStartEdit}
+        style={styles.amountPressable}
+      >
+        <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={styles.inlineAmountWrap}>
+      <TextInput
+        ref={inputRef}
+        accessibilityLabel="금액 입력"
+        keyboardType="number-pad"
+        returnKeyType="done"
+        selectTextOnFocus
+        value={draft}
+        onChangeText={(value) => setDraft(sanitizeManWonInputTyping(value))}
+        onSubmitEditing={commit}
+        onBlur={() => {
+          commit();
+          onCancel();
+        }}
+        style={[textStyle, styles.inlineAmountInput]}
+      />
+      <Text style={styles.inlineAmountSuffix}>만원</Text>
     </View>
   );
 }
@@ -344,6 +478,20 @@ export const styles = StyleSheet.create({
   menuDanger: { fontSize: 13, color: theme.danger },
   compare: { flexDirection: 'row', alignItems: 'center', minHeight: 72 },
   compareSpine: { width: 24 },
+  amountPressable: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40 },
+  inlineAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  inlineAmountInput: {
+    minWidth: 56,
+    maxWidth: 120,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    textAlign: 'center',
+  },
+  inlineAmountSuffix: { fontSize: 13, fontWeight: '600', color: theme.muted },
   amountCurrent: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: theme.current },
   amountProposed: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: theme.primary },
   /** PC 모바일 TimelineInsertControl. 보이는 것은 + 원이고, 접근성 이름만 '항목 추가'다. */
