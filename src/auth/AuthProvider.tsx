@@ -1,0 +1,189 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { shouldClearStoredSessionOnRestoreError } from './authSessionRestore';
+import { fetchMe, loginRequest, type AuthUser } from '../api/authApi';
+import { resetUnauthorizedLatch, setUnauthorizedHandler } from '../api/client';
+import {
+  syncPushRegistrationAfterLogin,
+  syncPushRegistrationIfPermitted,
+  unregisterPushDeviceWithServer,
+} from '../features/push/pushRegistration';
+import { usePushRegistrationLifecycle } from '../features/push/usePushRegistrationLifecycle';
+import { ensureNativeUpgradeMigration } from './nativeUpgradeMigration';
+import {
+  clearAuthSession,
+  readAuthSession,
+  saveAuthSession,
+} from './secureStorage';
+
+export type AuthStatus = 'booting' | 'authenticated' | 'anonymous';
+
+type AuthContextValue = {
+  status: AuthStatus;
+  user: AuthUser | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  restoreSession: () => Promise<void>;
+  handleUnauthorized: () => Promise<void>;
+  updateUser: (patch: Partial<AuthUser>) => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function PushRegistrationLifecycle() {
+  usePushRegistrationLifecycle();
+  return null;
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<AuthStatus>('booting');
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const handlingUnauthorized = useRef(false);
+  const tokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
+  const clearLocalSession = useCallback(async () => {
+    await clearAuthSession();
+    queryClient.clear();
+    setUser(null);
+    setToken(null);
+    setStatus('anonymous');
+    resetUnauthorizedLatch();
+  }, [queryClient]);
+
+  const handleUnauthorized = useCallback(async () => {
+    if (handlingUnauthorized.current) {
+      return;
+    }
+    handlingUnauthorized.current = true;
+    try {
+      const currentToken = tokenRef.current;
+      if (currentToken) {
+        await unregisterPushDeviceWithServer(currentToken);
+      }
+      await clearLocalSession();
+    } finally {
+      handlingUnauthorized.current = false;
+    }
+  }, [clearLocalSession]);
+
+  const restoreSession = useCallback(async () => {
+    setStatus('booting');
+    // Legacy WebView → Native 교체: 서버 데이터는 유지, 로컬 세션만 안전하게 초기화.
+    await ensureNativeUpgradeMigration();
+    const stored = await readAuthSession();
+    if (!stored) {
+      setUser(null);
+      setToken(null);
+      setStatus('anonymous');
+      return;
+    }
+
+    try {
+      const me = await fetchMe(stored.token);
+      await saveAuthSession({ token: stored.token, user: me });
+      setToken(stored.token);
+      setUser(me);
+      setStatus('authenticated');
+      resetUnauthorizedLatch();
+      void syncPushRegistrationAfterLogin(stored.token);
+    } catch (error) {
+      if (shouldClearStoredSessionOnRestoreError(error)) {
+        await clearLocalSession();
+        return;
+      }
+      // Transient network/server errors: keep cached session until a later /me succeeds.
+      setToken(stored.token);
+      setUser(stored.user);
+      setStatus('authenticated');
+      resetUnauthorizedLatch();
+      void syncPushRegistrationIfPermitted(stored.token);
+    }
+  }, [clearLocalSession]);
+
+  const login = useCallback(async (username: string, password: string) => {
+    const session = await loginRequest(username, password);
+    await saveAuthSession(session);
+    setToken(session.token);
+    setUser(session.user);
+    setStatus('authenticated');
+    resetUnauthorizedLatch();
+    void syncPushRegistrationAfterLogin(session.token);
+  }, []);
+
+  const logout = useCallback(async () => {
+    const currentToken = tokenRef.current;
+    if (currentToken) {
+      await unregisterPushDeviceWithServer(currentToken);
+    }
+    await clearLocalSession();
+  }, [clearLocalSession]);
+
+  const updateUser = useCallback(
+    async (patch: Partial<AuthUser>) => {
+      if (!token || !user) return;
+      const next = { ...user, ...patch };
+      await saveAuthSession({ token, user: next });
+      setUser(next);
+    },
+    [token, user],
+  );
+
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void handleUnauthorized();
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [handleUnauthorized]);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status,
+      user,
+      token,
+      isAuthenticated: status === 'authenticated',
+      login,
+      logout,
+      restoreSession,
+      handleUnauthorized,
+      updateUser,
+    }),
+    [status, user, token, login, logout, restoreSession, handleUnauthorized, updateUser],
+  );
+
+  return (
+    <AuthContext.Provider value={value}>
+      <PushRegistrationLifecycle />
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return ctx;
+}

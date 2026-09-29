@@ -1,0 +1,6 @@
+export type PdfFieldType = 'text' | 'textarea' | 'checkbox' | 'radio' | 'signature';
+export type PdfField = { id: number; fieldKey: string; label: string; fieldType: PdfFieldType; required: boolean; orderIndex: number; inputOrder?: number | null; inputRole: 'customer' | 'sender' | 'disabled'; dataMapping: { dataSourceType: 'manual' | 'customer'; customerFieldKey: string | null; customerFieldLabel: string | null; fallbackText: string | null; transformType: string | null; useSecondaryCustomer?: boolean }; options: string[] | null };
+export type PdfTemplate = { id: number; code: string; title: string; description: string; pageCount: number; isActive: boolean; createdAt: string; updatedAt: string };
+export type PdfTemplateDetail = { template: PdfTemplate; fields: PdfField[] };
+export type PdfIssuance = { id: number; templateId: number | null; templateCode: string; templateTitle: string; byteLength: number; createdAt: string; customerId: number | null; customerLabel: string | null; vehicleSnapshot: Record<string, unknown> | null };
+export type PdfIssuanceDetail = { id: number; templateId: number | null; templateCode: string; templateTitle: string; createdAt: string; customerId: number | null; customerLabel: string | null; valuesSnapshot: Record<string, string> };

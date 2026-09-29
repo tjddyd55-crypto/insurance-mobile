@@ -1,0 +1,70 @@
+# Native Release Readiness
+
+Last audited: 2026-09-01
+
+## Completed
+
+- All active USER drawer entries have native screens and API adapters. The sole placeholder is the source-disabled rent entry.
+- Authentication restores the SecureStore token, validates it through `/api/me`, and clears session/query state on the first 401.
+- Design foundations, semantic themes, component contracts, gallery, and designer review workflow live under `docs/design-system` and `src/design-system`.
+- Risky external actions (SMS, Alimtalk, payment, subscription changes, destructive actions) require explicit confirmation.
+- Card and account secrets are not persisted outside server/SecureStore session boundaries and are not logged.
+- Toss card data is entered only in the payment-provider WebView. Callback paths and the returned customer key are validated before server confirmation.
+- All Development Client and local QA builds use `com.onefc.app.dev`, `ONE FC DEV`, and `onefc-dev`.
+- Expo dependency validation: 21/21 checks passed.
+- Static validation: typecheck and lint passed.
+- Automated validation: 39 suites / 142 tests passed.
+- Android development export: Hermes bundle generated successfully.
+- Android native compile: Gradle `assembleDebug` succeeded for minSdk 24 / targetSdk 36; the installed DEV APK uses `com.onefc.app.dev`.
+- Physical device smoke test passed on `SM-S931N`: production login/session restore, protected routing, Drawer navigation, Android back/deep links, and every active USER top-level screen rendered against production read-only data.
+- The production review account has no team. The API's intentional 400 response is normalized to native team setup/empty states across members, posts, and files.
+- A development build without a Google Maps key now shows a setup notice and keeps the customer list usable instead of instantiating the native map and crashing.
+
+## Physical-device results (2026-09-01)
+
+- Passed: DEV identity is consolidated under `ONE FC DEV` / `com.onefc.app.dev` / `onefc-dev`; the obsolete `com.onefc.app.mobile.dev` package was removed.
+- Passed: the rebuilt Development Client autolinks `expo-sharing` 57.0.16 and reaches the login screen without native-module errors.
+- Passed: native login with the designated production review account and cold-start SecureStore session restoration through `/api/me`.
+- Passed: read-only rendering for home, TA, todos, memos, notifications/settings, customers/list/detail/map, premium payments, claims/customer news, both newsletter channels, application documents/history, team members/posts/files, SMS settings, insurer contacts/accounts/sites, storage, profile, billing, and feature requests.
+- Passed: customer detail navigation to claim, consultation, memo, and file workspaces without production mutation.
+- Passed: all seven primary Drawer groups were reachable by scroll; no React Native or Android crash remained after the map fallback fix.
+- Intentionally not executed: production create/update/delete, SMS/Alimtalk send, card/payment/subscription mutations, file upload, OTA publish, and store release.
+- Build-time gate: provide `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` for Naver Dynamic Map rendering in the customer map WebView (same NCP client id family as Web `VITE_NAVER_MAP_CLIENT_ID`).
+
+## Required before public release
+
+1. Create a new EAS project for the native app and inject its project ID. Do not reuse the legacy WebView project without a reviewed migration.
+2. Provision production signing credentials, Google Maps keys, and store records through the secret manager/EAS credentials flow.
+3. Repeat the physical-device smoke test against a staging account and execute the controlled mutation cases below.
+4. Perform payment/SMS/Alimtalk checks with designated test credentials and controlled recipients. Never use automated production mutation tests.
+5. Obtain product/design acceptance and privacy/store disclosure review before enabling OTA or submitting a store build.
+
+## Physical-device checklist
+
+- Completed read-only: cold start, login, session restoration, protected redirect, Android back behavior, deep links, and Drawer scrolling.
+- Keyboard, safe area, scrolling, large font, dark/light design-system gallery, offline and timeout errors.
+- Camera/photo/document picker, upload progress, file download/open/share, external phone/SMS/browser intents.
+- Pending signed build: Google Maps key, map tiles/markers, permission, radius/search interaction, and missing-location behavior. The no-key fallback is device-verified.
+- Toss test card authentication, cancel/failure/success callbacks, duplicate-tap protection.
+- Simultaneous install beside JJOINZONE and the legacy ONE FC app; verify names, package IDs, schemes, and Metro port isolation.
+
+## Known dependency advisory
+
+`npm audit --omit=dev` reports 19 moderate advisories in two transitive paths:
+
+- Expo CLI/config-plugin build tooling through `xcode -> uuid`; the offered forced fix downgrades Expo 57 to Expo 46 and is rejected as unsafe.
+- Expo Router/React Navigation through `query-string -> decode-uri-component`; npm currently reports no compatible fix.
+
+No direct application dependency can safely resolve these today. Navigation input is generated by Expo Router and billing callbacks have a separate exact URL parser with tests. Recheck on every Expo/React Navigation patch and upgrade as soon as compatible fixes are published.
+
+## Release boundary
+
+`expo-updates` is configured with `updates.enabled: true` (see [`native-ota.md`](./native-ota.md)). Production payment, messaging, DB mutations, **Production channel OTA publication** (`native-production`), and store release remain manually approved release operations.
+
+### OTA verification (before Production channel publish)
+
+- [ ] `expo-updates` included in new Store Build (versionCode/buildNumber bump)
+- [ ] Preview or staging channel: download → cold restart → update applied
+- [ ] Offline launch: no crash, embedded bundle runs
+- [ ] Runtime mismatch update: existing bundle preserved
+- [ ] `eas update:rollback` tested on staging channel

@@ -1,0 +1,2 @@
+import { billingMode, formatBillingDate, formatKrw, statusLabel } from '../billingModel';
+describe('billingModel', () => { it('maps entitlement states', () => { expect(billingMode('active_paid')).toBe('active_paid'); expect(billingMode('expired')).toBe('payment_required'); expect(billingMode(null)).toBe('pending_payment'); }); it('formats billing values', () => { expect(formatKrw(8800)).toBe('8,800원'); expect(formatBillingDate(null)).toBe('—'); expect(statusLabel('paid')).toBe('결제 완료'); }); });
