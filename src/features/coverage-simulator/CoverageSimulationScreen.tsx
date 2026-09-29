@@ -1,5 +1,13 @@
-import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -16,6 +24,7 @@ import { CoverageItemForm } from './CoverageItemForm';
 import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
 import { CoverageTimeline, CoverageTotalsDock, type CoverageInlineAmountEditTarget } from './CoverageTimeline';
 import { coverageInlineAmountPatch } from './coverageInlineAmount';
+import { scrollInlineAmountIntoView } from './coverageInlineAmountScroll';
 import { useCoverageCustomer } from './CoverageCustomerContext';
 import { getConsultation, saveConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
@@ -52,6 +61,9 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const [form, setForm] = useState<FormState>(null);
   const [menuItemId, setMenuItemId] = useState<string | null>(null);
   const [inlineAmountEdit, setInlineAmountEdit] = useState<CoverageInlineAmountEditTarget>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollYOffsetRef = useRef(0);
+  const keyboardInsetRef = useRef(0);
   const [confirmReset, setConfirmReset] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -59,6 +71,21 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const showToast = useCallback((message: string) => {
     setToast(message);
     setTimeout(() => setToast(''), 1800);
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      keyboardInsetRef.current = event.endCoordinates.height;
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      keyboardInsetRef.current = 0;
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
   const share = useCoverageShareSession({
     token,
@@ -147,42 +174,70 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
       <AppHeader title={scenario.title} subtitle="보장 분석" showBack showMenu={false} showBillingStatus={false} />
       <Screen padded={false}>
         <View style={styles.body}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <CoverageAnalysisSaveSection
-              consultationDate={scenario.consultationDate}
-              notice={notice}
-              onSave={() => void persist(assignCustomer(scenario, { id: customer.id, name: customer.name }))}
-            />
-            {toast ? <Text style={styles.toast}>{toast}</Text> : null}
-            <CoverageTimeline
-              items={items}
-              periods={calculateScenarioPeriodTotals(scenario.items)}
-              totals={totals}
-              compactTotals
-              menuItemId={menuItemId}
-              onToggleMenu={setMenuItemId}
-              onEdit={openEdit}
-              inlineAmountEdit={inlineAmountEdit}
-              onInlineAmountEditChange={(target) => {
-                if (target) setForm(null);
-                setInlineAmountEdit(target);
+          <KeyboardAvoidingView
+            style={styles.body}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}
+          >
+            <ScrollView
+              ref={scrollRef}
+              contentContainerStyle={styles.content}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              automaticallyAdjustKeyboardInsets
+              onScrollBeginDrag={Keyboard.dismiss}
+              onScroll={(event) => {
+                scrollYOffsetRef.current = event.nativeEvent.contentOffset.y;
               }}
-              onInlineAmountCommit={(itemId, field, rawInput) => {
-                const patch = coverageInlineAmountPatch(field, rawInput);
-                void persist(updateCoverageItem(scenario, itemId, patch), '저장되었습니다.');
-                setInlineAmountEdit(null);
-              }}
-              onMove={(itemId, direction) => void persist(moveScenarioItem(scenario, itemId, direction))}
-              onRemove={(itemId) => {
-                setMenuItemId(null);
-                setDeleteId(itemId);
-              }}
-              onAddAfter={(afterOrder) => {
-                setInlineAmountEdit(null);
-                setForm({ type: 'add', afterOrder });
-              }}
-            />
-          </ScrollView>
+              scrollEventThrottle={16}
+            >
+                <CoverageAnalysisSaveSection
+                  consultationDate={scenario.consultationDate}
+                  notice={notice}
+                  onSave={() => void persist(assignCustomer(scenario, { id: customer.id, name: customer.name }))}
+                />
+                {toast ? <Text style={styles.toast}>{toast}</Text> : null}
+                <CoverageTimeline
+                  items={items}
+                  periods={calculateScenarioPeriodTotals(scenario.items)}
+                  totals={totals}
+                  compactTotals
+                  menuItemId={menuItemId}
+                  onToggleMenu={setMenuItemId}
+                  onEdit={openEdit}
+                  inlineAmountEdit={inlineAmountEdit}
+                  onInlineAmountEditChange={(target) => {
+                    if (target) {
+                      setForm(null);
+                      setMenuItemId(null);
+                    }
+                    setInlineAmountEdit(target);
+                  }}
+                  onInlineAmountEditFocus={(anchorRef) => {
+                    scrollInlineAmountIntoView(
+                      scrollRef,
+                      anchorRef,
+                      keyboardInsetRef.current,
+                      scrollYOffsetRef.current,
+                    );
+                  }}
+                  onInlineAmountCommit={(itemId, field, rawInput) => {
+                    const patch = coverageInlineAmountPatch(field, rawInput);
+                    void persist(updateCoverageItem(scenario, itemId, patch), '저장되었습니다.');
+                    setInlineAmountEdit(null);
+                  }}
+                  onMove={(itemId, direction) => void persist(moveScenarioItem(scenario, itemId, direction))}
+                  onRemove={(itemId) => {
+                    setMenuItemId(null);
+                    setDeleteId(itemId);
+                  }}
+                  onAddAfter={(afterOrder) => {
+                    setInlineAmountEdit(null);
+                    setForm({ type: 'add', afterOrder });
+                  }}
+                />
+            </ScrollView>
+          </KeyboardAvoidingView>
           <CoverageTotalsDock totals={totals} />
           <View style={styles.bottom}>
             <View style={styles.bottomBtn}><CoverageSecondaryButton label="초기화" onPress={() => setConfirmReset(true)} /></View>
