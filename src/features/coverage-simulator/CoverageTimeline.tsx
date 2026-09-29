@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
@@ -35,6 +35,7 @@ type Props = {
   inlineAmountEdit?: CoverageInlineAmountEditTarget;
   onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
   onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
+  onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
   /** 최신 모바일 미리보기. 시트 안 총합을 숨기고 하단 독 문구를 쓴다. */
   compactTotals?: boolean;
   readOnly?: boolean;
@@ -55,6 +56,7 @@ export function CoverageTimeline({
   inlineAmountEdit = null,
   onInlineAmountEditChange,
   onInlineAmountCommit,
+  onInlineAmountEditFocus,
   compactTotals = false,
   readOnly = false,
 }: Props) {
@@ -85,6 +87,8 @@ export function CoverageTimeline({
                 inlineAmountEdit={inlineAmountEdit}
                 onInlineAmountEditChange={onInlineAmountEditChange}
                 onInlineAmountCommit={onInlineAmountCommit}
+                onInlineAmountEditFocus={onInlineAmountEditFocus}
+                onDismissMenu={() => onToggleMenu(null)}
                 onToggleMenu={() => onToggleMenu(menuItemId === item.id ? null : item.id)}
                 onEdit={() => onEdit(item)}
                 onRemove={() => onRemove(item.id)}
@@ -154,6 +158,8 @@ function CoverageBlock({
   inlineAmountEdit,
   onInlineAmountEditChange,
   onInlineAmountCommit,
+  onInlineAmountEditFocus,
+  onDismissMenu,
   onToggleMenu,
   onEdit,
   onRemove,
@@ -166,6 +172,8 @@ function CoverageBlock({
   inlineAmountEdit: CoverageInlineAmountEditTarget;
   onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
   onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
+  onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
+  onDismissMenu: () => void;
   onToggleMenu: () => void;
   onEdit: () => void;
   onRemove: () => void;
@@ -199,7 +207,7 @@ function CoverageBlock({
           )}
         </View>
       </View>
-      {menuOpen ? (
+      {menuOpen && !(inlineAmountEdit?.itemId === item.id) ? (
         <View style={styles.menu}>
           <Pressable accessibilityRole="button" onPress={onEdit} style={styles.menuItem}><Text style={styles.menuText}>항목 수정</Text></Pressable>
           <Pressable accessibilityRole="button" onPress={onRemove} style={styles.menuItem}><Text style={styles.menuDanger}>삭제</Text></Pressable>
@@ -214,9 +222,10 @@ function CoverageBlock({
           textStyle={styles.amountCurrent}
           editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
           onStartEdit={() => {
-            onToggleMenu();
+            onDismissMenu();
             onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
           }}
+          onInlineAmountEditFocus={onInlineAmountEditFocus}
           onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
           onCancel={() => onInlineAmountEditChange?.(null)}
         />
@@ -229,9 +238,10 @@ function CoverageBlock({
           textStyle={styles.amountProposed}
           editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
           onStartEdit={() => {
-            onToggleMenu();
+            onDismissMenu();
             onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
           }}
+          onInlineAmountEditFocus={onInlineAmountEditFocus}
           onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
           onCancel={() => onInlineAmountEditChange?.(null)}
         />
@@ -248,6 +258,7 @@ function InlineAmountCell({
   onStartEdit,
   onCommit,
   onCancel,
+  onInlineAmountEditFocus,
 }: {
   itemId: string;
   field: CoverageInlineAmountField;
@@ -258,8 +269,10 @@ function InlineAmountCell({
   onStartEdit: () => void;
   onCommit: (rawInput: string) => void;
   onCancel: () => void;
+  onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
 }) {
   const inputRef = useRef<TextInput>(null);
+  const anchorRef = useRef<View>(null);
   const [draft, setDraft] = useState(() => formatManWonInputDisplay(amount));
   const committedRef = useRef(false);
 
@@ -267,9 +280,12 @@ function InlineAmountCell({
     if (!editing) return;
     committedRef.current = false;
     setDraft(formatManWonInputDisplay(amount));
-    const timer = setTimeout(() => inputRef.current?.focus(), 0);
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+      onInlineAmountEditFocus?.(anchorRef);
+    }, 0);
     return () => clearTimeout(timer);
-  }, [amount, editing]);
+  }, [amount, editing, onInlineAmountEditFocus]);
 
   const commit = () => {
     if (committedRef.current) return;
@@ -295,21 +311,25 @@ function InlineAmountCell({
   }
 
   return (
-    <View style={styles.inlineAmountWrap}>
+    <View ref={anchorRef} style={styles.inlineAmountWrap} collapsable={false}>
       <TextInput
         ref={inputRef}
         accessibilityLabel="금액 입력"
         keyboardType="number-pad"
         returnKeyType="done"
         selectTextOnFocus
+        blurOnSubmit
         value={draft}
         onChangeText={(value) => setDraft(sanitizeManWonInputTyping(value))}
-        onSubmitEditing={commit}
+        onSubmitEditing={() => {
+          commit();
+          onCancel();
+        }}
         onBlur={() => {
           commit();
           onCancel();
         }}
-        style={[textStyle, styles.inlineAmountInput]}
+        style={[styles.inlineAmountInput, textStyle]}
       />
       <Text style={styles.inlineAmountSuffix}>만원</Text>
     </View>
@@ -483,6 +503,7 @@ export const styles = StyleSheet.create({
   inlineAmountInput: {
     minWidth: 56,
     maxWidth: 120,
+    flexShrink: 1,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderWidth: 1,
@@ -490,6 +511,8 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#fff',
     textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
   },
   inlineAmountSuffix: { fontSize: 13, fontWeight: '600', color: theme.muted },
   amountCurrent: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: theme.current },
