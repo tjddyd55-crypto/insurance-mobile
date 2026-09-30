@@ -22,10 +22,11 @@ import { CoverageAnalysisSaveSection } from './CoverageAnalysisSaveSection';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
 import { CoverageItemForm } from './CoverageItemForm';
 import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
-import { CoverageTimeline, CoverageTotalsDock, type CoverageInlineAmountEditTarget } from './CoverageTimeline';
+import { CoverageTimeline, CoverageTotalsDock } from './CoverageTimeline';
 import { coverageInlineAmountPatch } from './coverageInlineAmount';
+import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
 import {
-  commitRegisteredInlineAmount,
+  commitRegisteredInlineEdit,
   shouldCommitInlineBeforeNextEdit,
 } from './coverageInlineAmountSession';
 import { scrollInlineAmountIntoView } from './coverageInlineAmountScroll';
@@ -65,8 +66,8 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     enabled: Boolean(userId && scenarioId),
   });
   const [form, setForm] = useState<FormState>(null);
-  const [inlineAmountEdit, setInlineAmountEdit] = useState<CoverageInlineAmountEditTarget>(null);
-  const inlineAmountCommitRef = useRef<(() => void) | null>(null);
+  const [activeInlineEdit, setActiveInlineEdit] = useState<CoverageActiveInlineEdit>(null);
+  const inlineEditCommitRef = useRef<(() => void) | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const scrollYOffsetRef = useRef(0);
   const keyboardInsetRef = useRef(0);
@@ -107,15 +108,15 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     },
   });
 
-  const commitActiveInlineAmount = useCallback(() => {
-    if (!inlineAmountEdit) return;
-    commitRegisteredInlineAmount(inlineAmountCommitRef);
+  const commitActiveInlineEdit = useCallback(() => {
+    if (!activeInlineEdit) return;
+    commitRegisteredInlineEdit(inlineEditCommitRef);
     Keyboard.dismiss();
-  }, [inlineAmountEdit]);
+  }, [activeInlineEdit]);
 
   const beforeTimelineInteraction = useCallback(() => {
-    commitActiveInlineAmount();
-  }, [commitActiveInlineAmount]);
+    commitActiveInlineEdit();
+  }, [commitActiveInlineEdit]);
 
   const scenario = query.data;
   const persist = async (next: CoverageScenario, message = '') => {
@@ -181,19 +182,19 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const items = sortItems(scenario.items);
   const totals = calculateScenarioTotals(scenario);
   const openEdit = (item: CoverageScenarioItem) => {
-    setInlineAmountEdit(null);
+    setActiveInlineEdit(null);
     setForm({ type: 'edit', item });
   };
 
   const runWithInlineCommit = (action: () => void) => {
-    commitActiveInlineAmount();
+    commitActiveInlineEdit();
     action();
   };
 
   const editingScenarioTemplate = isScenarioRecord(scenario);
 
   const saveFromHeader = async () => {
-    commitActiveInlineAmount();
+    commitActiveInlineEdit();
     setSavingCustomer(true);
     setNotice('');
     try {
@@ -242,9 +243,9 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               keyboardDismissMode="interactive"
               automaticallyAdjustKeyboardInsets
               onScrollBeginDrag={() => {
-                commitActiveInlineAmount();
+                commitActiveInlineEdit();
               }}
-              onMomentumScrollBegin={commitActiveInlineAmount}
+              onMomentumScrollBegin={commitActiveInlineEdit}
               onScroll={(event) => {
                 scrollYOffsetRef.current = event.nativeEvent.contentOffset.y;
               }}
@@ -253,14 +254,14 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                 {editingScenarioTemplate ? null : (
                   <CoverageAnalysisSaveSection
                     notice={notice}
-                    onDismissMenu={commitActiveInlineAmount}
+                    onDismissMenu={commitActiveInlineEdit}
                   />
                 )}
                 {editingScenarioTemplate && notice ? (
                   <Text style={styles.noticeInline}>{notice}</Text>
                 ) : null}
                 {toast ? <Text style={styles.toast}>{toast}</Text> : null}
-                <TouchableWithoutFeedback onPress={commitActiveInlineAmount} accessible={false}>
+                <TouchableWithoutFeedback onPress={commitActiveInlineEdit} accessible={false}>
                   <View>
                     <CoverageTimeline
                       items={items}
@@ -268,19 +269,19 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                       totals={totals}
                       compactTotals
                       onEdit={openEdit}
-                      inlineAmountEdit={inlineAmountEdit}
-                      onRegisterInlineAmountCommit={(commit) => {
-                        inlineAmountCommitRef.current = commit;
+                      activeInlineEdit={activeInlineEdit}
+                      onRegisterInlineEditCommit={(commit) => {
+                        inlineEditCommitRef.current = commit;
                       }}
                       onBeforeTimelineInteraction={beforeTimelineInteraction}
-                      onInlineAmountEditChange={(target) => {
-                        if (shouldCommitInlineBeforeNextEdit(inlineAmountEdit, target)) {
-                          commitActiveInlineAmount();
+                      onActiveInlineEditChange={(target) => {
+                        if (shouldCommitInlineBeforeNextEdit(activeInlineEdit, target)) {
+                          commitActiveInlineEdit();
                         }
                         if (target) {
                           setForm(null);
                         }
-                        setInlineAmountEdit(target);
+                        setActiveInlineEdit(target);
                       }}
                       onInlineAmountEditFocus={(anchorRef) => {
                         scrollInlineAmountIntoView(
@@ -292,8 +293,12 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                       }}
                       onInlineAmountCommit={(itemId, field, rawInput) => {
                         const patch = coverageInlineAmountPatch(field, rawInput);
-                        void persist(updateCoverageItem(scenario, itemId, patch), '저장되었습니다.');
-                        setInlineAmountEdit(null);
+                        void persist(updateCoverageItem(scenario, itemId, patch));
+                        setActiveInlineEdit(null);
+                      }}
+                      onInlineTitleCommit={(itemId, raw) => {
+                        void persist(updateCoverageItem(scenario, itemId, { label: raw }));
+                        setActiveInlineEdit(null);
                       }}
                       onMove={(itemId, direction) => {
                         void persist(moveScenarioItem(scenario, itemId, direction));
@@ -302,7 +307,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                         setDeleteId(itemId);
                       }}
                       onAddAfter={(afterOrder) => {
-                        setInlineAmountEdit(null);
+                        setActiveInlineEdit(null);
                         setForm({ type: 'add', afterOrder });
                       }}
                     />

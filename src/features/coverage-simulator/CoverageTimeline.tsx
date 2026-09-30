@@ -11,16 +11,14 @@ import {
   type ScenarioPeriodTotal,
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
+import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
 
 type Totals = { currentTotal: number; proposedTotal: number };
 
-export type CoverageInlineAmountEditTarget = {
-  itemId: string;
-  field: CoverageInlineAmountField;
-} | null;
+export type CoverageInlineAmountEditTarget = CoverageActiveInlineEdit;
 
 type Props = {
   items: ScenarioItem[];
@@ -30,12 +28,13 @@ type Props = {
   onRemove: (itemId: string) => void;
   onAddAfter: (afterOrder: number) => void;
   onMove?: (itemId: string, direction: -1 | 1) => void;
-  inlineAmountEdit?: CoverageInlineAmountEditTarget;
-  onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
+  activeInlineEdit?: CoverageActiveInlineEdit;
+  onActiveInlineEditChange?: (target: CoverageActiveInlineEdit) => void;
   onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
+  onInlineTitleCommit?: (itemId: string, label: string) => void;
   onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
   /** active inline TextInput commit — outside tap / 다른 action 전 */
-  onRegisterInlineAmountCommit?: (commit: (() => void) | null) => void;
+  onRegisterInlineEditCommit?: (commit: (() => void) | null) => void;
   /** + / reorder 등 interaction 직전 */
   onBeforeTimelineInteraction?: () => void;
   /** 최신 모바일 미리보기. 시트 안 총합을 숨기고 하단 독 문구를 쓴다. */
@@ -48,6 +47,7 @@ const BADGE = theme.badge;
 /** Native timeline row spacing — 정렬 보정용 (기능/구조 변경 없음) */
 const timelineLayout = {
   headSideSlotWidth: 28,
+  headLeftSlotWidth: 52,
   headMinHeight: 32,
   headTitleGap: 6,
   compareMinHeight: 68,
@@ -65,11 +65,12 @@ export function CoverageTimeline({
   onRemove,
   onAddAfter,
   onMove,
-  inlineAmountEdit = null,
-  onInlineAmountEditChange,
+  activeInlineEdit = null,
+  onActiveInlineEditChange,
   onInlineAmountCommit,
+  onInlineTitleCommit,
   onInlineAmountEditFocus,
-  onRegisterInlineAmountCommit,
+  onRegisterInlineEditCommit,
   onBeforeTimelineInteraction,
   compactTotals = false,
   readOnly = false,
@@ -97,11 +98,12 @@ export function CoverageTimeline({
                 item={item}
                 readOnly={readOnly}
                 move={readOnly || !onMove ? null : coverageItemMoveState(items, item.id)}
-                inlineAmountEdit={inlineAmountEdit}
-                onInlineAmountEditChange={onInlineAmountEditChange}
+                activeInlineEdit={activeInlineEdit}
+                onActiveInlineEditChange={onActiveInlineEditChange}
                 onInlineAmountCommit={onInlineAmountCommit}
+                onInlineTitleCommit={onInlineTitleCommit}
                 onInlineAmountEditFocus={onInlineAmountEditFocus}
-                onRegisterInlineAmountCommit={onRegisterInlineAmountCommit}
+                onRegisterInlineEditCommit={onRegisterInlineEditCommit}
                 onBeforeInteraction={onBeforeTimelineInteraction}
                 onEdit={() => onEdit(item)}
                 onMove={onMove ? (direction) => onMove(item.id, direction) : undefined}
@@ -158,11 +160,12 @@ function CoverageBlock({
   item,
   readOnly,
   move,
-  inlineAmountEdit,
-  onInlineAmountEditChange,
+  activeInlineEdit,
+  onActiveInlineEditChange,
   onInlineAmountCommit,
+  onInlineTitleCommit,
   onInlineAmountEditFocus,
-  onRegisterInlineAmountCommit,
+  onRegisterInlineEditCommit,
   onBeforeInteraction,
   onEdit,
   onMove,
@@ -170,17 +173,18 @@ function CoverageBlock({
   item: CoverageScenarioItem;
   readOnly: boolean;
   move: { canMoveUp: boolean; canMoveDown: boolean } | null;
-  inlineAmountEdit: CoverageInlineAmountEditTarget;
-  onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
+  activeInlineEdit: CoverageActiveInlineEdit;
+  onActiveInlineEditChange?: (target: CoverageActiveInlineEdit) => void;
   onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
+  onInlineTitleCommit?: (itemId: string, label: string) => void;
   onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
-  onRegisterInlineAmountCommit?: (commit: (() => void) | null) => void;
+  onRegisterInlineEditCommit?: (commit: (() => void) | null) => void;
   onBeforeInteraction?: () => void;
   onEdit: () => void;
   onMove?: (direction: -1 | 1) => void;
 }) {
   const badge = BADGE[item.category];
-  const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onInlineAmountEditChange);
+  const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onActiveInlineEditChange);
   const runBefore = (action: () => void) => {
     onBeforeInteraction?.();
     action();
@@ -188,18 +192,29 @@ function CoverageBlock({
   return (
     <View style={styles.event}>
       <View style={styles.head}>
-        <View style={styles.headSideSlot} />
-        <View style={styles.headCenter}>
-          <View style={styles.titleGroupPressable}>
-            <View style={styles.titleGroup}>
-              <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
-              </View>
-              <Text style={styles.eventTitle} numberOfLines={2} ellipsizeMode="tail">
-                {item.label}
-              </Text>
-            </View>
+        <View style={styles.headLeftSlot}>
+          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
           </View>
+        </View>
+        <View style={styles.headCenter}>
+          {inlineEditEnabled && onInlineTitleCommit && onActiveInlineEditChange ? (
+            <InlineTitleCell
+              itemId={item.id}
+              label={item.label}
+              editing={activeInlineEdit?.kind === 'title' && activeInlineEdit.itemId === item.id}
+              onStartEdit={() =>
+                runBefore(() => onActiveInlineEditChange({ kind: 'title', itemId: item.id }))
+              }
+              onCommit={(raw) => onInlineTitleCommit(item.id, raw)}
+              onCancel={() => onActiveInlineEditChange(null)}
+              onRegisterCommit={onRegisterInlineEditCommit}
+            />
+          ) : (
+            <Text style={styles.eventTitle} numberOfLines={2} ellipsizeMode="tail">
+              {item.label}
+            </Text>
+          )}
         </View>
         {readOnly ? (
           <View style={styles.headSideSlot} />
@@ -236,15 +251,19 @@ function CoverageBlock({
               amount={item.currentAmount}
               readOnly={!inlineEditEnabled}
               textStyle={styles.amountCurrent}
-              editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
+              editing={
+                activeInlineEdit?.kind === 'amount' &&
+                activeInlineEdit.itemId === item.id &&
+                activeInlineEdit.field === 'current'
+              }
               onStartEdit={() => {
                 onBeforeInteraction?.();
-                onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
+                onActiveInlineEditChange?.({ kind: 'amount', itemId: item.id, field: 'current' });
               }}
               onInlineAmountEditFocus={onInlineAmountEditFocus}
               onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
-              onCancel={() => onInlineAmountEditChange?.(null)}
-              onRegisterCommit={onRegisterInlineAmountCommit}
+              onCancel={() => onActiveInlineEditChange?.(null)}
+              onRegisterCommit={onRegisterInlineEditCommit}
             />
           </View>
         </View>
@@ -257,15 +276,19 @@ function CoverageBlock({
               amount={item.proposedAmount}
               readOnly={!inlineEditEnabled}
               textStyle={styles.amountProposed}
-              editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
+              editing={
+                activeInlineEdit?.kind === 'amount' &&
+                activeInlineEdit.itemId === item.id &&
+                activeInlineEdit.field === 'proposed'
+              }
               onStartEdit={() => {
                 onBeforeInteraction?.();
-                onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
+                onActiveInlineEditChange?.({ kind: 'amount', itemId: item.id, field: 'proposed' });
               }}
               onInlineAmountEditFocus={onInlineAmountEditFocus}
               onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
-              onCancel={() => onInlineAmountEditChange?.(null)}
-              onRegisterCommit={onRegisterInlineAmountCommit}
+              onCancel={() => onActiveInlineEditChange?.(null)}
+              onRegisterCommit={onRegisterInlineEditCommit}
             />
           </View>
         </View>
@@ -394,6 +417,80 @@ function InlineAmountCell({
       />
       <Text style={styles.inlineAmountSuffix}>만원</Text>
     </View>
+  );
+}
+
+function InlineTitleCell({
+  label,
+  editing,
+  onStartEdit,
+  onCommit,
+  onCancel,
+  onRegisterCommit,
+}: {
+  itemId: string;
+  label: string;
+  editing: boolean;
+  onStartEdit: () => void;
+  onCommit: (raw: string) => void;
+  onCancel: () => void;
+  onRegisterCommit?: (commit: (() => void) | null) => void;
+}) {
+  const inputRef = useRef<TextInput>(null);
+  const [draft, setDraft] = useState(label);
+  const committedRef = useRef(false);
+
+  useEffect(() => {
+    if (!editing) return;
+    committedRef.current = false;
+    setDraft(label);
+    inputRef.current?.focus();
+  }, [editing, label]);
+
+  const commitAndClose = () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    onCommit(draft);
+    onCancel();
+  };
+
+  useEffect(() => {
+    if (!editing) {
+      onRegisterCommit?.(null);
+      return;
+    }
+    onRegisterCommit?.(() => commitAndClose());
+    return () => onRegisterCommit?.(null);
+  }, [draft, editing, onRegisterCommit]);
+
+  if (!editing) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="항목명 수정"
+        onPress={onStartEdit}
+        style={styles.titlePressable}
+      >
+        <Text style={styles.eventTitle} numberOfLines={2} ellipsizeMode="tail">
+          {label}
+        </Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <TextInput
+      ref={inputRef}
+      accessibilityLabel="항목명 입력"
+      returnKeyType="done"
+      blurOnSubmit
+      multiline
+      value={draft}
+      onChangeText={setDraft}
+      onSubmitEditing={() => commitAndClose()}
+      onBlur={() => commitAndClose()}
+      style={[styles.eventTitle, styles.inlineTitleInput]}
+    />
   );
 }
 
@@ -534,6 +631,13 @@ export const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 0,
   } as ViewStyle,
+  headLeftSlot: {
+    width: timelineLayout.headLeftSlotWidth,
+    flexShrink: 0,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
   headSideSlot: {
     width: timelineLayout.headSideSlotWidth,
     height: timelineLayout.headSideSlotWidth,
@@ -549,17 +653,10 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
   },
-  titleGroupPressable: {
+  titlePressable: {
     maxWidth: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    maxWidth: '100%',
   },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
@@ -571,6 +668,12 @@ export const styles = StyleSheet.create({
     color: theme.text,
     backgroundColor: theme.surface,
     paddingHorizontal: 4,
+  },
+  inlineTitleInput: {
+    width: '100%',
+    paddingVertical: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.primary,
   },
   reorder: { flexDirection: 'row', alignItems: 'center' },
   reorderBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },

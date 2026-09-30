@@ -30,6 +30,8 @@ describe('coverage timeline axis', () => {
     expect(styles.amountColumn.flex).toBe(1);
     expect(styles.reorderVertical.flexDirection).toBe('column');
     expect(styles.eventTitle.textAlign).toBe('center');
+    expect(styles.headLeftSlot.alignItems).toBe('flex-start');
+    expect(styles.headCenter.alignItems).toBe('center');
     expect(styles.periodHeading.fontSize).toBe(14);
     expect(styles.markerSeg.height).toBe(2);
     expect(styles.markerSeg.backgroundColor).toBe(simulatorTheme.primary);
