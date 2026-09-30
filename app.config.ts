@@ -133,6 +133,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       '@react-native-community/datetimepicker',
       'expo-secure-store',
       'expo-sharing',
+      'expo-print',
       [
         'expo-notifications',
         {

@@ -1,15 +1,22 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
-import { CoveragePrimaryButton, CoverageSecondaryButton, CoverageSimulatorHeader, CoverageSimulatorScreen } from './CoverageSimulatorChrome';
+import {
+  CoveragePrimaryButton,
+  CoverageSecondaryButton,
+  CoverageSimulatorHeader,
+  CoverageSimulatorScreen,
+} from './CoverageSimulatorChrome';
+import { CoveragePdfPreviewZoomSurface } from './CoveragePdfPreviewZoomSurface';
 import { CoverageTimeline } from './CoverageTimeline';
 import { getConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { calculateScenarioPeriodTotals, calculateScenarioTotals, sortItems } from './coverageAnalysis';
+import { shareNativeCoveragePdf } from './nativeCoveragePdf';
 import { simulatorTheme as theme } from './simulatorTheme';
 import { diseaseTypeTitle } from './templates';
 
@@ -28,6 +35,7 @@ export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string })
     enabled: Boolean(userId && scenarioId),
   });
   const [notice, setNotice] = useState('');
+  const [savingPdf, setSavingPdf] = useState(false);
   const scenario = query.data;
 
   if (!scenario) {
@@ -42,12 +50,27 @@ export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string })
   const customerName = scenario.customerNameSnapshot ?? scenario.customerName;
   const date = scenario.consultationDate.slice(0, 10).split('-').join('.');
 
+  const handleSavePdf = async () => {
+    setNotice('');
+    setSavingPdf(true);
+    try {
+      await shareNativeCoveragePdf(scenario);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'PDF를 저장하지 못했습니다.';
+      setNotice(message);
+    } finally {
+      setSavingPdf(false);
+    }
+  };
+
   return (
     <CoverageSimulatorScreen>
       <CoverageSimulatorHeader title="PDF 미리보기" onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <CoveragePdfPreviewZoomSurface documentKey={scenario.id}>
         <Text style={styles.docTitle}>보장 시뮬레이션</Text>
-        <Text style={styles.subtitle}>{diseaseTypeTitle(scenario.diseaseType)} — {scenario.title}</Text>
+        <Text style={styles.subtitle}>
+          {diseaseTypeTitle(scenario.diseaseType)} — {scenario.title}
+        </Text>
         <View style={styles.meta}>
           {customerName ? <Text style={styles.metaText}>고객: {customerName}</Text> : null}
           <Text style={styles.metaText}>작성일 {date}</Text>
@@ -62,34 +85,46 @@ export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string })
           readOnly
         />
         <View style={styles.disclaimer}>
-          {DISCLAIMER.map((line) => <Text key={line} style={styles.disclaimerText}>{line}</Text>)}
+          {DISCLAIMER.map((line) => (
+            <Text key={line} style={styles.disclaimerText}>
+              {line}
+            </Text>
+          ))}
           <Text style={styles.service}>ONE FC 보장 시뮬레이션 · 상담 참고용</Text>
         </View>
-        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-      </ScrollView>
+      </CoveragePdfPreviewZoomSurface>
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       <View style={styles.bottom}>
         <View style={styles.bottomBtn}>
-          <CoverageSecondaryButton label="PDF 저장" onPress={() => setNotice('이 기기에서는 PDF 파일을 아직 만들지 않습니다. 미리보기에서 내용을 확인해 주세요.')} />
+          <CoverageSecondaryButton
+            label={savingPdf ? 'PDF 생성 중…' : 'PDF 저장'}
+            disabled={savingPdf}
+            onPress={() => void handleSavePdf()}
+          />
         </View>
         <View style={styles.bottomBtn}>
           <CoveragePrimaryButton label="닫기" onPress={() => router.back()} />
         </View>
       </View>
+      {savingPdf ? (
+        <View style={styles.savingOverlay} pointerEvents="none">
+          <ActivityIndicator color={theme.primary} />
+        </View>
+      ) : null}
     </CoverageSimulatorScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 24, gap: 12 },
-  docTitle: { fontSize: 22, fontWeight: '800', color: theme.text },
-  subtitle: { fontSize: 14, color: theme.muted },
-  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  docTitle: { fontSize: 22, fontWeight: '800', color: theme.text, alignSelf: 'stretch' },
+  subtitle: { fontSize: 14, color: theme.muted, alignSelf: 'stretch' },
+  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignSelf: 'stretch' },
   metaText: { fontSize: 12, color: theme.muted },
-  disclaimer: { gap: 6, marginTop: 8 },
+  disclaimer: { gap: 6, marginTop: 8, alignSelf: 'stretch' },
   disclaimerText: { fontSize: 12, lineHeight: 18, color: theme.muted },
   service: { fontSize: 12, fontWeight: '700', color: theme.text, marginTop: 4 },
   muted: { padding: 16, color: theme.muted },
-  notice: { color: theme.danger, fontSize: 13 },
+  notice: { color: theme.danger, fontSize: 13, paddingHorizontal: 16, paddingBottom: 4 },
   bottom: {
     flexDirection: 'row',
     gap: 12,
@@ -100,4 +135,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.96)',
   },
   bottomBtn: { flex: 1 },
+  savingOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
 });
