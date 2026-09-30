@@ -147,6 +147,20 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     );
   }
 
+  const deleteConfirm = (
+    <CoverageItemDeleteDialog
+      scenario={scenario}
+      deleteId={deleteId}
+      onCancel={() => setDeleteId(null)}
+      onConfirm={() => {
+        const id = deleteId;
+        setDeleteId(null);
+        setForm(null);
+        if (id) void persist(removeScenarioItem(scenario, id));
+      }}
+    />
+  );
+
   if (form?.type === 'add') {
     return (
       <CoverageItemForm
@@ -166,16 +180,19 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
 
   if (form?.type === 'edit') {
     return (
-      <CoverageItemForm
-        mode="edit"
-        item={form.item}
-        onClose={() => setForm(null)}
-        onSave={(patch) => {
-          void persist(updateCoverageItem(scenario, form.item.id, patch), '저장되었습니다.');
-          setForm(null);
-        }}
-        onDelete={() => setDeleteId(form.item.id)}
-      />
+      <>
+        <CoverageItemForm
+          mode="edit"
+          item={form.item}
+          onClose={() => setForm(null)}
+          onSave={(patch) => {
+            void persist(updateCoverageItem(scenario, form.item.id, patch), '저장되었습니다.');
+            setForm(null);
+          }}
+          onDelete={() => setDeleteId(form.item.id)}
+        />
+        {deleteConfirm}
+      </>
     );
   }
 
@@ -354,30 +371,35 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           void persist(resetScenarioItems(scenario));
         }}
       />
-      <ConfirmDialog
-        open={deleteId != null}
-        title={
-          scenario.items.find((item) => item.id === deleteId)?.type === 'time-marker'
-            ? '이 시간 구간을 삭제할까요?'
-            : '항목을 삭제할까요?'
-        }
-        message={
-          scenario.items.find((item) => item.id === deleteId)?.type === 'time-marker'
-            ? '삭제 후 되돌릴 수 없습니다.'
-            : '이 항목을 삭제합니다.'
-        }
-        confirmLabel="삭제"
-        cancelLabel="취소"
-        tone="danger"
-        onCancel={() => setDeleteId(null)}
-        onConfirm={() => {
-          const id = deleteId;
-          setDeleteId(null);
-          setForm(null);
-          if (id) void persist(removeScenarioItem(scenario, id));
-        }}
-      />
+      {deleteConfirm}
     </View>
+  );
+}
+
+function CoverageItemDeleteDialog({
+  scenario,
+  deleteId,
+  onCancel,
+  onConfirm,
+}: {
+  scenario: CoverageScenario;
+  deleteId: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const target = scenario.items.find((item) => item.id === deleteId);
+  const timeMarker = target?.type === 'time-marker';
+  return (
+    <ConfirmDialog
+      open={deleteId != null}
+      title={timeMarker ? '이 시간 구간을 삭제할까요?' : '항목을 삭제할까요?'}
+      message={timeMarker ? '삭제 후 되돌릴 수 없습니다.' : '이 항목을 삭제합니다.'}
+      confirmLabel="삭제"
+      cancelLabel="취소"
+      tone="danger"
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   );
 }
 

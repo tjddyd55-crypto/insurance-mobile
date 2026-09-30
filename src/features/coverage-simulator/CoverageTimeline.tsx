@@ -12,6 +12,7 @@ import {
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
 import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
+import { useFocusTextInputWhenAttached } from './focusTextInputAfterAttach';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
@@ -186,6 +187,7 @@ function CoverageBlock({
 }) {
   const badge = BADGE[item.category];
   const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onActiveInlineEditChange);
+  const showReorder = !readOnly && Boolean(move && onMove);
   const runBefore = (action: () => void) => {
     onBeforeInteraction?.();
     action();
@@ -232,25 +234,13 @@ function CoverageBlock({
       </View>
       <View style={styles.compare}>
         <View style={styles.amountColumn}>
-          {!readOnly && move && onMove ? (
-            <ReorderButtons
-              vertical
-              canMoveUp={move.canMoveUp}
-              canMoveDown={move.canMoveDown}
-              onMove={(direction) => {
-                onBeforeInteraction?.();
-                onMove(direction);
-              }}
-            />
-          ) : readOnly ? null : (
-            <View style={styles.reorderPlaceholder} />
-          )}
-          <View style={styles.amountSlot}>
+          <View style={[styles.amountSlot, showReorder ? styles.amountSlotWithReorderInset : null]}>
             <InlineAmountCell
               itemId={item.id}
               field="current"
               amount={item.currentAmount}
               readOnly={!inlineEditEnabled}
+              constrainToSlot={showReorder}
               textStyle={styles.amountCurrent}
               editing={
                 activeInlineEdit?.kind === 'amount' &&
@@ -267,6 +257,19 @@ function CoverageBlock({
               onRegisterCommit={onRegisterInlineEditCommit}
             />
           </View>
+          {showReorder && move && onMove ? (
+            <View pointerEvents="box-none" style={styles.reorderOverlay}>
+              <ReorderButtons
+                vertical
+                canMoveUp={move.canMoveUp}
+                canMoveDown={move.canMoveDown}
+                onMove={(direction) => {
+                  onBeforeInteraction?.();
+                  onMove(direction);
+                }}
+              />
+            </View>
+          ) : null}
         </View>
         <View style={styles.compareSpine} />
         <View style={styles.amountColumnProposed}>
@@ -330,6 +333,7 @@ function InlineAmountCell({
   readOnly,
   amount,
   textStyle,
+  constrainToSlot = false,
   editing,
   onStartEdit,
   onCommit,
@@ -342,6 +346,7 @@ function InlineAmountCell({
   amount: number | null;
   readOnly: boolean;
   textStyle: object;
+  constrainToSlot?: boolean;
   editing: boolean;
   onStartEdit: () => void;
   onCommit: (rawInput: string) => void;
@@ -353,12 +358,12 @@ function InlineAmountCell({
   const anchorRef = useRef<View>(null);
   const [draft, setDraft] = useState(() => formatManWonInputDisplay(amount));
   const committedRef = useRef(false);
+  const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
 
   useEffect(() => {
     if (!editing) return;
     committedRef.current = false;
     setDraft(formatManWonInputDisplay(amount));
-    inputRef.current?.focus();
     onInlineAmountEditFocus?.(anchorRef);
     const t1 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 120);
     const t2 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 320);
@@ -394,15 +399,25 @@ function InlineAmountCell({
         accessibilityRole="button"
         accessibilityLabel="금액 수정"
         onPress={onStartEdit}
-        style={styles.amountPressable}
+        style={[styles.amountPressable, constrainToSlot ? styles.amountFill : null]}
       >
-        <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>
+        <Text
+          style={[textStyle, constrainToSlot ? styles.amountConstrained : null]}
+          numberOfLines={constrainToSlot ? 1 : undefined}
+          ellipsizeMode="tail"
+        >
+          {formatCoverageAmountLabel(amount)}
+        </Text>
       </Pressable>
     );
   }
 
   return (
-    <View ref={anchorRef} style={styles.inlineAmountWrap} collapsable={false}>
+    <View
+      ref={anchorRef}
+      style={[styles.inlineAmountWrap, constrainToSlot ? styles.amountFill : null]}
+      collapsable={false}
+    >
       <TextInput
         ref={inputRef}
         accessibilityLabel="금액 입력"
@@ -410,6 +425,7 @@ function InlineAmountCell({
         returnKeyType="done"
         selectTextOnFocus
         blurOnSubmit
+        onLayout={focusWhenAttached}
         value={draft}
         onChangeText={(value) => setDraft(sanitizeManWonInputTyping(value))}
         onSubmitEditing={() => commitAndClose()}
@@ -440,12 +456,12 @@ function InlineTitleCell({
   const inputRef = useRef<TextInput>(null);
   const [draft, setDraft] = useState(label);
   const committedRef = useRef(false);
+  const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
 
   useEffect(() => {
     if (!editing) return;
     committedRef.current = false;
     setDraft(label);
-    inputRef.current?.focus();
   }, [editing, label]);
 
   const commitAndClose = () => {
@@ -486,6 +502,7 @@ function InlineTitleCell({
       returnKeyType="done"
       blurOnSubmit
       multiline
+      onLayout={focusWhenAttached}
       value={draft}
       onChangeText={setDraft}
       onSubmitEditing={() => commitAndClose()}
@@ -711,6 +728,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minWidth: 0,
+    position: 'relative',
   },
   amountColumnProposed: {
     flex: 1,
@@ -727,9 +745,13 @@ export const styles = StyleSheet.create({
     flexShrink: 0,
     alignSelf: 'center',
   },
-  reorderPlaceholder: {
-    width: timelineLayout.reorderColumnWidth,
-    flexShrink: 0,
+  reorderOverlay: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    zIndex: 2,
   },
   amountSlot: {
     flex: 1,
@@ -738,7 +760,21 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 0,
   },
-  amountPressable: { alignItems: 'center', justifyContent: 'center', minHeight: timelineLayout.amountSlotMinHeight },
+  /**
+   * ↑↓는 흐름에서 빼 두고, 기존 보장 금액만 좌우 같은 여백 안에 둔다.
+   * 금액 중심은 열 중앙(제안 보장과 같은 거리)에 남고 화살표와 겹치지 않는다.
+   */
+  amountSlotWithReorderInset: {
+    paddingHorizontal: timelineLayout.reorderColumnWidth,
+    alignItems: 'stretch',
+  },
+  amountPressable: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: timelineLayout.amountSlotMinHeight,
+  },
+  amountFill: { width: '100%', overflow: 'hidden' },
+  amountConstrained: { width: '100%' },
   inlineAmountWrap: {
     flexDirection: 'row',
     alignItems: 'center',

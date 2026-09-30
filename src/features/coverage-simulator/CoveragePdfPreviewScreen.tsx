@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -27,6 +27,7 @@ const DISCLAIMER = [
 
 export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string }) {
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useAuth();
   const userId = user?.id ?? '';
   const query = useQuery({
@@ -37,6 +38,13 @@ export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string })
   const [notice, setNotice] = useState('');
   const [savingPdf, setSavingPdf] = useState(false);
   const scenario = query.data;
+
+  useFocusEffect(
+    useCallback(() => {
+      setDrawerSwipe(navigation, false);
+      return () => setDrawerSwipe(navigation, true);
+    }, [navigation]),
+  );
 
   if (!scenario) {
     return (
@@ -142,3 +150,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.35)',
   },
 });
+
+function setDrawerSwipe(navigation: unknown, enabled: boolean): void {
+  let current: unknown = navigation;
+  while (isNavigator(current)) {
+    const state = current.getState?.();
+    if (state?.type === 'drawer') {
+      current.setOptions?.({ swipeEnabled: enabled });
+      return;
+    }
+    current = current.getParent?.();
+  }
+}
+
+function isNavigator(value: unknown): value is {
+  getState?: () => { type?: string } | undefined;
+  setOptions?: (options: { swipeEnabled: boolean }) => void;
+  getParent?: () => unknown;
+} {
+  return typeof value === 'object' && value != null;
+}

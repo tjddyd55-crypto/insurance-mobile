@@ -10,8 +10,20 @@ describe('CoveragePdfPreviewZoomSurface', () => {
     );
     expect(src).toMatch(/Gesture\.Pinch/);
     expect(src).toMatch(/Gesture\.Pan/);
+    expect(src).toMatch(/blocksExternalGesture\(scrollGesture\)/);
+    expect(src).toMatch(/react-native-gesture-handler/);
+    expect(src).toMatch(/manualActivation\(true\)/);
     expect(src).toMatch(/documentKey/);
     expect(src).toMatch(/NEWS_DETAIL_ZOOM_MAX/);
+  });
+
+  it('disables drawer swipe while the pdf preview is focused', () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, '../CoveragePdfPreviewScreen.tsx'),
+      'utf8',
+    );
+    expect(src).toMatch(/setDrawerSwipe\(navigation, false\)/);
+    expect(src).toMatch(/setDrawerSwipe\(navigation, true\)/);
   });
 
   it('removes pdf save placeholder from preview screen', () => {

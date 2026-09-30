@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -82,6 +82,8 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
     setScrollEnabled(nextScale <= min + ZOOM_EPSILON);
   };
 
+  const scrollGesture = useMemo(() => Gesture.Native(), []);
+
   const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
     'worklet';
     const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
@@ -109,14 +111,13 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
   };
 
   const pinch = Gesture.Pinch()
+    .blocksExternalGesture(scrollGesture)
     .onUpdate((event) => {
       const next = savedScale.value * event.scale;
       const clamped = Math.min(NEWS_DETAIL_ZOOM_MAX, Math.max(fitScale.value, next));
       scale.value = clamped;
     })
     .onEnd(() => {
-      savedScale.value = scale.value;
-      runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
       if (scale.value <= fitScale.value + ZOOM_EPSILON) {
         scale.value = withTiming(fitScale.value);
         savedScale.value = fitScale.value;
@@ -126,15 +127,24 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
         savedTranslateY.value = 0;
         return;
       }
+      savedScale.value = scale.value;
       applyClampedTranslation(translateX.value, translateY.value, true);
+    })
+    .onFinalize(() => {
+      runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
     });
 
   const pan = Gesture.Pan()
     .maxPointers(1)
-    .minDistance(8)
+    .manualActivation(true)
+    .onTouchesMove((_event, state) => {
+      if (scale.value > fitScale.value + ZOOM_EPSILON) {
+        state.activate();
+        return;
+      }
+      state.fail();
+    })
     .onUpdate((event) => {
-      const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
-      if (!zoomed) return;
       applyClampedTranslation(
         savedTranslateX.value + event.translationX,
         savedTranslateY.value + event.translationY,
@@ -167,17 +177,19 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
           );
         }}
       >
-        <ScrollView
-          scrollEnabled={scrollEnabled}
-          showsVerticalScrollIndicator
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}
-          style={styles.scroll}
-        >
-          <Animated.View style={docTransformStyle} onLayout={onContentLayout}>
-            {children}
-          </Animated.View>
-        </ScrollView>
+        <GestureDetector gesture={scrollGesture}>
+          <ScrollView
+            scrollEnabled={scrollEnabled}
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
+            style={styles.scroll}
+          >
+            <Animated.View style={docTransformStyle} onLayout={onContentLayout}>
+              {children}
+            </Animated.View>
+          </ScrollView>
+        </GestureDetector>
       </View>
     </GestureDetector>
   );
