@@ -132,8 +132,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-router',
       '@react-native-community/datetimepicker',
       'expo-secure-store',
+      // expo-print ships no app.plugin.js. Listing it makes Expo load the runtime
+      // entry (and expo-modules-core TypeScript), which fails `expo config` /
+      // `eas build` on Node 24 with ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING.
+      // The Android module is still autolinked from the package dependency.
       'expo-sharing',
-      'expo-print',
       [
         'expo-notifications',
         {
