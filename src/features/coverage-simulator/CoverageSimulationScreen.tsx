@@ -33,12 +33,16 @@ import { scrollInlineAmountIntoView } from './coverageInlineAmountScroll';
 import { useCoverageCustomer } from './CoverageCustomerContext';
 import {
   customerChangedThisVisit,
+  coverageCustomerNumericId,
   hydrateCoverageCustomer,
   rememberCustomerVisit,
   resolveHeaderSaveCustomer,
   savedSimulationCustomer,
   type CustomerVisitBaseline,
 } from './coverageCustomerSession';
+import { savedCustomerChipFromPickerRow } from './coverageEditorPresentation';
+import { toCoverageCustomerPickerRow } from './coverageCustomerPickerPresentation';
+import { getCustomer } from '../customers/customersApi';
 import { getConsultation, saveConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { calculateScenarioPeriodTotals, calculateScenarioTotals, sortItems } from './coverageAnalysis';
@@ -85,6 +89,21 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     queryFn: () => getConsultation(consultationStorage, userId, scenarioId),
     enabled: Boolean(userId && scenarioId),
   });
+  const savedCustomer = query.data?.id === scenarioId ? savedSimulationCustomer(query.data) : null;
+  const savedCustomerId = savedCustomer?.id ?? null;
+  const savedCustomerName = savedCustomer?.name ?? null;
+  const savedCustomerNumericId = savedCustomerId ? coverageCustomerNumericId(savedCustomerId) : null;
+  const savedCustomerDetail = useQuery({
+    queryKey: ['coverage-simulator', 'customer', savedCustomerNumericId],
+    queryFn: () => {
+      if (savedCustomerNumericId == null) {
+        throw new Error('고객 id가 없습니다.');
+      }
+      return getCustomer(token, savedCustomerNumericId);
+    },
+    enabled: savedCustomerNumericId != null && Boolean(token) && !customerChanged,
+    retry: false,
+  });
   const [form, setForm] = useState<FormState>(null);
   const [activeInlineEdit, setActiveInlineEdit] = useState<CoverageActiveInlineEdit>(null);
   const inlineEditCommitRef = useRef<(() => void) | null>(null);
@@ -123,6 +142,21 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     if (!saved) return;
     customer.hydrateCustomer(hydrateCoverageCustomer(customer, saved));
   }, [customer, customerChanged, query.data, scenarioId]);
+
+  useEffect(() => {
+    if (!savedCustomerId || !savedCustomerDetail.data || customerChanged) return;
+    const row = toCoverageCustomerPickerRow(savedCustomerDetail.data);
+    customer.hydrateCustomer(savedCustomerChipFromPickerRow(
+      { id: savedCustomerId, name: savedCustomerName },
+      row,
+    ));
+  }, [
+    customer,
+    customerChanged,
+    savedCustomerDetail.data,
+    savedCustomerId,
+    savedCustomerName,
+  ]);
 
   const share = useCoverageShareSession({
     token,

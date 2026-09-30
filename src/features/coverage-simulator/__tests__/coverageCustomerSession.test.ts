@@ -1,5 +1,6 @@
 import { formatCoverageEditorCustomerLine } from '../coverageEditorPresentation';
 import {
+  coverageCustomerNumericId,
   customerChangedThisVisit,
   hydrateCoverageCustomer,
   rememberCustomerVisit,
@@ -45,7 +46,7 @@ describe('saved simulation customer chip', () => {
       birthDate: null,
       phone: null,
     });
-    expect(formatCoverageEditorCustomerLine(hydrated)).toBe('홍길동 · — · —');
+    expect(formatCoverageEditorCustomerLine(hydrated)).toBe('홍길동');
   });
 
   it('keeps birth date and phone when the saved customer is already selected', () => {
@@ -82,6 +83,12 @@ describe('saved simulation customer chip', () => {
     expect(savedSimulationCustomer(scenario({ recordType: 'scenario' }))).toBeNull();
     expect(savedSimulationCustomer(scenario({ customerId: null, customerNameSnapshot: '홍길동' }))).toBeNull();
     expect(savedSimulationCustomer(scenario({ customerId: '  ' }))).toBeNull();
+  });
+
+  it('accepts only a positive numeric customer id for the detail request', () => {
+    expect(coverageCustomerNumericId('42')).toBe(42);
+    expect(coverageCustomerNumericId('c-1')).toBeNull();
+    expect(coverageCustomerNumericId('0')).toBeNull();
   });
 });
 

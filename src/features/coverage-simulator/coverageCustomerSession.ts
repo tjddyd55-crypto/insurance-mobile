@@ -29,6 +29,14 @@ export function savedSimulationCustomer(
   return { id, name: snapshot || null };
 }
 
+/** getCustomer에 넘길 수 있는 고객 id. 숫자가 아니면 조회하지 않는다. */
+export function coverageCustomerNumericId(id: string): number | null {
+  if (!/^\d+$/.test(id)) return null;
+  const numericId = Number(id);
+  if (!Number.isSafeInteger(numericId) || numericId <= 0) return null;
+  return numericId;
+}
+
 /**
  * 같은 고객이면 피커가 넣어 둔 생년월일·연락처를 유지한다.
  * 다른 고객이면 저장본의 id·이름만 칩에 올린다.
