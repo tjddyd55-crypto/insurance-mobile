@@ -44,6 +44,18 @@ type Props = {
 
 const BADGE = theme.badge;
 
+/** Native timeline row spacing — 정렬 보정용 (기능/구조 변경 없음) */
+const timelineLayout = {
+  headSideSlotWidth: 28,
+  headMinHeight: 32,
+  headTitleGap: 6,
+  compareMinHeight: 68,
+  amountSlotMinHeight: 44,
+  compareSpineWidth: 24,
+  eventPaddingH: 16,
+  reorderColumnWidth: 28,
+} as const;
+
 export function CoverageTimeline({
   items,
   periods,
@@ -193,24 +205,36 @@ function CoverageBlock({
             style={styles.headDismissBackdrop}
           />
         ) : null}
-        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-          <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
+        <View style={styles.headSideSlot} />
+        <View style={styles.headCenter}>
+          <Pressable
+            style={styles.titleGroupPressable}
+            disabled={!foreignMenuOpen && !menuOpen}
+            onPress={() => {
+              if (menuOpen || foreignMenuOpen) {
+                onDismissMenu();
+              }
+            }}
+          >
+            <View style={styles.titleGroup}>
+              <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
+              </View>
+              <Text style={styles.eventTitle} numberOfLines={2} ellipsizeMode="tail">
+                {item.label}
+              </Text>
+            </View>
+          </Pressable>
         </View>
-        <Pressable
-          style={styles.titlePressable}
-          disabled={!foreignMenuOpen && !menuOpen}
-          onPress={() => {
-            if (menuOpen || foreignMenuOpen) {
-              onDismissMenu();
-            }
-          }}
-        >
-          <Text style={styles.eventTitle} numberOfLines={2} ellipsizeMode="tail">
-            {item.label}
-          </Text>
-        </Pressable>
-        {readOnly ? null : (
-          <Pressable accessibilityRole="button" accessibilityLabel="항목 메뉴" onPress={onToggleMenu} style={styles.menuBtn}>
+        {readOnly ? (
+          <View style={styles.headSideSlot} />
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="항목 메뉴"
+            onPress={onToggleMenu}
+            style={styles.headSideSlot}
+          >
             <Text style={styles.menuGlyph}>⋯</Text>
           </Pressable>
         )}
@@ -251,40 +275,46 @@ function CoverageBlock({
                 onMove(direction);
               }}
             />
-          ) : null}
-          <InlineAmountCell
-            itemId={item.id}
-            field="current"
-            amount={item.currentAmount}
-            readOnly={!inlineEditEnabled}
-            textStyle={styles.amountCurrent}
-            editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
-            onStartEdit={() => {
-              onDismissMenu();
-              onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
-            }}
-            onInlineAmountEditFocus={onInlineAmountEditFocus}
-            onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
-            onCancel={() => onInlineAmountEditChange?.(null)}
-          />
+          ) : readOnly ? null : (
+            <View style={styles.reorderPlaceholder} />
+          )}
+          <View style={styles.amountSlot}>
+            <InlineAmountCell
+              itemId={item.id}
+              field="current"
+              amount={item.currentAmount}
+              readOnly={!inlineEditEnabled}
+              textStyle={styles.amountCurrent}
+              editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
+              onStartEdit={() => {
+                onDismissMenu();
+                onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
+              }}
+              onInlineAmountEditFocus={onInlineAmountEditFocus}
+              onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
+              onCancel={() => onInlineAmountEditChange?.(null)}
+            />
+          </View>
         </View>
         <View style={styles.compareSpine} />
         <View style={styles.amountColumnProposed}>
-          <InlineAmountCell
-            itemId={item.id}
-            field="proposed"
-            amount={item.proposedAmount}
-            readOnly={!inlineEditEnabled}
-            textStyle={styles.amountProposed}
-            editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
-            onStartEdit={() => {
-              onDismissMenu();
-              onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
-            }}
-            onInlineAmountEditFocus={onInlineAmountEditFocus}
-            onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
-            onCancel={() => onInlineAmountEditChange?.(null)}
-          />
+          <View style={styles.amountSlot}>
+            <InlineAmountCell
+              itemId={item.id}
+              field="proposed"
+              amount={item.proposedAmount}
+              readOnly={!inlineEditEnabled}
+              textStyle={styles.amountProposed}
+              editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
+              onStartEdit={() => {
+                onDismissMenu();
+                onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
+              }}
+              onInlineAmountEditFocus={onInlineAmountEditFocus}
+              onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
+              onCancel={() => onInlineAmountEditChange?.(null)}
+            />
+          </View>
         </View>
       </View>
     </View>
@@ -527,14 +557,16 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.line,
     zIndex: -1,
   },
-  event: { paddingHorizontal: 12, paddingVertical: 10 },
+  event: {
+    paddingHorizontal: timelineLayout.eventPaddingH,
+    paddingVertical: 10,
+  },
   /** PC 모바일과 같이 항목명 줄에 카드 배경을 깔아 축선이 글자를 관통하지 않게 한다. 금액 줄은 배경이 없어 선이 남는다. */
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    minHeight: 32,
-    marginBottom: 6,
+    minHeight: timelineLayout.headMinHeight,
+    marginBottom: timelineLayout.headTitleGap,
     position: 'relative',
     backgroundColor: theme.surface,
     zIndex: 1,
@@ -543,11 +575,38 @@ export const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 0,
   } as ViewStyle,
-  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0, zIndex: 1 },
+  headSideSlot: {
+    width: timelineLayout.headSideSlotWidth,
+    height: timelineLayout.headSideSlotWidth,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  headCenter: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  titleGroupPressable: {
+    maxWidth: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    maxWidth: '100%',
+  },
+  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
-  titlePressable: { flex: 1, minWidth: 0, zIndex: 1, justifyContent: 'center' },
   eventTitle: {
-    textAlign: 'left',
+    flexShrink: 1,
+    textAlign: 'center',
     fontSize: 15,
     fontWeight: '700',
     color: theme.text,
@@ -559,14 +618,6 @@ export const styles = StyleSheet.create({
   reorderBtnCompact: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   reorderDisabled: { opacity: 0.28 },
   reorderGlyph: { fontSize: 14, fontWeight: '700', color: theme.muted, lineHeight: 16 },
-  menuBtn: {
-    width: 28,
-    height: 28,
-    flexShrink: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
   menuGlyph: { fontSize: 18, color: theme.muted },
   menu: {
     alignSelf: 'flex-end',
@@ -581,19 +632,51 @@ export const styles = StyleSheet.create({
   menuItem: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8 },
   menuText: { fontSize: 13, color: theme.text },
   menuDanger: { fontSize: 13, color: theme.danger },
-  compare: { flexDirection: 'row', alignItems: 'center', minHeight: 68 },
-  amountColumn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 },
-  amountColumnProposed: { flex: 1, alignItems: 'center', justifyContent: 'center', minWidth: 0 },
-  compareSpine: { width: 24 },
+  compare: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: timelineLayout.compareMinHeight,
+  },
+  amountColumn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  amountColumnProposed: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  compareSpine: { width: timelineLayout.compareSpineWidth, alignSelf: 'stretch' },
   reorderVertical: {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 28,
+    width: timelineLayout.reorderColumnWidth,
+    flexShrink: 0,
+    alignSelf: 'center',
+  },
+  reorderPlaceholder: {
+    width: timelineLayout.reorderColumnWidth,
     flexShrink: 0,
   },
-  amountPressable: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40 },
-  inlineAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  amountSlot: {
+    flex: 1,
+    minHeight: timelineLayout.amountSlotMinHeight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  amountPressable: { alignItems: 'center', justifyContent: 'center', minHeight: timelineLayout.amountSlotMinHeight },
+  inlineAmountWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: timelineLayout.amountSlotMinHeight,
+  },
   inlineAmountInput: {
     minWidth: 56,
     maxWidth: 120,
@@ -609,14 +692,14 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
   },
   inlineAmountSuffix: { fontSize: 13, fontWeight: '600', color: theme.muted },
-  amountCurrent: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: theme.current },
-  amountProposed: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: theme.primary },
+  amountCurrent: { textAlign: 'center', fontSize: 18, fontWeight: '700', color: theme.current },
+  amountProposed: { textAlign: 'center', fontSize: 18, fontWeight: '800', color: theme.primary },
   add: {
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 32,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: timelineLayout.eventPaddingH,
     zIndex: 1,
   },
   addLine: { flex: 1, height: 1, backgroundColor: '#dce3ec' },
