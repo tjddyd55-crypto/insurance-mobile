@@ -100,6 +100,10 @@ describe('coverageNativePdf', () => {
     expect(html).toContain('암 진단금');
     expect(html).toContain('홍길동');
     expect(html).toContain('제안 총보장');
+    expect(html).toContain('class="coverage-name"');
+    expect(html).toContain('margin: 0 52px');
+    expect(html).toContain('text-align: center');
+    expect(html).not.toContain('colspan="4"');
   });
 
   it('validates pdf byte signature', () => {

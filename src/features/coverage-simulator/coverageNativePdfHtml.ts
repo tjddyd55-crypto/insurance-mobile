@@ -29,12 +29,20 @@ function badgeStyle(category: CoverageScenarioItem['category']): string {
   return `background:${badge.bg};color:${badge.fg};`;
 }
 
+const PDF_NAME_SIDE_INSET_PX = 52;
+
 function renderCoverageRow(item: CoverageScenarioItem): string {
   const badge = categoryLabel(item.category);
   return `
+    <tr class="coverage-name-row">
+      <td colspan="2">
+        <div class="coverage-head">
+          <span class="badge" style="${badgeStyle(item.category)}">${escapeHtml(badge)}</span>
+          <div class="coverage-name">${escapeHtml(item.label)}</div>
+        </div>
+      </td>
+    </tr>
     <tr class="row">
-      <td class="badge"><span style="${badgeStyle(item.category)}">${escapeHtml(badge)}</span></td>
-      <td class="title">${escapeHtml(item.label)}</td>
       <td class="amount">${escapeHtml(formatCoverageAmountLabel(item.currentAmount))}</td>
       <td class="amount proposed">${escapeHtml(formatCoverageAmountLabel(item.proposedAmount))}</td>
     </tr>`;
@@ -48,7 +56,7 @@ function renderPeriodSubtotal(
   const side = (amount: number) => (amount <= 0 ? '없음' : escapeHtml(formatTotalAmountLabel(amount)));
   return `
     <tr class="period">
-      <td colspan="4">
+      <td colspan="2">
         <div class="period-label">${escapeHtml(periodSubtotalLabelFromMarker(markerLabel))}</div>
         <div class="period-values">
           <span>${side(current)}</span>
@@ -61,7 +69,7 @@ function renderPeriodSubtotal(
 function renderMarker(label: string): string {
   return `
     <tr class="marker">
-      <td colspan="4">${escapeHtml(label)} ↓</td>
+      <td colspan="2">${escapeHtml(label)} ↓</td>
     </tr>`;
 }
 
@@ -103,10 +111,11 @@ export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
     th { text-align: center; font-size: 12px; color: ${theme.headerAxis}; padding: 8px 4px; border-bottom: 1px solid ${theme.divider}; }
     th.proposed { color: ${theme.primary}; }
     td { vertical-align: middle; padding: 8px 4px; border-bottom: 1px solid ${theme.line}; }
-    td.badge { width: 52px; }
-    td.badge span { display: inline-block; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
-    td.title { text-align: center; font-weight: 700; font-size: 14px; }
-    td.amount { text-align: center; font-weight: 700; width: 28%; }
+    th, td.amount { width: 50%; }
+    .coverage-head { position: relative; min-height: 24px; }
+    .coverage-head .badge { position: absolute; left: 0; top: 0; display: inline-block; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
+    .coverage-name { display: block; margin: 0 ${PDF_NAME_SIDE_INSET_PX}px; text-align: center; font-weight: 700; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+    td.amount { text-align: center; font-weight: 700; }
     td.amount.proposed { color: ${theme.primary}; }
     tr.period td { background: ${theme.summaryBg}; border-bottom: 1px solid ${theme.divider}; }
     .period-label { font-weight: 700; margin-bottom: 4px; }
@@ -126,8 +135,6 @@ export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
   <table>
     <thead>
       <tr>
-        <th></th>
-        <th>항목</th>
         <th>기존 보장</th>
         <th class="proposed">제안 보장</th>
       </tr>

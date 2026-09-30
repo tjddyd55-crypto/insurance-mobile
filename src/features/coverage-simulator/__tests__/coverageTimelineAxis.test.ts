@@ -30,8 +30,13 @@ describe('coverage timeline axis', () => {
     expect(styles.amountColumn.flex).toBe(1);
     expect(styles.reorderVertical.flexDirection).toBe('column');
     expect(styles.eventTitle.textAlign).toBe('center');
+    expect(styles.eventTitle.width).toBe('100%');
     expect(styles.headLeftSlot.alignItems).toBe('flex-start');
+    expect(styles.headLeftSlot.width).toBe(styles.headSideSlot.width);
+    expect(styles.headSideSlot.alignItems).toBe('flex-end');
     expect(styles.headCenter.alignItems).toBe('center');
+    expect(styles.titlePressable.width).toBe('100%');
+    expect(styles.menuButton.width).toBe(28);
     expect(styles.periodHeading.fontSize).toBe(14);
     expect(styles.markerSeg.height).toBe(2);
     expect(styles.markerSeg.backgroundColor).toBe(simulatorTheme.primary);

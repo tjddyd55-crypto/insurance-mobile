@@ -47,7 +47,8 @@ const BADGE = theme.badge;
 /** Native timeline row spacing — 정렬 보정용 (기능/구조 변경 없음) */
 const timelineLayout = {
   headSideSlotWidth: 28,
-  headLeftSlotWidth: 52,
+  /** 배지·⋯ 슬롯을 같은 너비로 두어 항목명 중심이 행 중심(중앙 구분선)과 일치하게 한다. */
+  headInsetWidth: 52,
   headMinHeight: 32,
   headTitleGap: 6,
   compareMinHeight: 68,
@@ -216,18 +217,18 @@ function CoverageBlock({
             </Text>
           )}
         </View>
-        {readOnly ? (
-          <View style={styles.headSideSlot} />
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="항목 수정"
-            onPress={() => runBefore(onEdit)}
-            style={styles.headSideSlot}
-          >
-            <Text style={styles.menuGlyph}>⋯</Text>
-          </Pressable>
-        )}
+        <View style={styles.headSideSlot}>
+          {readOnly ? null : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="항목 수정"
+              onPress={() => runBefore(onEdit)}
+              style={styles.menuButton}
+            >
+              <Text style={styles.menuGlyph}>⋯</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
       <View style={styles.compare}>
         <View style={styles.amountColumn}>
@@ -632,19 +633,24 @@ export const styles = StyleSheet.create({
     zIndex: 0,
   } as ViewStyle,
   headLeftSlot: {
-    width: timelineLayout.headLeftSlotWidth,
+    width: timelineLayout.headInsetWidth,
     flexShrink: 0,
     alignItems: 'flex-start',
     justifyContent: 'center',
     zIndex: 1,
   },
   headSideSlot: {
-    width: timelineLayout.headSideSlotWidth,
-    height: timelineLayout.headSideSlotWidth,
+    width: timelineLayout.headInsetWidth,
     flexShrink: 0,
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'center',
     zIndex: 1,
+  },
+  menuButton: {
+    width: timelineLayout.headSideSlotWidth,
+    height: timelineLayout.headSideSlotWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headCenter: {
     flex: 1,
@@ -654,13 +660,14 @@ export const styles = StyleSheet.create({
     zIndex: 1,
   },
   titlePressable: {
-    maxWidth: '100%',
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
   eventTitle: {
+    width: '100%',
     flexShrink: 1,
     textAlign: 'center',
     fontSize: 15,
