@@ -31,6 +31,14 @@ import {
 } from './coverageInlineAmountSession';
 import { scrollInlineAmountIntoView } from './coverageInlineAmountScroll';
 import { useCoverageCustomer } from './CoverageCustomerContext';
+import {
+  customerChangedThisVisit,
+  hydrateCoverageCustomer,
+  rememberCustomerVisit,
+  resolveHeaderSaveCustomer,
+  savedSimulationCustomer,
+  type CustomerVisitBaseline,
+} from './coverageCustomerSession';
 import { getConsultation, saveConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { calculateScenarioPeriodTotals, calculateScenarioTotals, sortItems } from './coverageAnalysis';
@@ -58,6 +66,18 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const router = useRouter();
   const { user, token } = useAuth();
   const customer = useCoverageCustomer();
+  const [customerVisit, setCustomerVisit] = useState<CustomerVisitBaseline>(() =>
+    rememberCustomerVisit(null, scenarioId, customer.customerRevision),
+  );
+  const nextCustomerVisit = rememberCustomerVisit(
+    customerVisit,
+    scenarioId,
+    customer.customerRevision,
+  );
+  if (nextCustomerVisit !== customerVisit) {
+    setCustomerVisit(nextCustomerVisit);
+  }
+  const customerChanged = customerChangedThisVisit(nextCustomerVisit, customer.customerRevision);
   const userId = user?.id ?? '';
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -95,6 +115,15 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
       hideSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    const loaded = query.data;
+    if (!loaded || loaded.id !== scenarioId || customerChanged) return;
+    const saved = savedSimulationCustomer(loaded);
+    if (!saved) return;
+    customer.hydrateCustomer(hydrateCoverageCustomer(customer, saved));
+  }, [customer, customerChanged, query.data, scenarioId]);
+
   const share = useCoverageShareSession({
     token,
     scenario: query.data ?? null,
@@ -218,7 +247,12 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
       if (editingScenarioTemplate) {
         await persist(scenario, '저장되었습니다.');
       } else {
-        await persist(assignCustomer(scenario, { id: customer.id, name: customer.name }), '저장되었습니다.');
+        const linked = resolveHeaderSaveCustomer({
+          explicit: customerChanged,
+          context: { id: customer.id, name: customer.name },
+          scenario,
+        });
+        await persist(assignCustomer(scenario, linked), '저장되었습니다.');
       }
     } finally {
       setSavingCustomer(false);
