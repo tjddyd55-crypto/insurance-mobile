@@ -15,6 +15,7 @@ import {
 import { consultationStorage } from './consultationStorage';
 import { formatConsultationListDate } from './coverageAnalysis';
 import { SCENARIO_LIBRARY_MENU_ACTIONS } from './coverageEditorPresentation';
+import { coverageScenarioEditorPath, coverageTemplateSimulationListPath } from './coverageSimulatorNavigation';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { SavedScenarioSummary } from './types';
 
@@ -41,8 +42,12 @@ export function ScenarioLibraryCrudPanel({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const openEditor = (id: string) => {
-    router.push(`/customer-consulting/coverage-simulation/scenarios/${id}` as never);
+  const openSimulationList = (id: string) => {
+    router.push(coverageTemplateSimulationListPath(id) as never);
+  };
+
+  const openScenarioTemplateEditor = (id: string) => {
+    router.push(coverageScenarioEditorPath(id) as never);
   };
 
   const invalidate = async () => {
@@ -62,7 +67,7 @@ export function ScenarioLibraryCrudPanel({
         return;
       }
       await invalidate();
-      openEditor(copied.id);
+      openScenarioTemplateEditor(copied.id);
     } catch {
       setNotice('복제하지 못했습니다.');
     } finally {
@@ -108,7 +113,7 @@ export function ScenarioLibraryCrudPanel({
       {!rows.length ? <Text style={styles.muted}>{emptyLabel}</Text> : null}
       {rows.map((row) => (
         <View key={row.id} style={styles.listCard}>
-          <Pressable accessibilityRole="button" onPress={() => openEditor(row.id)} style={styles.listMain}>
+          <Pressable accessibilityRole="button" onPress={() => openSimulationList(row.id)} style={styles.listMain}>
             <Text style={styles.listTitle}>{row.title}</Text>
             <Text style={styles.meta}>수정 {formatConsultationListDate(row.updatedAt)}</Text>
           </Pressable>
@@ -125,7 +130,7 @@ export function ScenarioLibraryCrudPanel({
 
       <ModalShell open={menuRow != null} title={menuRow?.title ?? ''} presentation="dialog" onRequestClose={() => setMenuRow(null)}>
         <View style={styles.menuStack}>
-          <Button label="편집" onPress={() => { if (menuRow) openEditor(menuRow.id); setMenuRow(null); }} />
+          <Button label="시나리오 편집" onPress={() => { if (menuRow) openScenarioTemplateEditor(menuRow.id); setMenuRow(null); }} />
           <Button
             label="이름 변경"
             variant="secondary"

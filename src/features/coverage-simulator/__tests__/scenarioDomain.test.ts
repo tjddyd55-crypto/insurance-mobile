@@ -2,6 +2,7 @@ import { createMemoryConsultationStorage } from '../consultationStorage';
 import {
   deleteConsultation,
   listConsultationSummaries,
+  listConsultationsByTemplateId,
   listScenarioLibrary,
   saveConsultation,
 } from '../consultationRepository';
@@ -32,6 +33,17 @@ describe('coverage scenario domain', () => {
     expect(scenario).not.toBeNull();
     expect(isScenarioRecord(scenario!)).toBe(true);
     expect(isSimulationRecord(scenario!)).toBe(false);
+  });
+
+  it('lists simulations filtered by templateId', async () => {
+    const storage = createMemoryConsultationStorage();
+    const seed = buildSeedScenario('cancer')!;
+    await saveConsultation(storage, 'user-1', seed);
+    const simulation = createSimulationFromScenario(seed, { id: 'c1', name: '박성현' });
+    await saveConsultation(storage, 'user-1', simulation);
+    const rows = await listConsultationsByTemplateId(storage, 'user-1', seed.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe(simulation.id);
   });
 
   it('creates simulations as deep copies linked to template id', async () => {

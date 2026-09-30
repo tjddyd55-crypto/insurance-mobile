@@ -44,6 +44,7 @@ import {
   resetScenarioItems,
   updateCoverageItem,
 } from './scenarioEdits';
+import { resolveCoverageEditorBackPath } from './coverageSimulatorNavigation';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenario, CoverageScenarioItem } from './types';
 import { useCoverageShareSession } from './useCoverageShareSession';
@@ -226,6 +227,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         showMenu={false}
         showBillingStatus={false}
         rightAction={headerSave}
+        onBackPress={() => router.replace(resolveCoverageEditorBackPath(scenario) as never)}
       />
       <Screen padded={false}>
         <View style={styles.body}>

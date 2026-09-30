@@ -17,6 +17,7 @@ import { consultationStorage } from './consultationStorage';
 import { SavedScenarioCrudPanel } from './SavedScenarioCrudPanel';
 import { ScenarioLibraryCrudPanel } from './ScenarioLibraryCrudPanel';
 import { createUserScenario } from './scenarioEdits';
+import { coverageScenarioEditorPath } from './coverageSimulatorNavigation';
 import { simulatorTheme as theme } from './simulatorTheme';
 
 export function CoverageScenarioSelectScreen() {
@@ -54,7 +55,7 @@ export function CoverageScenarioSelectScreen() {
       setAddOpen(false);
       setNewTitle('');
       await refreshAll();
-      router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}` as never);
+      router.push(coverageScenarioEditorPath(scenario.id) as never);
     } finally {
       setBusy(false);
     }

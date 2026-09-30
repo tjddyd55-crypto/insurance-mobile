@@ -49,6 +49,25 @@ export async function listConsultationsByCustomerId(
   return listConsultationSummaries(storage, userId, undefined, normalized);
 }
 
+export async function listConsultationsByTemplateId(
+  storage: ConsultationStoragePort,
+  userId: string,
+  templateId: string,
+  customerId?: string | null,
+): Promise<SavedScenarioSummary[]> {
+  const normalizedTemplateId = templateId.trim();
+  if (!normalizedTemplateId) return [];
+  const rows = await readConsultations(storage, userId);
+  const simulations = rows.filter(
+    (row) => isSimulationRecord(row) && row.templateId === normalizedTemplateId,
+  );
+  const summaries = listSummaries(simulations);
+  if (!customerId?.trim()) {
+    return summaries;
+  }
+  return summaries.filter((row) => row.customerId === customerId.trim());
+}
+
 export async function listScenarioLibrary(
   storage: ConsultationStoragePort,
   userId: string,
