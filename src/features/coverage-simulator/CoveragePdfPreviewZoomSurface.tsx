@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, {
@@ -25,6 +25,7 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const scrollRef = useRef<ScrollView>(null);
   const viewportWidth = viewportSize.width;
   const viewportHeight = viewportSize.height;
 
@@ -79,10 +80,16 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
   ]);
 
   const syncScrollEnabled = (nextScale: number, min: number) => {
-    setScrollEnabled(nextScale <= min + ZOOM_EPSILON);
+    const enabled = nextScale <= min + ZOOM_EPSILON;
+    scrollRef.current?.setNativeProps({ scrollEnabled: enabled });
+    setScrollEnabled(enabled);
   };
 
-  const scrollGesture = useMemo(() => Gesture.Native(), []);
+  const disableScrollForPinch = () => {
+    scrollRef.current?.setNativeProps({ scrollEnabled: false });
+  };
+
+  const scrollGesture = Gesture.Native();
 
   const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
     'worklet';
@@ -111,7 +118,22 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
   };
 
   const pinch = Gesture.Pinch()
+    .manualActivation(true)
     .blocksExternalGesture(scrollGesture)
+    .onTouchesDown((event, state) => {
+      if (event.numberOfTouches >= 2) {
+        runOnJS(disableScrollForPinch)();
+        state.activate();
+      }
+    })
+    .onTouchesMove((event, state) => {
+      if (event.numberOfTouches >= 2) {
+        runOnJS(disableScrollForPinch)();
+        state.activate();
+        return;
+      }
+      state.fail();
+    })
     .onUpdate((event) => {
       const next = savedScale.value * event.scale;
       const clamped = Math.min(NEWS_DETAIL_ZOOM_MAX, Math.max(fitScale.value, next));
@@ -133,6 +155,7 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
     .onFinalize(() => {
       runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
     });
+  scrollGesture.requireExternalGestureToFail(pinch);
 
   const pan = Gesture.Pan()
     .maxPointers(1)
@@ -179,6 +202,7 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
       >
         <GestureDetector gesture={scrollGesture}>
           <ScrollView
+            ref={scrollRef}
             scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator
             keyboardShouldPersistTaps="handled"

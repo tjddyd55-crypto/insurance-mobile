@@ -26,8 +26,10 @@ import { CoverageTimeline, CoverageTotalsDock } from './CoverageTimeline';
 import { coverageInlineAmountPatch } from './coverageInlineAmount';
 import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
 import {
+  INLINE_EDIT_FOCUS_GUARD_MS,
   commitRegisteredInlineEdit,
   shouldCommitInlineBeforeNextEdit,
+  shouldCommitInlineEditOnScroll,
 } from './coverageInlineAmountSession';
 import { scrollInlineAmountIntoView } from './coverageInlineAmountScroll';
 import { useCoverageCustomer } from './CoverageCustomerContext';
@@ -110,6 +112,8 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const scrollRef = useRef<ScrollView>(null);
   const scrollYOffsetRef = useRef(0);
   const keyboardInsetRef = useRef(0);
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -176,6 +180,25 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     commitRegisteredInlineEdit(inlineEditCommitRef);
     Keyboard.dismiss();
   }, [activeInlineEdit]);
+
+  const markProgrammaticScroll = useCallback(() => {
+    programmaticScrollRef.current = true;
+    if (programmaticScrollTimerRef.current) clearTimeout(programmaticScrollTimerRef.current);
+    programmaticScrollTimerRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, INLINE_EDIT_FOCUS_GUARD_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (programmaticScrollTimerRef.current) clearTimeout(programmaticScrollTimerRef.current);
+    };
+  }, []);
+
+  const commitInlineEditFromUserScroll = useCallback(() => {
+    if (!shouldCommitInlineEditOnScroll(programmaticScrollRef.current)) return;
+    commitActiveInlineEdit();
+  }, [commitActiveInlineEdit]);
 
   const beforeTimelineInteraction = useCallback(() => {
     commitActiveInlineEdit();
@@ -325,12 +348,10 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               ref={scrollRef}
               contentContainerStyle={styles.content}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
+              keyboardDismissMode="none"
               automaticallyAdjustKeyboardInsets
-              onScrollBeginDrag={() => {
-                commitActiveInlineEdit();
-              }}
-              onMomentumScrollBegin={commitActiveInlineEdit}
+              onScrollBeginDrag={commitInlineEditFromUserScroll}
+              onMomentumScrollBegin={commitInlineEditFromUserScroll}
               onScroll={(event) => {
                 scrollYOffsetRef.current = event.nativeEvent.contentOffset.y;
               }}
@@ -374,6 +395,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                           anchorRef,
                           keyboardInsetRef.current,
                           scrollYOffsetRef.current,
+                          markProgrammaticScroll,
                         );
                       }}
                       onInlineAmountCommit={(itemId, field, rawInput) => {

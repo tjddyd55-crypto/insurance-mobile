@@ -11,6 +11,11 @@ describe('CoveragePdfPreviewZoomSurface', () => {
     expect(src).toMatch(/Gesture\.Pinch/);
     expect(src).toMatch(/Gesture\.Pan/);
     expect(src).toMatch(/blocksExternalGesture\(scrollGesture\)/);
+    expect(src).toMatch(/requireExternalGestureToFail\(pinch\)/);
+    expect(src).toMatch(/numberOfTouches >= 2/);
+    expect(src).toMatch(/setNativeProps\(\{ scrollEnabled: false \}\)/);
+    expect(src).toMatch(/state\.activate\(\)/);
+    expect(src).toMatch(/state\.fail\(\)/);
     expect(src).toMatch(/react-native-gesture-handler/);
     expect(src).toMatch(/manualActivation\(true\)/);
     expect(src).toMatch(/documentKey/);

@@ -11,7 +11,11 @@ import {
   type ScenarioPeriodTotal,
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
-import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
+import {
+  inlineEditBlurGuardDeadline,
+  shouldIgnoreInlineEditBlur,
+  type CoverageActiveInlineEdit,
+} from './coverageInlineEdit';
 import { useFocusTextInputWhenAttached } from './focusTextInputAfterAttach';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
@@ -358,15 +362,24 @@ function InlineAmountCell({
   const anchorRef = useRef<View>(null);
   const [draft, setDraft] = useState(() => formatManWonInputDisplay(amount));
   const committedRef = useRef(false);
+  const ignoreBlurUntilRef = useRef(0);
   const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
 
   useEffect(() => {
-    if (!editing) return;
+    if (!editing) {
+      ignoreBlurUntilRef.current = 0;
+      return;
+    }
     committedRef.current = false;
     setDraft(formatManWonInputDisplay(amount));
+    ignoreBlurUntilRef.current = inlineEditBlurGuardDeadline(Date.now());
     onInlineAmountEditFocus?.(anchorRef);
-    const t1 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 120);
-    const t2 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 320);
+    const refreshFocus = () => {
+      ignoreBlurUntilRef.current = inlineEditBlurGuardDeadline(Date.now());
+      onInlineAmountEditFocus?.(anchorRef);
+    };
+    const t1 = setTimeout(refreshFocus, 120);
+    const t2 = setTimeout(refreshFocus, 320);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -378,6 +391,14 @@ function InlineAmountCell({
     committedRef.current = true;
     onCommit(draft);
     onCancel();
+  };
+
+  const handleBlur = () => {
+    if (shouldIgnoreInlineEditBlur(ignoreBlurUntilRef.current, Date.now())) {
+      inputRef.current?.focus();
+      return;
+    }
+    commitAndClose();
   };
 
   useEffect(() => {
@@ -425,7 +446,7 @@ function InlineAmountCell({
         value={draft}
         onChangeText={(value) => setDraft(sanitizeManWonInputTyping(value))}
         onSubmitEditing={() => commitAndClose()}
-        onBlur={() => commitAndClose()}
+        onBlur={handleBlur}
         style={[styles.inlineAmountInput, textStyle]}
       />
       <Text style={styles.inlineAmountSuffix}>만원</Text>
@@ -452,12 +473,17 @@ function InlineTitleCell({
   const inputRef = useRef<TextInput>(null);
   const [draft, setDraft] = useState(label);
   const committedRef = useRef(false);
+  const ignoreBlurUntilRef = useRef(0);
   const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
 
   useEffect(() => {
-    if (!editing) return;
+    if (!editing) {
+      ignoreBlurUntilRef.current = 0;
+      return;
+    }
     committedRef.current = false;
     setDraft(label);
+    ignoreBlurUntilRef.current = inlineEditBlurGuardDeadline(Date.now());
   }, [editing, label]);
 
   const commitAndClose = () => {
@@ -465,6 +491,14 @@ function InlineTitleCell({
     committedRef.current = true;
     onCommit(draft);
     onCancel();
+  };
+
+  const handleBlur = () => {
+    if (shouldIgnoreInlineEditBlur(ignoreBlurUntilRef.current, Date.now())) {
+      inputRef.current?.focus();
+      return;
+    }
+    commitAndClose();
   };
 
   useEffect(() => {
@@ -502,7 +536,7 @@ function InlineTitleCell({
       value={draft}
       onChangeText={setDraft}
       onSubmitEditing={() => commitAndClose()}
-      onBlur={() => commitAndClose()}
+      onBlur={handleBlur}
       style={[styles.eventTitle, styles.inlineTitleInput]}
     />
   );

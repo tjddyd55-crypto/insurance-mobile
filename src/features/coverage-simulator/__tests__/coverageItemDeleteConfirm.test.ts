@@ -21,6 +21,8 @@ describe('coverage item delete confirm', () => {
     const src = fs.readFileSync(path.join(__dirname, '../CoverageTimeline.tsx'), 'utf8');
     expect(src).toMatch(/useFocusTextInputWhenAttached/);
     expect(src).toMatch(/onLayout=\{focusWhenAttached\}/);
-    expect(src).not.toMatch(/inputRef\.current\?\.focus\(\)/);
+    const outsideBlurRecovery = src.replace(/const handleBlur = \(\) => \{[\s\S]*?\n  \};/g, '');
+    expect(outsideBlurRecovery).not.toMatch(/inputRef\.current\?\.focus\(\)/);
+    expect(src).toMatch(/shouldIgnoreInlineEditBlur/);
   });
 });
