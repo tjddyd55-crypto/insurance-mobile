@@ -12,6 +12,7 @@ import {
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
 import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
+import { reorderArrowStyleLeft } from './coverageReorderArrowOffset';
 import { useFocusTextInputWhenAttached } from './focusTextInputAfterAttach';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
@@ -240,7 +241,6 @@ function CoverageBlock({
               field="current"
               amount={item.currentAmount}
               readOnly={!inlineEditEnabled}
-              constrainToSlot={showReorder}
               textStyle={styles.amountCurrent}
               editing={
                 activeInlineEdit?.kind === 'amount' &&
@@ -333,7 +333,6 @@ function InlineAmountCell({
   readOnly,
   amount,
   textStyle,
-  constrainToSlot = false,
   editing,
   onStartEdit,
   onCommit,
@@ -346,7 +345,6 @@ function InlineAmountCell({
   amount: number | null;
   readOnly: boolean;
   textStyle: object;
-  constrainToSlot?: boolean;
   editing: boolean;
   onStartEdit: () => void;
   onCommit: (rawInput: string) => void;
@@ -399,13 +397,9 @@ function InlineAmountCell({
         accessibilityRole="button"
         accessibilityLabel="금액 수정"
         onPress={onStartEdit}
-        style={[styles.amountPressable, constrainToSlot ? styles.amountFill : null]}
+        style={styles.amountPressable}
       >
-        <Text
-          style={[textStyle, constrainToSlot ? styles.amountConstrained : null]}
-          numberOfLines={constrainToSlot ? 1 : undefined}
-          ellipsizeMode="tail"
-        >
+        <Text style={textStyle}>
           {formatCoverageAmountLabel(amount)}
         </Text>
       </Pressable>
@@ -415,7 +409,7 @@ function InlineAmountCell({
   return (
     <View
       ref={anchorRef}
-      style={[styles.inlineAmountWrap, constrainToSlot ? styles.amountFill : null]}
+      style={styles.inlineAmountWrap}
       collapsable={false}
     >
       <TextInput
@@ -747,7 +741,7 @@ export const styles = StyleSheet.create({
   },
   reorderOverlay: {
     position: 'absolute',
-    left: 0,
+    left: reorderArrowStyleLeft(timelineLayout.reorderColumnWidth),
     top: 0,
     bottom: 0,
     justifyContent: 'center',
@@ -761,20 +755,17 @@ export const styles = StyleSheet.create({
     minWidth: 0,
   },
   /**
-   * ↑↓는 흐름에서 빼 두고, 기존 보장 금액만 좌우 같은 여백 안에 둔다.
-   * 금액 중심은 열 중앙(제안 보장과 같은 거리)에 남고 화살표와 겹치지 않는다.
+   * 금액은 ad0afc8 이전처럼 화살표 열 오른쪽 슬롯 중앙에 둔다.
+   * 오른쪽 여백은 넣지 않아 제안 보장 열의 너비는 바뀌지 않는다.
    */
   amountSlotWithReorderInset: {
-    paddingHorizontal: timelineLayout.reorderColumnWidth,
-    alignItems: 'stretch',
+    paddingLeft: timelineLayout.reorderColumnWidth,
   },
   amountPressable: {
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: timelineLayout.amountSlotMinHeight,
   },
-  amountFill: { width: '100%', overflow: 'hidden' },
-  amountConstrained: { width: '100%' },
   inlineAmountWrap: {
     flexDirection: 'row',
     alignItems: 'center',
