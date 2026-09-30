@@ -102,7 +102,11 @@ describe('coverageNativePdf', () => {
     expect(html).toContain('제안 총보장');
     expect(html).toContain('class="coverage-name"');
     expect(html).toContain('margin: 0 52px');
-    expect(html).toContain('text-align: center');
+    expect(html).toContain('th, td.amount { width: 50%; }');
+    expect(html).toContain('td.amount { text-align: center;');
+    expect(html).toContain('.period-values > span { flex: 1; text-align: center; }');
+    expect(html).toContain('.totals > span { flex: 1; text-align: center; }');
+    expect(html).not.toContain('↑');
     expect(html).not.toContain('colspan="4"');
   });
 

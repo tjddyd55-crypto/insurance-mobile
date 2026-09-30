@@ -12,7 +12,6 @@ import {
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
 import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
-import { reorderArrowStyleLeft } from './coverageReorderArrowOffset';
 import { useFocusTextInputWhenAttached } from './focusTextInputAfterAttach';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
@@ -46,8 +45,8 @@ type Props = {
 
 const BADGE = theme.badge;
 
-/** Native timeline row spacing — 정렬 보정용 (기능/구조 변경 없음) */
-const timelineLayout = {
+/** Native timeline row spacing. 금액 열은 화살표 너비를 빼지 않는다. */
+export const timelineLayout = {
   headSideSlotWidth: 28,
   /** 배지·⋯ 슬롯을 같은 너비로 두어 항목명 중심이 행 중심(중앙 구분선)과 일치하게 한다. */
   headInsetWidth: 52,
@@ -58,6 +57,7 @@ const timelineLayout = {
   compareSpineWidth: 24,
   eventPaddingH: 16,
   reorderColumnWidth: 28,
+  reorderHitSlop: 4,
 } as const;
 
 export function CoverageTimeline({
@@ -235,7 +235,7 @@ function CoverageBlock({
       </View>
       <View style={styles.compare}>
         <View style={styles.amountColumn}>
-          <View style={[styles.amountSlot, showReorder ? styles.amountSlotWithReorderInset : null]}>
+          <View style={styles.amountSlot}>
             <InlineAmountCell
               itemId={item.id}
               field="current"
@@ -257,19 +257,6 @@ function CoverageBlock({
               onRegisterCommit={onRegisterInlineEditCommit}
             />
           </View>
-          {showReorder && move && onMove ? (
-            <View pointerEvents="box-none" style={styles.reorderOverlay}>
-              <ReorderButtons
-                vertical
-                canMoveUp={move.canMoveUp}
-                canMoveDown={move.canMoveDown}
-                onMove={(direction) => {
-                  onBeforeInteraction?.();
-                  onMove(direction);
-                }}
-              />
-            </View>
-          ) : null}
         </View>
         <View style={styles.compareSpine} />
         <View style={styles.amountColumnProposed}>
@@ -296,6 +283,21 @@ function CoverageBlock({
             />
           </View>
         </View>
+        {showReorder && move && onMove ? (
+          <View pointerEvents="box-none" style={styles.reorderOverlay}>
+            <View pointerEvents="box-none" style={styles.reorderPill}>
+              <ReorderButtons
+                vertical
+                canMoveUp={move.canMoveUp}
+                canMoveDown={move.canMoveDown}
+                onMove={(direction) => {
+                  onBeforeInteraction?.();
+                  onMove(direction);
+                }}
+              />
+            </View>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -569,6 +571,7 @@ function MoveButton({
       accessibilityState={{ disabled: !enabled }}
       disabled={!enabled}
       onPress={onPress}
+      hitSlop={compact ? timelineLayout.reorderHitSlop : undefined}
       style={[compact ? styles.reorderBtnCompact : styles.reorderBtn, !enabled && styles.reorderDisabled]}
     >
       <Text style={styles.reorderGlyph}>{glyph}</Text>
@@ -713,6 +716,7 @@ export const styles = StyleSheet.create({
   menuText: { fontSize: 13, color: theme.text },
   menuDanger: { fontSize: 13, color: theme.danger },
   compare: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'stretch',
     minHeight: timelineLayout.compareMinHeight,
@@ -722,7 +726,6 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minWidth: 0,
-    position: 'relative',
   },
   amountColumnProposed: {
     flex: 1,
@@ -739,13 +742,24 @@ export const styles = StyleSheet.create({
     flexShrink: 0,
     alignSelf: 'center',
   },
+  /** 구분선 정중앙. 금액 열 터치는 통과하고 화살표만 받는다. */
   reorderOverlay: {
     position: 'absolute',
-    left: reorderArrowStyleLeft(timelineLayout.reorderColumnWidth),
+    left: 0,
+    right: 0,
     top: 0,
     bottom: 0,
+    alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
+  },
+  /** 구분선이 화살표 뒤에서 끊겨 보이지 않도록 시트 배경으로 가린다. */
+  reorderPill: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+    alignItems: 'center',
   },
   amountSlot: {
     flex: 1,
@@ -754,19 +768,13 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 0,
   },
-  /**
-   * 금액은 ad0afc8 이전처럼 화살표 열 오른쪽 슬롯 중앙에 둔다.
-   * 오른쪽 여백은 넣지 않아 제안 보장 열의 너비는 바뀌지 않는다.
-   */
-  amountSlotWithReorderInset: {
-    paddingLeft: timelineLayout.reorderColumnWidth,
-  },
   amountPressable: {
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: timelineLayout.amountSlotMinHeight,
   },
   inlineAmountWrap: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

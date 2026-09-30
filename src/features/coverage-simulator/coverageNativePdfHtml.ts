@@ -119,10 +119,12 @@ export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
     td.amount.proposed { color: ${theme.primary}; }
     tr.period td { background: ${theme.summaryBg}; border-bottom: 1px solid ${theme.divider}; }
     .period-label { font-weight: 700; margin-bottom: 4px; }
-    .period-values { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }
+    .period-values { display: flex; font-weight: 700; }
+    .period-values > span { flex: 1; text-align: center; }
     .period-values .proposed { color: ${theme.primary}; }
     tr.marker td { text-align: center; font-weight: 900; color: ${theme.marker}; padding: 12px 4px; }
-    .totals { margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; font-weight: 800; font-size: 14px; }
+    .totals { margin-top: 16px; display: flex; font-weight: 800; font-size: 14px; }
+    .totals > span { flex: 1; text-align: center; }
     .totals .proposed { color: ${theme.primary}; }
     .disclaimer { margin-top: 20px; color: ${theme.muted}; font-size: 12px; line-height: 1.5; }
     .service { margin-top: 8px; font-weight: 700; color: ${theme.text}; }

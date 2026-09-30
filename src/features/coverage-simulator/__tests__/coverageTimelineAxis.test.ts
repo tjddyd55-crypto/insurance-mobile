@@ -28,11 +28,11 @@ describe('coverage timeline axis', () => {
     expect(styles.period.backgroundColor).not.toBe(simulatorTheme.surface);
     expect(styles.marker.backgroundColor).toBe('#f8fafc');
     expect(styles.amountColumn.flex).toBe(1);
-    expect(styles.amountColumn.position).toBe('relative');
+    expect(styles.amountColumnProposed.flex).toBe(1);
+    expect('paddingLeft' in styles.amountColumn).toBe(false);
     expect(styles.reorderOverlay.position).toBe('absolute');
-    expect(styles.reorderOverlay.left).toBe(0);
-    expect(styles.amountSlotWithReorderInset.paddingLeft).toBe(styles.reorderVertical.width);
-    expect('paddingHorizontal' in styles.amountSlotWithReorderInset).toBe(false);
+    expect(styles.reorderOverlay.alignItems).toBe('center');
+    expect(styles.reorderPill.backgroundColor).toBe(simulatorTheme.surface);
     expect('paddingHorizontal' in styles.amountColumnProposed).toBe(false);
     expect(styles.reorderVertical.flexDirection).toBe('column');
     expect(styles.eventTitle.textAlign).toBe('center');
