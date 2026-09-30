@@ -1,6 +1,6 @@
 import {
   formatCoverageEditorCustomerLine,
-  resolveCoverageItemMenuToggle,
+  SCENARIO_LIBRARY_MENU_ACTIONS,
 } from '../coverageEditorPresentation';
 import { TimelineInsertControl } from '../CoverageTimeline';
 
@@ -17,10 +17,12 @@ describe('coverage editor compact interactions', () => {
     expect(formatCoverageEditorCustomerLine({ id: null, name: null })).toBeNull();
   });
 
-  it('toggles item menu with menuItemId SSOT', () => {
-    expect(resolveCoverageItemMenuToggle(null, 'a')).toBe('a');
-    expect(resolveCoverageItemMenuToggle('a', 'a')).toBeNull();
-    expect(resolveCoverageItemMenuToggle('a', 'b')).toBe('b');
+  it('opens item edit directly from ⋯ (no intermediate menu action list)', () => {
+    expect(SCENARIO_LIBRARY_MENU_ACTIONS).not.toContain('item-edit-menu');
+  });
+
+  it('includes explicit close on scenario library menu', () => {
+    expect(SCENARIO_LIBRARY_MENU_ACTIONS.at(-1)).toBe('close');
   });
 
   it('exposes insert control as plus-only press target', () => {

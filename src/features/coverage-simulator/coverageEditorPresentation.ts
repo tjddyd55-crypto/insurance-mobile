@@ -18,7 +18,13 @@ export function formatCoverageEditorCustomerLine(customer: CoverageEditorCustome
   return `${name} · ${birth} · ${phone}`;
 }
 
-/** ⋯ 메뉴 토글 — menuItemId SSOT */
-export function resolveCoverageItemMenuToggle(menuItemId: string | null, itemId: string): string | null {
-  return menuItemId === itemId ? null : itemId;
-}
+/** 시나리오 라이브러리 ⋯ 메뉴 action 순서 (닫기는 마지막) */
+export const SCENARIO_LIBRARY_MENU_ACTIONS = [
+  'edit',
+  'rename',
+  'duplicate',
+  'delete',
+  'close',
+] as const;
+
+export type ScenarioLibraryMenuAction = (typeof SCENARIO_LIBRARY_MENU_ACTIONS)[number];

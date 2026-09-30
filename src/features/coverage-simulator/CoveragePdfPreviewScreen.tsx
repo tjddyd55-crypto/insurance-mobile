@@ -56,8 +56,6 @@ export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string })
           items={sortItems(scenario.items)}
           periods={calculateScenarioPeriodTotals(scenario.items)}
           totals={calculateScenarioTotals(scenario)}
-          menuItemId={null}
-          onToggleMenu={() => undefined}
           onEdit={() => undefined}
           onRemove={() => undefined}
           onAddAfter={() => undefined}

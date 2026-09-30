@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -24,6 +25,10 @@ import { CoverageItemForm } from './CoverageItemForm';
 import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
 import { CoverageTimeline, CoverageTotalsDock, type CoverageInlineAmountEditTarget } from './CoverageTimeline';
 import { coverageInlineAmountPatch } from './coverageInlineAmount';
+import {
+  commitRegisteredInlineAmount,
+  shouldCommitInlineBeforeNextEdit,
+} from './coverageInlineAmountSession';
 import { scrollInlineAmountIntoView } from './coverageInlineAmountScroll';
 import { useCoverageCustomer } from './CoverageCustomerContext';
 import { getConsultation, saveConsultation } from './consultationRepository';
@@ -60,8 +65,8 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     enabled: Boolean(userId && scenarioId),
   });
   const [form, setForm] = useState<FormState>(null);
-  const [menuItemId, setMenuItemId] = useState<string | null>(null);
   const [inlineAmountEdit, setInlineAmountEdit] = useState<CoverageInlineAmountEditTarget>(null);
+  const inlineAmountCommitRef = useRef<(() => void) | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const scrollYOffsetRef = useRef(0);
   const keyboardInsetRef = useRef(0);
@@ -101,6 +106,16 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
       return saved;
     },
   });
+
+  const commitActiveInlineAmount = useCallback(() => {
+    if (!inlineAmountEdit) return;
+    commitRegisteredInlineAmount(inlineAmountCommitRef);
+    Keyboard.dismiss();
+  }, [inlineAmountEdit]);
+
+  const beforeTimelineInteraction = useCallback(() => {
+    commitActiveInlineAmount();
+  }, [commitActiveInlineAmount]);
 
   const scenario = query.data;
   const persist = async (next: CoverageScenario, message = '') => {
@@ -166,16 +181,19 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const items = sortItems(scenario.items);
   const totals = calculateScenarioTotals(scenario);
   const openEdit = (item: CoverageScenarioItem) => {
-    setMenuItemId(null);
     setInlineAmountEdit(null);
     setForm({ type: 'edit', item });
   };
 
-  const dismissMenu = () => setMenuItemId(null);
+  const runWithInlineCommit = (action: () => void) => {
+    commitActiveInlineAmount();
+    action();
+  };
 
   const editingScenarioTemplate = isScenarioRecord(scenario);
 
   const saveFromHeader = async () => {
+    commitActiveInlineAmount();
     setSavingCustomer(true);
     setNotice('');
     try {
@@ -223,82 +241,95 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               keyboardDismissMode="interactive"
               automaticallyAdjustKeyboardInsets
               onScrollBeginDrag={() => {
-                Keyboard.dismiss();
-                dismissMenu();
+                commitActiveInlineAmount();
               }}
-              onMomentumScrollBegin={dismissMenu}
+              onMomentumScrollBegin={commitActiveInlineAmount}
               onScroll={(event) => {
                 scrollYOffsetRef.current = event.nativeEvent.contentOffset.y;
               }}
               scrollEventThrottle={16}
             >
                 {editingScenarioTemplate ? null : (
-                  <CoverageAnalysisSaveSection notice={notice} onDismissMenu={dismissMenu} />
+                  <CoverageAnalysisSaveSection
+                    notice={notice}
+                    onDismissMenu={commitActiveInlineAmount}
+                  />
                 )}
                 {editingScenarioTemplate && notice ? (
                   <Text style={styles.noticeInline}>{notice}</Text>
                 ) : null}
                 {toast ? <Text style={styles.toast}>{toast}</Text> : null}
-                <CoverageTimeline
-                  items={items}
-                  periods={calculateScenarioPeriodTotals(scenario.items)}
-                  totals={totals}
-                  compactTotals
-                  menuItemId={menuItemId}
-                  onToggleMenu={setMenuItemId}
-                  onEdit={openEdit}
-                  inlineAmountEdit={inlineAmountEdit}
-                  onInlineAmountEditChange={(target) => {
-                    if (target) {
-                      setForm(null);
-                      setMenuItemId(null);
-                    }
-                    setInlineAmountEdit(target);
-                  }}
-                  onInlineAmountEditFocus={(anchorRef) => {
-                    scrollInlineAmountIntoView(
-                      scrollRef,
-                      anchorRef,
-                      keyboardInsetRef.current,
-                      scrollYOffsetRef.current,
-                    );
-                  }}
-                  onInlineAmountCommit={(itemId, field, rawInput) => {
-                    const patch = coverageInlineAmountPatch(field, rawInput);
-                    void persist(updateCoverageItem(scenario, itemId, patch), '저장되었습니다.');
-                    setInlineAmountEdit(null);
-                  }}
-                  onMove={(itemId, direction) => {
-                    dismissMenu();
-                    void persist(moveScenarioItem(scenario, itemId, direction));
-                  }}
-                  onRemove={(itemId) => {
-                    dismissMenu();
-                    setDeleteId(itemId);
-                  }}
-                  onAddAfter={(afterOrder) => {
-                    dismissMenu();
-                    setInlineAmountEdit(null);
-                    setForm({ type: 'add', afterOrder });
-                  }}
-                />
+                <TouchableWithoutFeedback onPress={commitActiveInlineAmount} accessible={false}>
+                  <View>
+                    <CoverageTimeline
+                      items={items}
+                      periods={calculateScenarioPeriodTotals(scenario.items)}
+                      totals={totals}
+                      compactTotals
+                      onEdit={openEdit}
+                      inlineAmountEdit={inlineAmountEdit}
+                      onRegisterInlineAmountCommit={(commit) => {
+                        inlineAmountCommitRef.current = commit;
+                      }}
+                      onBeforeTimelineInteraction={beforeTimelineInteraction}
+                      onInlineAmountEditChange={(target) => {
+                        if (shouldCommitInlineBeforeNextEdit(inlineAmountEdit, target)) {
+                          commitActiveInlineAmount();
+                        }
+                        if (target) {
+                          setForm(null);
+                        }
+                        setInlineAmountEdit(target);
+                      }}
+                      onInlineAmountEditFocus={(anchorRef) => {
+                        scrollInlineAmountIntoView(
+                          scrollRef,
+                          anchorRef,
+                          keyboardInsetRef.current,
+                          scrollYOffsetRef.current,
+                        );
+                      }}
+                      onInlineAmountCommit={(itemId, field, rawInput) => {
+                        const patch = coverageInlineAmountPatch(field, rawInput);
+                        void persist(updateCoverageItem(scenario, itemId, patch), '저장되었습니다.');
+                        setInlineAmountEdit(null);
+                      }}
+                      onMove={(itemId, direction) => {
+                        void persist(moveScenarioItem(scenario, itemId, direction));
+                      }}
+                      onRemove={(itemId) => {
+                        setDeleteId(itemId);
+                      }}
+                      onAddAfter={(afterOrder) => {
+                        setInlineAmountEdit(null);
+                        setForm({ type: 'add', afterOrder });
+                      }}
+                    />
+                  </View>
+                </TouchableWithoutFeedback>
             </ScrollView>
           </KeyboardAvoidingView>
           <CoverageTotalsDock totals={totals} />
           <View style={styles.bottom}>
-            <View style={styles.bottomBtn}><CoverageSecondaryButton label="초기화" onPress={() => setConfirmReset(true)} /></View>
+            <View style={styles.bottomBtn}>
+              <CoverageSecondaryButton label="초기화" onPress={() => runWithInlineCommit(() => setConfirmReset(true))} />
+            </View>
             <View style={styles.bottomBtn}>
               <CoverageSecondaryButton
                 label={share.buttonLabel}
                 disabled={!share.canShare || share.sharing}
-                onPress={() => void share.openShare()}
+                onPress={() => runWithInlineCommit(() => void share.openShare())}
                 testID="coverage-share-button"
               />
             </View>
             <View style={styles.bottomBtn}>
               <CoveragePrimaryButton
                 label="PDF 미리보기"
-                onPress={() => router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}/pdf` as never)}
+                onPress={() =>
+                  runWithInlineCommit(() =>
+                    router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}/pdf` as never),
+                  )
+                }
               />
             </View>
           </View>
@@ -319,8 +350,16 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
       />
       <ConfirmDialog
         open={deleteId != null}
-        title={scenario.items.find((item) => item.id === deleteId)?.type === 'time-marker' ? '이 시간 구간을 삭제할까요?' : '이 항목을 삭제할까요?'}
-        message="삭제 후 되돌릴 수 없습니다."
+        title={
+          scenario.items.find((item) => item.id === deleteId)?.type === 'time-marker'
+            ? '이 시간 구간을 삭제할까요?'
+            : '항목을 삭제할까요?'
+        }
+        message={
+          scenario.items.find((item) => item.id === deleteId)?.type === 'time-marker'
+            ? '삭제 후 되돌릴 수 없습니다.'
+            : '이 항목을 삭제합니다.'
+        }
         confirmLabel="삭제"
         cancelLabel="취소"
         tone="danger"

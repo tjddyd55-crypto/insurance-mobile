@@ -11,7 +11,6 @@ import {
   type ScenarioPeriodTotal,
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
-import { resolveCoverageItemMenuToggle } from './coverageEditorPresentation';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
@@ -27,8 +26,6 @@ type Props = {
   items: ScenarioItem[];
   periods: ScenarioPeriodTotal[];
   totals: Totals;
-  menuItemId: string | null;
-  onToggleMenu: (itemId: string | null) => void;
   onEdit: (item: CoverageScenarioItem) => void;
   onRemove: (itemId: string) => void;
   onAddAfter: (afterOrder: number) => void;
@@ -37,6 +34,10 @@ type Props = {
   onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
   onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
   onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
+  /** active inline TextInput commit — outside tap / 다른 action 전 */
+  onRegisterInlineAmountCommit?: (commit: (() => void) | null) => void;
+  /** + / reorder 등 interaction 직전 */
+  onBeforeTimelineInteraction?: () => void;
   /** 최신 모바일 미리보기. 시트 안 총합을 숨기고 하단 독 문구를 쓴다. */
   compactTotals?: boolean;
   readOnly?: boolean;
@@ -60,8 +61,6 @@ export function CoverageTimeline({
   items,
   periods,
   totals,
-  menuItemId,
-  onToggleMenu,
   onEdit,
   onRemove,
   onAddAfter,
@@ -70,21 +69,18 @@ export function CoverageTimeline({
   onInlineAmountEditChange,
   onInlineAmountCommit,
   onInlineAmountEditFocus,
+  onRegisterInlineAmountCommit,
+  onBeforeTimelineInteraction,
   compactTotals = false,
   readOnly = false,
 }: Props) {
   return (
     <View style={styles.sheet}>
-      <Pressable
-        accessibilityRole="button"
-        disabled={readOnly || menuItemId == null}
-        onPress={() => onToggleMenu(null)}
-        style={styles.colHeader}
-      >
+      <View style={styles.colHeader}>
         <Text style={styles.colCurrent}>기존 보장</Text>
         <View style={styles.colTick} />
         <Text style={styles.colProposed}>제안 보장</Text>
-      </Pressable>
+      </View>
       <View style={styles.timeline}>
         <View pointerEvents="none" style={styles.centerLine} />
         {items.map((item) => (
@@ -100,24 +96,21 @@ export function CoverageTimeline({
               <CoverageBlock
                 item={item}
                 readOnly={readOnly}
-                menuItemId={menuItemId}
-                menuOpen={menuItemId === item.id}
                 move={readOnly || !onMove ? null : coverageItemMoveState(items, item.id)}
                 inlineAmountEdit={inlineAmountEdit}
                 onInlineAmountEditChange={onInlineAmountEditChange}
                 onInlineAmountCommit={onInlineAmountCommit}
                 onInlineAmountEditFocus={onInlineAmountEditFocus}
-                onDismissMenu={() => onToggleMenu(null)}
-                onToggleMenu={() => onToggleMenu(resolveCoverageItemMenuToggle(menuItemId, item.id))}
+                onRegisterInlineAmountCommit={onRegisterInlineAmountCommit}
+                onBeforeInteraction={onBeforeTimelineInteraction}
                 onEdit={() => onEdit(item)}
-                onRemove={() => onRemove(item.id)}
                 onMove={onMove ? (direction) => onMove(item.id, direction) : undefined}
               />
             )}
             {readOnly ? null : (
               <TimelineInsertControl
                 onPress={() => onAddAfter(item.order)}
-                onDismissMenu={() => onToggleMenu(null)}
+                onBeforePress={onBeforeTimelineInteraction}
               />
             )}
           </View>
@@ -164,58 +157,40 @@ function SheetGrandTotal({ totals }: { totals: Totals }) {
 function CoverageBlock({
   item,
   readOnly,
-  menuItemId,
-  menuOpen,
   move,
   inlineAmountEdit,
   onInlineAmountEditChange,
   onInlineAmountCommit,
   onInlineAmountEditFocus,
-  onDismissMenu,
-  onToggleMenu,
+  onRegisterInlineAmountCommit,
+  onBeforeInteraction,
   onEdit,
-  onRemove,
   onMove,
 }: {
   item: CoverageScenarioItem;
   readOnly: boolean;
-  menuItemId: string | null;
-  menuOpen: boolean;
   move: { canMoveUp: boolean; canMoveDown: boolean } | null;
   inlineAmountEdit: CoverageInlineAmountEditTarget;
   onInlineAmountEditChange?: (target: CoverageInlineAmountEditTarget) => void;
   onInlineAmountCommit?: (itemId: string, field: CoverageInlineAmountField, rawInput: string) => void;
   onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
-  onDismissMenu: () => void;
-  onToggleMenu: () => void;
+  onRegisterInlineAmountCommit?: (commit: (() => void) | null) => void;
+  onBeforeInteraction?: () => void;
   onEdit: () => void;
-  onRemove: () => void;
   onMove?: (direction: -1 | 1) => void;
 }) {
   const badge = BADGE[item.category];
   const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onInlineAmountEditChange);
-  const foreignMenuOpen = menuItemId != null && menuItemId !== item.id;
+  const runBefore = (action: () => void) => {
+    onBeforeInteraction?.();
+    action();
+  };
   return (
     <View style={styles.event}>
       <View style={styles.head}>
-        {menuOpen ? (
-          <Pressable
-            accessibilityLabel="메뉴 닫기"
-            onPress={onDismissMenu}
-            style={styles.headDismissBackdrop}
-          />
-        ) : null}
         <View style={styles.headSideSlot} />
         <View style={styles.headCenter}>
-          <Pressable
-            style={styles.titleGroupPressable}
-            disabled={!foreignMenuOpen && !menuOpen}
-            onPress={() => {
-              if (menuOpen || foreignMenuOpen) {
-                onDismissMenu();
-              }
-            }}
-          >
+          <View style={styles.titleGroupPressable}>
             <View style={styles.titleGroup}>
               <View style={[styles.badge, { backgroundColor: badge.bg }]}>
                 <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
@@ -224,45 +199,21 @@ function CoverageBlock({
                 {item.label}
               </Text>
             </View>
-          </Pressable>
+          </View>
         </View>
         {readOnly ? (
           <View style={styles.headSideSlot} />
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="항목 메뉴"
-            onPress={onToggleMenu}
+            accessibilityLabel="항목 수정"
+            onPress={() => runBefore(onEdit)}
             style={styles.headSideSlot}
           >
             <Text style={styles.menuGlyph}>⋯</Text>
           </Pressable>
         )}
       </View>
-      {menuOpen && !(inlineAmountEdit?.itemId === item.id) ? (
-        <View style={styles.menu}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              onDismissMenu();
-              onEdit();
-            }}
-            style={styles.menuItem}
-          >
-            <Text style={styles.menuText}>항목 수정</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              onDismissMenu();
-              onRemove();
-            }}
-            style={styles.menuItem}
-          >
-            <Text style={styles.menuDanger}>삭제</Text>
-          </Pressable>
-        </View>
-      ) : null}
       <View style={styles.compare}>
         <View style={styles.amountColumn}>
           {!readOnly && move && onMove ? (
@@ -271,7 +222,7 @@ function CoverageBlock({
               canMoveUp={move.canMoveUp}
               canMoveDown={move.canMoveDown}
               onMove={(direction) => {
-                onDismissMenu();
+                onBeforeInteraction?.();
                 onMove(direction);
               }}
             />
@@ -287,12 +238,13 @@ function CoverageBlock({
               textStyle={styles.amountCurrent}
               editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'current'}
               onStartEdit={() => {
-                onDismissMenu();
+                onBeforeInteraction?.();
                 onInlineAmountEditChange?.({ itemId: item.id, field: 'current' });
               }}
               onInlineAmountEditFocus={onInlineAmountEditFocus}
               onCommit={(raw) => onInlineAmountCommit?.(item.id, 'current', raw)}
               onCancel={() => onInlineAmountEditChange?.(null)}
+              onRegisterCommit={onRegisterInlineAmountCommit}
             />
           </View>
         </View>
@@ -307,12 +259,13 @@ function CoverageBlock({
               textStyle={styles.amountProposed}
               editing={inlineAmountEdit?.itemId === item.id && inlineAmountEdit.field === 'proposed'}
               onStartEdit={() => {
-                onDismissMenu();
+                onBeforeInteraction?.();
                 onInlineAmountEditChange?.({ itemId: item.id, field: 'proposed' });
               }}
               onInlineAmountEditFocus={onInlineAmountEditFocus}
               onCommit={(raw) => onInlineAmountCommit?.(item.id, 'proposed', raw)}
               onCancel={() => onInlineAmountEditChange?.(null)}
+              onRegisterCommit={onRegisterInlineAmountCommit}
             />
           </View>
         </View>
@@ -324,10 +277,10 @@ function CoverageBlock({
 /** + 원만 터치 가능 — 좌우 라인은 장식 */
 export function TimelineInsertControl({
   onPress,
-  onDismissMenu,
+  onBeforePress,
 }: {
   onPress: () => void;
-  onDismissMenu?: () => void;
+  onBeforePress?: () => void;
 }) {
   return (
     <View style={styles.add}>
@@ -337,7 +290,7 @@ export function TimelineInsertControl({
         accessibilityLabel="항목 추가"
         hitSlop={4}
         onPress={() => {
-          onDismissMenu?.();
+          onBeforePress?.();
           onPress();
         }}
         style={styles.addPlus}
@@ -358,6 +311,7 @@ function InlineAmountCell({
   onCommit,
   onCancel,
   onInlineAmountEditFocus,
+  onRegisterCommit,
 }: {
   itemId: string;
   field: CoverageInlineAmountField;
@@ -369,6 +323,7 @@ function InlineAmountCell({
   onCommit: (rawInput: string) => void;
   onCancel: () => void;
   onInlineAmountEditFocus?: (anchorRef: RefObject<View | null>) => void;
+  onRegisterCommit?: (commit: (() => void) | null) => void;
 }) {
   const inputRef = useRef<TextInput>(null);
   const anchorRef = useRef<View>(null);
@@ -389,11 +344,21 @@ function InlineAmountCell({
     };
   }, [amount, editing, onInlineAmountEditFocus]);
 
-  const commit = () => {
+  const commitAndClose = () => {
     if (committedRef.current) return;
     committedRef.current = true;
     onCommit(draft);
+    onCancel();
   };
+
+  useEffect(() => {
+    if (!editing) {
+      onRegisterCommit?.(null);
+      return;
+    }
+    onRegisterCommit?.(() => commitAndClose());
+    return () => onRegisterCommit?.(null);
+  }, [draft, editing, onRegisterCommit]);
 
   if (readOnly) {
     return <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>;
@@ -423,14 +388,8 @@ function InlineAmountCell({
         blurOnSubmit
         value={draft}
         onChangeText={(value) => setDraft(sanitizeManWonInputTyping(value))}
-        onSubmitEditing={() => {
-          commit();
-          onCancel();
-        }}
-        onBlur={() => {
-          commit();
-          onCancel();
-        }}
+        onSubmitEditing={() => commitAndClose()}
+        onBlur={() => commitAndClose()}
         style={[styles.inlineAmountInput, textStyle]}
       />
       <Text style={styles.inlineAmountSuffix}>만원</Text>

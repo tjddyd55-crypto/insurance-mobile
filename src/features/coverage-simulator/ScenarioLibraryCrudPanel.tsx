@@ -14,6 +14,7 @@ import {
 } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { formatConsultationListDate } from './coverageAnalysis';
+import { SCENARIO_LIBRARY_MENU_ACTIONS } from './coverageEditorPresentation';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { SavedScenarioSummary } from './types';
 
@@ -136,6 +137,9 @@ export function ScenarioLibraryCrudPanel({
           />
           <Button label="복제" variant="secondary" onPress={() => void submitDuplicate()} />
           <Button label="삭제" variant="danger" onPress={() => { setDeleteRow(menuRow); setMenuRow(null); }} />
+          {SCENARIO_LIBRARY_MENU_ACTIONS.includes('close') ? (
+            <Button label="닫기" variant="secondary" onPress={() => setMenuRow(null)} />
+          ) : null}
         </View>
       </ModalShell>
 
