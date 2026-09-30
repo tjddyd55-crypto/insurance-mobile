@@ -21,10 +21,10 @@ export const COVERAGE_SHARE_COPY = {
   historyRetry: '다시 시도',
   revoked: '중지됨',
   revoke: '공유 중지',
-  shareButton: '공유',
-  shareButtonBusy: '공유 중…',
+  shareButton: '링크 복사',
+  shareButtonBusy: '준비 중…',
   loginRequired: 'CRM에 로그인한 후 공유할 수 있습니다.',
-  copied: '공유 링크를 복사했습니다.',
+  copied: '복사되었습니다.',
   copyFailed: '링크를 복사하지 못했습니다.',
   nativeShareFailed: '공유하기를 실행하지 못했습니다.',
   revokeFailed: '공유 중지에 실패했습니다. 다시 시도해 주세요.',
@@ -48,6 +48,11 @@ export function coverageShareButtonLabel(sharing: boolean): string {
 
 export function coverageShareSnapshotChars(scenario: CoverageScenario): number {
   return JSON.stringify(normalizeConsultation(scenario)).length;
+}
+
+/** 동일 스냅샷이면 기존 share URL 재사용 */
+export function coverageShareSnapshotFingerprint(scenario: CoverageScenario): string {
+  return JSON.stringify(normalizeConsultation(scenario));
 }
 
 export function buildCoverageShareWebSharePayload(input: {

@@ -56,8 +56,9 @@ describe('coverage share copy and eligibility', () => {
     expect(buildReactNativeShareContent(payload, 'android').message).toContain(shareUrl);
     expect(COVERAGE_SHARE_COPY.dialogTitle).toBe('고객에게 공유');
     expect(COVERAGE_SHARE_COPY.revoke).toBe('공유 중지');
-    expect(coverageShareButtonLabel(false)).toBe('공유');
-    expect(coverageShareButtonLabel(true)).toBe('공유 중…');
+    expect(COVERAGE_SHARE_COPY.copied).toBe('복사되었습니다.');
+    expect(coverageShareButtonLabel(false)).toBe('링크 복사');
+    expect(coverageShareButtonLabel(true)).toBe('준비 중…');
   });
 
   it('disables sharing when there is no coverage item', () => {

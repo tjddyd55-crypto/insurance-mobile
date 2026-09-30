@@ -14,6 +14,7 @@ import {
   buildReactNativeShareContent,
   coverageScenarioCanBeShared,
   coverageShareButtonLabel,
+  coverageShareSnapshotFingerprint,
   mapCoverageShareCreateError,
   mapCoverageShareHistoryError,
   prepareScenarioSnapshotForShare,
@@ -54,6 +55,7 @@ export function useCoverageShareSession({
   const busyRef = useRef(false);
   const shareUrlRef = useRef<string | null>(null);
   const snapshotRef = useRef<CoverageScenario | null>(null);
+  const sharedSnapshotFingerprintRef = useRef<string | null>(null);
 
   const canShare = scenario != null && coverageScenarioCanBeShared(scenario);
 
@@ -64,8 +66,10 @@ export function useCoverageShareSession({
     try {
       const result = await listCoverageSimulationShares(token, scenario.id);
       setHistoryShares(result.shares);
+      return result.shares;
     } catch (error) {
       setHistoryError(mapCoverageShareHistoryError(error));
+      return null;
     } finally {
       setHistoryLoading(false);
     }
@@ -87,33 +91,36 @@ export function useCoverageShareSession({
     return prepared.scenario;
   }, [confirmSave, dirty, persisted, saveScenario, scenario, showToast]);
 
-  const openShare = useCallback(async () => {
+  const openShareHistory = useCallback(async () => {
     if (!scenario || !coverageScenarioCanBeShared(scenario)) return;
     if (!token?.trim()) {
       showToast(COVERAGE_SHARE_COPY.loginRequired);
       return;
     }
-    const snapshot = await snapshotForShare();
-    if (!snapshot) return;
-    snapshotRef.current = snapshot;
-    setShareUrl(null);
-    shareUrlRef.current = null;
     setCreateError(null);
     setDialogOpen(true);
     void loadHistory();
-  }, [loadHistory, scenario, showToast, snapshotForShare, token]);
+  }, [loadHistory, scenario, showToast, token]);
 
   const ensureShareUrl = useCallback(async () => {
-    if (shareUrlRef.current) return shareUrlRef.current;
-    if (!token?.trim() || busyRef.current) return null;
-    const snapshot = snapshotRef.current ?? await snapshotForShare();
+    const snapshot = snapshotRef.current ?? (await snapshotForShare());
     if (!snapshot) return null;
+    snapshotRef.current = snapshot;
+    const fingerprint = coverageShareSnapshotFingerprint(snapshot);
+
+    if (shareUrlRef.current && sharedSnapshotFingerprintRef.current === fingerprint) {
+      return shareUrlRef.current;
+    }
+
+    if (!token?.trim() || busyRef.current) return null;
+
     busyRef.current = true;
     setSharing(true);
     setCreateError(null);
     try {
       const created = await createCoverageSimulationShare(token, snapshot);
       shareUrlRef.current = created.shareUrl;
+      sharedSnapshotFingerprintRef.current = fingerprint;
       setShareUrl(created.shareUrl);
       void loadHistory();
       return created.shareUrl;
@@ -137,13 +144,29 @@ export function useCoverageShareSession({
   }, [showToast]);
 
   const copyShareLink = useCallback(async () => {
+    if (!scenario || !coverageScenarioCanBeShared(scenario)) return;
+    if (!token?.trim()) {
+      showToast(COVERAGE_SHARE_COPY.loginRequired);
+      return;
+    }
+    const snapshot = await snapshotForShare();
+    if (!snapshot) return;
+    snapshotRef.current = snapshot;
     const url = await ensureShareUrl();
     await copyText(url);
-  }, [copyText, ensureShareUrl]);
+  }, [copyText, ensureShareUrl, scenario, showToast, snapshotForShare, token]);
 
   const nativeShare = useCallback(async () => {
+    if (!scenario || !coverageScenarioCanBeShared(scenario)) return;
+    if (!token?.trim()) {
+      showToast(COVERAGE_SHARE_COPY.loginRequired);
+      return;
+    }
+    const snapshot = await snapshotForShare();
+    if (!snapshot) return;
+    snapshotRef.current = snapshot;
     const url = await ensureShareUrl();
-    if (!url || !scenario) return;
+    if (!url) return;
     const payload = buildCoverageShareWebSharePayload({
       shareUrl: url,
       customerName: scenario.customerNameSnapshot ?? scenario.customerName,
@@ -157,7 +180,7 @@ export function useCoverageShareSession({
       if (isShareCancelled(error)) return;
       showToast(COVERAGE_SHARE_COPY.nativeShareFailed);
     }
-  }, [ensureShareUrl, scenario, showToast]);
+  }, [ensureShareUrl, scenario, showToast, snapshotForShare, token]);
 
   const revokeShare = useCallback(async (shareId: string) => {
     if (!token?.trim()) return;
@@ -180,7 +203,9 @@ export function useCoverageShareSession({
     sharing,
     buttonLabel: coverageShareButtonLabel(sharing),
     dialogOpen,
-    openShare,
+    openShareHistory,
+    copyShareLink,
+    nativeShare,
     dialog: {
       loading: sharing,
       createError,

@@ -19,7 +19,6 @@ import { LoadingState } from '../../components/LoadingState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Button, Screen } from '../../design-system';
 import { CoverageAnalysisSaveSection } from './CoverageAnalysisSaveSection';
-import { CoverageShareDialog } from './CoverageShareDialog';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
 import { CoverageItemForm } from './CoverageItemForm';
 import { CoveragePrimaryButton, CoverageSecondaryButton } from './CoverageSimulatorChrome';
@@ -320,7 +319,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               <CoverageSecondaryButton
                 label={share.buttonLabel}
                 disabled={!share.canShare || share.sharing}
-                onPress={() => runWithInlineCommit(() => void share.openShare())}
+                onPress={() => runWithInlineCommit(() => void share.copyShareLink())}
                 testID="coverage-share-button"
               />
             </View>
@@ -373,7 +372,6 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           if (id) void persist(removeScenarioItem(scenario, id));
         }}
       />
-      <CoverageShareDialog open={share.dialogOpen} {...share.dialog} />
     </View>
   );
 }
