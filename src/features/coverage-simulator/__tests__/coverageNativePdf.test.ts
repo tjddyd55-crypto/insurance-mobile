@@ -1,4 +1,5 @@
 import { buildCoverageNativePdfHtml } from '../coverageNativePdfHtml';
+import { pdfCoverageAmountFontSize } from '../coverageAmountFit';
 import { buildCoveragePdfFileName } from '../coveragePdfFileName';
 import { isPdfByteSignature } from '../nativeCoveragePdf';
 import type { CoverageScenario } from '../types';
@@ -104,6 +105,29 @@ describe('coverageNativePdf', () => {
     expect(html).toContain('margin: 0 52px');
     expect(html).toContain('text-align: center');
     expect(html).not.toContain('colspan="4"');
+  });
+
+  it('keeps wide 만원 labels intact on one line', () => {
+    const html = buildCoverageNativePdfHtml({
+      ...baseScenario,
+      items: [
+        {
+          id: 'wide',
+          type: 'coverage',
+          category: 'diagnosis',
+          label: '고액 진단금',
+          currentAmount: 99_999 * 10_000,
+          proposedAmount: 120_000_000,
+          order: 0,
+        },
+      ],
+    });
+    expect(html).toContain('99,999 만원');
+    expect(html).toContain('12,000 만원');
+    expect(html).toContain('1억 2,000 만원');
+    expect(html).toContain(`font-size: ${pdfCoverageAmountFontSize()}px`);
+    expect(html).toContain('white-space: nowrap');
+    expect(html).not.toContain('text-overflow');
   });
 
   it('validates pdf byte signature', () => {

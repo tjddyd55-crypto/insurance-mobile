@@ -15,6 +15,7 @@ import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
 import { useFocusTextInputWhenAttached } from './focusTextInputAfterAttach';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
+import { coverageAmountMinimumFontScale } from './coverageAmountFit';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
 
 type Totals = { currentTotal: number; proposedTotal: number };
@@ -58,6 +59,8 @@ const timelineLayout = {
   eventPaddingH: 16,
   reorderColumnWidth: 28,
 } as const;
+
+const AMOUNT_MIN_FONT_SCALE = coverageAmountMinimumFontScale();
 
 export function CoverageTimeline({
   items,
@@ -131,12 +134,14 @@ export function CoverageTotalsDock({ totals }: { totals: Totals }) {
     <View style={styles.dock}>
       <View style={styles.dockCol}>
         <Text style={styles.dockLabel}>기존 총보장</Text>
-        <Text style={styles.dockAmount}>{formatTotalAmountLabel(totals.currentTotal)}</Text>
+        <FittedAmountText style={styles.dockAmount}>{formatTotalAmountLabel(totals.currentTotal)}</FittedAmountText>
       </View>
       <View style={styles.dockDivider} />
       <View style={styles.dockCol}>
         <Text style={styles.dockLabel}>제안 총보장</Text>
-        <Text style={[styles.dockAmount, styles.dockProposed]}>{formatTotalAmountLabel(totals.proposedTotal)}</Text>
+        <FittedAmountText style={[styles.dockAmount, styles.dockProposed]}>
+          {formatTotalAmountLabel(totals.proposedTotal)}
+        </FittedAmountText>
       </View>
     </View>
   );
@@ -147,12 +152,14 @@ function SheetGrandTotal({ totals }: { totals: Totals }) {
     <View style={styles.summary}>
       <View style={styles.summaryCol}>
         <Text style={styles.summaryLabel}>기존 총 보장</Text>
-        <Text style={styles.summaryValue}>{formatTotalAmountLabel(totals.currentTotal)}</Text>
+        <FittedAmountText style={styles.summaryValue}>{formatTotalAmountLabel(totals.currentTotal)}</FittedAmountText>
       </View>
       <View style={styles.summarySpine} />
       <View style={styles.summaryCol}>
         <Text style={styles.summaryLabel}>제안 총 보장</Text>
-        <Text style={[styles.summaryValue, styles.summaryProposed]}>{formatTotalAmountLabel(totals.proposedTotal)}</Text>
+        <FittedAmountText style={[styles.summaryValue, styles.summaryProposed]}>
+          {formatTotalAmountLabel(totals.proposedTotal)}
+        </FittedAmountText>
       </View>
     </View>
   );
@@ -240,7 +247,6 @@ function CoverageBlock({
               field="current"
               amount={item.currentAmount}
               readOnly={!inlineEditEnabled}
-              constrainToSlot={showReorder}
               textStyle={styles.amountCurrent}
               editing={
                 activeInlineEdit?.kind === 'amount' &&
@@ -333,7 +339,6 @@ function InlineAmountCell({
   readOnly,
   amount,
   textStyle,
-  constrainToSlot = false,
   editing,
   onStartEdit,
   onCommit,
@@ -346,7 +351,6 @@ function InlineAmountCell({
   amount: number | null;
   readOnly: boolean;
   textStyle: object;
-  constrainToSlot?: boolean;
   editing: boolean;
   onStartEdit: () => void;
   onCommit: (rawInput: string) => void;
@@ -390,7 +394,7 @@ function InlineAmountCell({
   }, [draft, editing, onRegisterCommit]);
 
   if (readOnly) {
-    return <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>;
+    return <FittedAmountText style={textStyle}>{formatCoverageAmountLabel(amount)}</FittedAmountText>;
   }
 
   if (!editing) {
@@ -399,25 +403,15 @@ function InlineAmountCell({
         accessibilityRole="button"
         accessibilityLabel="금액 수정"
         onPress={onStartEdit}
-        style={[styles.amountPressable, constrainToSlot ? styles.amountFill : null]}
+        style={styles.amountPressable}
       >
-        <Text
-          style={[textStyle, constrainToSlot ? styles.amountConstrained : null]}
-          numberOfLines={constrainToSlot ? 1 : undefined}
-          ellipsizeMode="tail"
-        >
-          {formatCoverageAmountLabel(amount)}
-        </Text>
+        <FittedAmountText style={textStyle}>{formatCoverageAmountLabel(amount)}</FittedAmountText>
       </Pressable>
     );
   }
 
   return (
-    <View
-      ref={anchorRef}
-      style={[styles.inlineAmountWrap, constrainToSlot ? styles.amountFill : null]}
-      collapsable={false}
-    >
+    <View ref={anchorRef} style={styles.inlineAmountWrap} collapsable={false}>
       <TextInput
         ref={inputRef}
         accessibilityLabel="금액 입력"
@@ -512,6 +506,19 @@ function InlineTitleCell({
   );
 }
 
+function FittedAmountText({ style, children }: { style?: object | object[]; children: string }) {
+  return (
+    <Text
+      style={[style, styles.amountFitted]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={AMOUNT_MIN_FONT_SCALE}
+    >
+      {children}
+    </Text>
+  );
+}
+
 function MarkerBlock({
   item, period, readOnly, onRemove,
 }: {
@@ -586,11 +593,11 @@ function PeriodSubtotal({ label, current, proposed }: { label: string; current: 
   const side = (amount: number) => (amount <= 0 ? '없음' : formatTotalAmountLabel(amount));
   return (
     <View style={styles.period}>
-      <Text style={styles.periodHeading}>{periodSubtotalLabelFromMarker(label)}</Text>
+        <Text style={styles.periodHeading}>{periodSubtotalLabelFromMarker(label)}</Text>
       <View style={styles.periodRow}>
-        <Text style={styles.periodValue}>{side(current)}</Text>
+        <FittedAmountText style={styles.periodValue}>{side(current)}</FittedAmountText>
         <View style={styles.periodSpine} />
-        <Text style={[styles.periodValue, styles.periodProposed]}>{side(proposed)}</Text>
+        <FittedAmountText style={[styles.periodValue, styles.periodProposed]}>{side(proposed)}</FittedAmountText>
       </View>
     </View>
   );
@@ -771,11 +778,16 @@ export const styles = StyleSheet.create({
   amountPressable: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
     minHeight: timelineLayout.amountSlotMinHeight,
   },
-  amountFill: { width: '100%', overflow: 'hidden' },
-  amountConstrained: { width: '100%' },
+  amountFitted: {
+    width: '100%',
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
   inlineAmountWrap: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -783,20 +795,21 @@ export const styles = StyleSheet.create({
     minHeight: timelineLayout.amountSlotMinHeight,
   },
   inlineAmountInput: {
-    minWidth: 56,
+    flex: 1,
+    minWidth: 0,
     maxWidth: 120,
     flexShrink: 1,
     paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: theme.border,
     borderRadius: 8,
     backgroundColor: '#fff',
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
-  inlineAmountSuffix: { fontSize: 13, fontWeight: '600', color: theme.muted },
+  inlineAmountSuffix: { flexShrink: 0, fontSize: 13, fontWeight: '600', color: theme.muted },
   amountCurrent: { textAlign: 'center', fontSize: 18, fontWeight: '700', color: theme.current },
   amountProposed: { textAlign: 'center', fontSize: 18, fontWeight: '800', color: theme.primary },
   add: {

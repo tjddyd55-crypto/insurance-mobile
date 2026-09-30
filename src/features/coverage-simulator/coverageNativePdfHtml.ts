@@ -9,6 +9,7 @@ import {
 } from './coverageAnalysis';
 import { simulatorTheme as theme } from './simulatorTheme';
 import { diseaseTypeTitle } from './templates';
+import { coverageAmountLayout, pdfCoverageAmountFontSize } from './coverageAmountFit';
 import type { CoverageScenario, CoverageScenarioItem, ScenarioItem } from './types';
 
 const DISCLAIMER = [
@@ -96,6 +97,8 @@ export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
   const date = scenario.consultationDate.slice(0, 10).split('-').join('.');
   const totals = calculateScenarioTotals(scenario);
   const subtitle = `${diseaseTypeTitle(scenario.diseaseType)} — ${scenario.title}`;
+  const amountFontSize = pdfCoverageAmountFontSize();
+  const cellPadding = coverageAmountLayout.pdfCellPadding;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -110,19 +113,21 @@ export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
     table { width: 100%; border-collapse: collapse; }
     th { text-align: center; font-size: 12px; color: ${theme.headerAxis}; padding: 8px 4px; border-bottom: 1px solid ${theme.divider}; }
     th.proposed { color: ${theme.primary}; }
-    td { vertical-align: middle; padding: 8px 4px; border-bottom: 1px solid ${theme.line}; }
+    td { vertical-align: middle; padding: 8px ${cellPadding}px; border-bottom: 1px solid ${theme.line}; }
     th, td.amount { width: 50%; }
     .coverage-head { position: relative; min-height: 24px; }
     .coverage-head .badge { position: absolute; left: 0; top: 0; display: inline-block; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
     .coverage-name { display: block; margin: 0 ${PDF_NAME_SIDE_INSET_PX}px; text-align: center; font-weight: 700; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
-    td.amount { text-align: center; font-weight: 700; }
+    td.amount { text-align: center; font-weight: 700; font-size: ${amountFontSize}px; white-space: nowrap; }
     td.amount.proposed { color: ${theme.primary}; }
     tr.period td { background: ${theme.summaryBg}; border-bottom: 1px solid ${theme.divider}; }
     .period-label { font-weight: 700; margin-bottom: 4px; }
-    .period-values { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }
+    .period-values { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; font-size: ${amountFontSize}px; }
+    .period-values span { flex: 1; text-align: center; white-space: nowrap; }
     .period-values .proposed { color: ${theme.primary}; }
     tr.marker td { text-align: center; font-weight: 900; color: ${theme.marker}; padding: 12px 4px; }
-    .totals { margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; font-weight: 800; font-size: 14px; }
+    .totals { margin-top: 16px; display: flex; justify-content: space-between; gap: 8px; font-weight: 800; font-size: ${amountFontSize}px; }
+    .totals span { white-space: nowrap; }
     .totals .proposed { color: ${theme.primary}; }
     .disclaimer { margin-top: 20px; color: ${theme.muted}; font-size: 12px; line-height: 1.5; }
     .service { margin-top: 8px; font-weight: 700; color: ${theme.text}; }

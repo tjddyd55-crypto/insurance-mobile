@@ -33,6 +33,10 @@ describe('coverage timeline axis', () => {
     expect(styles.reorderOverlay.left).toBe(0);
     expect(styles.amountSlotWithReorderInset.paddingHorizontal).toBe(styles.reorderVertical.width);
     expect(styles.amountSlotWithReorderInset.alignItems).toBe('stretch');
+    expect(styles.amountFitted.width).toBe('100%');
+    expect(styles.inlineAmountSuffix.flexShrink).toBe(0);
+    expect(styles.inlineAmountWrap.width).toBe('100%');
+    expect('overflow' in styles.amountFitted).toBe(false);
     expect('paddingHorizontal' in styles.amountColumnProposed).toBe(false);
     expect(styles.reorderVertical.flexDirection).toBe('column');
     expect(styles.eventTitle.textAlign).toBe('center');
