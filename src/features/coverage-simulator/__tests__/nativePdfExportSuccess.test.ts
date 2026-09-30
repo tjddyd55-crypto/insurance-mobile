@@ -77,8 +77,12 @@ describe('coverage pdf export with native modules', () => {
       expect.objectContaining({ html: expect.stringContaining('암 진단금') }),
     );
     expect(mockShareAsync).toHaveBeenCalledWith(
-      expect.stringMatching(/\.pdf$/),
-      expect.objectContaining({ mimeType: 'application/pdf', dialogTitle: expect.stringMatching(/홍길동/) }),
+      'file:///cache/홍길동_암 치료.pdf',
+      expect.objectContaining({
+        mimeType: 'application/pdf',
+        dialogTitle: '홍길동_암 치료.pdf',
+        UTI: 'com.adobe.pdf',
+      }),
     );
   });
 
