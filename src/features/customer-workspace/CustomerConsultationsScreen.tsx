@@ -27,7 +27,7 @@ import {
   listConsultations,
   updateConsultation,
 } from './customerWorkspaceApi';
-import { todayYmd } from './customerWorkspaceModel';
+import { consultationListDateLabel, todayYmd } from './customerWorkspaceModel';
 import type { Consultation } from './types';
 
 type ConsultationEditorState = {
@@ -70,7 +70,7 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
       <Card variant="outlined" padding="sm">
         <Stack gap="sm">
           <AppText variant="bodyStrong">
-            {row.consultationDate || row.createdAt.slice(0, 10)}
+            {consultationListDateLabel(row)}
           </AppText>
           <AppText>{row.body || '상담 내용 없음'}</AppText>
           <Inline>

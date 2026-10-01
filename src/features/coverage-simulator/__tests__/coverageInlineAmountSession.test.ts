@@ -1,6 +1,9 @@
 import {
   commitRegisteredInlineEdit,
+  inlineEditBlurGuardDeadline,
   shouldCommitInlineBeforeNextEdit,
+  shouldCommitInlineEditOnScroll,
+  shouldIgnoreInlineEditBlur,
 } from '../coverageInlineAmountSession';
 
 describe('coverageInlineAmountSession', () => {
@@ -43,5 +46,14 @@ describe('coverageInlineAmountSession', () => {
     };
     expect(commitRegisteredInlineEdit(registry)).toBe(true);
     expect(called).toBe(1);
+  });
+
+  it('keeps an inline edit open while a programmatic scroll is focusing it', () => {
+    expect(shouldCommitInlineEditOnScroll(true)).toBe(false);
+    expect(shouldCommitInlineEditOnScroll(false)).toBe(true);
+    const deadline = inlineEditBlurGuardDeadline(1_000);
+    expect(deadline).toBe(1_500);
+    expect(shouldIgnoreInlineEditBlur(deadline, 1_200)).toBe(true);
+    expect(shouldIgnoreInlineEditBlur(deadline, 1_500)).toBe(false);
   });
 });

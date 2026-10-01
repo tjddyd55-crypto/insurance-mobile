@@ -1,7 +1,7 @@
 {
   "name": "one-fc-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "private": true,
   "scripts": {
     "start": "expo start",
@@ -11,7 +11,7 @@
     "start:device": "expo start --dev-client --port 8084",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
-    "test": "jest",
+    "test": "TZ=Asia/Seoul jest",
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:preflight:release": "node scripts/release-preflight.mjs --release",
     "release:preflight:full": "node scripts/release-preflight.mjs --full",

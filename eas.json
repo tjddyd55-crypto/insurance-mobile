@@ -72,6 +72,18 @@
       "ios": {
         "simulator": false
       }
+    },
+    "production-apk": {
+      "distribution": "internal",
+      "channel": "native-qa",
+      "environment": "production",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
