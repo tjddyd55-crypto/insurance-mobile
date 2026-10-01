@@ -1,4 +1,5 @@
-import type { TodoRecord } from './types';
+import { firstLineTodoTitle } from './todoModel';
+import type { SaveTodoPayload, TodoRecord, TodoSourceType } from './types';
 
 export type TodoFormDraft = {
   description: string;
@@ -41,4 +42,27 @@ export function resolveTodoFormSession(
   nextTodoId: string,
 ): 'keep' | 'reset' {
   return boundTodoId === nextTodoId ? 'keep' : 'reset';
+}
+
+/** 할 일 추가 저장 본문. 직접 작성과 상담 출처가 같은 필드 규칙을 쓴다. */
+export function buildTodoCreatePayload(
+  form: TodoFormDraft,
+  source: { sourceType: TodoSourceType; sourceId: string | null } = {
+    sourceType: 'manual',
+    sourceId: null,
+  },
+): SaveTodoPayload {
+  const content = form.description.trim();
+  const payload: SaveTodoPayload = {
+    title: firstLineTodoTitle(content),
+    description: content,
+    dueDate: form.dueDate.trim() || null,
+    dueTime: null,
+    priority: 'normal',
+    relatedEntityType: form.relatedCustomerId ? 'customer' : null,
+    relatedEntityId: form.relatedCustomerId || null,
+    sourceType: source.sourceType,
+  };
+  if (source.sourceId) payload.sourceId = source.sourceId;
+  return payload;
 }
