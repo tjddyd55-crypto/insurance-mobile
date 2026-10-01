@@ -110,6 +110,25 @@ describe('coverageNativePdf', () => {
     expect(html).not.toContain('colspan="4"');
   });
 
+  it('prints 작성일 from the creation instant, not the UTC date slice', () => {
+    const html = buildCoverageNativePdfHtml({
+      ...baseScenario,
+      consultationDate: '2026-09-30',
+      createdAt: '2026-09-30T16:16:00Z',
+    });
+    expect(html).toContain('작성일 2026.10.01');
+    expect(html).not.toContain('작성일 2026.09.30');
+  });
+
+  it('prints an instant consultation date as the local day when createdAt is empty', () => {
+    const html = buildCoverageNativePdfHtml({
+      ...baseScenario,
+      consultationDate: '2026-09-30T16:16:00Z',
+      createdAt: '',
+    });
+    expect(html).toContain('작성일 2026.10.01');
+  });
+
   it('validates pdf byte signature', () => {
     expect(isPdfByteSignature(new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]))).toBe(true);
     expect(isPdfByteSignature(new Uint8Array([1, 2, 3]))).toBe(false);
