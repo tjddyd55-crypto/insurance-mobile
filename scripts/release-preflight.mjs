@@ -75,7 +75,7 @@ function scanSensitiveUntracked() {
 function checkVersion(appConfigSource) {
   const { appVersion, androidVersionCode, iosBuildNumber } = parseAppConfigNumbers(appConfigSource);
   const expectedName = '1.0.4';
-  const expected = 8;
+  const expected = 9;
   addCheck('version.name', appVersion === expectedName ? 'PASS' : 'BLOCKED', `versionName=${appVersion}`);
   if (releaseMode) {
     addCheck(

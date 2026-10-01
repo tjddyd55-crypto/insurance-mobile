@@ -8,7 +8,7 @@ import {
 describe('releasePreflightExpectations', () => {
   it('defines the 1.0.4 store build contract', () => {
     expect(RELEASE_VERSION_NAME).toBe('1.0.4');
-    expect(RELEASE_STORE_BUILD_NUMBER).toBe(8);
+    expect(RELEASE_STORE_BUILD_NUMBER).toBe(9);
   });
 
   it('keeps production and development identities isolated', () => {
