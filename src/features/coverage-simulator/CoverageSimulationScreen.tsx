@@ -109,6 +109,9 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const [form, setForm] = useState<FormState>(null);
   const [activeInlineEdit, setActiveInlineEdit] = useState<CoverageActiveInlineEdit>(null);
   const inlineEditCommitRef = useRef<(() => void) | null>(null);
+  const scenarioRef = useRef<CoverageScenario | null>(null);
+  const persistChainRef = useRef(Promise.resolve());
+  const persistRevisionRef = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
   const scrollYOffsetRef = useRef(0);
   const keyboardInsetRef = useRef(0);
@@ -175,10 +178,12 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     },
   });
 
-  const commitActiveInlineEdit = useCallback(() => {
-    if (!activeInlineEdit) return;
-    commitRegisteredInlineEdit(inlineEditCommitRef);
-    Keyboard.dismiss();
+  const commitActiveInlineEdit = useCallback((): CoverageScenario | null => {
+    if (activeInlineEdit) {
+      commitRegisteredInlineEdit(inlineEditCommitRef);
+      Keyboard.dismiss();
+    }
+    return scenarioRef.current;
   }, [activeInlineEdit]);
 
   const markProgrammaticScroll = useCallback(() => {
@@ -205,16 +210,36 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   }, [commitActiveInlineEdit]);
 
   const scenario = query.data;
-  const persist = async (next: CoverageScenario, message = '') => {
-    setNotice('');
-    try {
-      await saveConsultation(consultationStorage, userId, next);
-      await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
-      if (message) showToast(message);
-    } catch {
-      setNotice('보장 분석을 저장하지 못했습니다.');
+
+  useEffect(() => {
+    const incoming = query.data?.id === scenarioId ? query.data : null;
+    if (!incoming) return;
+    const local = scenarioRef.current;
+    if (!local || local.id !== incoming.id || incoming.updatedAt > local.updatedAt) {
+      scenarioRef.current = incoming;
     }
-  };
+  }, [query.data, scenarioId]);
+
+  const persist = useCallback((next: CoverageScenario, message = '') => {
+    const revision = ++persistRevisionRef.current;
+    scenarioRef.current = next;
+    queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], next);
+    const task = persistChainRef.current.then(async () => {
+      setNotice('');
+      try {
+        await saveConsultation(consultationStorage, userId, next);
+        await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
+        if (persistRevisionRef.current !== revision && scenarioRef.current) {
+          queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], scenarioRef.current);
+        }
+        if (message) showToast(message);
+      } catch {
+        setNotice('보장 분석을 저장하지 못했습니다.');
+      }
+    });
+    persistChainRef.current = task.then(() => undefined, () => undefined);
+    return task;
+  }, [queryClient, scenarioId, showToast, userId]);
 
   if (query.isLoading) {
     return (
@@ -233,6 +258,8 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     );
   }
 
+  const scenarioForWrite = (): CoverageScenario => scenarioRef.current ?? scenario;
+
   const deleteConfirm = (
     <CoverageItemDeleteDialog
       scenario={scenario}
@@ -242,7 +269,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         const id = deleteId;
         setDeleteId(null);
         setForm(null);
-        if (id) void persist(removeScenarioItem(scenario, id));
+        if (id) void persist(removeScenarioItem(scenarioForWrite(), id));
       }}
     />
   );
@@ -253,11 +280,11 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         mode="add"
         onClose={() => setForm(null)}
         onSelectCoverage={(input) => {
-          void persist(insertCoverageItem(scenario, form.afterOrder, input));
+          void persist(insertCoverageItem(scenarioForWrite(), form.afterOrder, input));
           setForm(null);
         }}
         onSelectTimeMarker={(label) => {
-          void persist(insertTimeMarker(scenario, form.afterOrder, label));
+          void persist(insertTimeMarker(scenarioForWrite(), form.afterOrder, label));
           setForm(null);
         }}
       />
@@ -272,7 +299,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           item={form.item}
           onClose={() => setForm(null)}
           onSave={(patch) => {
-            void persist(updateCoverageItem(scenario, form.item.id, patch), '저장되었습니다.');
+            void persist(updateCoverageItem(scenarioForWrite(), form.item.id, patch), '저장되었습니다.');
             setForm(null);
           }}
           onDelete={() => setDeleteId(form.item.id)}
@@ -285,8 +312,12 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const items = sortItems(scenario.items);
   const totals = calculateScenarioTotals(scenario);
   const openEdit = (item: CoverageScenarioItem) => {
+    const fresh = scenarioForWrite().items.find((entry) => entry.id === item.id);
     setActiveInlineEdit(null);
-    setForm({ type: 'edit', item });
+    setForm({
+      type: 'edit',
+      item: fresh?.type === 'coverage' ? fresh : item,
+    });
   };
 
   const runWithInlineCommit = (action: () => void) => {
@@ -297,19 +328,19 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const editingScenarioTemplate = isScenarioRecord(scenario);
 
   const saveFromHeader = async () => {
-    commitActiveInlineEdit();
+    const committed = commitActiveInlineEdit() ?? scenario;
     setSavingCustomer(true);
     setNotice('');
     try {
       if (editingScenarioTemplate) {
-        await persist(scenario, '저장되었습니다.');
+        await persist(committed, '저장되었습니다.');
       } else {
         const linked = resolveHeaderSaveCustomer({
           explicit: customerChanged,
           context: { id: customer.id, name: customer.name },
-          scenario,
+          scenario: committed,
         });
-        await persist(assignCustomer(scenario, linked), '저장되었습니다.');
+        await persist(assignCustomer(committed, linked), '저장되었습니다.');
       }
     } finally {
       setSavingCustomer(false);
@@ -400,15 +431,15 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                       }}
                       onInlineAmountCommit={(itemId, field, rawInput) => {
                         const patch = coverageInlineAmountPatch(field, rawInput);
-                        void persist(updateCoverageItem(scenario, itemId, patch));
+                        void persist(updateCoverageItem(scenarioForWrite(), itemId, patch));
                         setActiveInlineEdit(null);
                       }}
                       onInlineTitleCommit={(itemId, raw) => {
-                        void persist(updateCoverageItem(scenario, itemId, { label: raw }));
+                        void persist(updateCoverageItem(scenarioForWrite(), itemId, { label: raw }));
                         setActiveInlineEdit(null);
                       }}
                       onMove={(itemId, direction) => {
-                        void persist(moveScenarioItem(scenario, itemId, direction));
+                        void persist(moveScenarioItem(scenarioForWrite(), itemId, direction));
                       }}
                       onRemove={(itemId) => {
                         setDeleteId(itemId);
@@ -458,7 +489,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => {
           setConfirmReset(false);
-          void persist(resetScenarioItems(scenario));
+          void persist(resetScenarioItems(scenarioForWrite()));
         }}
       />
       {deleteConfirm}

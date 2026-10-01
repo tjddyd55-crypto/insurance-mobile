@@ -64,13 +64,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const googleServicesFile = resolveGoogleServicesFile(environment);
   const googleServiceInfoPlist = resolveGoogleServiceInfoPlist(environment);
 
-  // Play Store listing com.onefc.app stays 1.0.4 and moves to versionCode 8.
+  // Play Store listing com.onefc.app stays 1.0.4 and moves to versionCode 9.
   // Previous store candidate was 1.0.4 (versionCode 7). DEV stays on its own low codes.
   // eas.json appVersionSource is local, so these literals are the store numbers.
   const isProduction = environment === 'production';
   const appVersion = isProduction ? '1.0.4' : '1.0.0';
-  const androidVersionCode = isProduction ? 8 : 1;
-  const iosBuildNumber = isProduction ? '8' : '1';
+  const androidVersionCode = isProduction ? 9 : 1;
+  const iosBuildNumber = isProduction ? '9' : '1';
   const projectId =
     process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 
