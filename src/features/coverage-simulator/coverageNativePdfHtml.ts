@@ -2,6 +2,7 @@ import {
   calculateScenarioPeriodTotals,
   calculateScenarioTotals,
   categoryLabel,
+  formatConsultationListDate,
   formatCoverageAmountLabel,
   formatTotalAmountLabel,
   periodSubtotalLabelFromMarker,
@@ -93,7 +94,7 @@ function renderItems(items: ScenarioItem[]): string {
 
 export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
   const customerName = scenario.customerNameSnapshot ?? scenario.customerName ?? '';
-  const date = scenario.consultationDate.slice(0, 10).split('-').join('.');
+  const date = formatConsultationListDate(scenario.consultationDate);
   const totals = calculateScenarioTotals(scenario);
   const subtitle = `${diseaseTypeTitle(scenario.diseaseType)} — ${scenario.title}`;
 

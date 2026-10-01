@@ -15,7 +15,12 @@ import { CoveragePdfPreviewZoomSurface } from './CoveragePdfPreviewZoomSurface';
 import { CoverageTimeline } from './CoverageTimeline';
 import { getConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
-import { calculateScenarioPeriodTotals, calculateScenarioTotals, sortItems } from './coverageAnalysis';
+import {
+  calculateScenarioPeriodTotals,
+  calculateScenarioTotals,
+  formatConsultationListDate,
+  sortItems,
+} from './coverageAnalysis';
 import { shareNativeCoveragePdf } from './nativeCoveragePdf';
 import { simulatorTheme as theme } from './simulatorTheme';
 import { diseaseTypeTitle } from './templates';
@@ -56,7 +61,7 @@ export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string })
   }
 
   const customerName = scenario.customerNameSnapshot ?? scenario.customerName;
-  const date = scenario.consultationDate.slice(0, 10).split('-').join('.');
+  const date = formatConsultationListDate(scenario.consultationDate);
 
   const handleSavePdf = async () => {
     setNotice('');

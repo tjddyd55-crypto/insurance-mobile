@@ -1,4 +1,5 @@
 import { ApiError } from '../../api/client';
+import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
 import type {
   ListTodosParams,
   TodoPriority,
@@ -146,12 +147,14 @@ export function todoStatusLabel(status: TodoStatus): string {
 
 export function formatTodoDate(value: string | null): string {
   if (!value) return '없음';
-  const ymd = value.slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return value;
-  const date = new Date(`${ymd}T12:00:00+09:00`);
+  const ymd = formatDeviceLocalYmd(value);
+  if (!ymd) return value;
+  const date = new Date(`${ymd}T12:00:00`);
   if (Number.isNaN(date.getTime())) return ymd;
-  const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short', timeZone: 'Asia/Seoul' }).format(date);
-  return `${Number(ymd.slice(5, 7))}월 ${Number(ymd.slice(8, 10))}일(${weekday})`;
+  const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short' }).format(date);
+  const month = Number(ymd.slice(5, 7));
+  const day = Number(ymd.slice(8, 10));
+  return `${month}월 ${day}일(${weekday})`;
 }
 
 export function formatSeoulYmd(date = new Date()): string {

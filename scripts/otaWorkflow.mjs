@@ -1,10 +1,10 @@
 /**
  * Manual production OTA helpers.
- * Runtime must stay 1.0.3 so the update matches the store binary.
+ * Runtime must stay 1.0.4 so the update matches the store binary.
  */
 import { pathToFileURL } from 'node:url';
 
-const RUNTIME = '1.0.3';
+const RUNTIME = '1.0.4';
 const GROUP_ID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 export function resolveProductionRuntime(config) {

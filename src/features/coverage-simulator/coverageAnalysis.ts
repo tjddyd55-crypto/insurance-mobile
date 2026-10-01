@@ -1,3 +1,4 @@
+import { formatDeviceLocalDateDots } from '../../utils/deviceLocalDate';
 import type { CoverageScenario, CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
 
 const MAN_WON = 10_000;
@@ -41,10 +42,8 @@ export function formatTotalAmountLabel(amount: number): string {
 }
 
 export function formatConsultationListDate(iso: string | undefined | null): string {
-  if (!iso) return '—';
-  const [year, month, day] = iso.slice(0, 10).split('-');
-  if (!year || !month || !day) return '—';
-  return `${year}.${month}.${day}`;
+  if (!iso?.trim()) return '—';
+  return formatDeviceLocalDateDots(iso, '—');
 }
 
 export function categoryLabel(category: ScenarioItemCategory): string {

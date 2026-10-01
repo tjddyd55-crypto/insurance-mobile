@@ -1,4 +1,5 @@
 import type { BadgeTone } from '../../design-system';
+import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
 import { formatTodoDate, todoSourceLabel, todoStatusLabel } from './todoModel';
 import type { TodoRecord, TodoStatus } from './types';
 
@@ -10,12 +11,16 @@ export function todoStatusTone(status: TodoStatus): BadgeTone {
 
 export function formatTodoCreatedDate(value: string | null): string {
   if (!value) return '—';
-  const ymd = value.slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return value;
-  const date = new Date(`${ymd}T12:00:00+09:00`);
-  if (Number.isNaN(date.getTime())) return ymd;
-  const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short', timeZone: 'Asia/Seoul' }).format(date);
-  return `${ymd} (${weekday})`;
+  const ymd = formatDeviceLocalYmd(value);
+  if (!ymd) return value;
+  const weekday = weekdayLabel(ymd);
+  return weekday ? `${ymd} (${weekday})` : ymd;
+}
+
+function weekdayLabel(ymd: string): string | null {
+  const date = new Date(`${ymd}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('ko-KR', { weekday: 'short' }).format(date);
 }
 
 export function formatTodoDueLine(todo: Pick<TodoRecord, 'dueDate' | 'dueTime' | 'status'>): string {
