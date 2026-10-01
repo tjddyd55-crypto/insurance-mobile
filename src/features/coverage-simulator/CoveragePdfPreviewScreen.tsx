@@ -18,7 +18,7 @@ import { consultationStorage } from './consultationStorage';
 import {
   calculateScenarioPeriodTotals,
   calculateScenarioTotals,
-  formatConsultationListDate,
+  formatCoverageWrittenDate,
   sortItems,
 } from './coverageAnalysis';
 import { shareNativeCoveragePdf } from './nativeCoveragePdf';
@@ -61,7 +61,7 @@ export function CoveragePdfPreviewScreen({ scenarioId }: { scenarioId: string })
   }
 
   const customerName = scenario.customerNameSnapshot ?? scenario.customerName;
-  const date = formatConsultationListDate(scenario.consultationDate);
+  const date = formatCoverageWrittenDate(scenario);
 
   const handleSavePdf = async () => {
     setNotice('');
