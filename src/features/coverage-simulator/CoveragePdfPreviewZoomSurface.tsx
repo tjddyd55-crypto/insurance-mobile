@@ -120,12 +120,14 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
   const pinch = Gesture.Pinch()
     .manualActivation(true)
     .blocksExternalGesture(scrollGesture)
+    // eslint-disable-next-line react-hooks/refs -- 핀치가 발화될 때만 scrollRef를 읽는다
     .onTouchesDown((event, state) => {
       if (event.numberOfTouches >= 2) {
         runOnJS(disableScrollForPinch)();
         state.activate();
       }
     })
+    // eslint-disable-next-line react-hooks/refs -- 핀치가 발화될 때만 scrollRef를 읽는다
     .onTouchesMove((event, state) => {
       if (event.numberOfTouches >= 2) {
         runOnJS(disableScrollForPinch)();
@@ -152,6 +154,7 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
       savedScale.value = scale.value;
       applyClampedTranslation(translateX.value, translateY.value, true);
     })
+    // eslint-disable-next-line react-hooks/refs -- 핀치가 끝날 때만 scrollRef를 읽는다
     .onFinalize(() => {
       runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
     });
