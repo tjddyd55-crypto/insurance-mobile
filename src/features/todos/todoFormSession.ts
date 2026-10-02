@@ -34,6 +34,18 @@ export function todoFormDraftFromRecord(
 }
 
 /**
+ * 수정 저장 전에 열었을 때 초안과 저장 직전 초안을 저장 규칙대로 비교한다.
+ * 고객 이름은 표시용이라 비교하지 않는다. 바뀐 값이 없으면 수정 요청을 보내지 않는다.
+ */
+export function isTodoEditDraftChanged(initial: TodoFormDraft, current: TodoFormDraft): boolean {
+  return (
+    initial.description.trim() !== current.description.trim() ||
+    initial.dueDate.trim() !== current.dueDate.trim() ||
+    initial.relatedCustomerId !== current.relatedCustomerId
+  );
+}
+
+/**
  * 같은 할 일을 다시 그리는 경우에는 작성 중인 초안을 유지한다.
  * 다른 할 일이 선택되면 이전 초안을 버려야 한다.
  */

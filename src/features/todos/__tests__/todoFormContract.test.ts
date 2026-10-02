@@ -12,4 +12,15 @@ describe('todoFormContract', () => {
     expect(source).not.toMatch(/본문에 오늘·내일·모레/);
     expect(source).not.toMatch(/label="제안"/);
   });
+
+  it('skips updateTodo when the edit draft has no saved-field change', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'TodoFormScreen.tsx'),
+      'utf8',
+    );
+    const guard = source.indexOf('isTodoEditDraftChanged(JSON.parse(initialSnapshot)');
+    const update = source.indexOf('return updateTodo(token');
+    expect(guard).toBeGreaterThan(-1);
+    expect(update).toBeGreaterThan(guard);
+  });
 });

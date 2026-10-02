@@ -37,6 +37,7 @@ import {
   buildTodoCreatePayload,
   cloneTodoFormDraft,
   EMPTY_TODO_FORM_DRAFT,
+  isTodoEditDraftChanged,
   resolveTodoFormSession,
   todoFormDraftFromRecord,
   type TodoFormDraft,
@@ -134,6 +135,10 @@ function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { cons
     mutationFn: () => {
       if (mode === 'create') {
         return createTodo(token, buildTodoCreatePayload(form, createSource));
+      }
+      if (!isTodoEditDraftChanged(JSON.parse(initialSnapshot) as TodoFormDraft, form)) {
+        // 바뀐 값 없음: 수정 요청을 보내지 않아 수정 시각·목록 순서를 그대로 둔다.
+        return Promise.resolve(null);
       }
       const content = form.description.trim();
       return updateTodo(token, todoId ?? '', {
