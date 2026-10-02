@@ -1,4 +1,5 @@
-import type { TodoRecord } from './types';
+import { firstLineTodoTitle } from './todoModel';
+import type { SaveTodoPayload, TodoRecord, TodoSourceType } from './types';
 
 export type TodoFormDraft = {
   description: string;
@@ -33,6 +34,18 @@ export function todoFormDraftFromRecord(
 }
 
 /**
+ * 수정 저장 전에 열었을 때 초안과 저장 직전 초안을 저장 규칙대로 비교한다.
+ * 고객 이름은 표시용이라 비교하지 않는다. 바뀐 값이 없으면 수정 요청을 보내지 않는다.
+ */
+export function isTodoEditDraftChanged(initial: TodoFormDraft, current: TodoFormDraft): boolean {
+  return (
+    initial.description.trim() !== current.description.trim() ||
+    initial.dueDate.trim() !== current.dueDate.trim() ||
+    initial.relatedCustomerId !== current.relatedCustomerId
+  );
+}
+
+/**
  * 같은 할 일을 다시 그리는 경우에는 작성 중인 초안을 유지한다.
  * 다른 할 일이 선택되면 이전 초안을 버려야 한다.
  */
@@ -41,4 +54,27 @@ export function resolveTodoFormSession(
   nextTodoId: string,
 ): 'keep' | 'reset' {
   return boundTodoId === nextTodoId ? 'keep' : 'reset';
+}
+
+/** 할 일 추가 저장 본문. 직접 작성과 상담 출처가 같은 필드 규칙을 쓴다. */
+export function buildTodoCreatePayload(
+  form: TodoFormDraft,
+  source: { sourceType: TodoSourceType; sourceId: string | null } = {
+    sourceType: 'manual',
+    sourceId: null,
+  },
+): SaveTodoPayload {
+  const content = form.description.trim();
+  const payload: SaveTodoPayload = {
+    title: firstLineTodoTitle(content),
+    description: content,
+    dueDate: form.dueDate.trim() || null,
+    dueTime: null,
+    priority: 'normal',
+    relatedEntityType: form.relatedCustomerId ? 'customer' : null,
+    relatedEntityId: form.relatedCustomerId || null,
+    sourceType: source.sourceType,
+  };
+  if (source.sourceId) payload.sourceId = source.sourceId;
+  return payload;
 }

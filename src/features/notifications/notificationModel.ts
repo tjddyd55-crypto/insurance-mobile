@@ -1,4 +1,5 @@
 import { ApiError } from '../../api/client';
+import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
 import type {
   NotificationListResult,
   NotificationRecord,
@@ -137,8 +138,7 @@ export function notificationTypeLabel(type: NotificationType): string {
 }
 
 function dateOnly(value: string | null): string | null {
-  const result = value?.slice(0, 10) ?? '';
-  return /^\d{4}-\d{2}-\d{2}$/.test(result) ? result : null;
+  return formatDeviceLocalYmd(value);
 }
 
 export function notificationReferenceDate(

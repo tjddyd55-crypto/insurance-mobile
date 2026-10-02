@@ -1,4 +1,5 @@
 import type { BadgeTone } from '../../design-system';
+import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
 import { taGenderLabel } from './taCallModel';
 import type { TaCallDay, TaCallStatus } from './types';
 
@@ -13,11 +14,7 @@ export function taDayStatusTone(day: Pick<TaCallDay, 'isMissionCompleted' | 'isT
 }
 
 export function formatTaBirthDate(value: string | null): string {
-  const raw = value?.trim() ?? '';
-  if (!raw) return '-';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
-  return '-';
+  return formatDeviceLocalYmd(value) ?? '-';
 }
 
 export function formatTaWeekRangeCompactLabel(start: string, end: string): string {

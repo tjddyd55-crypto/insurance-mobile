@@ -64,12 +64,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const googleServicesFile = resolveGoogleServicesFile(environment);
   const googleServiceInfoPlist = resolveGoogleServiceInfoPlist(environment);
 
-  // Play Store listing com.onefc.app is currently 1.0.2 (versionCode 4).
-  // Production updates must continue that sequence; DEV stays on its own low codes.
+  // Play Store listing com.onefc.app stays 1.0.4 and moves to versionCode 9.
+  // Previous store candidate was 1.0.4 (versionCode 7). DEV stays on its own low codes.
+  // eas.json appVersionSource is local, so these literals are the store numbers.
   const isProduction = environment === 'production';
-  const appVersion = isProduction ? '1.0.3' : '1.0.0';
-  const androidVersionCode = isProduction ? 6 : 1;
-  const iosBuildNumber = isProduction ? '6' : '1';
+  const appVersion = isProduction ? '1.0.4' : '1.0.0';
+  const androidVersionCode = isProduction ? 9 : 1;
+  const iosBuildNumber = isProduction ? '9' : '1';
   const projectId =
     process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 
@@ -132,8 +133,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-router',
       '@react-native-community/datetimepicker',
       'expo-secure-store',
+      // expo-print ships no app.plugin.js. Listing it makes Expo load the runtime
+      // entry (and expo-modules-core TypeScript), which fails `expo config` /
+      // `eas build` on Node 24 with ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING.
+      // The Android module is still autolinked from the package dependency.
       'expo-sharing',
-      'expo-print',
       [
         'expo-notifications',
         {

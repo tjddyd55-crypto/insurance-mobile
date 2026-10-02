@@ -20,7 +20,7 @@ Publishing an OTA update from this Native repo to the same projectId + runtimeVe
 1. **Do not embed** legacy `projectId` in Native app config.
 2. **Do not** run `eas init` against the legacy project without explicit approval.
 3. Native `runtimeVersion` uses `appVersion` policy (not the string `"production"`).
-4. Native channels: `native-development`, `native-preview`, `native-production-staging`, `native-production`.
+4. Native channels: `native-development`, `native-preview`, `native-production-staging`, `native-production`, `native-qa` (`production-apk` 전용. production OTA 대상 아님).
 5. M1 initially had `updates.enabled: false`; OTA is now enabled per [`native-ota.md`](./native-ota.md).
 6. **Production OTA publish** (`native-production`) requires explicit approval after staging verification.
 

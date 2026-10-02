@@ -13,20 +13,22 @@ function run(args: string[], env: NodeJS.ProcessEnv = {}) {
 }
 
 describe('manual OTA workflow script', () => {
-  it('prints runtime 1.0.3 for the production appVersion policy and rejects anything else', () => {
+  it('prints runtime 1.0.4 for the production appVersion policy and rejects anything else', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ota-runtime-'));
     const file = join(dir, 'config.json');
-    writeFileSync(file, JSON.stringify({ version: '1.0.3', runtimeVersion: { policy: 'appVersion' } }));
+    writeFileSync(file, JSON.stringify({ version: '1.0.4', runtimeVersion: { policy: 'appVersion' } }));
     const ok = run(['assert-runtime', file]);
-    expect(ok).toContain('version=1.0.3');
-    expect(ok).toContain('runtimeVersion=1.0.3');
+    expect(ok).toContain('version=1.0.4');
+    expect(ok).toContain('runtimeVersion=1.0.4');
 
-    writeFileSync(file, JSON.stringify({ version: '1.0.3', runtimeVersion: '1.0.3' }));
-    expect(run(['assert-runtime', file])).toContain('runtimeVersion=1.0.3');
+    writeFileSync(file, JSON.stringify({ version: '1.0.4', runtimeVersion: '1.0.4' }));
+    expect(run(['assert-runtime', file])).toContain('runtimeVersion=1.0.4');
 
     writeFileSync(file, JSON.stringify({ version: '1.0.0', runtimeVersion: { policy: 'appVersion' } }));
     expect(() => run(['assert-runtime', file])).toThrow();
-    writeFileSync(file, JSON.stringify({ version: '1.0.3', runtimeVersion: 'production' }));
+    writeFileSync(file, JSON.stringify({ version: '1.0.3', runtimeVersion: { policy: 'appVersion' } }));
+    expect(() => run(['assert-runtime', file])).toThrow();
+    writeFileSync(file, JSON.stringify({ version: '1.0.4', runtimeVersion: 'production' }));
     expect(() => run(['assert-runtime', file])).toThrow();
   });
 
@@ -37,7 +39,7 @@ describe('manual OTA workflow script', () => {
     writeFileSync(output, [
       '✔ Published!',
       'Branch             native-production',
-      'Runtime version    1.0.3',
+      'Runtime version    1.0.4',
       'Update group ID    123e4567-e89b-12d3-a456-426614174000',
     ].join('\n'));
     const printed = run(['group-id', output], {

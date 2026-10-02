@@ -8,6 +8,7 @@ export function scrollInlineAmountIntoView(
   anchorRef: RefObject<View | null>,
   keyboardInset: number,
   scrollYOffset: number,
+  onProgrammaticScroll?: () => void,
 ): void {
   const scroll = scrollRef.current;
   const anchor = anchorRef.current;
@@ -21,6 +22,7 @@ export function scrollInlineAmountIntoView(
       const padding = 32;
       if (fieldBottom + padding <= visibleBottom) return;
       const delta = fieldBottom + padding - visibleBottom;
+      onProgrammaticScroll?.();
       scroll.scrollTo({ y: Math.max(0, scrollYOffset + delta), animated: true });
     });
   };

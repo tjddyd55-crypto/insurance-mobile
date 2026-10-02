@@ -25,3 +25,19 @@ export function commitRegisteredInlineEdit(registry: { current: (() => void) | n
   registry.current();
   return true;
 }
+
+/** 금액 칸을 키보드 위로 올리는 자동 스크롤이 끝난 뒤에도 포커스를 유지한다. */
+export const INLINE_EDIT_FOCUS_GUARD_MS = 500;
+
+export function inlineEditBlurGuardDeadline(now: number): number {
+  return now + INLINE_EDIT_FOCUS_GUARD_MS;
+}
+
+export function shouldIgnoreInlineEditBlur(ignoreUntil: number, now: number): boolean {
+  return now < ignoreUntil;
+}
+
+/** 사용자가 끈 스크롤만 편집을 닫는다. scrollTo 로 시작한 스크롤은 닫지 않는다. */
+export function shouldCommitInlineEditOnScroll(programmaticScroll: boolean): boolean {
+  return !programmaticScroll;
+}
