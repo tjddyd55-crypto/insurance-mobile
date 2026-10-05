@@ -15,14 +15,15 @@ describe('newsletterImageLayout', () => {
     expect(source).toMatch(/export function resolveNewsletterDetailImageAspectRatio/);
   });
 
-  it('uses 3:4 cover thumbnails only for list cards', () => {
+  it('keeps list cards on a fixed 3:4 frame with contain so flyers stay fully visible', () => {
     const screen = readSource('NewslettersScreen.tsx');
     expect(screen).toMatch(/NEWSLETTER_IMAGE_ASPECT_RATIO/);
     expect(screen).toMatch(/newsletterImageFrame/);
     expect(screen).toMatch(
       /newsletterImageFrame:\s*\{[^}]*aspectRatio:\s*NEWSLETTER_IMAGE_ASPECT_RATIO/,
     );
-    expect(screen).toMatch(/resizeMode="cover"/);
+    expect(screen).toMatch(/resizeMode="contain"/);
+    expect(screen).not.toMatch(/resizeMode="cover"/);
     expect(screen).toMatch(/NewsletterDetailGalleryImage/);
     expect(screen).not.toMatch(/NewsletterIntrinsicImage/);
     expect(screen).not.toMatch(/detailGalleryFrame/);
