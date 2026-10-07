@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { BackHandler, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -41,6 +41,7 @@ import {
   moveRows,
   pageSelectionForSave,
 } from './personalBinderModel';
+import { forgetBinderPageImageLinksForBinder } from './binderPageImage';
 import { personalBinderQueryKeys } from './queryKeys';
 import { usePageImageLink } from './usePageImageLink';
 import { BinderPageSelectionModal } from './BinderPageSelectionModal';
@@ -78,15 +79,54 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
   const [materialSectionId, setMaterialSectionId] = useState<string | null>(null);
   const [pageTarget, setPageTarget] = useState<PageTarget | null>(null);
   const [deleteSection, setDeleteSection] = useState<PersonalBinderSection | null>(null);
+  const [savedMeta, setSavedMeta] = useState({ title: '', description: '' });
+  const [metaInitialized, setMetaInitialized] = useState(false);
+  const [unsavedOpen, setUnsavedOpen] = useState(false);
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
 
   const binder = query.data;
   const titleValue = title ?? binder?.title ?? '';
   const descriptionValue = description ?? binder?.description ?? '';
+  const dirty =
+    metaInitialized &&
+    (titleValue !== savedMeta.title || descriptionValue !== savedMeta.description);
 
-  const refresh = async () => {
+  useEffect(() => {
+    if (!binder || metaInitialized) return;
+    setSavedMeta({
+      title: binder.title ?? '',
+      description: binder.description ?? '',
+    });
+    setMetaInitialized(true);
+  }, [binder, metaInitialized]);
+
+  const refreshBinderCaches = async () => {
+    forgetBinderPageImageLinksForBinder(binderId);
     await queryClient.invalidateQueries({ queryKey: personalBinderQueryKeys.detail(binderId) });
+    await queryClient.invalidateQueries({ queryKey: personalBinderQueryKeys.pages(binderId) });
     await queryClient.invalidateQueries({ queryKey: personalBinderQueryKeys.all });
   };
+
+  const refresh = async () => {
+    await refreshBinderCaches();
+  };
+
+  const requestLeave = (action: () => void) => {
+    if (dirty && !busy) {
+      setPendingLeave(() => action);
+      setUnsavedOpen(true);
+      return;
+    }
+    action();
+  };
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      requestLeave(() => router.back());
+      return true;
+    });
+    return () => subscription.remove();
+  });
 
   if (query.isLoading) {
     return <View style={styles.root}><AppHeader title="바인더 편집" showBack showMenu={false} /><LoadingState message="바인더를 불러오는 중…" /></View>;
@@ -104,7 +144,12 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
 
   return (
     <View style={styles.root}>
-      <AppHeader title="바인더 편집" showBack showMenu={false} />
+      <AppHeader
+        title="바인더 편집"
+        showBack
+        showMenu={false}
+        onBackPress={() => requestLeave(() => router.back())}
+      />
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.content}>
           <Card>
@@ -113,7 +158,12 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
               <TextField accessibilityLabel="바인더 설명" label="바인더 설명" placeholder="바인더 설명" value={descriptionValue} onChangeText={setDescription} />
               <Inline gap="sm" wrap>
                 <Button label="저장" size="sm" loading={busy} onPress={() => void saveMeta()} />
-                <Button label="상담 시작" size="sm" variant="secondary" onPress={() => router.push(`/customer-consulting/personal-binders/${binder.id}/view` as never)} />
+                <Button
+                  label="상담 시작"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => void startConsultation()}
+                />
                 <Button label="전체 PDF" size="sm" variant="action" loading={exporting} onPress={() => void exportPdf()} />
               </Inline>
             </Stack>
@@ -166,28 +216,87 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
       />
       <ConfirmDialog
         open={deleteSection != null}
-        title="섹션을 삭제할까요?"
-        message={`${deleteSection?.title ?? ''} 안의 자료 연결도 함께 삭제됩니다. 원본 PDF는 유지됩니다.`}
+        title="섹션을 삭제하시겠습니까?"
+        message="이 섹션에 포함된 자료도 바인더에서 함께 제거됩니다. 자료 보관함의 원본 파일은 삭제되지 않습니다."
         confirmLabel="삭제"
         tone="danger"
         busy={busy}
         onCancel={() => setDeleteSection(null)}
         onConfirm={() => void confirmRemoveSection()}
       />
+      <ModalShell
+        open={unsavedOpen}
+        title="변경사항을 저장하시겠습니까?"
+        presentation="dialog"
+        busy={busy}
+        onRequestClose={() => {
+          if (!busy) setUnsavedOpen(false);
+        }}
+        footer={
+          <Inline gap="sm" wrap>
+            <Button
+              label="취소"
+              variant="secondary"
+              disabled={busy}
+              onPress={() => setUnsavedOpen(false)}
+              style={styles.grow}
+            />
+            <Button
+              label="나가기"
+              variant="danger"
+              disabled={busy}
+              onPress={() => {
+                setUnsavedOpen(false);
+                const action = pendingLeave;
+                setPendingLeave(null);
+                action?.();
+              }}
+              style={styles.grow}
+            />
+            <Button
+              label="저장"
+              loading={busy}
+              onPress={() => void saveMetaAndLeave()}
+              style={styles.grow}
+            />
+          </Inline>
+        }
+      >
+        <AppText color="textSecondary">저장하지 않은 변경사항이 있습니다.</AppText>
+      </ModalShell>
     </View>
   );
 
-  async function saveMeta() {
-    if (!titleValue.trim() || busy) return;
+  async function startConsultation() {
+    await refreshBinderCaches();
+    router.push(`/customer-consulting/personal-binders/${binderId}/view` as never);
+  }
+
+  async function saveMetaAndLeave() {
+    const leave = pendingLeave;
+    setPendingLeave(null);
+    const saved = await saveMeta();
+    if (!saved) return;
+    setUnsavedOpen(false);
+    leave?.();
+  }
+
+  async function saveMeta(): Promise<boolean> {
+    if (!titleValue.trim() || busy) return false;
     setBusy(true);
     setNotice('');
     try {
-      await updatePersonalBinder(token, binderId, { title: titleValue.trim(), description: descriptionValue.trim() });
+      const nextTitle = titleValue.trim();
+      const nextDescription = descriptionValue.trim();
+      await updatePersonalBinder(token, binderId, { title: nextTitle, description: nextDescription });
       setTitle(null);
       setDescription(null);
+      setSavedMeta({ title: nextTitle, description: nextDescription });
       await refresh();
+      return true;
     } catch (error) {
       setNotice(binderActionMessage(error, '바인더를 저장하지 못했습니다.'));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -487,5 +596,6 @@ function createStyles(theme: AppTheme) {
       paddingBottom: theme.layout.contentBottomInset,
       gap: theme.spacing.md,
     },
+    grow: { flex: 1, minWidth: 96 },
   });
 }

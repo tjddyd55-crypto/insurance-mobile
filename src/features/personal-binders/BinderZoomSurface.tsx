@@ -127,6 +127,15 @@ export function BinderZoomSurface({
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, []);
 
+  const scrollToOffset = useCallback(
+    (y: number) => {
+      const nextY = Math.max(0, y);
+      scrollRef.current?.scrollTo({ y: nextY, animated: false });
+      scrollY.value = nextY;
+    },
+    [scrollY],
+  );
+
   const disableScrollForPinch = useCallback(() => {
     scrollRef.current?.setNativeProps({ scrollEnabled: false });
     setScrollEnabled(false);
@@ -219,12 +228,14 @@ export function BinderZoomSurface({
     .onEnd(() => {
       savedScale.value = scale.value;
       if (scale.value <= fitScale.value + ZOOM_EPSILON) {
+        const restoreScroll = scrollY.value + translateY.value;
         scale.value = withTiming(fitScale.value);
         savedScale.value = fitScale.value;
         translateX.value = withTiming(0);
         translateY.value = withTiming(0);
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
+        runOnJS(scrollToOffset)(restoreScroll);
         runOnJS(syncScrollEnabled)(fitScale.value, fitScale.value);
         return;
       }

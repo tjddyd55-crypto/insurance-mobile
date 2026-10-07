@@ -67,6 +67,7 @@ export function BinderListScreen() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PersonalBinderSummary | PersonalBinderMaterial | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
 
   const binders = useQuery({
     queryKey: personalBinderQueryKeys.all,
@@ -113,7 +114,7 @@ export function BinderListScreen() {
             {tab === 'binders' ? (
               <Button label="새 바인더 만들기" onPress={() => setForm({ mode: 'create', title: '', description: '' })} />
             ) : (
-              <Button label="PDF 업로드" onPress={() => void uploadPdf()} />
+              <Button label="PDF 업로드" onPress={() => void pickPdf()} />
             )}
             {notice ? <AppText color="danger">{notice}</AppText> : null}
           </Stack>
@@ -172,10 +173,39 @@ export function BinderListScreen() {
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => void confirmDelete(invalidate)}
       />
+      <ModalShell
+        open={pendingUpload != null}
+        title="파일 업로드"
+        presentation="dialog"
+        busy={busy}
+        onRequestClose={() => {
+          if (!busy) setPendingUpload(null);
+        }}
+        footer={
+          <Inline gap="sm">
+            <Button
+              label="취소"
+              variant="secondary"
+              disabled={busy}
+              onPress={() => setPendingUpload(null)}
+              style={styles.grow}
+            />
+            <Button label="업로드" loading={busy} onPress={() => void confirmUpload()} style={styles.grow} />
+          </Inline>
+        }
+      >
+        {pendingUpload ? (
+          <Stack gap="sm">
+            <AppText variant="heading">{pendingUpload.name}</AppText>
+            <AppText color="textSecondary">형식: PDF</AppText>
+            <AppText color="textSecondary">크기: {formatFileSize(pendingUpload.size ?? 0)}</AppText>
+          </Stack>
+        ) : null}
+      </ModalShell>
     </View>
   );
 
-  async function uploadPdf() {
+  async function pickPdf() {
     setNotice('');
     const result = await DocumentPicker.getDocumentAsync({
       type: 'application/pdf',
@@ -188,9 +218,16 @@ export function BinderListScreen() {
       setNotice('PDF 파일만 업로드할 수 있으며 25MB 이하여야 합니다.');
       return;
     }
+    setPendingUpload(asset);
+  }
+
+  async function confirmUpload() {
+    const asset = pendingUpload;
+    if (!asset || busy) return;
     setBusy(true);
     try {
       await uploadPersonalBinderMaterial(token, asset, asset.name.replace(/\.pdf$/i, ''));
+      setPendingUpload(null);
       await invalidate();
       setTab('materials');
     } catch (error) {

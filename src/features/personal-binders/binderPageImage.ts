@@ -72,6 +72,16 @@ export function forgetPageImageLink(key: string): void {
   linkCache.delete(key);
 }
 
+/** 바인더 페이지 목록/구성 변경 후 stale 이미지 링크 제거 */
+export function forgetBinderPageImageLinksForBinder(binderId: string): void {
+  const prefix = `binder:${binderId}:`
+  for (const key of linkCache.keys()) {
+    if (key.startsWith(prefix)) {
+      linkCache.delete(key);
+    }
+  }
+}
+
 export function binderSectionJumps(pages: BinderViewerPageRef[]): { sectionId: string; title: string; position: number }[] {
   const jumps: { sectionId: string; title: string; position: number }[] = [];
   const seen = new Set<string>();

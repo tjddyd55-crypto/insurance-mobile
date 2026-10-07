@@ -20,4 +20,9 @@ describe('BinderZoomSurface zoom layout', () => {
     expect(source).toMatch(/translateY\.value \+= scrollComp/);
     expect(source).toMatch(/disableScrollForPinch/);
   });
+
+  it('restores scroll offset when pinch ends at fit scale', () => {
+    expect(source).toMatch(/restoreScroll/);
+    expect(source).toMatch(/scrollToOffset/);
+  });
 });
