@@ -146,9 +146,11 @@ describe('coverage inline commit then act', () => {
   it('persists a typed amount from the header save', async () => {
     const screen = await typeProposedAmount();
     fireEvent.press(screen.getByText('저장'));
-    await screen.findByText('저장되었습니다.');
-    const moved = lastSaved().items.find((item) => item.id === 'item-a');
-    expect(moved?.type === 'coverage' && moved.proposedAmount).toBe(TYPED_AMOUNT);
+    await waitFor(() => {
+      const moved = lastSaved().items.find((item) => item.id === 'item-a');
+      expect(moved?.type === 'coverage' && moved.proposedAmount).toBe(TYPED_AMOUNT);
+    });
+    expect(screen.queryByText('저장되었습니다.')).toBeNull();
   });
 
   it('opens the item dialog with the typed amount and keeps it on save', async () => {
@@ -157,9 +159,11 @@ describe('coverage inline commit then act', () => {
     expect(screen.getByText('항목 수정')).toBeTruthy();
     expect(screen.getByLabelText('제안 보장').props.value).toBe(typedInput);
     fireEvent.press(screen.getByText('저장'));
-    await screen.findByText('저장되었습니다.');
-    const moved = lastSaved().items.find((item) => item.id === 'item-a');
-    expect(moved?.type === 'coverage' && moved.proposedAmount).toBe(TYPED_AMOUNT);
+    await waitFor(() => {
+      const moved = lastSaved().items.find((item) => item.id === 'item-a');
+      expect(moved?.type === 'coverage' && moved.proposedAmount).toBe(TYPED_AMOUNT);
+    });
+    expect(screen.queryByText('저장되었습니다.')).toBeNull();
   });
 
   it('keeps a typed title when the row moves', async () => {
@@ -178,8 +182,10 @@ describe('coverage inline commit then act', () => {
   it('persists a typed title from the header save', async () => {
     const screen = await typeTitle();
     fireEvent.press(screen.getByText('저장'));
-    await screen.findByText('저장되었습니다.');
-    expect(lastSaved().items.find((item) => item.id === 'item-a')?.label).toBe('진단금수정');
+    await waitFor(() => {
+      expect(lastSaved().items.find((item) => item.id === 'item-a')?.label).toBe('진단금수정');
+    });
+    expect(screen.queryByText('저장되었습니다.')).toBeNull();
   });
 
   it('opens the item dialog with the typed title and keeps it on save', async () => {
@@ -187,7 +193,9 @@ describe('coverage inline commit then act', () => {
     fireEvent.press(screen.getAllByLabelText('항목 수정')[0]);
     expect(screen.getByLabelText('항목명').props.value).toBe('진단금수정');
     fireEvent.press(screen.getByText('저장'));
-    await screen.findByText('저장되었습니다.');
-    expect(lastSaved().items.find((item) => item.id === 'item-a')?.label).toBe('진단금수정');
+    await waitFor(() => {
+      expect(lastSaved().items.find((item) => item.id === 'item-a')?.label).toBe('진단금수정');
+    });
+    expect(screen.queryByText('저장되었습니다.')).toBeNull();
   });
 });

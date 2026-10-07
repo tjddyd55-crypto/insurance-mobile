@@ -220,7 +220,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     }
   }, [query.data, scenarioId]);
 
-  const persist = useCallback((next: CoverageScenario, message = '') => {
+  const persist = useCallback((next: CoverageScenario) => {
     const revision = ++persistRevisionRef.current;
     scenarioRef.current = next;
     queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], next);
@@ -232,14 +232,13 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         if (persistRevisionRef.current !== revision && scenarioRef.current) {
           queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], scenarioRef.current);
         }
-        if (message) showToast(message);
       } catch {
         setNotice('보장 분석을 저장하지 못했습니다.');
       }
     });
     persistChainRef.current = task.then(() => undefined, () => undefined);
     return task;
-  }, [queryClient, scenarioId, showToast, userId]);
+  }, [queryClient, scenarioId, userId]);
 
   if (query.isLoading) {
     return (
@@ -299,7 +298,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
           item={form.item}
           onClose={() => setForm(null)}
           onSave={(patch) => {
-            void persist(updateCoverageItem(scenarioForWrite(), form.item.id, patch), '저장되었습니다.');
+            void persist(updateCoverageItem(scenarioForWrite(), form.item.id, patch));
             setForm(null);
           }}
           onDelete={() => setDeleteId(form.item.id)}
@@ -333,14 +332,14 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     setNotice('');
     try {
       if (editingScenarioTemplate) {
-        await persist(committed, '저장되었습니다.');
+        await persist(committed);
       } else {
         const linked = resolveHeaderSaveCustomer({
           explicit: customerChanged,
           context: { id: customer.id, name: customer.name },
           scenario: committed,
         });
-        await persist(assignCustomer(committed, linked), '저장되었습니다.');
+        await persist(assignCustomer(committed, linked));
       }
     } finally {
       setSavingCustomer(false);
@@ -397,7 +396,6 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                 {editingScenarioTemplate && notice ? (
                   <Text style={styles.noticeInline}>{notice}</Text>
                 ) : null}
-                {toast ? <Text style={styles.toast}>{toast}</Text> : null}
                 <TouchableWithoutFeedback onPress={commitActiveInlineEdit} accessible={false}>
                   <View>
                     <CoverageTimeline
@@ -493,6 +491,11 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         }}
       />
       {deleteConfirm}
+      {toast ? (
+        <View style={styles.toastOverlay} pointerEvents="none">
+          <Text style={styles.toast}>{toast}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -529,6 +532,14 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   content: { padding: 16, paddingBottom: 24, gap: 12 },
   noticeInline: { color: theme.danger, fontSize: 13, marginBottom: 4 },
+  toastOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 88,
+    alignItems: 'center',
+    zIndex: 50,
+  },
   toast: {
     alignSelf: 'center',
     paddingHorizontal: 16,

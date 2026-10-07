@@ -53,8 +53,8 @@ describe('coverage amount symmetry', () => {
   it('keeps the center arrows on the divider and clear of the insert button', () => {
     expect(styles.compare.position).toBe('relative');
     expect(styles.reorderOverlay.position).toBe('absolute');
-    expect(styles.reorderOverlay.left).toBe(0);
-    expect(styles.reorderOverlay.right).toBe(0);
+    expect(styles.reorderOverlay.left).toBe('50%');
+    expect(styles.reorderOverlay.width).toBe(timelineLayout.reorderColumnWidth);
     expect(styles.reorderOverlay.alignItems).toBe('center');
     expect(styles.reorderOverlay.justifyContent).toBe('center');
     expect(styles.reorderPill.backgroundColor).toBe('#ffffff');
