@@ -17,6 +17,7 @@ import {
   type CoverageActiveInlineEdit,
 } from './coverageInlineEdit';
 import { useFocusTextInputWhenAttached } from './focusTextInputAfterAttach';
+import { getCoverageCategoryTheme } from './coverageCategoryTheme';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
@@ -46,8 +47,6 @@ type Props = {
   compactTotals?: boolean;
   readOnly?: boolean;
 };
-
-const BADGE = theme.badge;
 
 /** Native timeline row spacing. 금액 열은 화살표 너비를 빼지 않는다. */
 export const timelineLayout = {
@@ -190,7 +189,7 @@ function CoverageBlock({
   onEdit: () => void;
   onMove?: (direction: -1 | 1) => void;
 }) {
-  const badge = BADGE[item.category];
+  const badge = getCoverageCategoryTheme(item.category);
   const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onActiveInlineEditChange);
   const showReorder = !readOnly && Boolean(move && onMove);
   const runBefore = (action: () => void) => {
@@ -628,7 +627,7 @@ function PeriodSubtotal({ label, current, proposed }: { label: string; current: 
 }
 
 export function badgeColor(category: ScenarioItemCategory) {
-  return BADGE[category];
+  return getCoverageCategoryTheme(category);
 }
 
 export const styles = StyleSheet.create({

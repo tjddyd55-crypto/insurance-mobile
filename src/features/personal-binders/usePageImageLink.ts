@@ -26,7 +26,7 @@ export function usePageImageLink(
     setTrackedKey(key);
     setReload(0);
     setLink(null);
-    setUri(undefined);
+    // Keep the previous page URI visible until the next link resolves (avoids blank flash).
   }
 
   const refresh = useCallback(() => {
@@ -52,7 +52,6 @@ export function usePageImageLink(
       return undefined;
     }
     let cancelled = false;
-    setUri(undefined);
     void fetchPageImageLink(token, request)
       .then((next) => {
         if (cancelled) return;

@@ -13,6 +13,8 @@ import { computeBinderInitialScale, edgeToEdgePageSize, imageAspectFromLoadEvent
 
 type Props = {
   uri: string | null | undefined;
+  /** Changes when the viewer page identity changes (used to reset zoom after a successful swap). */
+  pageKey?: string;
   pageLabel: string;
   sectionTitle: string;
   width: number;
@@ -27,6 +29,7 @@ const ZOOM_EPSILON = 0.02;
 
 export function BinderZoomSurface({
   uri,
+  pageKey = '',
   pageLabel,
   sectionTitle,
   width,
@@ -44,6 +47,9 @@ export function BinderZoomSurface({
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
   const [aspect, setAspect] = useState<number | null>(null);
+  const [displayedPageKey, setDisplayedPageKey] = useState(pageKey);
+  const [displayedUri, setDisplayedUri] = useState<string | null | undefined>(uri);
+  const pendingUri = uri && uri !== displayedUri ? uri : undefined;
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const page = edgeToEdgePageSize(width, aspect ?? undefined);
   const renderedWidth = useSharedValue(page.width);
@@ -65,7 +71,7 @@ export function BinderZoomSurface({
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
     setScrollEnabled(true);
-  }, [uri, height, width, page.width, page.height, fitScale, savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY]);
+  }, [displayedPageKey, height, width, page.width, page.height, fitScale, savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY]);
 
   const syncScrollEnabled = (nextScale: number, min: number) => {
     setScrollEnabled(nextScale <= min + ZOOM_EPSILON);
@@ -179,9 +185,9 @@ export function BinderZoomSurface({
               pageTransformStyle,
             ]}
           >
-            {uri ? (
+            {displayedUri ? (
               <Animated.Image
-                source={{ uri }}
+                source={{ uri: displayedUri }}
                 resizeMode="contain"
                 accessibilityLabel={`${sectionTitle} ${pageLabel}`}
                 onLoad={(event) => {
@@ -200,6 +206,22 @@ export function BinderZoomSurface({
                 </AppText>
               </View>
             )}
+            {pendingUri ? (
+              <Animated.Image
+                source={{ uri: pendingUri }}
+                resizeMode="contain"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                onLoad={(event) => {
+                  const nextAspect = imageAspectFromLoadEvent(event);
+                  if (nextAspect) setAspect(nextAspect);
+                  setDisplayedUri(pendingUri);
+                  setDisplayedPageKey(pageKey);
+                }}
+                onError={() => onImageError?.()}
+                style={styles.preloadImage}
+              />
+            ) : null}
           </Animated.View>
         </ScrollView>
       </View>
@@ -220,6 +242,12 @@ const styles = StyleSheet.create({
   },
   page: { overflow: 'hidden' },
   image: { width: '100%', height: '100%' },
+  preloadImage: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
   placeholder: {
     flex: 1,
     width: '100%',
