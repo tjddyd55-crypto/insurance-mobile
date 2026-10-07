@@ -32,9 +32,12 @@ import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
 import { returnToTodoList, todoEditScreenId } from './todoNavigation';
+import { seedTodoCreateForm } from './consultationTodoCreate';
 import {
+  buildTodoCreatePayload,
   cloneTodoFormDraft,
   EMPTY_TODO_FORM_DRAFT,
+  isTodoEditDraftChanged,
   resolveTodoFormSession,
   todoFormDraftFromRecord,
   type TodoFormDraft,
@@ -43,11 +46,14 @@ import { createTodo, deleteTodo, listTodos, updateTodo } from './todosApi';
 import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
-type TodoFormProps = { mode: 'create'; todoId?: never } | { mode: 'edit'; todoId: string };
+type TodoFormProps =
+  | { mode: 'create'; todoId?: never; consultationId?: string }
+  | { mode: 'edit'; todoId: string };
 
 export function TodoFormScreen(props: TodoFormProps) {
   if (props.mode === 'create') {
-    return <TodoFormEditor mode="create" />;
+    const sessionKey = props.consultationId?.trim() || 'manual';
+    return <TodoFormEditor key={sessionKey} mode="create" consultationId={props.consultationId} />;
   }
   const screenId = todoEditScreenId(props.todoId);
   if (!screenId) {
@@ -57,7 +63,7 @@ export function TodoFormScreen(props: TodoFormProps) {
   return <TodoFormEditor key={screenId} mode="edit" todoId={screenId} />;
 }
 
-function TodoFormEditor({ mode, todoId }: TodoFormProps) {
+function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { consultationId?: string }) {
   const { token } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
@@ -68,9 +74,15 @@ function TodoFormEditor({ mode, todoId }: TodoFormProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
+  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId) : null;
   const [boundTodoId, setBoundTodoId] = useState<string | null>(activeTodoId);
-  const [form, setForm] = useState<TodoFormDraft>(() => cloneTodoFormDraft());
-  const [initialSnapshot, setInitialSnapshot] = useState(() => JSON.stringify(EMPTY_TODO_FORM_DRAFT));
+  const [form, setForm] = useState<TodoFormDraft>(() => createSeed?.draft ?? cloneTodoFormDraft());
+  const [initialSnapshot, setInitialSnapshot] = useState(() =>
+    JSON.stringify(createSeed?.draft ?? EMPTY_TODO_FORM_DRAFT),
+  );
+  const [createSource] = useState(
+    () => createSeed?.source ?? { sourceType: 'manual' as const, sourceId: null },
+  );
   const [initialized, setInitialized] = useState(mode === 'create');
   const [formError, setFormError] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
@@ -121,19 +133,23 @@ function TodoFormEditor({ mode, todoId }: TodoFormProps) {
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      if (mode === 'create') {
+        return createTodo(token, buildTodoCreatePayload(form, createSource));
+      }
+      if (!isTodoEditDraftChanged(JSON.parse(initialSnapshot) as TodoFormDraft, form)) {
+        // 바뀐 값 없음: 수정 요청을 보내지 않아 수정 시각·목록 순서를 그대로 둔다.
+        return Promise.resolve(null);
+      }
       const content = form.description.trim();
-      const payload = {
+      return updateTodo(token, todoId ?? '', {
         title: firstLineTodoTitle(content),
         description: content,
         dueDate: form.dueDate.trim() || null,
         dueTime: null,
-        priority: 'normal' as const,
-        relatedEntityType: form.relatedCustomerId ? ('customer' as const) : null,
+        priority: 'normal',
+        relatedEntityType: form.relatedCustomerId ? 'customer' : null,
         relatedEntityId: form.relatedCustomerId || null,
-      };
-      return mode === 'create'
-        ? createTodo(token, { ...payload, sourceType: 'manual' })
-        : updateTodo(token, todoId, payload);
+      });
     },
     onSuccess: async () => {
       setInitialSnapshot(JSON.stringify(form));

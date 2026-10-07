@@ -1,4 +1,5 @@
 import { ApiError } from '../../api/client';
+import { formatDeviceLocalDateDots } from '../../utils/deviceLocalDate';
 import { normalizeConsultation } from './scenarioEdits';
 import type { CoverageScenario } from './types';
 
@@ -120,12 +121,10 @@ export function mapCoverageShareHistoryError(error: unknown): string {
 export function formatCoverageShareDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const day = formatDeviceLocalDateDots(iso, iso);
   const hh = String(date.getHours()).padStart(2, '0');
   const mm = String(date.getMinutes()).padStart(2, '0');
-  return `${y}.${m}.${d} ${hh}:${mm}`;
+  return `${day} ${hh}:${mm}`;
 }
 
 export type SharePrepareResult =

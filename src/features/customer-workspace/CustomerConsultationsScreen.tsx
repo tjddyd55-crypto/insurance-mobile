@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -18,6 +19,11 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
+import {
+  buildConsultationTodoCreatePrefill,
+  consultationTodoCreateRoute,
+  CONSULTATION_ADD_TODO_LABEL,
+} from '../todos/consultationTodoCreate';
 import { getCustomer } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
@@ -27,7 +33,7 @@ import {
   listConsultations,
   updateConsultation,
 } from './customerWorkspaceApi';
-import { todayYmd } from './customerWorkspaceModel';
+import { consultationListDateLabel, todayYmd } from './customerWorkspaceModel';
 import type { Consultation } from './types';
 
 type ConsultationEditorState = {
@@ -39,6 +45,7 @@ const CLOSED_EDITOR: ConsultationEditorState = { open: false, row: null };
 
 export function CustomerConsultationsScreen({ customerId }: { customerId: number }) {
   const { token } = useAuth();
+  const router = useRouter();
   const onBackPress = useCustomerDetailBack(customerId);
   const queryClient = useQueryClient();
   const theme = useAppTheme();
@@ -65,15 +72,27 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
   });
 
   const rows = query.data ?? [];
+  const openTodoFromConsultation = useCallback(
+    (row: Consultation) => {
+      const prefill = buildConsultationTodoCreatePrefill({
+        customerId,
+        customerName: customer.data?.name,
+        consultationId: row.id,
+        body: row.body,
+      });
+      router.push(consultationTodoCreateRoute(prefill));
+    },
+    [customer.data?.name, customerId, router],
+  );
   const renderItem = useCallback(
     ({ item: row }: { item: Consultation }) => (
       <Card variant="outlined" padding="sm">
         <Stack gap="sm">
           <AppText variant="bodyStrong">
-            {row.consultationDate || row.createdAt.slice(0, 10)}
+            {consultationListDateLabel(row)}
           </AppText>
           <AppText>{row.body || '상담 내용 없음'}</AppText>
-          <Inline>
+          <Inline wrap>
             <Button
               label="수정"
               size="sm"
@@ -86,11 +105,17 @@ export function CustomerConsultationsScreen({ customerId }: { customerId: number
               variant="danger"
               onPress={() => setDeleting(row)}
             />
+            <Button
+              label={CONSULTATION_ADD_TODO_LABEL}
+              size="sm"
+              variant="secondary"
+              onPress={() => openTodoFromConsultation(row)}
+            />
           </Inline>
         </Stack>
       </Card>
     ),
-    [],
+    [openTodoFromConsultation],
   );
   const listHeader = useMemo(
     () => (

@@ -29,6 +29,7 @@ import {
   binderSectionJumps,
   fetchBinderViewerPages,
   fullPageImageWidth,
+  pageImageRequestKey,
   prefetchBinderPageLinks,
 } from './binderPageImage';
 import { sharePersonalBinderPdf } from './personalBinderApi';
@@ -75,7 +76,9 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
 
   useEffect(() => {
     if (!token || !current) return;
-    const neighbors = [current.index - 1, current.index + 1].filter((pageIndex) => pages.some((page) => page.index === pageIndex));
+    const neighbors = [current.index - 1, current.index + 1, current.index + 2].filter((pageIndex) =>
+      pages.some((page) => page.index === pageIndex),
+    );
     void prefetchBinderPageLinks(token, binderId, neighbors, fullWidth);
   }, [binderId, current, fullWidth, pages, token]);
 
@@ -140,8 +143,8 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
           }}
         >
           <BinderZoomSurface
-            key={`${current.itemId}:${current.index}`}
             uri={uri}
+            pageKey={imageRequest ? pageImageRequestKey(imageRequest) : ''}
             pageLabel={`${safeIndex + 1} / ${pages.length}`}
             sectionTitle={current.sectionTitle}
             width={pageWidth}

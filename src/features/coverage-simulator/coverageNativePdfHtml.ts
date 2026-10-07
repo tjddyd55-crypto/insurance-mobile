@@ -2,11 +2,13 @@ import {
   calculateScenarioPeriodTotals,
   calculateScenarioTotals,
   categoryLabel,
+  formatCoverageWrittenDate,
   formatCoverageAmountLabel,
   formatTotalAmountLabel,
   periodSubtotalLabelFromMarker,
   sortItems,
 } from './coverageAnalysis';
+import { getCoverageCategoryTheme } from './coverageCategoryTheme';
 import { simulatorTheme as theme } from './simulatorTheme';
 import { diseaseTypeTitle } from './templates';
 import type { CoverageScenario, CoverageScenarioItem, ScenarioItem } from './types';
@@ -25,19 +27,29 @@ function escapeHtml(value: string): string {
 }
 
 function badgeStyle(category: CoverageScenarioItem['category']): string {
-  const badge = theme.badge[category];
+  const badge = getCoverageCategoryTheme(category);
   return `background:${badge.bg};color:${badge.fg};`;
 }
+
+const PDF_NAME_SIDE_INSET_PX = 52;
 
 function renderCoverageRow(item: CoverageScenarioItem): string {
   const badge = categoryLabel(item.category);
   return `
-    <tr class="row">
-      <td class="badge"><span style="${badgeStyle(item.category)}">${escapeHtml(badge)}</span></td>
-      <td class="title">${escapeHtml(item.label)}</td>
+    <tbody class="coverage-item">
+    <tr class="coverage-name-row">
+      <td colspan="2">
+        <div class="coverage-head">
+          <span class="badge" style="${badgeStyle(item.category)}">${escapeHtml(badge)}</span>
+          <div class="coverage-name">${escapeHtml(item.label)}</div>
+        </div>
+      </td>
+    </tr>
+    <tr class="row coverage-amount-row">
       <td class="amount">${escapeHtml(formatCoverageAmountLabel(item.currentAmount))}</td>
       <td class="amount proposed">${escapeHtml(formatCoverageAmountLabel(item.proposedAmount))}</td>
-    </tr>`;
+    </tr>
+    </tbody>`;
 }
 
 function renderPeriodSubtotal(
@@ -48,7 +60,7 @@ function renderPeriodSubtotal(
   const side = (amount: number) => (amount <= 0 ? '없음' : escapeHtml(formatTotalAmountLabel(amount)));
   return `
     <tr class="period">
-      <td colspan="4">
+      <td colspan="2">
         <div class="period-label">${escapeHtml(periodSubtotalLabelFromMarker(markerLabel))}</div>
         <div class="period-values">
           <span>${side(current)}</span>
@@ -61,7 +73,7 @@ function renderPeriodSubtotal(
 function renderMarker(label: string): string {
   return `
     <tr class="marker">
-      <td colspan="4">${escapeHtml(label)} ↓</td>
+      <td colspan="2">${escapeHtml(label)} ↓</td>
     </tr>`;
 }
 
@@ -85,7 +97,7 @@ function renderItems(items: ScenarioItem[]): string {
 
 export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
   const customerName = scenario.customerNameSnapshot ?? scenario.customerName ?? '';
-  const date = scenario.consultationDate.slice(0, 10).split('-').join('.');
+  const date = formatCoverageWrittenDate(scenario);
   const totals = calculateScenarioTotals(scenario);
   const subtitle = `${diseaseTypeTitle(scenario.diseaseType)} — ${scenario.title}`;
 
@@ -102,18 +114,40 @@ export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
     table { width: 100%; border-collapse: collapse; }
     th { text-align: center; font-size: 12px; color: ${theme.headerAxis}; padding: 8px 4px; border-bottom: 1px solid ${theme.divider}; }
     th.proposed { color: ${theme.primary}; }
-    td { vertical-align: middle; padding: 8px 4px; border-bottom: 1px solid ${theme.line}; }
-    td.badge { width: 52px; }
-    td.badge span { display: inline-block; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
-    td.title { text-align: center; font-weight: 700; font-size: 14px; }
-    td.amount { text-align: center; font-weight: 700; width: 28%; }
+    td { vertical-align: middle; padding: 8px 4px; }
+    tbody.coverage-item .coverage-name-row td { padding-bottom: 4px; border-bottom: none; }
+    tbody.coverage-item .coverage-amount-row td {
+      padding-bottom: 10px;
+      border-bottom: 1px solid ${theme.line};
+    }
+    tbody.coverage-item + tbody.coverage-item .coverage-name-row td { padding-top: 6px; }
+    th, td.amount { width: 50%; }
+    .coverage-head { position: relative; min-height: 24px; }
+    .coverage-head .badge { position: absolute; left: 0; top: 0; display: inline-block; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
+    .coverage-name { display: block; margin: 0 ${PDF_NAME_SIDE_INSET_PX}px; text-align: center; font-weight: 700; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+    td.amount { text-align: center; font-weight: 700; }
     td.amount.proposed { color: ${theme.primary}; }
-    tr.period td { background: ${theme.summaryBg}; border-bottom: 1px solid ${theme.divider}; }
+    tr.period td {
+      background: ${theme.summaryBg};
+      border-top: 1px solid ${theme.summaryLine};
+      border-bottom: 1px solid ${theme.divider};
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
     .period-label { font-weight: 700; margin-bottom: 4px; }
-    .period-values { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }
+    .period-values { display: flex; font-weight: 700; }
+    .period-values > span { flex: 1; text-align: center; }
     .period-values .proposed { color: ${theme.primary}; }
-    tr.marker td { text-align: center; font-weight: 900; color: ${theme.marker}; padding: 12px 4px; }
-    .totals { margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; font-weight: 800; font-size: 14px; }
+    tr.marker td {
+      text-align: center;
+      font-weight: 900;
+      color: ${theme.marker};
+      padding: 14px 4px;
+      border-top: 1px solid ${theme.summaryLine};
+      border-bottom: none;
+    }
+    .totals { margin-top: 16px; display: flex; font-weight: 800; font-size: 14px; }
+    .totals > span { flex: 1; text-align: center; }
     .totals .proposed { color: ${theme.primary}; }
     .disclaimer { margin-top: 20px; color: ${theme.muted}; font-size: 12px; line-height: 1.5; }
     .service { margin-top: 8px; font-weight: 700; color: ${theme.text}; }
@@ -126,8 +160,6 @@ export function buildCoverageNativePdfHtml(scenario: CoverageScenario): string {
   <table>
     <thead>
       <tr>
-        <th></th>
-        <th>항목</th>
         <th>기존 보장</th>
         <th class="proposed">제안 보장</th>
       </tr>

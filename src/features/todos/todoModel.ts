@@ -1,4 +1,5 @@
 import { ApiError } from '../../api/client';
+import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
 import type {
   ListTodosParams,
   TodoPriority,
@@ -92,6 +93,32 @@ export function normalizeTodo(value: unknown, context = '할 일 데이터'): To
   };
 }
 
+/** 작성 시각. 수정이 있으면 수정 시각, 없으면 작성 시각. */
+export function todoWrittenAt(todo: Pick<TodoRecord, 'updatedAt' | 'createdAt'>): string {
+  return todo.updatedAt ?? todo.createdAt ?? '';
+}
+
+/**
+ * 할 일 목록 기본 정렬: 최근 작성·수정이 위.
+ * 같은 작성/수정 시각이면 createdAt DESC, 그다음 id DESC.
+ */
+export function compareTodosByRecentWrite(
+  left: Pick<TodoRecord, 'id' | 'updatedAt' | 'createdAt'>,
+  right: Pick<TodoRecord, 'id' | 'updatedAt' | 'createdAt'>,
+): number {
+  const written = todoWrittenAt(right).localeCompare(todoWrittenAt(left));
+  if (written !== 0) return written;
+  const created = (right.createdAt ?? '').localeCompare(left.createdAt ?? '');
+  if (created !== 0) return created;
+  return right.id.localeCompare(left.id, undefined, { numeric: true });
+}
+
+export function sortTodosByRecentWrite<T extends Pick<TodoRecord, 'id' | 'updatedAt' | 'createdAt'>>(
+  todos: readonly T[],
+): T[] {
+  return [...todos].sort(compareTodosByRecentWrite);
+}
+
 export function normalizeTodoList(value: unknown): TodoRecord[] {
   const rows = Array.isArray(value)
     ? value
@@ -101,7 +128,9 @@ export function normalizeTodoList(value: unknown): TodoRecord[] {
   if (!rows) {
     throw new ApiError('할 일 목록 응답 구조가 올바르지 않습니다.', 500);
   }
-  return rows.map((row, index) => normalizeTodo(row, `할 일 목록 ${index + 1}번째 항목`));
+  return sortTodosByRecentWrite(
+    rows.map((row, index) => normalizeTodo(row, `할 일 목록 ${index + 1}번째 항목`)),
+  );
 }
 
 export function buildTodoListParams(
@@ -146,12 +175,14 @@ export function todoStatusLabel(status: TodoStatus): string {
 
 export function formatTodoDate(value: string | null): string {
   if (!value) return '없음';
-  const ymd = value.slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return value;
-  const date = new Date(`${ymd}T12:00:00+09:00`);
+  const ymd = formatDeviceLocalYmd(value);
+  if (!ymd) return value;
+  const date = new Date(`${ymd}T12:00:00`);
   if (Number.isNaN(date.getTime())) return ymd;
-  const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short', timeZone: 'Asia/Seoul' }).format(date);
-  return `${Number(ymd.slice(5, 7))}월 ${Number(ymd.slice(8, 10))}일(${weekday})`;
+  const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short' }).format(date);
+  const month = Number(ymd.slice(5, 7));
+  const day = Number(ymd.slice(8, 10));
+  return `${month}월 ${day}일(${weekday})`;
 }
 
 export function formatSeoulYmd(date = new Date()): string {

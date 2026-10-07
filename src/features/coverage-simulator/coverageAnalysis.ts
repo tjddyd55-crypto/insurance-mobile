@@ -1,3 +1,4 @@
+import { formatDeviceLocalDateDots } from '../../utils/deviceLocalDate';
 import type { CoverageScenario, CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
 
 const MAN_WON = 10_000;
@@ -41,10 +42,23 @@ export function formatTotalAmountLabel(amount: number): string {
 }
 
 export function formatConsultationListDate(iso: string | undefined | null): string {
-  if (!iso) return '—';
-  const [year, month, day] = iso.slice(0, 10).split('-');
-  if (!year || !month || !day) return '—';
-  return `${year}.${month}.${day}`;
+  if (!iso?.trim()) return '—';
+  return formatDeviceLocalDateDots(iso, '—');
+}
+
+/**
+ * PDF·미리보기 작성일.
+ * 목록의 작성 시각과 같이, 시각이 있는 `createdAt`을 기기 로컬 날짜로 본다.
+ * `consultationDate`만 있으면 그 값을 같은 규칙으로 포맷한다.
+ * UTC 날짜만 잘라 둔 값은 작성 시각이 있으면 쓰지 않는다.
+ */
+export function formatCoverageWrittenDate(
+  scenario: Pick<CoverageScenario, 'consultationDate' | 'createdAt'>,
+): string {
+  const createdAt = scenario.createdAt?.trim() ?? '';
+  const consultationDate = scenario.consultationDate?.trim() ?? '';
+  const source = createdAt.includes('T') ? createdAt : consultationDate || createdAt;
+  return formatConsultationListDate(source);
 }
 
 export function categoryLabel(category: ScenarioItemCategory): string {

@@ -49,7 +49,7 @@ jobs:
       # 발행 전 게이트는 통과 가능한 typecheck + Jest 로 둔다.
       - name: Typecheck and Jest
         run: npm run typecheck && npm test -- --runInBand
-      - name: Verify runtime 1.0.3
+      - name: Verify runtime 1.0.4
         run: |
           npx expo config --json > /tmp/expo-config.json
           node scripts/otaWorkflow.mjs assert-runtime /tmp/expo-config.json

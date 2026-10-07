@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 
 import {
@@ -11,7 +11,13 @@ import {
   type ScenarioPeriodTotal,
 } from './coverageAnalysis';
 import type { CoverageInlineAmountField } from './coverageInlineAmount';
-import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
+import {
+  inlineEditBlurGuardDeadline,
+  shouldIgnoreInlineEditBlur,
+  type CoverageActiveInlineEdit,
+} from './coverageInlineEdit';
+import { useFocusTextInputWhenAttached } from './focusTextInputAfterAttach';
+import { getCoverageCategoryTheme } from './coverageCategoryTheme';
 import { coverageItemMoveState } from './scenarioEdits';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenarioItem, ScenarioItem, ScenarioItemCategory } from './types';
@@ -42,12 +48,11 @@ type Props = {
   readOnly?: boolean;
 };
 
-const BADGE = theme.badge;
-
-/** Native timeline row spacing — 정렬 보정용 (기능/구조 변경 없음) */
-const timelineLayout = {
+/** Native timeline row spacing. 금액 열은 화살표 너비를 빼지 않는다. */
+export const timelineLayout = {
   headSideSlotWidth: 28,
-  headLeftSlotWidth: 52,
+  /** 배지·⋯ 슬롯을 같은 너비로 두어 항목명 중심이 행 중심(중앙 구분선)과 일치하게 한다. */
+  headInsetWidth: 52,
   headMinHeight: 32,
   headTitleGap: 6,
   compareMinHeight: 68,
@@ -55,6 +60,7 @@ const timelineLayout = {
   compareSpineWidth: 24,
   eventPaddingH: 16,
   reorderColumnWidth: 28,
+  reorderHitSlop: 4,
 } as const;
 
 export function CoverageTimeline({
@@ -183,21 +189,17 @@ function CoverageBlock({
   onEdit: () => void;
   onMove?: (direction: -1 | 1) => void;
 }) {
-  const badge = BADGE[item.category];
+  const badge = getCoverageCategoryTheme(item.category);
   const inlineEditEnabled = !readOnly && Boolean(onInlineAmountCommit && onActiveInlineEditChange);
+  const showReorder = !readOnly && Boolean(move && onMove);
   const runBefore = (action: () => void) => {
     onBeforeInteraction?.();
     action();
   };
   return (
-    <View style={styles.event}>
+    <View style={[styles.event, readOnly && styles.eventReadOnly]}>
       <View style={styles.head}>
-        <View style={styles.headLeftSlot}>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
-          </View>
-        </View>
-        <View style={styles.headCenter}>
+        <View pointerEvents="box-none" style={styles.headTitleLayer}>
           {inlineEditEnabled && onInlineTitleCommit && onActiveInlineEditChange ? (
             <InlineTitleCell
               itemId={item.id}
@@ -216,34 +218,26 @@ function CoverageBlock({
             </Text>
           )}
         </View>
-        {readOnly ? (
-          <View style={styles.headSideSlot} />
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="항목 수정"
-            onPress={() => runBefore(onEdit)}
-            style={styles.headSideSlot}
-          >
-            <Text style={styles.menuGlyph}>⋯</Text>
-          </Pressable>
-        )}
+        <View pointerEvents="none" style={styles.headBadgeSlot}>
+          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.badgeLabel, { color: badge.fg }]}>{categoryLabel(item.category)}</Text>
+          </View>
+        </View>
+        {!readOnly ? (
+          <View style={styles.headMenuSlot}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="항목 수정"
+              onPress={() => runBefore(onEdit)}
+              style={styles.menuButton}
+            >
+              <Text style={styles.menuGlyph}>⋯</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
       <View style={styles.compare}>
         <View style={styles.amountColumn}>
-          {!readOnly && move && onMove ? (
-            <ReorderButtons
-              vertical
-              canMoveUp={move.canMoveUp}
-              canMoveDown={move.canMoveDown}
-              onMove={(direction) => {
-                onBeforeInteraction?.();
-                onMove(direction);
-              }}
-            />
-          ) : readOnly ? null : (
-            <View style={styles.reorderPlaceholder} />
-          )}
           <View style={styles.amountSlot}>
             <InlineAmountCell
               itemId={item.id}
@@ -292,6 +286,21 @@ function CoverageBlock({
             />
           </View>
         </View>
+        {showReorder && move && onMove ? (
+          <View pointerEvents="box-none" style={styles.reorderOverlay}>
+            <View pointerEvents="box-none" style={styles.reorderPill}>
+              <ReorderButtons
+                vertical
+                canMoveUp={move.canMoveUp}
+                canMoveDown={move.canMoveDown}
+                onMove={(direction) => {
+                  onBeforeInteraction?.();
+                  onMove(direction);
+                }}
+              />
+            </View>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -351,16 +360,27 @@ function InlineAmountCell({
   const inputRef = useRef<TextInput>(null);
   const anchorRef = useRef<View>(null);
   const [draft, setDraft] = useState(() => formatManWonInputDisplay(amount));
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const committedRef = useRef(false);
+  const ignoreBlurUntilRef = useRef(0);
+  const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
 
   useEffect(() => {
-    if (!editing) return;
+    if (!editing) {
+      ignoreBlurUntilRef.current = 0;
+      return;
+    }
     committedRef.current = false;
     setDraft(formatManWonInputDisplay(amount));
-    inputRef.current?.focus();
+    ignoreBlurUntilRef.current = inlineEditBlurGuardDeadline(Date.now());
     onInlineAmountEditFocus?.(anchorRef);
-    const t1 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 120);
-    const t2 = setTimeout(() => onInlineAmountEditFocus?.(anchorRef), 320);
+    const refreshFocus = () => {
+      ignoreBlurUntilRef.current = inlineEditBlurGuardDeadline(Date.now());
+      onInlineAmountEditFocus?.(anchorRef);
+    };
+    const t1 = setTimeout(refreshFocus, 120);
+    const t2 = setTimeout(refreshFocus, 320);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -370,18 +390,31 @@ function InlineAmountCell({
   const commitAndClose = () => {
     if (committedRef.current) return;
     committedRef.current = true;
-    onCommit(draft);
+    onCommit(draftRef.current);
     onCancel();
   };
 
-  useEffect(() => {
+  const registerInlineCommit = () => {
+    if (!editing) return;
+    onRegisterCommit?.(() => commitAndClose());
+  };
+
+  const handleBlur = () => {
+    if (shouldIgnoreInlineEditBlur(ignoreBlurUntilRef.current, Date.now())) {
+      inputRef.current?.focus();
+      return;
+    }
+    commitAndClose();
+  };
+
+  useLayoutEffect(() => {
     if (!editing) {
       onRegisterCommit?.(null);
       return;
     }
-    onRegisterCommit?.(() => commitAndClose());
+    registerInlineCommit();
     return () => onRegisterCommit?.(null);
-  }, [draft, editing, onRegisterCommit]);
+  }, [editing, onRegisterCommit]);
 
   if (readOnly) {
     return <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>;
@@ -395,13 +428,19 @@ function InlineAmountCell({
         onPress={onStartEdit}
         style={styles.amountPressable}
       >
-        <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>
+        <Text style={textStyle}>
+          {formatCoverageAmountLabel(amount)}
+        </Text>
       </Pressable>
     );
   }
 
   return (
-    <View ref={anchorRef} style={styles.inlineAmountWrap} collapsable={false}>
+    <View
+      ref={anchorRef}
+      style={styles.inlineAmountWrap}
+      collapsable={false}
+    >
       <TextInput
         ref={inputRef}
         accessibilityLabel="금액 입력"
@@ -409,10 +448,16 @@ function InlineAmountCell({
         returnKeyType="done"
         selectTextOnFocus
         blurOnSubmit
+        onLayout={focusWhenAttached}
         value={draft}
-        onChangeText={(value) => setDraft(sanitizeManWonInputTyping(value))}
+        onChangeText={(value) => {
+          const next = sanitizeManWonInputTyping(value);
+          draftRef.current = next;
+          setDraft(next);
+          registerInlineCommit();
+        }}
         onSubmitEditing={() => commitAndClose()}
-        onBlur={() => commitAndClose()}
+        onBlur={handleBlur}
         style={[styles.inlineAmountInput, textStyle]}
       />
       <Text style={styles.inlineAmountSuffix}>만원</Text>
@@ -438,30 +483,50 @@ function InlineTitleCell({
 }) {
   const inputRef = useRef<TextInput>(null);
   const [draft, setDraft] = useState(label);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const committedRef = useRef(false);
+  const ignoreBlurUntilRef = useRef(0);
+  const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
 
   useEffect(() => {
-    if (!editing) return;
+    if (!editing) {
+      ignoreBlurUntilRef.current = 0;
+      return;
+    }
     committedRef.current = false;
     setDraft(label);
-    inputRef.current?.focus();
+    ignoreBlurUntilRef.current = inlineEditBlurGuardDeadline(Date.now());
   }, [editing, label]);
 
   const commitAndClose = () => {
     if (committedRef.current) return;
     committedRef.current = true;
-    onCommit(draft);
+    onCommit(draftRef.current);
     onCancel();
   };
 
-  useEffect(() => {
+  const registerInlineCommit = () => {
+    if (!editing) return;
+    onRegisterCommit?.(() => commitAndClose());
+  };
+
+  const handleBlur = () => {
+    if (shouldIgnoreInlineEditBlur(ignoreBlurUntilRef.current, Date.now())) {
+      inputRef.current?.focus();
+      return;
+    }
+    commitAndClose();
+  };
+
+  useLayoutEffect(() => {
     if (!editing) {
       onRegisterCommit?.(null);
       return;
     }
-    onRegisterCommit?.(() => commitAndClose());
+    registerInlineCommit();
     return () => onRegisterCommit?.(null);
-  }, [draft, editing, onRegisterCommit]);
+  }, [editing, onRegisterCommit]);
 
   if (!editing) {
     return (
@@ -485,10 +550,15 @@ function InlineTitleCell({
       returnKeyType="done"
       blurOnSubmit
       multiline
+      onLayout={focusWhenAttached}
       value={draft}
-      onChangeText={setDraft}
+      onChangeText={(value) => {
+        draftRef.current = value;
+        setDraft(value);
+        registerInlineCommit();
+      }}
       onSubmitEditing={() => commitAndClose()}
-      onBlur={() => commitAndClose()}
+      onBlur={handleBlur}
       style={[styles.eventTitle, styles.inlineTitleInput]}
     />
   );
@@ -557,6 +627,7 @@ function MoveButton({
       accessibilityState={{ disabled: !enabled }}
       disabled={!enabled}
       onPress={onPress}
+      hitSlop={compact ? timelineLayout.reorderHitSlop : undefined}
       style={[compact ? styles.reorderBtnCompact : styles.reorderBtn, !enabled && styles.reorderDisabled]}
     >
       <Text style={styles.reorderGlyph}>{glyph}</Text>
@@ -579,7 +650,7 @@ function PeriodSubtotal({ label, current, proposed }: { label: string; current: 
 }
 
 export function badgeColor(category: ScenarioItemCategory) {
-  return BADGE[category];
+  return getCoverageCategoryTheme(category);
 }
 
 export const styles = StyleSheet.create({
@@ -617,10 +688,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: timelineLayout.eventPaddingH,
     paddingVertical: 10,
   },
+  eventReadOnly: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e8edf3',
+  },
   /** PC 모바일과 같이 항목명 줄에 카드 배경을 깔아 축선이 글자를 관통하지 않게 한다. 금액 줄은 배경이 없어 선이 남는다. */
   head: {
-    flexDirection: 'row',
-    alignItems: 'center',
     minHeight: timelineLayout.headMinHeight,
     marginBottom: timelineLayout.headTitleGap,
     position: 'relative',
@@ -631,36 +704,48 @@ export const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 0,
   } as ViewStyle,
-  headLeftSlot: {
-    width: timelineLayout.headLeftSlotWidth,
-    flexShrink: 0,
-    alignItems: 'flex-start',
+  headTitleLayer: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: timelineLayout.headInsetWidth,
     zIndex: 1,
   },
-  headSideSlot: {
+  headBadgeSlot: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    maxWidth: timelineLayout.headInsetWidth + 8,
+    zIndex: 2,
+  },
+  headMenuSlot: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    width: timelineLayout.headInsetWidth,
+    zIndex: 2,
+  },
+  menuButton: {
     width: timelineLayout.headSideSlotWidth,
     height: timelineLayout.headSideSlotWidth,
-    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1,
-  },
-  headCenter: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
   },
   titlePressable: {
-    maxWidth: '100%',
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
   badgeLabel: { fontSize: 11, fontWeight: '700' },
   eventTitle: {
+    width: '100%',
     flexShrink: 1,
     textAlign: 'center',
     fontSize: 15,
@@ -695,6 +780,7 @@ export const styles = StyleSheet.create({
   menuText: { fontSize: 13, color: theme.text },
   menuDanger: { fontSize: 13, color: theme.danger },
   compare: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'stretch',
     minHeight: timelineLayout.compareMinHeight,
@@ -720,9 +806,25 @@ export const styles = StyleSheet.create({
     flexShrink: 0,
     alignSelf: 'center',
   },
-  reorderPlaceholder: {
+  /** 구분선 정중앙(compareSpine). 금액 열 터치는 통과하고 화살표만 받는다. */
+  reorderOverlay: {
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    bottom: 0,
     width: timelineLayout.reorderColumnWidth,
-    flexShrink: 0,
+    marginLeft: -timelineLayout.reorderColumnWidth / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  /** 구분선이 화살표 뒤에서 끊겨 보이지 않도록 시트 배경으로 가린다. */
+  reorderPill: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+    alignItems: 'center',
   },
   amountSlot: {
     flex: 1,
@@ -731,8 +833,13 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 0,
   },
-  amountPressable: { alignItems: 'center', justifyContent: 'center', minHeight: timelineLayout.amountSlotMinHeight },
+  amountPressable: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: timelineLayout.amountSlotMinHeight,
+  },
   inlineAmountWrap: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

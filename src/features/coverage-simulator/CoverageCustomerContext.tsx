@@ -1,29 +1,49 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
-type CoverageCustomer = {
-  id: string | null;
-  name: string | null;
-  birthDate: string | null;
-  phone: string | null;
+import {
+  sameCoverageCustomer,
+  type CoverageLinkedCustomer,
+} from './coverageCustomerSession';
+
+type CoverageCustomerContextValue = CoverageLinkedCustomer & {
+  /** setCustomer가 호출된 횟수. 편집 화면은 연 시점과 비교해 이번 방문을 구분한다. */
+  customerRevision: number;
+  setCustomer: (customer: CoverageLinkedCustomer) => void;
+  hydrateCustomer: (customer: CoverageLinkedCustomer) => void;
 };
 
-type CoverageCustomerContextValue = CoverageCustomer & {
-  setCustomer: (customer: CoverageCustomer) => void;
+const EMPTY_CUSTOMER: CoverageLinkedCustomer = {
+  id: null,
+  name: null,
+  birthDate: null,
+  phone: null,
 };
 
 const CoverageCustomerContext = createContext<CoverageCustomerContextValue | null>(null);
 
 export function CoverageCustomerProvider({ children }: { children: ReactNode }) {
-  const [customer, setCustomer] = useState<CoverageCustomer>({
-    id: null,
-    name: null,
-    birthDate: null,
-    phone: null,
-  });
+  const [customer, setCustomerState] = useState<CoverageLinkedCustomer>(EMPTY_CUSTOMER);
+  const [customerRevision, setCustomerRevision] = useState(0);
+
+  const setCustomer = useCallback((next: CoverageLinkedCustomer) => {
+    setCustomerRevision((revision) => revision + 1);
+    setCustomerState(next);
+  }, []);
+
+  const hydrateCustomer = useCallback((next: CoverageLinkedCustomer) => {
+    setCustomerState((current) => (sameCoverageCustomer(current, next) ? current : next));
+  }, []);
+
   const value = useMemo(
-    () => ({ ...customer, setCustomer }),
-    [customer],
+    () => ({
+      ...customer,
+      customerRevision,
+      setCustomer,
+      hydrateCustomer,
+    }),
+    [customer, customerRevision, hydrateCustomer, setCustomer],
   );
+
   return <CoverageCustomerContext.Provider value={value}>{children}</CoverageCustomerContext.Provider>;
 }
 
@@ -31,11 +51,10 @@ export function useCoverageCustomer(): CoverageCustomerContextValue {
   const value = useContext(CoverageCustomerContext);
   if (!value) {
     return {
-      id: null,
-      name: null,
-      birthDate: null,
-      phone: null,
+      ...EMPTY_CUSTOMER,
+      customerRevision: 0,
       setCustomer: () => undefined,
+      hydrateCustomer: () => undefined,
     };
   }
   return value;

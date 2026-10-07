@@ -1,7 +1,7 @@
 {
   "name": "one-fc-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "private": true,
   "scripts": {
     "start": "expo start",
@@ -11,7 +11,7 @@
     "start:device": "expo start --dev-client --port 8084",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
-    "test": "jest",
+    "test": "TZ=Asia/Seoul jest",
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:preflight:release": "node scripts/release-preflight.mjs --release",
     "release:preflight:full": "node scripts/release-preflight.mjs --full",
@@ -55,6 +55,7 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
     "@typescript-eslint/eslint-plugin": "^8.68.0",
@@ -63,12 +64,14 @@
     "eslint-config-expo": "^57.0.2",
     "jest": "^29.7.0",
     "jest-expo": "^57.0.5",
+    "react-test-renderer": "19.2.3",
     "typescript": "~6.0.3"
   },
   "jest": {
     "preset": "jest-expo",
     "testMatch": [
-      "**/__tests__/**/*.test.ts"
+      "**/__tests__/**/*.test.ts",
+      "**/__tests__/**/*.test.tsx"
     ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1"

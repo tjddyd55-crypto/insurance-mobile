@@ -1,3 +1,4 @@
+import { formatDeviceLocalYmd } from "../../utils/deviceLocalDate";
 import type { Consultation } from "./types";
 
 export const RECENT_CONSULTATION_PREVIEW_LIMIT = 3;
@@ -19,10 +20,18 @@ export function selectRecentConsultations(
 }
 
 export function consultationPreviewDate(row: Consultation): string {
-  const raw = String(row.consultationDate || row.createdAt || "").trim();
-  if (!raw) return "날짜 없음";
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-  return formatWorkspaceDate(raw);
+  return consultationListDateLabel(row);
+}
+
+/** 상담 목록에 보이는 날짜. 달력 날짜는 그대로 두고, 시각이 있으면 기기 로컬 날짜로 본다. */
+export function consultationListDateLabel(
+  row: Pick<Consultation, "consultationDate" | "createdAt">,
+): string {
+  const chosen = String(row.consultationDate ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(chosen)) return chosen;
+  const source = (chosen || row.createdAt || "").trim();
+  if (!source) return "날짜 없음";
+  return formatDeviceLocalYmd(source) ?? "날짜 없음";
 }
 
 export function todayYmd(now = new Date()): string {

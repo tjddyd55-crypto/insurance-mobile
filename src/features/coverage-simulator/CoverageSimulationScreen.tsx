@@ -26,11 +26,25 @@ import { CoverageTimeline, CoverageTotalsDock } from './CoverageTimeline';
 import { coverageInlineAmountPatch } from './coverageInlineAmount';
 import type { CoverageActiveInlineEdit } from './coverageInlineEdit';
 import {
+  INLINE_EDIT_FOCUS_GUARD_MS,
   commitRegisteredInlineEdit,
   shouldCommitInlineBeforeNextEdit,
+  shouldCommitInlineEditOnScroll,
 } from './coverageInlineAmountSession';
 import { scrollInlineAmountIntoView } from './coverageInlineAmountScroll';
 import { useCoverageCustomer } from './CoverageCustomerContext';
+import {
+  customerChangedThisVisit,
+  coverageCustomerNumericId,
+  hydrateCoverageCustomer,
+  rememberCustomerVisit,
+  resolveHeaderSaveCustomer,
+  savedSimulationCustomer,
+  type CustomerVisitBaseline,
+} from './coverageCustomerSession';
+import { savedCustomerChipFromPickerRow } from './coverageEditorPresentation';
+import { toCoverageCustomerPickerRow } from './coverageCustomerPickerPresentation';
+import { getCustomer } from '../customers/customersApi';
 import { getConsultation, saveConsultation } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { calculateScenarioPeriodTotals, calculateScenarioTotals, sortItems } from './coverageAnalysis';
@@ -58,6 +72,18 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const router = useRouter();
   const { user, token } = useAuth();
   const customer = useCoverageCustomer();
+  const [customerVisit, setCustomerVisit] = useState<CustomerVisitBaseline>(() =>
+    rememberCustomerVisit(null, scenarioId, customer.customerRevision),
+  );
+  const nextCustomerVisit = rememberCustomerVisit(
+    customerVisit,
+    scenarioId,
+    customer.customerRevision,
+  );
+  if (nextCustomerVisit !== customerVisit) {
+    setCustomerVisit(nextCustomerVisit);
+  }
+  const customerChanged = customerChangedThisVisit(nextCustomerVisit, customer.customerRevision);
   const userId = user?.id ?? '';
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -65,12 +91,32 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     queryFn: () => getConsultation(consultationStorage, userId, scenarioId),
     enabled: Boolean(userId && scenarioId),
   });
+  const savedCustomer = query.data?.id === scenarioId ? savedSimulationCustomer(query.data) : null;
+  const savedCustomerId = savedCustomer?.id ?? null;
+  const savedCustomerName = savedCustomer?.name ?? null;
+  const savedCustomerNumericId = savedCustomerId ? coverageCustomerNumericId(savedCustomerId) : null;
+  const savedCustomerDetail = useQuery({
+    queryKey: ['coverage-simulator', 'customer', savedCustomerNumericId],
+    queryFn: () => {
+      if (savedCustomerNumericId == null) {
+        throw new Error('고객 id가 없습니다.');
+      }
+      return getCustomer(token, savedCustomerNumericId);
+    },
+    enabled: savedCustomerNumericId != null && Boolean(token) && !customerChanged,
+    retry: false,
+  });
   const [form, setForm] = useState<FormState>(null);
   const [activeInlineEdit, setActiveInlineEdit] = useState<CoverageActiveInlineEdit>(null);
   const inlineEditCommitRef = useRef<(() => void) | null>(null);
+  const scenarioRef = useRef<CoverageScenario | null>(null);
+  const persistChainRef = useRef(Promise.resolve());
+  const persistRevisionRef = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
   const scrollYOffsetRef = useRef(0);
   const keyboardInsetRef = useRef(0);
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -95,6 +141,30 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
       hideSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    const loaded = query.data;
+    if (!loaded || loaded.id !== scenarioId || customerChanged) return;
+    const saved = savedSimulationCustomer(loaded);
+    if (!saved) return;
+    customer.hydrateCustomer(hydrateCoverageCustomer(customer, saved));
+  }, [customer, customerChanged, query.data, scenarioId]);
+
+  useEffect(() => {
+    if (!savedCustomerId || !savedCustomerDetail.data || customerChanged) return;
+    const row = toCoverageCustomerPickerRow(savedCustomerDetail.data);
+    customer.hydrateCustomer(savedCustomerChipFromPickerRow(
+      { id: savedCustomerId, name: savedCustomerName },
+      row,
+    ));
+  }, [
+    customer,
+    customerChanged,
+    savedCustomerDetail.data,
+    savedCustomerId,
+    savedCustomerName,
+  ]);
+
   const share = useCoverageShareSession({
     token,
     scenario: query.data ?? null,
@@ -108,27 +178,67 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     },
   });
 
-  const commitActiveInlineEdit = useCallback(() => {
-    if (!activeInlineEdit) return;
-    commitRegisteredInlineEdit(inlineEditCommitRef);
-    Keyboard.dismiss();
+  const commitActiveInlineEdit = useCallback((): CoverageScenario | null => {
+    if (activeInlineEdit) {
+      commitRegisteredInlineEdit(inlineEditCommitRef);
+      Keyboard.dismiss();
+    }
+    return scenarioRef.current;
   }, [activeInlineEdit]);
+
+  const markProgrammaticScroll = useCallback(() => {
+    programmaticScrollRef.current = true;
+    if (programmaticScrollTimerRef.current) clearTimeout(programmaticScrollTimerRef.current);
+    programmaticScrollTimerRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, INLINE_EDIT_FOCUS_GUARD_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (programmaticScrollTimerRef.current) clearTimeout(programmaticScrollTimerRef.current);
+    };
+  }, []);
+
+  const commitInlineEditFromUserScroll = useCallback(() => {
+    if (!shouldCommitInlineEditOnScroll(programmaticScrollRef.current)) return;
+    commitActiveInlineEdit();
+  }, [commitActiveInlineEdit]);
 
   const beforeTimelineInteraction = useCallback(() => {
     commitActiveInlineEdit();
   }, [commitActiveInlineEdit]);
 
   const scenario = query.data;
-  const persist = async (next: CoverageScenario, message = '') => {
-    setNotice('');
-    try {
-      await saveConsultation(consultationStorage, userId, next);
-      await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
-      if (message) showToast(message);
-    } catch {
-      setNotice('보장 분석을 저장하지 못했습니다.');
+
+  useEffect(() => {
+    const incoming = query.data?.id === scenarioId ? query.data : null;
+    if (!incoming) return;
+    const local = scenarioRef.current;
+    if (!local || local.id !== incoming.id || incoming.updatedAt > local.updatedAt) {
+      scenarioRef.current = incoming;
     }
-  };
+  }, [query.data, scenarioId]);
+
+  const persist = useCallback((next: CoverageScenario) => {
+    const revision = ++persistRevisionRef.current;
+    scenarioRef.current = next;
+    queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], next);
+    const task = persistChainRef.current.then(async () => {
+      setNotice('');
+      try {
+        await saveConsultation(consultationStorage, userId, next);
+        await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
+        if (persistRevisionRef.current !== revision && scenarioRef.current) {
+          queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], scenarioRef.current);
+        }
+      } catch {
+        setNotice('보장 분석을 저장하지 못했습니다.');
+      }
+    });
+    persistChainRef.current = task.then(() => undefined, () => undefined);
+    return task;
+  }, [queryClient, scenarioId, userId]);
 
   if (query.isLoading) {
     return (
@@ -147,17 +257,33 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     );
   }
 
+  const scenarioForWrite = (): CoverageScenario => scenarioRef.current ?? scenario;
+
+  const deleteConfirm = (
+    <CoverageItemDeleteDialog
+      scenario={scenario}
+      deleteId={deleteId}
+      onCancel={() => setDeleteId(null)}
+      onConfirm={() => {
+        const id = deleteId;
+        setDeleteId(null);
+        setForm(null);
+        if (id) void persist(removeScenarioItem(scenarioForWrite(), id));
+      }}
+    />
+  );
+
   if (form?.type === 'add') {
     return (
       <CoverageItemForm
         mode="add"
         onClose={() => setForm(null)}
         onSelectCoverage={(input) => {
-          void persist(insertCoverageItem(scenario, form.afterOrder, input));
+          void persist(insertCoverageItem(scenarioForWrite(), form.afterOrder, input));
           setForm(null);
         }}
         onSelectTimeMarker={(label) => {
-          void persist(insertTimeMarker(scenario, form.afterOrder, label));
+          void persist(insertTimeMarker(scenarioForWrite(), form.afterOrder, label));
           setForm(null);
         }}
       />
@@ -166,24 +292,31 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
 
   if (form?.type === 'edit') {
     return (
-      <CoverageItemForm
-        mode="edit"
-        item={form.item}
-        onClose={() => setForm(null)}
-        onSave={(patch) => {
-          void persist(updateCoverageItem(scenario, form.item.id, patch), '저장되었습니다.');
-          setForm(null);
-        }}
-        onDelete={() => setDeleteId(form.item.id)}
-      />
+      <>
+        <CoverageItemForm
+          mode="edit"
+          item={form.item}
+          onClose={() => setForm(null)}
+          onSave={(patch) => {
+            void persist(updateCoverageItem(scenarioForWrite(), form.item.id, patch));
+            setForm(null);
+          }}
+          onDelete={() => setDeleteId(form.item.id)}
+        />
+        {deleteConfirm}
+      </>
     );
   }
 
   const items = sortItems(scenario.items);
   const totals = calculateScenarioTotals(scenario);
   const openEdit = (item: CoverageScenarioItem) => {
+    const fresh = scenarioForWrite().items.find((entry) => entry.id === item.id);
     setActiveInlineEdit(null);
-    setForm({ type: 'edit', item });
+    setForm({
+      type: 'edit',
+      item: fresh?.type === 'coverage' ? fresh : item,
+    });
   };
 
   const runWithInlineCommit = (action: () => void) => {
@@ -194,14 +327,19 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const editingScenarioTemplate = isScenarioRecord(scenario);
 
   const saveFromHeader = async () => {
-    commitActiveInlineEdit();
+    const committed = commitActiveInlineEdit() ?? scenario;
     setSavingCustomer(true);
     setNotice('');
     try {
       if (editingScenarioTemplate) {
-        await persist(scenario, '저장되었습니다.');
+        await persist(committed);
       } else {
-        await persist(assignCustomer(scenario, { id: customer.id, name: customer.name }), '저장되었습니다.');
+        const linked = resolveHeaderSaveCustomer({
+          explicit: customerChanged,
+          context: { id: customer.id, name: customer.name },
+          scenario: committed,
+        });
+        await persist(assignCustomer(committed, linked));
       }
     } finally {
       setSavingCustomer(false);
@@ -240,12 +378,10 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               ref={scrollRef}
               contentContainerStyle={styles.content}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
+              keyboardDismissMode="none"
               automaticallyAdjustKeyboardInsets
-              onScrollBeginDrag={() => {
-                commitActiveInlineEdit();
-              }}
-              onMomentumScrollBegin={commitActiveInlineEdit}
+              onScrollBeginDrag={commitInlineEditFromUserScroll}
+              onMomentumScrollBegin={commitInlineEditFromUserScroll}
               onScroll={(event) => {
                 scrollYOffsetRef.current = event.nativeEvent.contentOffset.y;
               }}
@@ -260,7 +396,6 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                 {editingScenarioTemplate && notice ? (
                   <Text style={styles.noticeInline}>{notice}</Text>
                 ) : null}
-                {toast ? <Text style={styles.toast}>{toast}</Text> : null}
                 <TouchableWithoutFeedback onPress={commitActiveInlineEdit} accessible={false}>
                   <View>
                     <CoverageTimeline
@@ -289,19 +424,20 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
                           anchorRef,
                           keyboardInsetRef.current,
                           scrollYOffsetRef.current,
+                          markProgrammaticScroll,
                         );
                       }}
                       onInlineAmountCommit={(itemId, field, rawInput) => {
                         const patch = coverageInlineAmountPatch(field, rawInput);
-                        void persist(updateCoverageItem(scenario, itemId, patch));
+                        void persist(updateCoverageItem(scenarioForWrite(), itemId, patch));
                         setActiveInlineEdit(null);
                       }}
                       onInlineTitleCommit={(itemId, raw) => {
-                        void persist(updateCoverageItem(scenario, itemId, { label: raw }));
+                        void persist(updateCoverageItem(scenarioForWrite(), itemId, { label: raw }));
                         setActiveInlineEdit(null);
                       }}
                       onMove={(itemId, direction) => {
-                        void persist(moveScenarioItem(scenario, itemId, direction));
+                        void persist(moveScenarioItem(scenarioForWrite(), itemId, direction));
                       }}
                       onRemove={(itemId) => {
                         setDeleteId(itemId);
@@ -351,33 +487,43 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => {
           setConfirmReset(false);
-          void persist(resetScenarioItems(scenario));
+          void persist(resetScenarioItems(scenarioForWrite()));
         }}
       />
-      <ConfirmDialog
-        open={deleteId != null}
-        title={
-          scenario.items.find((item) => item.id === deleteId)?.type === 'time-marker'
-            ? '이 시간 구간을 삭제할까요?'
-            : '항목을 삭제할까요?'
-        }
-        message={
-          scenario.items.find((item) => item.id === deleteId)?.type === 'time-marker'
-            ? '삭제 후 되돌릴 수 없습니다.'
-            : '이 항목을 삭제합니다.'
-        }
-        confirmLabel="삭제"
-        cancelLabel="취소"
-        tone="danger"
-        onCancel={() => setDeleteId(null)}
-        onConfirm={() => {
-          const id = deleteId;
-          setDeleteId(null);
-          setForm(null);
-          if (id) void persist(removeScenarioItem(scenario, id));
-        }}
-      />
+      {deleteConfirm}
+      {toast ? (
+        <View style={styles.toastOverlay} pointerEvents="none">
+          <Text style={styles.toast}>{toast}</Text>
+        </View>
+      ) : null}
     </View>
+  );
+}
+
+function CoverageItemDeleteDialog({
+  scenario,
+  deleteId,
+  onCancel,
+  onConfirm,
+}: {
+  scenario: CoverageScenario;
+  deleteId: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const target = scenario.items.find((item) => item.id === deleteId);
+  const timeMarker = target?.type === 'time-marker';
+  return (
+    <ConfirmDialog
+      open={deleteId != null}
+      title={timeMarker ? '이 시간 구간을 삭제할까요?' : '항목을 삭제할까요?'}
+      message={timeMarker ? '삭제 후 되돌릴 수 없습니다.' : '이 항목을 삭제합니다.'}
+      confirmLabel="삭제"
+      cancelLabel="취소"
+      tone="danger"
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   );
 }
 
@@ -386,6 +532,14 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   content: { padding: 16, paddingBottom: 24, gap: 12 },
   noticeInline: { color: theme.danger, fontSize: 13, marginBottom: 4 },
+  toastOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 88,
+    alignItems: 'center',
+    zIndex: 50,
+  },
   toast: {
     alignSelf: 'center',
     paddingHorizontal: 16,

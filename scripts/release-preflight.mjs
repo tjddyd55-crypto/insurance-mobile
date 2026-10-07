@@ -74,8 +74,9 @@ function scanSensitiveUntracked() {
 
 function checkVersion(appConfigSource) {
   const { appVersion, androidVersionCode, iosBuildNumber } = parseAppConfigNumbers(appConfigSource);
-  const expected = 6;
-  addCheck('version.name', appVersion === '1.0.3' ? 'PASS' : 'BLOCKED', `versionName=${appVersion}`);
+  const expectedName = '1.0.4';
+  const expected = 9;
+  addCheck('version.name', appVersion === expectedName ? 'PASS' : 'BLOCKED', `versionName=${appVersion}`);
   if (releaseMode) {
     addCheck(
       'version.androidCode',
@@ -90,12 +91,12 @@ function checkVersion(appConfigSource) {
   } else {
     addCheck(
       'version.androidCode',
-      androidVersionCode === 5 ? 'PASS' : 'WARN',
+      androidVersionCode === expected ? 'PASS' : 'WARN',
       `Android versionCode=${androidVersionCode} (release step will require ${expected})`,
     );
     addCheck(
       'version.iosBuild',
-      iosBuildNumber === 5 ? 'PASS' : 'WARN',
+      iosBuildNumber === expected ? 'PASS' : 'WARN',
       `iOS buildNumber=${iosBuildNumber} (release step will require ${expected})`,
     );
   }

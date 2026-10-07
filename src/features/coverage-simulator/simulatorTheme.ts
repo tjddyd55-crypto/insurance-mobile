@@ -21,6 +21,6 @@ export const simulatorTheme = {
     treatment: { bg: '#fff7ed', fg: '#ea580c' },
     recovery: { bg: '#dcfce7', fg: '#16a34a' },
     support: { bg: '#f5f3ff', fg: '#7c3aed' },
-    other: { bg: '#f3f4f6', fg: '#4b5563' },
+    other: { bg: '#f1f5f9', fg: '#6b7280' },
   },
 } as const;

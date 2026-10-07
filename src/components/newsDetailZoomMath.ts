@@ -80,6 +80,67 @@ export function calculatePanBounds(
   };
 }
 
+export type Point = { x: number; y: number };
+
+/** Page top-left in the binder stage viewport (scroll offset already applied). */
+export function binderPageOriginInViewport(
+  viewportWidth: number,
+  pageWidth: number,
+  contentPaddingTop: number,
+  scrollY: number,
+): Point {
+  'worklet';
+  return {
+    x: (viewportWidth - pageWidth) / 2,
+    y: contentPaddingTop - scrollY,
+  };
+}
+
+/**
+ * Map a viewport focal point to page-local coordinates (top-left origin).
+ * Matches RN transform order: translate then scale about page center.
+ */
+export function focalPointToPageLocal(
+  focalX: number,
+  focalY: number,
+  origin: Point,
+  pageWidth: number,
+  pageHeight: number,
+  scale: number,
+  translateX: number,
+  translateY: number,
+): Point {
+  'worklet';
+  const centerX = pageWidth / 2;
+  const centerY = pageHeight / 2;
+  if (scale <= 0) {
+    return { x: centerX, y: centerY };
+  }
+  return {
+    x: centerX + (focalX - origin.x - centerX - translateX) / scale,
+    y: centerY + (focalY - origin.y - centerY - translateY) / scale,
+  };
+}
+
+/** Keep the page-local focal point under the same viewport focal while scaling. */
+export function translationForFocalPinch(
+  focalX: number,
+  focalY: number,
+  focalPage: Point,
+  origin: Point,
+  pageWidth: number,
+  pageHeight: number,
+  scale: number,
+): Point {
+  'worklet';
+  const centerX = pageWidth / 2;
+  const centerY = pageHeight / 2;
+  return {
+    x: focalX - origin.x - centerX - (focalPage.x - centerX) * scale,
+    y: focalY - origin.y - centerY - (focalPage.y - centerY) * scale,
+  };
+}
+
 export function clampTranslation(
   translateX: number,
   translateY: number,

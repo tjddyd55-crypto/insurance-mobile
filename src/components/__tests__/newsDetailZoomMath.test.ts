@@ -6,6 +6,9 @@ const {
   calculateContainRenderedSize,
   calculatePanBounds,
   clampTranslation,
+  binderPageOriginInViewport,
+  focalPointToPageLocal,
+  translationForFocalPinch,
 } = require('../newsDetailZoomMath');
 
 describe('newsDetailZoomMath', () => {
@@ -91,5 +94,46 @@ describe('newsDetailZoomMath', () => {
         maxY: -10,
       }),
     ).toEqual({ x: 0, y: 0 });
+  });
+
+  it('keeps the focal point stable while pinch scale changes', () => {
+    const pageWidth = 300;
+    const pageHeight = 400;
+    const origin = binderPageOriginInViewport(360, pageWidth, 40, 0);
+    const focalX = 180;
+    const focalY = 220;
+    const startScale = 1;
+    const focalPage = focalPointToPageLocal(
+      focalX,
+      focalY,
+      origin,
+      pageWidth,
+      pageHeight,
+      startScale,
+      0,
+      0,
+    );
+    const nextScale = 2;
+    const nextTranslation = translationForFocalPinch(
+      focalX,
+      focalY,
+      focalPage,
+      origin,
+      pageWidth,
+      pageHeight,
+      nextScale,
+    );
+    const roundTrip = focalPointToPageLocal(
+      focalX,
+      focalY,
+      origin,
+      pageWidth,
+      pageHeight,
+      nextScale,
+      nextTranslation.x,
+      nextTranslation.y,
+    );
+    expect(roundTrip.x).toBeCloseTo(focalPage.x, 4);
+    expect(roundTrip.y).toBeCloseTo(focalPage.y, 4);
   });
 });

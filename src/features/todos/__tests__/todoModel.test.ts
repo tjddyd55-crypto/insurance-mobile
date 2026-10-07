@@ -37,6 +37,50 @@ describe('todoModel', () => {
     expect(normalizeTodoList({ data: [raw] })).toHaveLength(1);
   });
 
+  test('lists newest created todos first', () => {
+    const rows = normalizeTodoList([
+      { id: '1', title: 'older', created_at: '2026-10-01T01:00:00.000Z', updated_at: '2026-10-01T01:00:00.000Z' },
+      { id: '2', title: 'newer', created_at: '2026-10-02T01:00:00.000Z', updated_at: '2026-10-02T01:00:00.000Z' },
+    ]);
+    expect(rows.map((row) => row.id)).toEqual(['2', '1']);
+  });
+
+  test('moves an edited older todo above a newer unedited one', () => {
+    const rows = normalizeTodoList([
+      {
+        id: 'newer',
+        title: '미수정',
+        createdAt: '2026-10-02T01:00:00.000Z',
+        updatedAt: '2026-10-02T01:00:00.000Z',
+      },
+      {
+        id: 'edited',
+        title: '수정됨',
+        createdAt: '2026-10-01T01:00:00.000Z',
+        updatedAt: '2026-10-03T01:00:00.000Z',
+      },
+    ]);
+    expect(rows.map((row) => row.id)).toEqual(['edited', 'newer']);
+  });
+
+  test('breaks recent-write ties by createdAt then id', () => {
+    const sameWrite = '2026-10-03T09:00:00.000Z';
+    const rows = normalizeTodoList([
+      { id: '2', title: 'a', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: sameWrite },
+      { id: '10', title: 'b', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: sameWrite },
+      { id: '3', title: 'c', createdAt: '2026-10-02T00:00:00.000Z', updatedAt: sameWrite },
+    ]);
+    expect(rows.map((row) => row.id)).toEqual(['3', '10', '2']);
+  });
+
+  test('uses createdAt when updatedAt is missing', () => {
+    const rows = normalizeTodoList([
+      { id: 'old', title: 'a', createdAt: '2026-09-01T00:00:00.000Z' },
+      { id: 'new', title: 'b', createdAt: '2026-10-01T00:00:00.000Z' },
+    ]);
+    expect(rows.map((row) => row.id)).toEqual(['new', 'old']);
+  });
+
   test('maps UI filters to the server query contract', () => {
     expect(buildTodoListParams('today', 'yes', 'system')).toEqual({
       due: 'today',

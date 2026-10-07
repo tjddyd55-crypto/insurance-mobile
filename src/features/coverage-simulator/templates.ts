@@ -1,3 +1,4 @@
+import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
 import {
   createCancerDefaultItems,
   createCareDementiaDefaultItems,
@@ -71,7 +72,7 @@ export function createScenarioFromTemplate(
     description: meta.description,
     customerId: customer?.id ?? null,
     customerNameSnapshot: customer?.name ?? null,
-    consultationDate: now.slice(0, 10),
+    consultationDate: formatDeviceLocalYmd(now) ?? '',
     items: meta.items,
     createdAt: now,
     updatedAt: now,
