@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
-import { Button, ModalShell, TextField } from '../../design-system';
+import { Button, Inline, ModalShell, TextField } from '../../design-system';
 import { CoverageCustomerBar } from './CoverageCustomerBar';
 import { CoveragePrimaryButton, CoverageSimulatorHeader, CoverageSimulatorScreen } from './CoverageSimulatorChrome';
 import { coverageQueryKey } from './CoverageSimulationListScreen';
@@ -46,12 +46,20 @@ export function CoverageScenarioSelectScreen() {
     await Promise.all([scenarioQuery.refetch(), simulationQuery.refetch()]);
   };
 
+  const closeAddScenario = useCallback(() => {
+    if (busy) return;
+    Keyboard.dismiss();
+    setAddOpen(false);
+    setNewTitle('');
+  }, [busy]);
+
   const submitAddScenario = async () => {
     const scenario = createUserScenario(newTitle);
     if (!scenario || !userId) return;
     setBusy(true);
     try {
       await saveConsultation(consultationStorage, userId, scenario);
+      Keyboard.dismiss();
       setAddOpen(false);
       setNewTitle('');
       await refreshAll();
@@ -92,16 +100,30 @@ export function CoverageScenarioSelectScreen() {
         open={addOpen}
         title="시나리오 추가"
         presentation="dialog"
+        scroll={false}
+        keyboardAvoiding
         busy={busy}
         closeOnBackdrop={false}
-        onRequestClose={() => setAddOpen(false)}
+        dismissOnAndroidBack={!busy}
+        onRequestClose={closeAddScenario}
         footer={
-          <Button
-            label="만들기"
-            loading={busy}
-            disabled={!newTitle.trim()}
-            onPress={() => void submitAddScenario()}
-          />
+          <Inline gap="sm" style={styles.addScenarioFooter}>
+            <Button
+              label="취소"
+              variant="secondary"
+              disabled={busy}
+              onPress={closeAddScenario}
+              style={styles.addScenarioFooterBtn}
+            />
+            <Button
+              label="만들기"
+              variant="action"
+              loading={busy}
+              disabled={!newTitle.trim()}
+              onPress={() => void submitAddScenario()}
+              style={styles.addScenarioFooterBtn}
+            />
+          </Inline>
         }
       >
         <TextField
@@ -122,4 +144,6 @@ const styles = StyleSheet.create({
   sectionHeader: { marginTop: 8, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   simulationHeading: { marginTop: 20, marginBottom: 8 },
   cta: { marginTop: 16 },
+  addScenarioFooter: { alignSelf: 'stretch' },
+  addScenarioFooterBtn: { flex: 1, minWidth: 0 },
 });

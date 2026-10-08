@@ -30,6 +30,10 @@ export type ModalShellProps = {
   dismissOnAndroidBack?: boolean;
   /** Dialog-only sizing overrides. Defaults preserve existing modal behavior. */
   dialogMaxHeight?: `${number}%`;
+  /** Dialog max height in px — overrides % when keyboard/list layouts need a stable frame. */
+  dialogMaxHeightPx?: number;
+  /** Dialog body grows to fill panel; use with scroll={false} and an inner flex list. */
+  dialogFillBody?: boolean;
   dialogWidth?: `${number}%`;
   dialogBodyPadding?: number;
   dialogOverlayPaddingVertical?: number;
@@ -56,6 +60,8 @@ export function ModalShell({
   closeOnBackdrop = false,
   dismissOnAndroidBack = true,
   dialogMaxHeight,
+  dialogMaxHeightPx,
+  dialogFillBody = false,
   dialogWidth,
   dialogBodyPadding,
   dialogOverlayPaddingVertical,
@@ -81,7 +87,7 @@ export function ModalShell({
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (event) => {
       setKeyboardInset(event.endCoordinates.height);
-      if (scroll) {
+      if (scroll && !isDialog) {
         requestAnimationFrame(() => {
           scrollRef.current?.scrollToEnd({ animated: true });
         });
@@ -94,7 +100,7 @@ export function ModalShell({
       showSub.remove();
       hideSub.remove();
     };
-  }, [open, scroll]);
+  }, [open, scroll, isDialog]);
 
   const requestClose = () => {
     if (!busy && dismissOnAndroidBack) {
@@ -124,7 +130,11 @@ export function ModalShell({
       style={[
         styles.body,
         { padding: resolvedBodyPadding },
-        isDialog ? styles.dialogBody : styles.bodyFill,
+        isDialog
+          ? dialogFillBody
+            ? styles.dialogBodyFill
+            : styles.dialogBody
+          : styles.bodyFill,
       ]}
     >
       {children}
@@ -141,15 +151,25 @@ export function ModalShell({
     >
       <KeyboardAvoidingView
         enabled={keyboardAvoiding}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={
+          Platform.OS === 'ios'
+            ? 'padding'
+            : keyboardAvoiding && isDialog
+              ? 'padding'
+              : undefined
+        }
         style={[
           styles.modalRoot,
           isDialog && styles.dialogOverlay,
-          isDialog && keyboardOpen && styles.dialogOverlayKeyboardOpen,
           isDialog && {
             paddingVertical: dialogOverlayPaddingVertical ?? theme.spacing.xl,
             paddingHorizontal: dialogOverlayPaddingHorizontal ?? theme.spacing.xl,
           },
+          isDialog &&
+            keyboardOpen && {
+              paddingBottom: Math.max(keyboardInset, insets.bottom + theme.spacing.sm),
+              justifyContent: 'center',
+            },
         ]}
       >
         {isDialog ? (
@@ -169,12 +189,20 @@ export function ModalShell({
           style={[
             styles.safe,
             isDialog && styles.dialogPanel,
-            isDialog && dialogMaxHeight ? { maxHeight: dialogMaxHeight } : null,
+            isDialog && dialogMaxHeightPx != null ? { maxHeight: dialogMaxHeightPx } : null,
+            isDialog && dialogMaxHeightPx == null && dialogMaxHeight
+              ? { maxHeight: dialogMaxHeight }
+              : null,
             isDialog && dialogWidth ? { width: dialogWidth, alignSelf: 'center' } : null,
-            isDialog && keyboardOpen && styles.dialogPanelKeyboardOpen,
+            isDialog && keyboardOpen && !dialogMaxHeightPx && styles.dialogPanelKeyboardOpen,
           ]}
         >
-          <View style={isDialog ? styles.dialogContent : styles.keyboard}>
+          <View
+            style={[
+              isDialog ? styles.dialogContent : styles.keyboard,
+              isDialog && dialogFillBody && styles.dialogContentFill,
+            ]}
+          >
             <View style={[styles.header, dialogHeaderCompact && styles.headerCompact]}>
               <View style={styles.titleBlock}>
                 <AppText
@@ -192,22 +220,7 @@ export function ModalShell({
               {headerAction}
             </View>
             {body}
-            {footer ? (
-              <View
-                style={[
-                  styles.footer,
-                  isDialog &&
-                    keyboardOpen && {
-                      paddingBottom: Math.max(
-                        theme.layout.modalPadding,
-                        keyboardInset - insets.bottom + theme.spacing.sm,
-                      ),
-                    },
-                ]}
-              >
-                {footer}
-              </View>
-            ) : null}
+            {footer ? <View style={styles.footer}>{footer}</View> : null}
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -224,10 +237,6 @@ function createStyles(theme: AppTheme) {
     dialogOverlay: {
       justifyContent: 'center',
       backgroundColor: theme.colors.overlay,
-    },
-    dialogOverlayKeyboardOpen: {
-      justifyContent: 'flex-end',
-      paddingBottom: theme.spacing.sm,
     },
     safe: {
       flex: 1,
@@ -284,6 +293,14 @@ function createStyles(theme: AppTheme) {
     dialogBody: {
       flexGrow: 0,
       flexShrink: 1,
+    },
+    dialogBodyFill: {
+      flex: 1,
+      minHeight: 0,
+    },
+    dialogContentFill: {
+      flex: 1,
+      minHeight: 0,
     },
     scrollContent: {
       flexGrow: 1,
