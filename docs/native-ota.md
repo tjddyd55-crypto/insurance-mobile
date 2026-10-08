@@ -6,11 +6,11 @@ Production/Development OTA 운영 SSOT. Store identity·runtime·channel은 서�
 
 | 환경 | App ID | version (runtime) | EAS channel | OTA publish |
 |------|--------|-------------------|-------------|-------------|
-| Development Client | `com.onefc.app.dev` | `1.0.0` | `native-development` | DEV only |
-| Preview (internal APK) | `com.onefc.app.dev` | `1.0.0` | `native-preview` | E2E 테스트 |
-| Production staging | `com.onefc.app` | `1.0.3` | `native-production-staging` | staging 검증 |
-| Production | `com.onefc.app` | `1.0.3` | `native-production` | **승인 후만** |
-| Production APK (internal QA) | `com.onefc.app` | `1.0.3` | `native-qa` | QA 전용. `native-production` publish 금지 |
+| Development Client | `com.onefc.app.dev` | `1.0.4` (native parity with store) | `native-development` | DEV only |
+| Preview (internal APK) | `com.onefc.app.dev` | `1.0.4` | `native-preview` | E2E 테스트 |
+| Production staging | `com.onefc.app` | `1.0.4` | `native-production-staging` | staging 검증 |
+| Production | `com.onefc.app` | `1.0.4` | `native-production` | **승인 후만** |
+| Production APK (internal QA) | `com.onefc.app` | `1.0.4` | `native-qa` | QA 전용. `native-production` publish 금지 |
 
 `production-apk`는 production과 같은 `APP_VARIANT` / `EXPO_PUBLIC_APP_ENV` / EAS `environment: production`(API URL 포함)을 쓰고, Android만 `apk`로 만든다. `distribution: internal`은 환경 변수를 자동으로 `preview`에 붙이므로, 이 프로필만 `environment`를 `production`으로 고정한다. 채널은 `native-qa`라서 production OTA가 이 바이너리에 닿지 않는다.
 
