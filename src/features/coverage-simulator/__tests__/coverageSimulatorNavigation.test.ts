@@ -3,6 +3,7 @@ import { createSimulationFromScenario } from '../scenarioEdits';
 import {
   COVERAGE_SIMULATION_HOME,
   coverageTemplateSimulationListPath,
+  leaveCoverageEditor,
   resolveCoverageEditorBackPath,
 } from '../coverageSimulatorNavigation';
 
@@ -24,5 +25,25 @@ describe('coverageSimulatorNavigation', () => {
     expect(resolveCoverageEditorBackPath(simulation)).toBe(
       coverageTemplateSimulationListPath(seed.id),
     );
+  });
+
+  it('pops the stack when leaving the editor with history', () => {
+    const seed = buildSeedScenario('cancer')!;
+    const simulation = createSimulationFromScenario(seed, { id: 'c1', name: '고객' });
+    const back = jest.fn();
+    const replace = jest.fn();
+    leaveCoverageEditor({ back, replace, canGoBack: () => true }, simulation);
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('replaces with fallback when there is no stack history', () => {
+    const seed = buildSeedScenario('cancer')!;
+    const simulation = createSimulationFromScenario(seed, { id: 'c1', name: '고객' });
+    const back = jest.fn();
+    const replace = jest.fn();
+    leaveCoverageEditor({ back, replace, canGoBack: () => false }, simulation);
+    expect(back).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledWith(coverageTemplateSimulationListPath(seed.id));
   });
 });
