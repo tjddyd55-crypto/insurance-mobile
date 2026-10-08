@@ -9,8 +9,16 @@ import { CoverageSimulationScreen } from '../CoverageSimulationScreen';
 import { getConsultation, saveConsultation } from '../consultationRepository';
 import type { CoverageScenario } from '../types';
 
+const mockRouterBack = jest.fn();
+const mockRouterReplace = jest.fn();
+
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: jest.fn(), push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({
+    replace: mockRouterReplace,
+    push: jest.fn(),
+    back: mockRouterBack,
+    canGoBack: () => true,
+  }),
   useNavigation: () => ({ setOptions: jest.fn() }),
 }));
 
@@ -106,6 +114,8 @@ describe('coverage inline commit then act', () => {
 
   beforeEach(() => {
     stored = scenarioFixture();
+    mockRouterBack.mockClear();
+    mockRouterReplace.mockClear();
     (getConsultation as jest.Mock).mockImplementation(async () => stored);
     (saveConsultation as jest.Mock).mockImplementation(async (_storage, _userId, next: CoverageScenario) => {
       stored = next;
@@ -197,5 +207,24 @@ describe('coverage inline commit then act', () => {
       expect(lastSaved().items.find((item) => item.id === 'item-a')?.label).toBe('진단금수정');
     });
     expect(screen.queryByText('저장되었습니다.')).toBeNull();
+  });
+
+  it('commits a typed amount when another amount cell is pressed once', async () => {
+    const screen = await typeProposedAmount();
+    fireEvent.press(screen.getAllByLabelText('금액 수정')[0]);
+    await waitFor(() => {
+      const saved = lastSaved();
+      const itemA = saved.items.find((item) => item.id === 'item-a');
+      expect(itemA?.type === 'coverage' && itemA.proposedAmount).toBe(TYPED_AMOUNT);
+    });
+    expect(screen.getByLabelText('금액 입력')).toBeTruthy();
+  });
+
+  it('pops navigation on header back instead of replacing the list route', async () => {
+    const screen = renderScreen();
+    await screen.findByText('진단금');
+    fireEvent.press(screen.getByLabelText('뒤로 가기'));
+    expect(mockRouterBack).toHaveBeenCalledTimes(1);
+    expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 });

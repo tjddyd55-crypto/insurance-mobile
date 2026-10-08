@@ -12,7 +12,7 @@ describe('coverage inline edit focus during scroll', () => {
       path.join(__dirname, '../CoverageTimeline.tsx'),
       'utf8',
     );
-    expect(screen).toMatch(/keyboardShouldPersistTaps="handled"/);
+    expect(screen).toMatch(/keyboardShouldPersistTaps="always"/);
     expect(screen).toMatch(/keyboardDismissMode="none"/);
     expect(screen).toMatch(/shouldCommitInlineEditOnScroll\(programmaticScrollRef\.current\)/);
     expect(screen).toMatch(/markProgrammaticScroll/);

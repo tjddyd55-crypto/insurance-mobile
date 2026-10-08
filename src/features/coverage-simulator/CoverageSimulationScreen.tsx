@@ -58,7 +58,7 @@ import {
   resetScenarioItems,
   updateCoverageItem,
 } from './scenarioEdits';
-import { resolveCoverageEditorBackPath } from './coverageSimulatorNavigation';
+import { leaveCoverageEditor } from './coverageSimulatorNavigation';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenario, CoverageScenarioItem } from './types';
 import { useCoverageShareSession } from './useCoverageShareSession';
@@ -179,8 +179,8 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   });
 
   const commitActiveInlineEdit = useCallback((): CoverageScenario | null => {
-    if (activeInlineEdit) {
-      commitRegisteredInlineEdit(inlineEditCommitRef);
+    const committed = commitRegisteredInlineEdit(inlineEditCommitRef);
+    if (committed || activeInlineEdit) {
       Keyboard.dismiss();
     }
     return scenarioRef.current;
@@ -365,7 +365,10 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         showMenu={false}
         showBillingStatus={false}
         rightAction={headerSave}
-        onBackPress={() => router.replace(resolveCoverageEditorBackPath(scenario) as never)}
+        onBackPress={() => {
+          commitActiveInlineEdit();
+          leaveCoverageEditor(router, scenario);
+        }}
       />
       <Screen padded={false}>
         <View style={styles.body}>
@@ -377,7 +380,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
             <ScrollView
               ref={scrollRef}
               contentContainerStyle={styles.content}
-              keyboardShouldPersistTaps="handled"
+              keyboardShouldPersistTaps="always"
               keyboardDismissMode="none"
               automaticallyAdjustKeyboardInsets
               onScrollBeginDrag={commitInlineEditFromUserScroll}
