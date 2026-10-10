@@ -26,6 +26,7 @@ export function HomeScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const env = getEnvironmentConfig();
   const menu = useNativeMenu();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   return (
     <View style={styles.root}>
@@ -42,10 +43,23 @@ export function HomeScreen() {
                 {env.isDevApp ? <Badge label="DEV" tone="warning" /> : null}
               </Inline>
               <AppText variant="caption">
-                {user?.gaName || user?.gaCode || 'ONE FC'} · {user?.role || 'USER'}
+                {isSuperAdmin
+                  ? '플랫폼 관리자 · SUPER_ADMIN'
+                  : `${user?.gaName || user?.gaCode || 'ONE FC'} · ${user?.role || 'USER'}`}
               </AppText>
             </Stack>
           </Card>
+
+          {isSuperAdmin ? (
+            <Card>
+              <Stack gap="xs">
+                <AppText variant="heading">관리자 계정</AppText>
+                <AppText variant="caption">
+                  SUPER_ADMIN 관리 기능은 PC 버전에서 이용해 주세요.
+                </AppText>
+              </Stack>
+            </Card>
+          ) : null}
 
           {menu.map((section) => (
             <Stack key={section.id} gap="xs">
