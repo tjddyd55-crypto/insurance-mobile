@@ -85,23 +85,13 @@ describe('native session menu policy', () => {
     expect(buildNativeMenuForSession(user({ role }), capabilities)).toEqual([]);
   });
 
-  test('keeps the Native CRM menu available to a SUPER_ADMIN QA session', () => {
+  test('does not expose the USER CRM menu to a SUPER_ADMIN session', () => {
     const menu = buildNativeMenuForSession(user({ role: 'SUPER_ADMIN' }), {
       isTeamOwner: false,
       dynamicNewsletterBoards: undefined,
     });
 
-    expect(menu.map((section) => section.label)).toEqual([
-      '할일 및 알림',
-      '고객관리',
-      '고객 상담',
-      '소식지',
-      '신청서',
-      '팀관리',
-      '업무편의',
-      '내정보',
-    ]);
-    expect(labels(menu)).toHaveLength(26);
+    expect(menu).toEqual([]);
   });
 
   test('injects team management only for the team owner', () => {
