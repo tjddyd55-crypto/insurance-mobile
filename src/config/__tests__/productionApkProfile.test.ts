@@ -30,8 +30,8 @@ describe('production-apk profile', () => {
       EXPO_PUBLIC_APP_ENV: 'production',
     });
     expect(appConfig).toContain("const appVersion = isProduction ? '1.0.4' : '1.0.0'");
-    expect(appConfig).toContain('const androidVersionCode = isProduction ? 11 : 1');
-    expect(appConfig).toContain("const iosBuildNumber = isProduction ? '11' : '1'");
+    expect(appConfig).toContain('const androidVersionCode = isProduction ? 12 : 1');
+    expect(appConfig).toContain("const iosBuildNumber = isProduction ? '12' : '1'");
     expect(appConfig).toContain("policy: 'appVersion'");
     const identity = JSON.parse(fs.readFileSync(path.join(root, 'app.identity.json'), 'utf8'));
     expect(identity.production.applicationId).toBe('com.onefc.app');

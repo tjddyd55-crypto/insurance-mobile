@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -30,6 +30,7 @@ import {
 import { formatProfilePhone, validateProfilePhone } from './profileModel';
 import { formatProfileOrganization, formatProfileRole } from './profilePresentation';
 import { profileQueryKeys } from './queryKeys';
+import { AccountDeletionSection } from './AccountDeletionSection';
 
 export function ProfileScreen() {
   const { token, user, updateUser, logout } = useAuth();
@@ -254,6 +255,12 @@ export function ProfileScreen() {
               />
             </Stack>
           </Card>
+
+          {user?.role === 'USER' ? <AccountDeletionSection token={token} onDeleted={async (notice) => {
+            await logout();
+            router.replace('/(auth)/login');
+            Alert.alert('회원탈퇴 완료', notice);
+          }} /> : null}
 
           <SectionTitle title="로그아웃" description="이 기기에서 ONE FC 사용을 종료합니다." />
           <Button

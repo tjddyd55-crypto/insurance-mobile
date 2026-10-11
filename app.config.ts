@@ -64,12 +64,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const googleServicesFile = resolveGoogleServicesFile(environment);
   const googleServiceInfoPlist = resolveGoogleServiceInfoPlist(environment);
 
-  // Store release 11 includes coupons only, the approved splash and Android Downloads.
+  // Store release 12 also restores the existing self-service account deletion flow.
   // eas.json appVersionSource is local, so these literals are the store numbers.
   const isProduction = environment === 'production';
   const appVersion = isProduction ? '1.0.4' : '1.0.0';
-  const androidVersionCode = isProduction ? 11 : 1;
-  const iosBuildNumber = isProduction ? '11' : '1';
+  const androidVersionCode = isProduction ? 12 : 1;
+  const iosBuildNumber = isProduction ? '12' : '1';
   const projectId =
     process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 

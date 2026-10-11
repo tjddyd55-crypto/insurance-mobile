@@ -8,6 +8,15 @@ function requireToken(token: string | null): string {
   return result;
 }
 
+export async function requestAccountDeletion(token: string | null) {
+  const result = await apiRequest<{ ok: boolean; message?: string }>(
+    '/api/account/delete-request',
+    { method: 'POST', token: requireToken(token), body: JSON.stringify({}) },
+  );
+  if (!result.ok) throw new ApiError(result.message || '계정 삭제 요청에 실패했습니다.', 400);
+  return result;
+}
+
 export async function getProfile(token: string | null): Promise<ProfileRecord> {
   return normalizeProfile(await apiRequest<unknown>('/api/me', { token: requireToken(token) }));
 }

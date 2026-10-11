@@ -42,8 +42,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     if (status === 'anonymous' && !inAuthGroup && !isDevDesignSystem) {
       router.replace('/(auth)/login');
+      return;
     } else if (status === 'authenticated' && inAuthGroup) {
       router.replace('/(app)');
+      return;
     }
     const timer = setTimeout(() => {
       void SplashScreen.hideAsync();
