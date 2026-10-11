@@ -51,6 +51,7 @@ type ClaimDetailModalProps = {
   onShareBundle: (kind: "pdf" | "zip") => void;
   onOpenCustomer: (customerId: number) => void;
   actionError: string;
+  actionNotice: string;
   statusNotice: string;
 };
 
@@ -75,6 +76,7 @@ export function ClaimDetailModal({
   onShareBundle,
   onOpenCustomer,
   actionError,
+  actionNotice,
   statusNotice,
 }: ClaimDetailModalProps) {
   const theme = useAppTheme();
@@ -162,6 +164,9 @@ export function ClaimDetailModal({
                   </Inline>
                   {actionError ? (
                     <AppText color="danger">{actionError}</AppText>
+                  ) : null}
+                  {actionNotice ? (
+                    <AppText color="success">{actionNotice}</AppText>
                   ) : null}
                   {detail.files.length ? (
                     <>
