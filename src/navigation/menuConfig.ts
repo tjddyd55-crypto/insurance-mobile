@@ -311,8 +311,8 @@ export const USER_APP_MENU: NativeMenuSection[] = [
       }),
       link({
         id: 'billing',
-        label: '구독 및 결제',
-        legacyWebPath: '/billing/checkout',
+        label: '쿠폰 적용',
+        legacyWebPath: '/profile',
         nativePath: '/billing',
         mode: 'NATIVE',
       }),

@@ -72,7 +72,7 @@ describe('native session menu policy', () => {
       '신청서 작성', '신청서 작성내역', '렌트(사고대차)',
       '팀원리스트', '팀 게시판', '팀 자료',
       '원수사 연락처', '계정관리', '설계사이트',
-      '내 저장공간', '내정보관리', '구독 및 결제', '문의요청',
+      '내 저장공간', '내정보관리', '쿠폰 적용', '문의요청',
     ]);
   });
 
@@ -146,7 +146,7 @@ describe('native session menu policy', () => {
         policyActive: true,
       },
     }), capabilities);
-    expect(labels(menu)).toEqual(['내정보관리', '구독 및 결제', '문의요청']);
+    expect(labels(menu)).toEqual(['내정보관리', '쿠폰 적용', '문의요청']);
     expect(isExpiredNativePathAllowed('/billing')).toBe(true);
     expect(isExpiredNativePathAllowed('/customers')).toBe(false);
   });
@@ -173,13 +173,13 @@ describe('native session menu policy', () => {
     },
   );
 
-  test('hides billing during free launch except for a review account', () => {
+  test('keeps coupons available during free launch for ordinary and review accounts', () => {
     process.env.EXPO_PUBLIC_FREE_LAUNCH_HIDE_BILLING_UI = 'true';
-    expect(labels(buildNativeMenuForSession(user(), capabilities))).not.toContain('구독 및 결제');
+    expect(labels(buildNativeMenuForSession(user(), capabilities))).toContain('쿠폰 적용');
     expect(labels(buildNativeMenuForSession(user({
       username: 'google_review',
       gaCode: '',
-    }), capabilities))).toContain('구독 및 결제');
+    }), capabilities))).toContain('쿠폰 적용');
   });
 
   test('does not show paid badges for ACTIVE_GENERAL users', () => {

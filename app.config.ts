@@ -64,13 +64,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const googleServicesFile = resolveGoogleServicesFile(environment);
   const googleServiceInfoPlist = resolveGoogleServiceInfoPlist(environment);
 
-  // Play Store listing com.onefc.app stays 1.0.4; versionCode 10 ships OnefcAndroidDownloads (claim PDF).
-  // Previous production upload was 1.0.4 (versionCode 9). DEV stays on its own low codes.
+  // Store release 11 includes coupons only, the approved splash and Android Downloads.
   // eas.json appVersionSource is local, so these literals are the store numbers.
   const isProduction = environment === 'production';
   const appVersion = isProduction ? '1.0.4' : '1.0.0';
-  const androidVersionCode = isProduction ? 10 : 1;
-  const iosBuildNumber = isProduction ? '10' : '1';
+  const androidVersionCode = isProduction ? 11 : 1;
+  const iosBuildNumber = isProduction ? '11' : '1';
   const projectId =
     process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 
@@ -147,13 +146,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           defaultChannel: 'claim_notifications',
         },
       ],
+      // Dangerous mods execute in reverse registration order: crop after Expo.
+      './plugins/withApprovedAndroidSplash.js',
       [
         'expo-splash-screen',
         {
-          image: './assets/images/icon-prod.png',
-          imageWidth: 120,
-          resizeMode: 'contain',
-          backgroundColor: '#ffffff',
+          image: './assets/splash/onefc-splash.png',
+          imageWidth: 288,
+          resizeMode: 'cover',
+          backgroundColor: '#065123',
+          ios: { enableFullScreenImage_legacy: true, resizeMode: 'cover' },
+          dark: { image: './assets/splash/onefc-splash.png', backgroundColor: '#065123' },
         },
       ],
     ],
@@ -180,9 +183,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   // Splash kept via plugin; also set top-level for Expo Go compatibility.
   (expoConfig as ExpoConfig & { splash?: object }).splash = {
-    image: './assets/images/icon-prod.png',
-    resizeMode: 'contain',
-    backgroundColor: '#ffffff',
+    image: './assets/splash/onefc-splash.png',
+    resizeMode: 'cover',
+    backgroundColor: '#065123',
   };
 
   return expoConfig;

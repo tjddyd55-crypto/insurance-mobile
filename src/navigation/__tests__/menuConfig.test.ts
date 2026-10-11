@@ -24,7 +24,7 @@ describe('menuConfig', () => {
     const secondary = listSecondaryMenuLabels();
     expect(secondary).toContain('오늘의 TA');
     expect(secondary).toContain('고객리스트');
-    expect(secondary).toContain('구독 및 결제');
+    expect(secondary).toContain('쿠폰 적용');
   });
 
   it('marks SMS messaging as PC_ONLY', () => {

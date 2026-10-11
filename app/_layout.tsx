@@ -16,6 +16,8 @@ import { usePushNotificationListeners } from '../src/features/push/usePushNotifi
 import { checkForAppUpdateOnce } from '../src/services/appUpdates';
 
 void SplashScreen.preventAutoHideAsync();
+const splashStartedAt = Date.now();
+const MINIMUM_SPLASH_MS = 2000;
 
 const queryClient = createAppQueryClient();
 
@@ -43,7 +45,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     } else if (status === 'authenticated' && inAuthGroup) {
       router.replace('/(app)');
     }
-    void SplashScreen.hideAsync();
+    const timer = setTimeout(() => {
+      void SplashScreen.hideAsync();
+    }, Math.max(0, MINIMUM_SPLASH_MS - (Date.now() - splashStartedAt)));
+    return () => clearTimeout(timer);
   }, [status, segments, router]);
 
   if (status === 'booting') {

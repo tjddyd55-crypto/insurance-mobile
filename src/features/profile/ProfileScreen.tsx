@@ -231,7 +231,7 @@ export function ProfileScreen() {
             />
           </Card>
 
-          <SectionTitle title="서비스 관리" description="저장공간, 결제, 문의 내역으로 이동합니다." />
+          <SectionTitle title="서비스 관리" description="저장공간, 쿠폰, 문의 내역으로 이동합니다." />
           <Card variant="outlined">
             <Stack gap="sm">
               <Button
@@ -241,7 +241,7 @@ export function ProfileScreen() {
                 onPress={() => router.push('/storage')}
               />
               <Button
-                label="구독 및 결제"
+                label="쿠폰 적용"
                 variant="secondary"
                 fullWidth
                 onPress={() => router.push('/billing')}

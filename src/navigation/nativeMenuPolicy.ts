@@ -2,7 +2,6 @@ import type { AuthUser } from '../api/authApi';
 import {
   isInsuranceBillingAccessEnforced,
   isInsuranceBillingEnabled,
-  isBillingUiVisibleForUser,
 } from '../features/billing/billingAccessPolicy';
 import { applyEntitlementMenuBadges } from '../features/entitlements/applyEntitlementMenuBadges';
 import { isGaMemberUser } from '../features/entitlements/featureEntitlementPolicy';
@@ -116,17 +115,6 @@ function injectTeamOwnerMenu(
     : section);
 }
 
-function applyBillingVisibility(
-  sections: NativeMenuSection[],
-  user: AuthUser,
-): NativeMenuSection[] {
-  if (isBillingUiVisibleForUser(user)) return sections;
-  return sections.map((section) => ({
-    ...section,
-    children: section.children.filter((child) => child.id !== 'billing'),
-  }));
-}
-
 function applyExpiredPolicy(
   sections: NativeMenuSection[],
   expired: boolean,
@@ -190,7 +178,8 @@ export function buildNativeMenuForSession(
     capabilities.dynamicNewsletterBoards,
   );
   const withTeamOwner = injectTeamOwnerMenu(withNewsletter, capabilities.isTeamOwner);
-  const withBillingPolicy = applyBillingVisibility(withTeamOwner, user);
+  // The legacy billing route now offers coupons only, including during free launch.
+  const withBillingPolicy = withTeamOwner;
   const withExpiredPolicy = applyExpiredPolicy(
     withBillingPolicy,
     user.subscription?.effectiveStatus === 'EXPIRED',
