@@ -33,7 +33,11 @@ import { listCustomers } from "../customers/customersApi";
 import { CUSTOMER_LIST_STALE_MS, customerQueryKeys } from "../customers/queryKeys";
 import { formatCustomerPhone } from "../customers/customerModel";
 import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation";
-import { shareRemoteFile } from "../files/remoteFileSharing";
+import {
+  claimBundlePdfDownloadSuccessMessage,
+  downloadRemoteFile,
+  shareRemoteFile,
+} from "../files/remoteFileSharing";
 import {
   createCustomerAppLink,
   claimBundleRequest,
@@ -82,6 +86,7 @@ export function ClaimsScreen({
   const [sharingFileId, setSharingFileId] = useState<number | null>(null);
   const [bundleKind, setBundleKind] = useState<"pdf" | "zip" | null>(null);
   const [detailActionError, setDetailActionError] = useState("");
+  const [detailActionNotice, setDetailActionNotice] = useState("");
   const customers = useQuery({
     queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
@@ -170,6 +175,7 @@ export function ClaimsScreen({
     download = false,
   ) {
     setDetailActionError("");
+    setDetailActionNotice("");
     const raw = extractClaimFileUrl(file, download);
     if (!raw) {
       setDetailActionError("파일 URL을 확인할 수 없습니다.");
@@ -185,6 +191,7 @@ export function ClaimsScreen({
   }
   async function shareFile(file: ClaimDetail["files"][number]) {
     setDetailActionError("");
+    setDetailActionNotice("");
     const raw = extractClaimFileUrl(file, true);
     if (!raw) {
       setDetailActionError("공유할 파일 URL을 확인할 수 없습니다.");
@@ -208,6 +215,7 @@ export function ClaimsScreen({
   async function shareBundle(kind: "pdf" | "zip") {
     if (!detail.data) return;
     setDetailActionError("");
+    setDetailActionNotice("");
     setBundleKind(kind);
     try {
       const request = claimBundleRequest(
@@ -216,12 +224,32 @@ export function ClaimsScreen({
         detail.data.customerId,
         kind,
       );
-      await shareRemoteFile({
-        url: request.url,
-        headers: request.headers,
-        fileName: `${detail.data.customerName || "고객"}-보험청구-${detail.data.id}.${kind}`,
-        mimeType: kind === "pdf" ? "application/pdf" : "application/zip",
-      });
+      const fileName = `${detail.data.customerName || "고객"}-보험청구-${detail.data.id}.${kind}`;
+      const mimeType =
+        kind === "pdf" ? "application/pdf" : "application/zip";
+      if (kind === "pdf") {
+        const downloadResult = await downloadRemoteFile(
+          {
+            url: request.url,
+            headers: request.headers,
+            fileName,
+            mimeType,
+          },
+          { saveToUserAccessibleLocation: true },
+        );
+        setDetailActionNotice(
+          claimBundlePdfDownloadSuccessMessage(
+            downloadResult.savedToUserAccessibleLocation,
+          ),
+        );
+      } else {
+        await shareRemoteFile({
+          url: request.url,
+          headers: request.headers,
+          fileName,
+          mimeType,
+        });
+      }
     } catch (error) {
       setDetailActionError(
         error instanceof Error
@@ -418,6 +446,7 @@ export function ClaimsScreen({
         onClose={() => {
           setSelectedId(null);
           setDetailActionError("");
+          setDetailActionNotice("");
         }}
         onRetryLoad={() => void detail.refetch()}
         onStatusChange={setNextStatus}
@@ -433,6 +462,7 @@ export function ClaimsScreen({
           router.push(`/customers/${id}`);
         }}
         actionError={detailActionError}
+        actionNotice={detailActionNotice}
         statusNotice={notice}
       />
       <ConfirmDialog

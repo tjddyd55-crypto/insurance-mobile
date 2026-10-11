@@ -1,6 +1,45 @@
 import { Platform } from 'react-native';
 
-import { buildRemoteCacheFileName, shareRemoteFile } from '../remoteFileSharing';
+import * as Sharing from 'expo-sharing';
+
+import { buildRemoteCacheFileName, downloadRemoteFile, shareRemoteFile } from '../remoteFileSharing';
+
+jest.mock('expo-sharing', () => ({
+  isAvailableAsync: jest.fn().mockResolvedValue(true),
+  shareAsync: jest.fn(),
+}));
+
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn().mockResolvedValue(null),
+  setItemAsync: jest.fn().mockResolvedValue(undefined),
+  deleteItemAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('expo-file-system/legacy', () => ({
+  copyAsync: jest.fn().mockResolvedValue(undefined),
+  StorageAccessFramework: {
+    getUriForDirectoryInRoot: jest.fn(() => 'content://downloads'),
+    requestDirectoryPermissionsAsync: jest.fn().mockResolvedValue({
+      granted: true,
+      directoryUri: 'content://downloads/selected',
+    }),
+    createFileAsync: jest.fn().mockResolvedValue('content://downloads/selected/onefc.pdf'),
+  },
+}));
+
+jest.mock('expo-file-system', () => {
+  const write = jest.fn();
+  const create = jest.fn();
+  const uri = 'file:///cache/onefc-test.pdf';
+  return {
+    Paths: { cache: 'cache', document: 'document' },
+    File: jest.fn().mockImplementation(() => ({
+      create,
+      write,
+      uri,
+    })),
+  };
+});
 
 describe('buildRemoteCacheFileName', () => {
   it('keeps extension while using an ASCII-safe cache path', () => {
@@ -13,6 +52,37 @@ describe('buildRemoteCacheFileName', () => {
   it('preserves image extensions', () => {
     expect(buildRemoteCacheFileName('신분증.jpg')).toMatch(/\.jpg$/);
     expect(buildRemoteCacheFileName('scan.PNG')).toMatch(/\.PNG$/);
+  });
+});
+
+describe('downloadRemoteFile on native', () => {
+  const originalPlatform = Platform.OS;
+
+  afterEach(() => {
+    Platform.OS = originalPlatform;
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  it('saves to cache without opening the share sheet', async () => {
+    Platform.OS = 'android';
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), { status: 200 }),
+    );
+
+    const saved = await downloadRemoteFile(
+      {
+        url: 'https://insurance-dev.example/api/agent/customer-claim-requests/1/files.pdf?customerId=9',
+        fileName: '고객-보험청구-1.pdf',
+        mimeType: 'application/pdf',
+        headers: { Authorization: 'Bearer token' },
+      },
+      { saveToUserAccessibleLocation: true },
+    );
+
+    expect(saved.uri).toBe('content://downloads/selected/onefc.pdf');
+    expect(saved.savedToUserAccessibleLocation).toBe(true);
+    expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
 });
 

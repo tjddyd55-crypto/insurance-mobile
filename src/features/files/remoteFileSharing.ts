@@ -3,6 +3,7 @@ import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 
 import { ApiError } from "../../api/client";
+import { copyCacheFileToAndroidDownloads } from "./androidDownloadsSave";
 
 const REMOTE_FILE_TIMEOUT_MS = 30_000;
 
@@ -91,15 +92,80 @@ function saveBlobInBrowser(bytes: Uint8Array, fileName: string, mimeType: string
   return url;
 }
 
-async function shareBytesOnDevice(bytes: Uint8Array, fileName: string, mimeType: string | null): Promise<string> {
+async function saveBytesOnDevice(bytes: Uint8Array, fileName: string): Promise<string> {
   const file = new File(Paths.cache, buildRemoteCacheFileName(fileName));
   file.create({ overwrite: true });
   file.write(bytes);
-  await Sharing.shareAsync(file.uri, {
+  return file.uri;
+}
+
+async function shareBytesOnDevice(bytes: Uint8Array, fileName: string, mimeType: string | null): Promise<string> {
+  const uri = await saveBytesOnDevice(bytes, fileName);
+  await Sharing.shareAsync(uri, {
     mimeType: mimeType || undefined,
     dialogTitle: fileName,
   });
-  return file.uri;
+  return uri;
+}
+
+export type DownloadRemoteFileOptions = {
+  /** Android Downloads(SAF) / iOS Documents — 공유 시트 없이 사용자 접근 가능 위치 */
+  saveToUserAccessibleLocation?: boolean;
+};
+
+export type DownloadRemoteFileResult = {
+  uri: string;
+  savedToUserAccessibleLocation: boolean;
+};
+
+export function claimBundlePdfDownloadSuccessMessage(
+  savedToUserAccessibleLocation: boolean,
+): string {
+  if (savedToUserAccessibleLocation && Platform.OS === "android") {
+    return "PDF가 다운로드되었습니다. 다운로드 폴더에서 확인할 수 있습니다.";
+  }
+  if (savedToUserAccessibleLocation) {
+    return "PDF가 다운로드되었습니다.";
+  }
+  return "PDF가 다운로드되었습니다.";
+}
+
+/** Native: cache 또는 사용자 접근 위치 저장. Web: 브라우저 저장 대화상자. */
+export async function downloadRemoteFile(
+  {
+    url,
+    fileName,
+    mimeType,
+    headers,
+    timeoutMs = REMOTE_FILE_TIMEOUT_MS,
+  }: RemoteFileRequest,
+  options?: DownloadRemoteFileOptions,
+): Promise<DownloadRemoteFileResult> {
+  if (Platform.OS === "web") {
+    const bytes = await downloadRemoteBytes({ url, headers, timeoutMs });
+    const uri = saveBlobInBrowser(bytes, fileName, mimeType);
+    return { uri, savedToUserAccessibleLocation: true };
+  }
+  const bytes = await downloadRemoteBytes({ url, headers, timeoutMs });
+  const cacheUri = await saveBytesOnDevice(bytes, fileName);
+
+  if (!options?.saveToUserAccessibleLocation) {
+    return { uri: cacheUri, savedToUserAccessibleLocation: false };
+  }
+
+  if (Platform.OS === "android") {
+    const uri = await copyCacheFileToAndroidDownloads(
+      cacheUri,
+      fileName,
+      mimeType || "application/octet-stream",
+    );
+    return { uri, savedToUserAccessibleLocation: true };
+  }
+
+  const documentFile = new File(Paths.document, buildRemoteCacheFileName(fileName));
+  documentFile.create({ overwrite: true });
+  documentFile.write(bytes);
+  return { uri: documentFile.uri, savedToUserAccessibleLocation: true };
 }
 
 export async function shareRemoteFile({
