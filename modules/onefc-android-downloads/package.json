@@ -1,0 +1,11 @@
+{
+  "name": "onefc-android-downloads",
+  "version": "1.0.0",
+  "description": "Save files to Android Downloads via MediaStore (no SAF picker)",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

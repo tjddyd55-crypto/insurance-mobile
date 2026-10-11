@@ -9,22 +9,8 @@ jest.mock('expo-sharing', () => ({
   shareAsync: jest.fn(),
 }));
 
-jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn().mockResolvedValue(null),
-  setItemAsync: jest.fn().mockResolvedValue(undefined),
-  deleteItemAsync: jest.fn().mockResolvedValue(undefined),
-}));
-
-jest.mock('expo-file-system/legacy', () => ({
-  copyAsync: jest.fn().mockResolvedValue(undefined),
-  StorageAccessFramework: {
-    getUriForDirectoryInRoot: jest.fn(() => 'content://downloads'),
-    requestDirectoryPermissionsAsync: jest.fn().mockResolvedValue({
-      granted: true,
-      directoryUri: 'content://downloads/selected',
-    }),
-    createFileAsync: jest.fn().mockResolvedValue('content://downloads/selected/onefc.pdf'),
-  },
+jest.mock('onefc-android-downloads', () => ({
+  saveLocalFileToAndroidDownloads: jest.fn().mockResolvedValue('content://media/external/downloads/onefc.pdf'),
 }));
 
 jest.mock('expo-file-system', () => {
@@ -80,7 +66,7 @@ describe('downloadRemoteFile on native', () => {
       { saveToUserAccessibleLocation: true },
     );
 
-    expect(saved.uri).toBe('content://downloads/selected/onefc.pdf');
+    expect(saved.uri).toBe('content://media/external/downloads/onefc.pdf');
     expect(saved.savedToUserAccessibleLocation).toBe(true);
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
