@@ -199,7 +199,8 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
 
   const pickerRows = useMemo(() => {
     if (!search.trim() || !debouncedSearch) return [];
-    // 서버 결과 중 이름/전화번호 매칭만 노출 (고객코드·id 매칭 등 제외).
+    // 서버(insurance #84)도 이름 + 숫자 정규화 전화번호만 매칭한다. 동일 SSOT 규칙으로 한 번 더 걸러
+    // 서버 배포 전(고객코드·id 매칭이 남은 구버전)에도 이름/전화번호 결과만 노출한다.
     return (customersQuery.data ?? [])
       .filter((row) => !excludedIds.has(row.id))
       .filter((row) => matchesCustomerPickerQuery(row, debouncedSearch));
