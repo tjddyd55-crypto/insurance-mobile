@@ -32,6 +32,18 @@ describe('customer create form session', () => {
     expect(block).not.toContain('defaultExpanded');
   });
 
+  it('every collapsible section starts collapsed; basic info stays a plain open section', () => {
+    const screen = read('src/features/customers/CustomerFormScreen.tsx');
+    expect(screen).not.toContain('defaultExpanded');
+    for (const id of ['vehicle', 'business', 'fireInsurance', 'alertDates', 'customFields']) {
+      const start = screen.indexOf(`case '${id}':`);
+      expect(start).toBeGreaterThan(-1);
+      expect(screen.slice(start, start + 200)).toContain('<CollapsibleFormSection');
+    }
+    const basic = screen.indexOf("case 'basic':");
+    expect(screen.slice(basic, basic + 200)).toContain('<FormSection');
+  });
+
   it('empty form starts blank for consecutive registrations', () => {
     expect(EMPTY_CUSTOMER_FORM.name).toBe('');
     expect(EMPTY_CUSTOMER_FORM.phone).toBe('');
