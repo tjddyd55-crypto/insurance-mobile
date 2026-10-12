@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { matchesCustomerPickerQuery } from "../customers/customerPickerSearch";
 import { FlatList, StyleSheet, View } from "react-native";
 
 import {
@@ -38,14 +39,7 @@ export function ClaimCustomerPickerModal({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const query = search.trim().toLowerCase();
   const rows = customers
-    .filter((customer) => {
-      const phoneQuery = query.replace(/\D/g, "");
-      return (
-        !query ||
-        customer.name.toLowerCase().includes(query) ||
-        customer.phone.replace(/\D/g, "").includes(phoneQuery)
-      );
-    })
+    .filter((customer) => matchesCustomerPickerQuery(customer, query))
     .slice(0, 100);
 
   return (

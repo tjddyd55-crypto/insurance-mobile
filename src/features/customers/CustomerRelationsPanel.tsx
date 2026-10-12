@@ -18,6 +18,7 @@ import {
 } from "../../design-system";
 import { listCustomers } from "./customersApi";
 import { customerQueryKeys, CUSTOMER_LIST_STALE_MS } from "./queryKeys";
+import { matchesCustomerPickerQuery } from "./customerPickerSearch";
 import { formatCustomerPhone } from "./customerModel";
 import {
   createCustomerRelation,
@@ -167,17 +168,10 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
   }, [customerId, groupsQuery.data, picker?.kind, relationsQuery.data]);
 
   const pickerRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const phoneQuery = query.replace(/\D/g, "");
+    if (!search.trim()) return [];
     return (customersQuery.data?.customers ?? [])
       .filter((row) => !excludedIds.has(row.id))
-      .filter((row) => {
-        if (!query) return true;
-        return (
-          row.name.toLowerCase().includes(query) ||
-          row.phone.replace(/\D/g, "").includes(phoneQuery)
-        );
-      })
+      .filter((row) => matchesCustomerPickerQuery(row, search))
       .slice(0, 80);
   }, [customersQuery.data?.customers, excludedIds, search]);
 
@@ -452,7 +446,11 @@ export function CustomerRelationsPanel({ customerId }: { customerId: number }) {
             style={styles.pickerList}
             ListEmptyComponent={
               <AppText variant="caption" color="textSecondary">
-                {customersQuery.isLoading ? "고객을 불러오는 중…" : "선택 가능한 고객이 없습니다."}
+                {customersQuery.isLoading
+                  ? "고객을 불러오는 중…"
+                  : !search.trim()
+                    ? "이름 또는 연락처를 입력하세요"
+                    : "선택 가능한 고객이 없습니다."}
               </AppText>
             }
             renderItem={({ item }) => (
