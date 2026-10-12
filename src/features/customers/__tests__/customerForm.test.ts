@@ -32,13 +32,13 @@ describe('customer form', () => {
     expect(validateCustomerForm(draft, { mode: 'edit', original }).driver).toBeUndefined();
     expect(
       validateCustomerForm({ ...draft, driver: '' }, { mode: 'create' }).driver,
-    ).toBeTruthy();
+    ).toBeUndefined();
   });
 
-  it('requires driver to be yes or no', () => {
-    expect(validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'male' }).driver).toBe(
-      '운전 여부를 선택해 주세요.',
-    );
+  it('treats driver as optional (yes / no / unset)', () => {
+    expect(
+      validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'male' }).driver,
+    ).toBeUndefined();
     expect(
       validateCustomerForm({
         ...EMPTY_CUSTOMER_FORM,

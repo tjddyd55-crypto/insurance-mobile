@@ -617,7 +617,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             title={CUSTOMER_FORM_SECTION_TITLES.alertDates}
             sectionId="anniversary"
             testID={CUSTOMER_FORM_SECTION_TEST_IDS.alertDates}
-            defaultExpanded={mode === 'create'}
           >
             <CustomerAlertDatesEditor
               items={form.specialDates}
