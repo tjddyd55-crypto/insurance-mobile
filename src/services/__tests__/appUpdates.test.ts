@@ -1,108 +1,132 @@
 import * as Updates from 'expo-updates';
-import { checkForAppUpdateOnce, resetAppUpdateSessionForTests, shouldRunAppUpdates } from '../appUpdates';
+
+import {
+  prepareAppUpdate,
+  reloadPreparedAppUpdate,
+  resetAppUpdateSessionForTests,
+  shouldRunAppUpdates,
+} from '../appUpdates';
 
 jest.mock('expo-updates', () => ({
-  isEnabled: true, channel: 'native-production', runtimeVersion: '1.0.4',
-  updateId: 'running-id', isEmbeddedLaunch: false,
-  checkForUpdateAsync: jest.fn(), fetchUpdateAsync: jest.fn(), reloadAsync: jest.fn(),
+  isEnabled: true,
+  channel: 'native-production',
+  runtimeVersion: '1.0.4',
+  updateId: 'running-id',
+  isEmbeddedLaunch: false,
+  checkForUpdateAsync: jest.fn(),
+  fetchUpdateAsync: jest.fn(),
+  reloadAsync: jest.fn(),
 }));
 
 const check = Updates.checkForUpdateAsync as jest.Mock;
 const fetch = Updates.fetchUpdateAsync as jest.Mock;
 const reload = Updates.reloadAsync as jest.Mock;
 const logger = jest.fn();
-const run = () => checkForAppUpdateOnce({ isDev: false, logger });
 const noUpdate = { isAvailable: false };
 const available = { isAvailable: true, manifest: { id: 'new-id' } };
 const downloaded = { isNew: true, manifest: { id: 'new-id' } };
 
 beforeEach(() => {
-  jest.useFakeTimers();
   jest.resetAllMocks();
   resetAppUpdateSessionForTests();
   Object.defineProperty(Updates, 'channel', { value: 'native-production', configurable: true });
   Object.defineProperty(Updates, 'updateId', { value: 'running-id', configurable: true });
+  Object.defineProperty(Updates, 'isEnabled', { value: true, configurable: true });
   check.mockResolvedValue(noUpdate);
   fetch.mockResolvedValue(downloaded);
   reload.mockResolvedValue(undefined);
 });
-afterEach(() => jest.useRealTimers());
 
-test('no update completes session without fetch/reload', async () => {
-  await run(); await run();
+test('no update completes without fetch or reload', async () => {
+  await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({ status: 'none' });
   expect(check).toHaveBeenCalledTimes(1);
-  expect(fetch).not.toHaveBeenCalled(); expect(reload).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+  expect(reload).not.toHaveBeenCalled();
 });
-test('new production update is fetched before exactly one reload', async () => {
+
+test('production update is fetched and reported ready without reloading', async () => {
   check.mockResolvedValue(available);
-  await Promise.all([run(), run()]); await run();
-  expect(check).toHaveBeenCalledTimes(1); expect(fetch).toHaveBeenCalledTimes(1);
-  expect(reload).toHaveBeenCalledTimes(1);
-  expect(fetch.mock.invocationCallOrder[0]).toBeLessThan(reload.mock.invocationCallOrder[0]);
+  await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({
+    status: 'ready',
+    updateId: 'new-id',
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(reload).not.toHaveBeenCalled();
+  expect(fetch.mock.invocationCallOrder[0]).toBeGreaterThan(check.mock.invocationCallOrder[0]);
 });
-test('same ID after JS restart cannot reload again even if server says new', async () => {
+
+test('same running update id is not ready to reload', async () => {
   check.mockResolvedValue(available);
-  await run();
-  resetAppUpdateSessionForTests();
-  Object.defineProperty(Updates, 'updateId', { value: 'new-id', configurable: true });
-  await run(); expect(reload).toHaveBeenCalledTimes(1);
+  fetch.mockResolvedValue({ isNew: true, manifest: { id: 'running-id' } });
+  await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({ status: 'none' });
+  expect(reload).not.toHaveBeenCalled();
 });
+
 test.each([
-  { isNew: false }, { isNew: true, manifest: {} },
-  { isNew: true, manifest: { id: 'running-id' } },
+  { isNew: false },
+  { isNew: true, manifest: {} },
   { isNew: false, isRollBackToEmbedded: true },
-])('does not reload unsafe or unchanged fetch result %j', async (result) => {
-  check.mockResolvedValue(available); fetch.mockResolvedValue(result);
-  await run(); expect(reload).not.toHaveBeenCalled();
+])('does not treat unsafe fetch result as ready %j', async (result) => {
+  check.mockResolvedValue(available);
+  fetch.mockResolvedValue(result);
+  await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({ status: 'none' });
 });
-test('first check failure retries after delay and can succeed', async () => {
-  check.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(available);
-  const first = run(); const second = run();
-  await jest.advanceTimersByTimeAsync(2999);
-  expect(check).toHaveBeenCalledTimes(1); expect(reload).not.toHaveBeenCalled();
-  await jest.advanceTimersByTimeAsync(1);
-  await Promise.all([first, second]);
-  expect(check).toHaveBeenCalledTimes(2); expect(reload).toHaveBeenCalledTimes(1);
-});
-test('persistent check failure stops at two without crashing', async () => {
+
+test('check failure returns failed and does not throw', async () => {
   check.mockRejectedValue(new Error('offline'));
-  const pending = run(); await jest.runAllTimersAsync();
-  await expect(pending).resolves.toBeUndefined(); await run();
-  expect(check).toHaveBeenCalledTimes(2); expect(fetch).not.toHaveBeenCalled();
+  await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({ status: 'failed' });
+  expect(fetch).not.toHaveBeenCalled();
   expect(logger).toHaveBeenCalledWith('check_failed', 'offline');
 });
-test('persistent fetch failure retries once without reload', async () => {
-  check.mockResolvedValue(available); fetch.mockRejectedValue(new Error('download failed'));
-  const pending = run(); await jest.runAllTimersAsync(); await pending; await run();
-  expect(fetch).toHaveBeenCalledTimes(2); expect(reload).not.toHaveBeenCalled();
+
+test('fetch failure returns failed without reload', async () => {
+  check.mockResolvedValue(available);
+  fetch.mockRejectedValue(new Error('download failed'));
+  await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({ status: 'failed' });
+  expect(reload).not.toHaveBeenCalled();
   expect(logger).toHaveBeenCalledWith('fetch_failed', 'download failed');
 });
-test('transient fetch failure recovers and reloads once', async () => {
-  check.mockResolvedValue(available);
-  fetch.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(downloaded);
-  const pending = run(); await jest.runAllTimersAsync(); await pending;
-  expect(fetch).toHaveBeenCalledTimes(2); expect(reload).toHaveBeenCalledTimes(1);
+
+test.each(['native-preview', 'native-qa', 'native-production-staging', null])(
+  'channel %s downloads but does not become an apply prompt',
+  async (channel) => {
+    Object.defineProperty(Updates, 'channel', { value: channel, configurable: true });
+    check.mockResolvedValue(available);
+    await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({ status: 'none' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(reload).not.toHaveBeenCalled();
+  },
+);
+
+test('development channel skips before any network call', async () => {
+  Object.defineProperty(Updates, 'channel', { value: 'native-development', configurable: true });
+  await expect(prepareAppUpdate({ isDev: false, logger })).resolves.toEqual({ status: 'skipped' });
+  expect(check).not.toHaveBeenCalled();
 });
-test('reload rejection is contained and never retried', async () => {
-  check.mockResolvedValue(available); reload.mockRejectedValue(new Error('reload failed'));
-  await expect(run()).resolves.toBeUndefined(); await run();
-  expect(reload).toHaveBeenCalledTimes(1); expect(jest.getTimerCount()).toBe(0);
-  expect(logger).toHaveBeenCalledWith('reload_failed', 'reload failed');
-});
-test.each(['native-preview', 'native-qa', 'native-development', null])('channel %s never auto reloads', async (channel) => {
-  Object.defineProperty(Updates, 'channel', { value: channel, configurable: true });
-  check.mockResolvedValue(available); await run();
-  expect(fetch).toHaveBeenCalledTimes(1); expect(reload).not.toHaveBeenCalled();
-});
-test.each([{ isDev: true, isEnabled: true }, { isDev: false, isEnabled: false }])('bypasses %j', async (options) => {
+
+test.each([
+  { isDev: true, isEnabled: true, isDevClient: false },
+  { isDev: false, isEnabled: false, isDevClient: false },
+  { isDev: false, isEnabled: true, isDevClient: true },
+])('bypasses %j', async (options) => {
   expect(shouldRunAppUpdates(options)).toBe(false);
-  await checkForAppUpdateOnce({ ...options, logger });
-  expect(check).not.toHaveBeenCalled(); expect(reload).not.toHaveBeenCalled();
+  await prepareAppUpdate({ ...options, logger });
+  expect(check).not.toHaveBeenCalled();
+  expect(reload).not.toHaveBeenCalled();
 });
+
 test('logs identifiers, not full manifests or signed URLs', async () => {
   check.mockRejectedValue(new Error('offline https://example.com?secret=value token=abc'));
-  const pending = run(); await jest.runAllTimersAsync(); await pending;
+  await prepareAppUpdate({ isDev: false, logger });
   expect(logger).toHaveBeenCalledWith('snapshot', expect.stringContaining('1.0.4'));
   expect(JSON.stringify(logger.mock.calls)).not.toContain('secret=value');
   expect(JSON.stringify(logger.mock.calls)).not.toContain('token=abc');
+});
+
+test('reload runs once and a rejection is not retried', async () => {
+  reload.mockRejectedValueOnce(new Error('reload failed'));
+  await expect(reloadPreparedAppUpdate({ logger })).rejects.toThrow('reload failed');
+  await expect(reloadPreparedAppUpdate({ logger })).resolves.toBeUndefined();
+  expect(reload).toHaveBeenCalledTimes(1);
+  expect(logger).toHaveBeenCalledWith('reload_failed', 'reload failed');
 });
