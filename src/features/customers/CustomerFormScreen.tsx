@@ -631,7 +631,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             title={CUSTOMER_FORM_SECTION_TITLES.customFields}
             sectionId="customFields"
             testID={CUSTOMER_FORM_SECTION_TEST_IDS.customFields}
-            defaultExpanded={mode === 'create'}
           >
             <CustomerCustomFieldsEditor
               items={form.customFields}
