@@ -9,16 +9,20 @@ describe('customer form', () => {
     expect(validateCustomerForm({ ...EMPTY_CUSTOMER_FORM }).name).toBeTruthy();
   });
 
-  it('requires gender to be male or female', () => {
-    expect(validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동' }).gender).toBe(
-      '성별을 선택해 주세요.',
-    );
-    expect(
-      validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'male' }).gender,
-    ).toBeUndefined();
-    expect(
-      validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender: 'female' }).gender,
-    ).toBeUndefined();
+  it('name-only registration is valid (gender/driving/phone/ssn/address optional)', () => {
+    const errors = validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동' }, { mode: 'create' });
+    expect(errors).toEqual({});
+    const payload = customerFormToPayload({ ...EMPTY_CUSTOMER_FORM, name: '홍길동' });
+    expect(payload.name).toBe('홍길동');
+    expect(payload.gender ?? null).toBeNull();
+  });
+
+  it('accepts male, female and unset gender', () => {
+    for (const gender of ['', 'male', 'female'] as const) {
+      expect(
+        validateCustomerForm({ ...EMPTY_CUSTOMER_FORM, name: '홍길동', gender }).gender,
+      ).toBeUndefined();
+    }
   });
 
   it('allows legacy unset driver on edit when unchanged from original', () => {

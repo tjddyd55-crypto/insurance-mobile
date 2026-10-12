@@ -45,6 +45,9 @@ import type { CustomerRecord, ListCustomersResult } from './types';
  * WIP로 「고객 등록 발송」만 추가되어 상단이 2개만 보였고,
  * 「필터」는 overflow/숨김이 아니라 애초에 복구되지 않은 상태였다.
  */
+/** Same as PC CustomersPage keyword debounce. */
+export const CUSTOMER_LIST_SEARCH_DEBOUNCE_MS = 180;
+
 export function CustomersScreen() {
   const { token } = useAuth();
   const router = useRouter();
@@ -118,6 +121,12 @@ export function CustomersScreen() {
     setSearch(searchDraft.trim());
   };
 
+  // PC parity: 입력 즉시 검색 (CustomersPage useDebounce 180ms). 검색 버튼/제출 불필요.
+  useEffect(() => {
+    const handle = setTimeout(() => setSearch(searchDraft.trim()), CUSTOMER_LIST_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchDraft]);
+
   return (
     <View style={styles.root}>
       <AppHeader title="고객리스트" />
@@ -164,6 +173,7 @@ export function CustomersScreen() {
                 value={searchDraft}
                 onChangeText={setSearchDraft}
                 onSubmit={applySearch}
+                showSearchButton={false}
                 accessibilityLabel="고객 검색"
                 trailing={
                   <Button

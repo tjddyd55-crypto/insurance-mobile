@@ -196,13 +196,9 @@ export type ValidateCustomerFormOptions = {
   original?: CustomerFormState;
 };
 
-function isUnsetGender(value: CustomerFormState["gender"]): boolean {
-  return value !== "male" && value !== "female";
-}
-
 export function validateCustomerForm(
   form: CustomerFormState,
-  options?: ValidateCustomerFormOptions,
+  _options?: ValidateCustomerFormOptions,
 ): CustomerFormErrors {
   const errors: CustomerFormErrors = {};
   if (!form.name.trim()) {
@@ -220,16 +216,8 @@ export function validateCustomerForm(
   if (form.birthDate && !isValidYmd(form.birthDate)) {
     errors.birthDate = "생년월일을 YYYY-MM-DD 형식으로 입력해 주세요.";
   }
-  if (isUnsetGender(form.gender)) {
-    const legacyUnsetOnEdit =
-      options?.mode === "edit" &&
-      options.original &&
-      isUnsetGender(options.original.gender) &&
-      form.gender === options.original.gender;
-    if (!legacyUnsetOnEdit) {
-      errors.gender = "성별을 선택해 주세요.";
-    }
-  }
+  // 필수값은 고객명 하나뿐 (PC/서버 동일). 성별·운전 여부·연락처·주민번호·주소 등은 선택 항목.
+  // 성별 미선택은 서버에서 '' (gender TEXT NOT NULL DEFAULT '') 로 저장된다.
   // 운전 여부는 선택 항목: 운전함 / 운전안함 / 미입력(null) 모두 허용.
   if (form.renewalDate && !isValidYmd(form.renewalDate)) {
     errors.renewalDate = "갱신 예정일을 YYYY-MM-DD 형식으로 입력해 주세요.";
