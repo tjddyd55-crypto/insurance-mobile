@@ -52,11 +52,11 @@ describe('customerModel', () => {
     expect(() => normalizeCustomer({ name: 'id 없음' })).toThrow('유효한 id');
   });
 
-  it('searches normalized name, phone and customer code', () => {
+  it('searches normalized name and phone only (PC parity)', () => {
     const customer = normalizeCustomer(rawCustomer);
     expect(customerMatchesSearch(customer, '홍 길동')).toBe(true);
     expect(customerMatchesSearch(customer, '1234')).toBe(true);
-    expect(customerMatchesSearch(customer, 'A-007')).toBe(true);
+    expect(customerMatchesSearch(customer, 'A-007')).toBe(false);
     expect(customerMatchesSearch(customer, '없는값')).toBe(false);
   });
 

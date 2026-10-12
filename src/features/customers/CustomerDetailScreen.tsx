@@ -35,7 +35,7 @@ import { listCustomerCustomFields } from "./customerCustomFieldsApi";
 import { formatCustomerInflowSourceDisplay } from "./customerInflowSource";
 import { listCustomerFireInsuranceLocations } from "./customerFireInsuranceLocationsApi";
 import { deleteCustomer, getCustomer, setCustomerFavorite } from "./customersApi";
-import { customerQueryKeys } from "./queryKeys";
+import { customerQueryKeys, invalidateCustomerListQueries } from "./queryKeys";
 import type { ListCustomersResult } from "./types";
 import { CustomerActionIcon } from "./CustomerActionIcon";
 import { CustomerDetailTaskPanel } from "./CustomerDetailTaskPanel";
@@ -153,14 +153,8 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
     onSuccess: (_data, idToDelete) => {
       setDeleteConfirm(closeCustomerDeleteConfirm());
       queryClient.removeQueries({ queryKey: customerQueryKeys.detail(idToDelete) });
-      queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) =>
-        previous
-          ? {
-              total: Math.max(0, previous.total - 1),
-              customers: previous.customers.filter((item) => item.id !== idToDelete),
-            }
-          : previous,
-      );
+      // List SSOT = server. Re-fetch customer lists so the deleted row disappears now.
+      void invalidateCustomerListQueries(queryClient);
       router.replace("/customers");
     },
   });

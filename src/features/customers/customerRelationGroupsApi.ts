@@ -152,3 +152,32 @@ export async function deleteCustomerRelationGroup(
     method: "DELETE",
   });
 }
+
+/** PC parity: 그룹 이름 수정 — 기존 PATCH /api/customer-relation-groups/:id (구조 변경 없음). */
+export async function updateCustomerRelationGroupName(
+  token: string | null,
+  groupId: number,
+  name: string,
+): Promise<void> {
+  const auth = requireToken(token);
+  await apiRequest(`/api/customer-relation-groups/${groupId}`, {
+    token: auth,
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
+/** PC parity: 구성원 관계 수정 — 기존 PATCH /api/customer-relation-groups/:id/members/:customerId. */
+export async function updateCustomerRelationGroupMemberLabel(
+  token: string | null,
+  groupId: number,
+  customerId: number,
+  relationshipLabel: string,
+): Promise<void> {
+  const auth = requireToken(token);
+  await apiRequest(`/api/customer-relation-groups/${groupId}/members/${customerId}`, {
+    token: auth,
+    method: "PATCH",
+    body: JSON.stringify({ relationshipLabel }),
+  });
+}

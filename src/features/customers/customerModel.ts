@@ -1,3 +1,4 @@
+import { matchesCustomerPickerQuery } from "./customerPickerSearch";
 import { ApiError } from '../../api/client';
 import { normalizeCustomerBusinessInfo } from './customerBusinessInfo';
 import type {
@@ -171,21 +172,13 @@ export function customerGenderLabel(gender: CustomerGender): string {
   return gender === 'male' ? '남' : gender === 'female' ? '여' : '성별 미지정';
 }
 
+/**
+ * Customer keyword search (PC parity): 고객 이름 부분일치 + 전화번호(숫자만 비교).
+ * 주소·메모·주민번호·생년월일 등 다른 필드는 검색하지 않는다.
+ */
 export function customerMatchesSearch(customer: CustomerRecord, keyword: string): boolean {
-  const needle = keyword.trim().toLocaleLowerCase('ko-KR').replace(/\s/g, '');
-  if (!needle) {
-    return true;
-  }
-  const values = [
-    customer.name,
-    customer.phone,
-    customer.customerCode,
-    customer.address,
-    customer.referrerName,
-    customer.lastConsultationMemo,
-    customer.lastConsultationSummary,
-  ];
-  return values.some((value) =>
-    text(value).toLocaleLowerCase('ko-KR').replace(/\s/g, '').includes(needle),
+  return matchesCustomerPickerQuery(
+    { name: text(customer.name), phone: text(customer.phone) },
+    keyword,
   );
 }

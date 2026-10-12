@@ -80,7 +80,7 @@ import {
   type CustomerFormSectionId,
   resolveCustomerFormSectionOrder,
 } from './customerFormSectionOrder';
-import { customerQueryKeys } from './queryKeys';
+import { customerQueryKeys, invalidateCustomerListQueries } from './queryKeys';
 import type { ListCustomersResult } from './types';
 
 type CustomerFormScreenProps =
@@ -228,16 +228,21 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
           ? createCustomerBasicFormSnapshot(draft)
           : createCustomerFormSnapshot(draft);
       queryClient.setQueryData(customerQueryKeys.detail(saved.id), saved);
-      queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) => {
-        if (!previous) return previous;
-        const exists = previous.customers.some((customer) => customer.id === saved.id);
-        return {
-          total: exists ? previous.total : previous.total + 1,
-          customers: exists
-            ? previous.customers.map((customer) => (customer.id === saved.id ? saved : customer))
-            : [saved, ...previous.customers],
-        };
-      });
+      if (savedMode === 'create') {
+        // List SSOT = server. Re-fetch lists instead of local append.
+        void invalidateCustomerListQueries(queryClient);
+      } else {
+        queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) => {
+          if (!previous) return previous;
+          const exists = previous.customers.some((customer) => customer.id === saved.id);
+          return {
+            total: exists ? previous.total : previous.total + 1,
+            customers: exists
+              ? previous.customers.map((customer) => (customer.id === saved.id ? saved : customer))
+              : [saved, ...previous.customers],
+          };
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(saved.id) });
       router.replace({ pathname: '/customers/[customerId]', params: { customerId: String(saved.id) } });
     },
@@ -351,7 +356,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const renderDriverChoice = () => (
     <SegmentedChoice
       label="운전 여부"
-      required
       value={form.driver}
       error={errors.driver}
       options={[
@@ -398,7 +402,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             />
             <SegmentedChoice
               label="성별"
-              required
               value={form.gender}
               error={errors.gender}
               options={CUSTOMER_GENDER_FORM_OPTIONS}
@@ -617,7 +620,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             title={CUSTOMER_FORM_SECTION_TITLES.alertDates}
             sectionId="anniversary"
             testID={CUSTOMER_FORM_SECTION_TEST_IDS.alertDates}
-            defaultExpanded={mode === 'create'}
           >
             <CustomerAlertDatesEditor
               items={form.specialDates}
@@ -632,7 +634,6 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
             title={CUSTOMER_FORM_SECTION_TITLES.customFields}
             sectionId="customFields"
             testID={CUSTOMER_FORM_SECTION_TEST_IDS.customFields}
-            defaultExpanded={mode === 'create'}
           >
             <CustomerCustomFieldsEditor
               items={form.customFields}
