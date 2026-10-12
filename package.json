@@ -43,6 +43,7 @@
     "expo-updates": "~57.0.23",
     "expo-web-browser": "~57.0.2",
     "onefc-android-downloads": "file:./modules/onefc-android-downloads",
+    "onefc-play-app-update": "file:./modules/onefc-play-app-update",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",

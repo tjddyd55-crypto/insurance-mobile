@@ -37,21 +37,34 @@ Production/Development OTA 운영 SSOT. Store identity·runtime·channel은 서�
 
 **규칙**: DEV `version`을 Production `1.0.3`과 같게 만들지 않는다. runtime이 겹치면 channel 격리만으로는 부족할 수 있다.
 
-## 앱 동작 (자동 업데이트 UX)
+## 앱 동작 (업데이트 UX)
 
-구현: [`src/services/appUpdates.ts`](../src/services/appUpdates.ts), 부트스트랩: [`app/_layout.tsx`](../app/_layout.tsx)
+구현: [`src/features/app-update`](../src/features/app-update), OTA 어댑터: [`src/services/appUpdates.ts`](../src/services/appUpdates.ts), 부트스트랩: [`app/_layout.tsx`](../app/_layout.tsx)의 `AppUpdateHost`
 
-1. Release 빌드 cold start 시 백그라운드로 1회 `checkForUpdateAsync` → `fetchUpdateAsync`
-2. **`reloadAsync()` 호출 없음** — 사용자 작업 중 강제 재시작 방지
-3. 다운로드된 번들은 **다음 cold start**에 자동 적용
-4. `__DEV__` / Dev Client development mode / `Updates.isEnabled === false` → skip
-5. 실패 시 로그만, crash·blocking UI 없음
-6. 세션당 1회 check (`hasCheckedThisSession`)
+코디네이터는 한 번에 프롬프트 하나만 띄운다. 순서는 **OTA 확인·받기 → 적용 확인 → 그 다음 Android Play 인앱 업데이트**다. OTA `reloadAsync()`는 JS를 다시 시작하므로 Play 다운로드보다 먼저 끝낸다.
+
+### EAS OTA
+
+1. 콜드 스타트와 포그라운드 복귀(15분 스로틀, `setInterval` 폴링 없음)에 `checkForUpdateAsync` → 있으면 `fetchUpdateAsync`
+2. `native-production`에서 새 번들이 준비되면 `새 업데이트가 준비되었습니다. 최신 버전을 적용합니다.` / **[지금 적용]** → `reloadAsync()`
+3. 콜드 스타트 자동 reload는 하지 않는다. 스플래시·인증 이동과 겹치면 검은 화면이 날 수 있고, 포그라운드 자동 재시작은 작업 중 화면을 버린다
+4. 적용하지 않으면 받은 번들은 다음 콜드 스타트에 적용된다. 다른 채널은 기존처럼 받아 두기만 하고 프롬프트·reload 하지 않는다
+5. `__DEV__` / dev client(`storeClient` 또는 channel `native-development`) / `Updates.isEnabled === false` → OTA skip
+6. 네트워크·EAS 오류·15초 타임아웃은 로그만 남기고 앱 진입을 막지 않는다. 검사는 첫 렌더를 기다리지 않는다
+
+### Google Play 인앱 업데이트 (Android)
+
+- 모듈: `modules/onefc-play-app-update` (`com.google.android.play:app-update:2.1.0`)
+- 대상: Play(`com.android.vending`)가 설치한 Android 프로덕션 앱. iOS는 no-op
+- 기본 **FLEXIBLE**. 문구 확인 후 Play 시트를 띄우고, 받는 동안 앱은 그대로 쓴다. `DOWNLOADED`면 `업데이트가 준비되었습니다.` / **[지금 설치]** → `completeUpdate`
+- **IMMEDIATE** 경로는 `resolvePlayUpdateFlow()`에만 연결되어 있다. 서버 강제 업데이트는 없다
+- preview APK, `production-apk`, 사이드로드, 개발 빌드는 Play API를 호출하지 않거나 `not_from_play`로 건너뛴다. 인앱 업데이트는 Play 트랙으로 설치한 빌드에서만 동작한다
 
 `app.config.ts`:
 
-- `checkAutomatically: 'NEVER'` — 서비스에서 수동 1회 check
+- `checkAutomatically: 'NEVER'` — 코디네이터가 직접 check
 - `fallbackToCacheTimeout: 0` — 즉시 cached/embedded 실행
+- `runtimeVersion` 정책 `appVersion`, channel `native-production`은 변경하지 않는다
 
 ## 배포 절차
 
@@ -158,10 +171,13 @@ eas update:rollback
 
 ## 검증 체크리스트
 
-- [ ] Release APK/AAB 설치 → 첫 실행 (embedded) → 완전 종료 → 두 번째 실행 update 적용
-- [ ] 오프라인 첫 실행 → 앱 정상, crash 없음
+- [ ] `native-production` 바이너리 cold start → OTA가 있으면 적용 문구 → [지금 적용] → reload. 적용 전에는 작업이 유지된다
+- [ ] 오프라인·EAS 오류 → 프롬프트 없이 앱 진입, crash 없음
 - [ ] runtime 불일치 update → 기존 번들 유지
 - [ ] DEV Metro (`start:device` 8084) → OTA skip, Dev Client 정상
+- [ ] preview / `production-apk` / 사이드로드 → Play 인앱 업데이트 skip, crash 없음
+- [ ] Play internal testing으로 설치한 빌드 + 더 높은 versionCode → FLEXIBLE 문구 → 받는 동안 앱 사용 → [지금 설치]
+- [ ] OTA 프롬프트와 Play 프롬프트가 동시에 보이지 않음
 - [ ] `eas update:rollback` 후 embedded/이전 번들 복귀
 
 ## 관련 문서
