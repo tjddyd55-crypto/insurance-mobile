@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { matchesCustomerPickerQuery } from '../customers/customerPickerSearch';
 import { Modal, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -44,7 +45,7 @@ function SectionHeader({ title, action, onPress }: { title: string; action: stri
 function EmptyCard({ text }: { text: string }) { return <Card variant="outlined"><AppText color="textSecondary" align="center">{text}</AppText></Card>; }
 
 function CustomerPicker({ open, customers, search, setSearch, onClose, onSelect }: { open: boolean; customers: CustomerRecord[]; search: string; setSearch: (value: string) => void; onClose: () => void; onSelect: (customer: CustomerRecord) => void }) {
-  const theme = useAppTheme(); const styles = useMemo(() => createStyles(theme), [theme]); const q = search.trim().toLowerCase(); const filtered = customers.filter((item) => !q || item.name.toLowerCase().includes(q) || item.phone.replace(/\D/g, '').includes(q.replace(/\D/g, ''))).slice(0, 100);
+  const theme = useAppTheme(); const styles = useMemo(() => createStyles(theme), [theme]); const q = search.trim().toLowerCase(); const filtered = customers.filter((item) => matchesCustomerPickerQuery(item, q)).slice(0, 100);
   return <Modal visible={open} animationType="slide" onRequestClose={onClose}><View style={styles.modal}><View style={styles.modalHeader}><AppText variant="heading">고객 선택</AppText><Button label="닫기" size="sm" variant="ghost" onPress={onClose} /></View><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"><TextField placeholder="이름 또는 연락처 검색" value={search} onChangeText={setSearch} autoFocus />{filtered.map((customer) => <Card key={customer.id} variant="outlined"><Inline justify="space-between"><View style={styles.grow}><AppText variant="bodyStrong">{customer.name}</AppText><AppText variant="caption">{formatCustomerPhone(customer.phone)}</AppText></View><Button label="선택" size="sm" onPress={() => onSelect(customer)} /></Inline></Card>)}{!filtered.length ? <EmptyCard text="검색된 고객이 없습니다." /> : null}</ScrollView></View></Modal>;
 }
 
