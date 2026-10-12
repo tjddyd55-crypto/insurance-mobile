@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { AppText, Button, Inline, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
 import { createTeamPostComment, deleteTeamPostComment, getTeamPostComments } from './teamApi';
+import { teamContentUserMessage } from './teamContentMessages';
 import { formatTeamDate, teamAuthorLabel } from './teamModel';
 import { teamQueryKeys } from './queryKeys';
 import type { TeamPostComment } from './types';
@@ -17,6 +18,7 @@ export function TeamPostComments({ postId }: { postId: string }) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [content, setContent] = useState('');
   const [deleting, setDeleting] = useState<TeamPostComment | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const queryKey = teamQueryKeys.comments(postId);
   const query = useQuery({ queryKey, queryFn: () => getTeamPostComments(token, postId), enabled: Boolean(token) });
   const createMutation = useMutation({
@@ -25,7 +27,17 @@ export function TeamPostComments({ postId }: { postId: string }) {
   });
   const deleteMutation = useMutation({
     mutationFn: (commentId: string) => deleteTeamPostComment(token, commentId),
-    onSuccess: async () => { setDeleting(null); await queryClient.invalidateQueries({ queryKey }); },
+    onSuccess: async () => {
+      setDeleting(null);
+      setDeleteError('');
+      await queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      setDeleting(null);
+      setDeleteError(
+        teamContentUserMessage(error, '댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+      );
+    },
   });
 
   return (
@@ -49,7 +61,26 @@ export function TeamPostComments({ postId }: { postId: string }) {
         <Button label="등록" size="sm" loading={createMutation.isPending} disabled={!content.trim()} onPress={() => createMutation.mutate()} />
       </Inline>
       {createMutation.error ? <AppText color="danger">{createMutation.error instanceof Error ? createMutation.error.message : '댓글을 등록하지 못했습니다.'}</AppText> : null}
-      <ConfirmDialog open={Boolean(deleting)} title="댓글 삭제" message="댓글을 삭제하시겠습니까?" confirmLabel="삭제" tone="danger" busy={deleteMutation.isPending} onCancel={() => setDeleting(null)} onConfirm={() => { if (deleting) deleteMutation.mutate(deleting.id); }} />
+      {deleteError ? <AppText color="danger">{deleteError}</AppText> : null}
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="댓글 삭제"
+        message="댓글을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        tone="danger"
+        busy={deleteMutation.isPending}
+        onCancel={() => {
+          if (!deleteMutation.isPending) {
+            setDeleting(null);
+          }
+        }}
+        onConfirm={() => {
+          if (deleting && !deleteMutation.isPending) {
+            setDeleteError('');
+            deleteMutation.mutate(deleting.id);
+          }
+        }}
+      />
     </View>
   );
 }

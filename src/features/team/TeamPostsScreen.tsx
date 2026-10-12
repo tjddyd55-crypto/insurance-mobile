@@ -19,6 +19,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { deleteTeamPost, getTeamPosts } from './teamApi';
+import { teamContentUserMessage } from './teamContentMessages';
 import {
   canDeleteTeamPost,
   canEditTeamPost,
@@ -39,6 +40,7 @@ export function TeamPostsScreen() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TeamPost | null>(null);
   const [deleting, setDeleting] = useState<TeamPost | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const query = useQuery({
     queryKey: teamQueryKeys.posts,
     queryFn: () => getTeamPosts(token),
@@ -46,11 +48,18 @@ export function TeamPostsScreen() {
   });
   const remove = useMutation({
     mutationFn: (postId: string) => deleteTeamPost(token, postId),
-    onSuccess: async () => {
+    onSuccess: async (_data, postId) => {
       setDeleting(null);
-      if (expandedId && deleting?.id === expandedId) setExpandedId(null);
+      setDeleteError('');
+      if (expandedId === postId) setExpandedId(null);
       await queryClient.invalidateQueries({ queryKey: teamQueryKeys.posts });
       await queryClient.invalidateQueries({ queryKey: teamQueryKeys.files });
+    },
+    onError: (error) => {
+      setDeleting(null);
+      setDeleteError(
+        teamContentUserMessage(error, '게시글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+      );
     },
   });
 
@@ -69,6 +78,9 @@ export function TeamPostsScreen() {
             />
           }
         >
+          {deleteError ? (
+            <AppText color="danger">{deleteError}</AppText>
+          ) : null}
           <Inline justify="space-between">
             <View style={styles.copy}>
               <AppText variant="heading">팀 게시글</AppText>
@@ -205,9 +217,16 @@ export function TeamPostsScreen() {
         confirmLabel="삭제"
         tone="danger"
         busy={remove.isPending}
-        onCancel={() => setDeleting(null)}
+        onCancel={() => {
+          if (!remove.isPending) {
+            setDeleting(null);
+          }
+        }}
         onConfirm={() => {
-          if (deleting) remove.mutate(deleting.id);
+          if (deleting && !remove.isPending) {
+            setDeleteError('');
+            remove.mutate(deleting.id);
+          }
         }}
       />
     </View>
