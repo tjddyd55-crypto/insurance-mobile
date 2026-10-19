@@ -22,21 +22,34 @@ import {
   BINDER_API_UNAVAILABLE_MESSAGE,
   BINDER_API_UNAVAILABLE_TITLE,
   isBinderApiUnavailable,
+  SHARED_VIEWER_COPY,
+  sharedViewerErrorMessage,
 } from './binderMessages';
 import { BinderThumbnailStrip } from './BinderThumbnailStrip';
 import { BinderZoomSurface } from './BinderZoomSurface';
 import {
   binderSectionJumps,
-  fetchBinderViewerPages,
+  fetchViewerPages,
   fullPageImageWidth,
   pageImageRequestKey,
-  prefetchBinderPageLinks,
+  prefetchViewerPageLinks,
+  viewerPageRequest,
+  type BinderViewerSource,
 } from './binderPageImage';
 import { sharePersonalBinderPdf } from './personalBinderApi';
 import { personalBinderQueryKeys } from './queryKeys';
 import { usePageImageLink } from './usePageImageLink';
 
-export function BinderViewerScreen({ binderId }: { binderId: string }) {
+/**
+ * 상담 책자 뷰어(내 바인더 / 공유 바인더 직접 보기 공용).
+ * 공유 출처일 때는 읽기 전용: 편집·전체 PDF 내보내기 버튼을 두지 않는다.
+ */
+export function BinderViewerScreen({ binderId = '', shareId = '' }: { binderId?: string; shareId?: string }) {
+  const isShared = Boolean(shareId);
+  const source = useMemo<BinderViewerSource>(
+    () => (shareId ? { kind: 'shared', shareId } : { kind: 'binder', binderId }),
+    [binderId, shareId],
+  );
   const { token } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
@@ -44,9 +57,9 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { width, height } = useWindowDimensions();
   const query = useQuery({
-    queryKey: personalBinderQueryKeys.pages(binderId),
-    queryFn: () => fetchBinderViewerPages(token, binderId),
-    enabled: Boolean(token && binderId),
+    queryKey: isShared ? personalBinderQueryKeys.sharedPages(shareId) : personalBinderQueryKeys.pages(binderId),
+    queryFn: () => fetchViewerPages(token, source),
+    enabled: Boolean(token && (isShared ? /^\d+$/.test(shareId) : binderId)),
   });
   const [index, setIndex] = useState(0);
   const [tocOpen, setTocOpen] = useState(false);
@@ -68,8 +81,8 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
   const pageHeight = pageSlot.height || Math.max(280, height - (immersive ? 48 : 220));
   const fullWidth = fullPageImageWidth(Math.round(width * PixelRatio.get()));
   const imageRequest = useMemo(
-    () => (current ? { scope: 'binder' as const, binderId, index: current.index, width: fullWidth } : null),
-    [binderId, current, fullWidth],
+    () => (current ? viewerPageRequest(source, current.index, fullWidth) : null),
+    [source, current, fullWidth],
   );
   const { uri, refresh } = usePageImageLink(token, imageRequest);
   const sectionJumps = useMemo(() => binderSectionJumps(pages), [pages]);
@@ -79,11 +92,27 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
     const neighbors = [current.index - 1, current.index + 1, current.index + 2].filter((pageIndex) =>
       pages.some((page) => page.index === pageIndex),
     );
-    void prefetchBinderPageLinks(token, binderId, neighbors, fullWidth);
-  }, [binderId, current, fullWidth, pages, token]);
+    void prefetchViewerPageLinks(token, source, neighbors, fullWidth);
+  }, [source, current, fullWidth, pages, token]);
 
+  if (isShared && !/^\d+$/.test(shareId)) {
+    return (
+      <View style={styles.root}>
+        <AppHeader title="공유 바인더" showBack showMenu={false} />
+        <ErrorState title={SHARED_VIEWER_COPY.errorTitle} message="잘못된 공유 바인더 주소입니다." />
+      </View>
+    );
+  }
   if (query.isLoading) {
     return <View style={styles.root}><AppHeader title="상담 책자" showBack showMenu={false} /><LoadingState message="상담 책자를 준비하는 중…" /></View>;
+  }
+  if (isShared && (query.isError || !binder)) {
+    return (
+      <View style={styles.root}>
+        <AppHeader title="공유 바인더" showBack showMenu={false} />
+        <ErrorState title={SHARED_VIEWER_COPY.errorTitle} message={sharedViewerErrorMessage(query.error)} onRetry={() => void query.refetch()} />
+      </View>
+    );
   }
   if (isBinderApiUnavailable(query.error)) {
     return (
@@ -106,8 +135,14 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
       <View style={styles.root}>
         <AppHeader title={binder.title || '상담 책자'} showBack showMenu={false} />
         <Stack gap="md" style={styles.controls}>
-          <EmptyState title="상담할 페이지가 없습니다." message="편집에서 자료를 추가해 주세요." />
-          <Button label="편집으로" onPress={() => router.push(`/customer-consulting/personal-binders/${binderId}/edit` as never)} />
+          {isShared ? (
+            <EmptyState title={SHARED_VIEWER_COPY.emptyTitle} message={SHARED_VIEWER_COPY.emptyMessage} />
+          ) : (
+            <>
+              <EmptyState title="상담할 페이지가 없습니다." message="편집에서 자료를 추가해 주세요." />
+              <Button label="편집으로" onPress={() => router.push(`/customer-consulting/personal-binders/${binderId}/edit` as never)} />
+            </>
+          )}
         </Stack>
       </View>
     );
@@ -159,7 +194,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
         <View style={styles.controls}>
           <BinderThumbnailStrip
             token={token}
-            binderId={binderId}
+            source={source}
             pages={pages}
             selectedPosition={safeIndex}
             onSelect={setIndex}
@@ -170,7 +205,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
             <Button label="다음" size="sm" variant="secondary" disabled={safeIndex === pages.length - 1} onPress={() => move(1)} />
           </Inline>
           <AppText variant="caption" color="textMuted" align="center" numberOfLines={1}>{current.sectionTitle}</AppText>
-          <Button
+          {isShared ? null : <Button
             label="전체 PDF"
             loading={exporting}
             onPress={() => {
@@ -180,7 +215,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
                 .catch((error) => setNotice(binderActionMessage(error, '바인더 PDF를 만들지 못했습니다.')))
                 .finally(() => setExporting(false));
             }}
-          />
+          />}
         </View>
       )}
       <ModalShell open={tocOpen} title="목차" presentation="dialog" onRequestClose={() => setTocOpen(false)} scroll>

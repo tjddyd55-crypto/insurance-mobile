@@ -21,6 +21,8 @@ export type BinderViewerPageRef = {
 
 export type BinderViewerPageList = {
   binderId: string;
+  /** 공유 바인더 뷰어일 때만 */
+  shareId: string;
   title: string;
   pageCount: number;
   pages: BinderViewerPageRef[];
@@ -35,7 +37,32 @@ export type PageImageLink = {
 export type PageImageRequest =
   | { scope: 'binder'; binderId: string; index: number; width: number }
   | { scope: 'binder-thumb'; binderId: string; index: number }
+  | { scope: 'shared'; shareId: string; index: number; width: number }
+  | { scope: 'shared-thumb'; shareId: string; index: number }
   | { scope: 'material-thumb'; materialId: string; page: number };
+
+/**
+ * 뷰어 데이터 출처. 뷰어 화면·썸네일·확대 컴포넌트는 하나이고, 페이지 목록/이미지 링크 경로만 다르다.
+ *  - binder: 내 바인더(/api/personal-binders/:binderId/pages*)
+ *  - shared: 공유 바인더 직접 보기(/api/personal-binders/shared/:shareId/pages*), 가져오지 않는다.
+ */
+export type BinderViewerSource = { kind: 'binder'; binderId: string } | { kind: 'shared'; shareId: string };
+
+export function viewerSourceKey(source: BinderViewerSource): string {
+  return source.kind === 'shared' ? `shared:${source.shareId}` : `binder:${source.binderId}`;
+}
+
+export function viewerPageRequest(source: BinderViewerSource, index: number, width: number): PageImageRequest {
+  return source.kind === 'shared'
+    ? { scope: 'shared', shareId: source.shareId, index, width }
+    : { scope: 'binder', binderId: source.binderId, index, width };
+}
+
+export function viewerThumbRequest(source: BinderViewerSource, index: number): PageImageRequest {
+  return source.kind === 'shared'
+    ? { scope: 'shared-thumb', shareId: source.shareId, index }
+    : { scope: 'binder-thumb', binderId: source.binderId, index };
+}
 
 const linkCache = new Map<string, PageImageLink>();
 
@@ -52,6 +79,8 @@ export function isPageImageLinkFresh(expiresAt: string, now = Date.now()): boole
 export function pageImageRequestKey(request: PageImageRequest): string {
   if (request.scope === 'material-thumb') return `material:${request.materialId}:${request.page}:thumb`;
   if (request.scope === 'binder-thumb') return `binder:${request.binderId}:${request.index}:thumb`;
+  if (request.scope === 'shared-thumb') return `shared:${request.shareId}:${request.index}:thumb`;
+  if (request.scope === 'shared') return `shared:${request.shareId}:${request.index}:w${request.width}`;
   return `binder:${request.binderId}:${request.index}:w${request.width}`;
 }
 
@@ -94,6 +123,7 @@ export function normalizeBinderViewerPages(value: unknown): BinderViewerPageList
     .sort((left, right) => left.index - right.index);
   return {
     binderId: idText(row.binderId),
+    shareId: idText(row.shareId),
     title: text(row.title, '상담 책자'),
     pageCount: positiveInt(row.pageCount) || pages.length,
     pages,
@@ -103,6 +133,17 @@ export function normalizeBinderViewerPages(value: unknown): BinderViewerPageList
 export async function fetchBinderViewerPages(token: string | null, binderId: string): Promise<BinderViewerPageList> {
   const body = await apiRequest<unknown>(personalBinderPaths.binderPages(binderId), { token });
   return normalizeBinderViewerPages(body);
+}
+
+export async function fetchSharedBinderViewerPages(token: string | null, shareId: string): Promise<BinderViewerPageList> {
+  const body = await apiRequest<unknown>(personalBinderPaths.sharedPages(shareId), { token });
+  return normalizeBinderViewerPages(body);
+}
+
+export function fetchViewerPages(token: string | null, source: BinderViewerSource): Promise<BinderViewerPageList> {
+  return source.kind === 'shared'
+    ? fetchSharedBinderViewerPages(token, source.shareId)
+    : fetchBinderViewerPages(token, source.binderId);
 }
 
 export async function fetchPageImageLink(token: string | null, request: PageImageRequest): Promise<PageImageLink> {
@@ -121,10 +162,19 @@ export async function prefetchBinderPageLinks(
   indexes: number[],
   width: number,
 ): Promise<void> {
+  await prefetchViewerPageLinks(token, { kind: 'binder', binderId }, indexes, width);
+}
+
+export async function prefetchViewerPageLinks(
+  token: string | null,
+  source: BinderViewerSource,
+  indexes: number[],
+  width: number,
+): Promise<void> {
   await Promise.all(indexes.map(async (index) => {
     if (index < 1) return;
     try {
-      const link = await fetchPageImageLink(token, { scope: 'binder', binderId, index, width });
+      const link = await fetchPageImageLink(token, viewerPageRequest(source, index, width));
       await Image.prefetch(link.openUrl);
     } catch {
       // 옆 페이지 미리받기는 현재 페이지 표시를 막지 않는다.
@@ -138,6 +188,12 @@ function pageImagePath(request: PageImageRequest): string {
   }
   if (request.scope === 'binder-thumb') {
     return `${personalBinderPaths.binderPage(request.binderId, request.index)}?preset=thumb`;
+  }
+  if (request.scope === 'shared-thumb') {
+    return `${personalBinderPaths.sharedPage(request.shareId, request.index)}?preset=thumb`;
+  }
+  if (request.scope === 'shared') {
+    return `${personalBinderPaths.sharedPage(request.shareId, request.index)}?width=${request.width}`;
   }
   return `${personalBinderPaths.binderPage(request.binderId, request.index)}?width=${request.width}`;
 }

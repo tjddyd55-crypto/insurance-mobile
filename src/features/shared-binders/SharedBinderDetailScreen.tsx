@@ -20,7 +20,8 @@ import { useImportSharedBinder } from './useImportSharedBinder';
 
 /**
  * 공유 바인더 상세: 섹션 → 자료(선택 페이지) 구성.
- * 페이지 뷰어는 재구현하지 않는다 — "가져와서 보기"로 기존 내 바인더 뷰어(BinderViewerScreen)를 연다.
+ * 페이지 뷰어는 재구현하지 않는다. "바로 보기"는 같은 BinderViewerScreen 을 공유 출처(shareId)로 열고(가져오지 않음),
+ * "가져와서 보기"는 내 바인더로 복사한 뒤 같은 뷰어를 연다.
  * 원본 파일은 기존 원격 파일 helper 로 OS 앱에 넘긴다.
  */
 export function SharedBinderDetailScreen({ shareId }: { shareId: string }) {
@@ -72,7 +73,20 @@ export function SharedBinderDetailScreen({ shareId }: { shareId: string }) {
           {binder.description ? <AppText variant="body">{binder.description}</AppText> : null}
           <AppText variant="caption" color="textMuted">상담 페이지 {totalPages}쪽</AppText>
         </Stack>
-        <Button label="가져와서 보기" fullWidth onPress={() => setConfirmImport(true)} />
+        <Inline gap="sm">
+          <View style={styles.flex}>
+            <Button
+              label="바로 보기"
+              variant="primary"
+              fullWidth
+              disabled={totalPages === 0}
+              onPress={() => router.push({ pathname: '/customer-consulting/shared-binders/[shareId]/view', params: { shareId: binder.id } })}
+            />
+          </View>
+          <View style={styles.flex}>
+            <Button label="가져와서 보기" fullWidth onPress={() => setConfirmImport(true)} />
+          </View>
+        </Inline>
         {fileMutation.isError ? (
           <AppText variant="caption" color="danger" align="center">
             {describeApiError(fileMutation.error, '파일을 열지 못했습니다.')}
