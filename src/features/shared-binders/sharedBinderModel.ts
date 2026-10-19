@@ -135,3 +135,13 @@ export function sharedBinderPageTotal(detail: Pick<SharedBinderDetail, 'sections
 export function newImportIdempotencyKey(shareId: string, now = Date.now()): string {
   return `import:${shareId}:${now}`;
 }
+
+export type BinderShareStatus = { active: { shareId: string; title: string; createdAt: string | null } | null };
+
+/** GET /api/personal-binders/:binderId/share-status → { active: { shareId, title, createdAt, status } | null } */
+export function normalizeBinderShareStatus(body: unknown): BinderShareStatus {
+  const active = record(record(body)?.active);
+  const shareId = idText(active?.shareId);
+  if (!active || !shareId || (active.status != null && text(active.status) !== 'active')) return { active: null };
+  return { active: { shareId, title: text(active.title), createdAt: active.createdAt == null ? null : text(active.createdAt) } };
+}

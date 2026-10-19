@@ -44,6 +44,7 @@ import {
 import { personalBinderQueryKeys } from './queryKeys';
 import { usePageImageLink } from './usePageImageLink';
 import { BinderPageSelectionModal } from './BinderPageSelectionModal';
+import { BinderShareAction } from './BinderShareAction';
 import type { PersonalBinderItem, PersonalBinderMaterial, PersonalBinderSection } from './types';
 
 type PageTarget = {
@@ -72,6 +73,7 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
   const [title, setTitle] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [shareNotice, setShareNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [sectionForm, setSectionForm] = useState<{ mode: 'create' | 'rename'; sectionId?: string; title: string } | null>(null);
@@ -104,7 +106,20 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
 
   return (
     <View style={styles.root}>
-      <AppHeader title="바인더 편집" showBack showMenu={false} />
+      <AppHeader
+        title="바인더 편집"
+        showBack
+        showMenu={false}
+        rightAction={
+          <BinderShareAction
+            token={token}
+            binderId={binder.id}
+            binderTitle={binder.title}
+            fileCount={sections.reduce((total, section) => total + section.items.length, 0)}
+            onNotice={setShareNotice}
+          />
+        }
+      />
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.content}>
           <Card>
@@ -118,6 +133,7 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
               </Inline>
             </Stack>
           </Card>
+          {shareNotice ? <AppText color="success" accessibilityLiveRegion="polite">{shareNotice}</AppText> : null}
           {notice ? <AppText color="danger">{notice}</AppText> : null}
           <Button label="섹션 추가" variant="secondary" onPress={() => setSectionForm({ mode: 'create', title: '' })} />
           {sections.map((section, index) => (
