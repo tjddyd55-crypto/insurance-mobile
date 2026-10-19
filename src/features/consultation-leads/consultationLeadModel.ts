@@ -103,6 +103,16 @@ export function leadStatusActions(status: ConsultationLeadStatus): { check: bool
   return { check: status === 'new', complete: status !== 'completed' };
 }
 
+/** 상태 변경 성공 응답을 목록 캐시에 바로 반영한다(신규 수 배지 포함). 목록에 없으면 그대로 둔다. */
+export function applyLeadToList(list: ConsultationLeadList | undefined, lead: ConsultationLead): ConsultationLeadList | undefined {
+  if (!list) return list;
+  const previous = list.items.find((item) => item.id === lead.id);
+  if (!previous) return list;
+  const items = list.items.map((item) => (item.id === lead.id ? lead : item));
+  const delta = (lead.status === 'new' ? 1 : 0) - (previous.status === 'new' ? 1 : 0);
+  return { items, newCount: Math.max(0, list.newCount + delta) };
+}
+
 export function formatLeadDateTime(iso: string | null): string {
   if (!iso) return '—';
   const at = new Date(iso);

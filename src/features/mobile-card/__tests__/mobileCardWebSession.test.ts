@@ -6,6 +6,8 @@ import {
   classifyMobileCardNavigation,
   CLEAR_WEB_SESSION_SCRIPT,
   MOBILE_CARD_BRIDGE_SHARE,
+  NATIVE_EMBED_MOBILE_CARD,
+  NATIVE_EMBED_WINDOW_KEY,
   parseMobileCardBridgeMessage,
   WEB_AUTH_STORAGE_KEY,
 } from '../mobileCardWebSession';
@@ -103,6 +105,18 @@ describe('mobile card WebView auth handoff', () => {
     expect(stored.token).toBe('tok-b');
     expect(stored.user.id).toBe('2');
     expect([...win.localStorage.map.values()].join('')).not.toContain('tok-a');
+  });
+
+  it('marks the app embed (header-hide flag) before load, only on the expected origin, without URL changes', () => {
+    const { win } = fakeWindow(ORIGIN);
+    run(buildSessionInjectionScript(ORIGIN, buildWebSession('tok', user('1'))!), win);
+    expect((win as unknown as Record<string, unknown>)[NATIVE_EMBED_WINDOW_KEY]).toBe(NATIVE_EMBED_MOBILE_CARD);
+    const foreign = fakeWindow('https://evil.example');
+    run(buildSessionInjectionScript(ORIGIN, buildWebSession('tok', user('1'))!), foreign.win);
+    expect((foreign.win as unknown as Record<string, unknown>)[NATIVE_EMBED_WINDOW_KEY]).toBeUndefined();
+    expect(buildMobileCardUrl(ORIGIN)).toBe(`${ORIGIN}/profile/mobile-card`);
+    expect(NATIVE_EMBED_MOBILE_CARD).toBe('mobile-card');
+    expect(NATIVE_EMBED_WINDOW_KEY).toBe('__ONEFC_NATIVE_EMBED__');
   });
 
   it('clears the web session when leaving', () => {

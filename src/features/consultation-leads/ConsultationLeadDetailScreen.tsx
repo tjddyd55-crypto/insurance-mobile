@@ -11,6 +11,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { AppText, Badge, Button, Card, Inline, Stack, useAppTheme, type AppTheme } from '../../design-system';
 import { notificationQueryKeys } from '../notifications/queryKeys';
 import {
+  applyLeadToList,
   consultationChannelLabel,
   consultationLeadStatusLabel,
   formatLeadDateTime,
@@ -22,7 +23,7 @@ import {
 import { getConsultationLead, updateConsultationLeadStatus } from './consultationLeadsApi';
 import { leadStatusTone } from './ConsultationLeadsScreen';
 import { consultationLeadQueryKeys } from './queryKeys';
-import type { ConsultationLead, ConsultationLeadStatus } from './types';
+import type { ConsultationLead, ConsultationLeadList, ConsultationLeadStatus } from './types';
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
@@ -50,6 +51,7 @@ export function ConsultationLeadDetailScreen({ leadId: rawLeadId }: { leadId: st
     mutationFn: (status: ConsultationLeadStatus) => updateConsultationLeadStatus(token, leadId ?? '', status),
     onSuccess: async (lead: ConsultationLead) => {
       queryClient.setQueryData(consultationLeadQueryKeys.detail(lead.id), lead);
+      queryClient.setQueryData<ConsultationLeadList>(consultationLeadQueryKeys.list(), (list) => applyLeadToList(list, lead));
       await queryClient.invalidateQueries({ queryKey: consultationLeadQueryKeys.list() });
       await queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all });
     },
@@ -111,28 +113,38 @@ export function ConsultationLeadDetailScreen({ leadId: rawLeadId }: { leadId: st
               <Button label="문자하기" variant="secondary" fullWidth disabled={!sms} onPress={() => sms && void Linking.openURL(sms).catch(() => undefined)} />
             </View>
           </Inline>
-          <Inline gap="sm">
-            <View style={styles.flex}>
-              <Button
-                label="확인 처리"
-                variant="secondary"
-                fullWidth
-                disabled={!actions.check || mutation.isPending}
-                loading={mutation.isPending && mutation.variables === 'checked'}
-                onPress={() => mutation.mutate('checked')}
-              />
-            </View>
-            <View style={styles.flex}>
-              <Button
-                label="완료 처리"
-                variant="secondary"
-                fullWidth
-                disabled={!actions.complete || mutation.isPending}
-                loading={mutation.isPending && mutation.variables === 'completed'}
-                onPress={() => mutation.mutate('completed')}
-              />
-            </View>
-          </Inline>
+          {actions.check || actions.complete ? (
+            <Inline gap="sm">
+              {actions.check ? (
+                <View style={styles.flex}>
+                  <Button
+                    label="확인 처리"
+                    variant="secondary"
+                    fullWidth
+                    disabled={mutation.isPending}
+                    loading={mutation.isPending && mutation.variables === 'checked'}
+                    onPress={() => mutation.mutate('checked')}
+                  />
+                </View>
+              ) : null}
+              {actions.complete ? (
+                <View style={styles.flex}>
+                  <Button
+                    label="완료 처리"
+                    variant="secondary"
+                    fullWidth
+                    disabled={mutation.isPending}
+                    loading={mutation.isPending && mutation.variables === 'completed'}
+                    onPress={() => mutation.mutate('completed')}
+                  />
+                </View>
+              ) : null}
+            </Inline>
+          ) : (
+            <AppText variant="caption" color="textMuted" align="center">
+              {`완료된 상담 신청입니다${lead.completedAt ? ` · ${formatLeadDateTime(lead.completedAt)}` : ''}`}
+            </AppText>
+          )}
           {mutation.isError ? (
             <AppText variant="caption" color="danger" align="center">
               {describeApiError(mutation.error, '상태 변경에 실패했습니다.')}
