@@ -65,7 +65,7 @@ describe('native session menu policy', () => {
       '내정보',
     ]);
     expect(labels(menu)).toEqual([
-      '오늘의 TA', '할일', '메모', '알림',
+      '오늘의 TA', '할일', '일정 관리', '메모', '알림',
       '고객리스트', '고객 지도', '카드 수납', '고객소식지', '청구관리',
       '내 바인더', '공유 바인더', '시뮬레이션',
       '원수사소식지', '손해사정사 소식지',
@@ -170,7 +170,7 @@ describe('native session menu policy', () => {
         },
       }), capabilities);
       expect(menu).toHaveLength(8);
-      expect(labels(menu)).toHaveLength(29);
+      expect(labels(menu)).toHaveLength(30);
     },
   );
 

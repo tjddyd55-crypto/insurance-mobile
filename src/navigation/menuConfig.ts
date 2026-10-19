@@ -91,6 +91,13 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         mode: 'NATIVE',
       }),
       link({
+        id: 'schedule',
+        label: '일정 관리',
+        legacyWebPath: '/schedule',
+        nativePath: '/schedule',
+        mode: 'NATIVE',
+      }),
+      link({
         id: 'memo',
         label: '메모',
         legacyWebPath: '/memo',

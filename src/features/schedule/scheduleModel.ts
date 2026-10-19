@@ -1,0 +1,357 @@
+import { ApiError } from '../../api/client';
+import type {
+  GoogleCalendarTarget,
+  ScheduleEvent,
+  ScheduleEventForm,
+  ScheduleEventsResult,
+  ScheduleEventType,
+  ScheduleTask,
+} from './types';
+
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const SCHEDULE_TITLE_MAX = 300;
+export const SCHEDULE_NOTES_MAX = 8000;
+
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+function text(value: unknown): string {
+  return typeof value === 'string' ? value : value == null ? '' : String(value);
+}
+function positiveInt(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+// ---------------- 날짜(Asia/Seoul) ----------------
+
+export function seoulYmd(at: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(at);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+export function seoulHm(at: Date): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at);
+}
+
+function utc(ymd: string): number {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return Date.UTC(year!, month! - 1, day!);
+}
+function fromUtc(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+export function addDaysYmd(ymd: string, days: number): string {
+  return fromUtc(utc(ymd) + days * 86_400_000);
+}
+
+/** 달 이동(1일 기준). */
+export function shiftMonth(anchor: string, delta: number): string {
+  const [year, month] = anchor.split('-').map(Number);
+  const next = new Date(Date.UTC(year!, month! - 1 + delta, 1));
+  return fromUtc(next.getTime());
+}
+
+/** 화면 달 조회 범위(그 달 1일 ~ 말일). 서버 최대 400일 이내. */
+export function monthRange(anchor: string): { from: string; to: string } {
+  const from = `${anchor.slice(0, 7)}-01`;
+  return { from, to: addDaysYmd(shiftMonth(from, 1), -1) };
+}
+
+export type MonthCell = { ymd: string; day: number; inMonth: boolean };
+
+/** 일요일 시작 주 단위 달력 칸. */
+export function monthGrid(anchor: string): MonthCell[][] {
+  const { from, to } = monthRange(anchor);
+  const weekday = new Date(utc(from)).getUTCDay();
+  const start = addDaysYmd(from, -weekday);
+  const weeks: MonthCell[][] = [];
+  let cursor = start;
+  while (cursor <= to || weeks.length === 0) {
+    const week: MonthCell[] = [];
+    for (let index = 0; index < 7; index += 1) {
+      week.push({ ymd: cursor, day: Number(cursor.slice(8, 10)), inMonth: cursor >= from && cursor <= to });
+      cursor = addDaysYmd(cursor, 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+export function formatMonthTitle(anchor: string): string {
+  return `${Number(anchor.slice(0, 4))}년 ${Number(anchor.slice(5, 7))}월`;
+}
+
+export function formatDayTitle(ymd: string): string {
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date(utc(ymd)).getUTCDay()];
+  return `${Number(ymd.slice(5, 7))}월 ${Number(ymd.slice(8, 10))}일 (${weekday})`;
+}
+
+// ---------------- 응답 정규화 ----------------
+
+const EVENT_TYPES: ScheduleEventType[] = ['google_event', 'customer_alert', 'car_expiry', 'insurance_age'];
+
+function normalizeEvent(value: unknown): ScheduleEvent | null {
+  const row = record(value);
+  const id = text(row.id).trim();
+  const startAt = text(row.startAt).trim();
+  if (!id || !startAt) return null;
+  const type = EVENT_TYPES.includes(row.type as ScheduleEventType) ? (row.type as ScheduleEventType) : 'customer_alert';
+  return {
+    id,
+    source: row.source === 'google' ? 'google' : 'crm',
+    sourceId: text(row.sourceId),
+    calendarId: text(row.calendarId).trim() || null,
+    calendarName: text(row.calendarName),
+    type,
+    title: text(row.title).trim() || '(제목 없음)',
+    description: text(row.description),
+    startAt,
+    endAt: text(row.endAt).trim() || startAt,
+    allDay: row.allDay === true,
+    customerId: positiveInt(row.customerId),
+    customerName: text(row.customerName),
+    location: text(row.location),
+    writable: row.writable === true,
+    readOnlyReason: text(row.readOnlyReason),
+  };
+}
+
+function normalizeTask(value: unknown): ScheduleTask | null {
+  const row = record(value);
+  const id = text(row.id).trim();
+  if (!id) return null;
+  const dueDate = text(row.dueDate).trim();
+  return {
+    id,
+    source: row.source === 'google_task' ? 'google_task' : 'onefc_todo',
+    sourceId: text(row.sourceId),
+    title: text(row.title).trim() || '(제목 없음)',
+    notes: text(row.notes),
+    dueDate: YMD.test(dueDate) ? dueDate : null,
+    dueTime: text(row.dueTime).trim() || null,
+    status: row.status === 'completed' ? 'completed' : 'open',
+    customerId: positiveInt(row.customerId),
+    customerName: text(row.customerName),
+  };
+}
+
+/** apiRequest 가 { success, data } 를 풀었든 아니든 둘 다 읽는다(웹 readScheduleEventsResponse 와 같은 규칙). */
+export function normalizeScheduleEvents(payload: unknown): ScheduleEventsResult {
+  const body = record(payload);
+  const data = Array.isArray(body.events) ? body : record(body.data);
+  if (!Array.isArray(data.events)) throw new ApiError('일정 응답이 올바르지 않습니다.', 500);
+  const google = record(data.google);
+  const write = record(google.write);
+  return {
+    from: text(data.from),
+    to: text(data.to),
+    events: data.events.flatMap((row) => {
+      const event = normalizeEvent(row);
+      return event ? [event] : [];
+    }),
+    tasks: (Array.isArray(data.tasks) ? data.tasks : []).flatMap((row) => {
+      const task = normalizeTask(row);
+      return task ? [task] : [];
+    }),
+    google: {
+      connected: google.connected === true,
+      status: text(google.status) || 'unconfigured',
+      write: {
+        enabled: write.enabled === true,
+        calendarWritable: write.calendarWritable === true,
+        needsWriteConsent: write.needsWriteConsent === true,
+      },
+    },
+    fetchedAt: text(data.fetchedAt),
+  };
+}
+
+export function normalizeCalendarTargets(payload: unknown): GoogleCalendarTarget[] {
+  const body = record(payload);
+  const data = Array.isArray(body.calendars) ? body : record(body.data);
+  return (Array.isArray(data.calendars) ? data.calendars : []).flatMap((row) => {
+    const item = record(row);
+    const id = text(item.id).trim();
+    return id ? [{ id, name: text(item.name).trim() || id, primary: item.primary === true }] : [];
+  });
+}
+
+// ---------------- 날짜별 표시 ----------------
+
+/** 이벤트가 걸친 KST 날짜(시작일 ~ 마지막 날). 종일 endAt 은 exclusive. */
+export function eventDayRange(event: Pick<ScheduleEvent, 'allDay' | 'startAt' | 'endAt'>): { first: string; last: string } {
+  if (event.allDay) {
+    const first = event.startAt.slice(0, 10);
+    const endExclusive = event.endAt.slice(0, 10);
+    const last = YMD.test(endExclusive) && endExclusive > first ? addDaysYmd(endExclusive, -1) : first;
+    return { first, last };
+  }
+  const start = new Date(event.startAt);
+  const end = new Date(event.endAt);
+  const first = Number.isNaN(start.getTime()) ? event.startAt.slice(0, 10) : seoulYmd(start);
+  if (Number.isNaN(end.getTime()) || end <= start) return { first, last: first };
+  // 끝이 정확히 자정이면 그 날은 포함하지 않는다.
+  const last = seoulYmd(new Date(end.getTime() - 1));
+  return { first, last: last < first ? first : last };
+}
+
+export function eventsOnDay(events: ScheduleEvent[], ymd: string): ScheduleEvent[] {
+  return events
+    .filter((event) => {
+      const range = eventDayRange(event);
+      return range.first <= ymd && ymd <= range.last;
+    })
+    .sort((left, right) => Number(right.allDay) - Number(left.allDay) || left.startAt.localeCompare(right.startAt));
+}
+
+export function tasksOnDay(tasks: ScheduleTask[], ymd: string): ScheduleTask[] {
+  return tasks.filter((task) => task.dueDate === ymd).sort((left, right) => (left.dueTime ?? '').localeCompare(right.dueTime ?? ''));
+}
+
+export function daysWithItems(result: Pick<ScheduleEventsResult, 'events' | 'tasks'>): Set<string> {
+  const days = new Set<string>();
+  for (const event of result.events) {
+    const range = eventDayRange(event);
+    for (let day = range.first, guard = 0; day <= range.last && guard < 400; day = addDaysYmd(day, 1), guard += 1) days.add(day);
+  }
+  for (const task of result.tasks) if (task.dueDate) days.add(task.dueDate);
+  return days;
+}
+
+export function eventTimeLabel(event: Pick<ScheduleEvent, 'allDay' | 'startAt' | 'endAt'>): string {
+  if (event.allDay) {
+    const range = eventDayRange(event);
+    return range.first === range.last ? '종일' : `종일 · ${range.first.slice(5).replace('-', '/')} ~ ${range.last.slice(5).replace('-', '/')}`;
+  }
+  const start = new Date(event.startAt);
+  const end = new Date(event.endAt);
+  if (Number.isNaN(start.getTime())) return '';
+  return Number.isNaN(end.getTime()) || end <= start ? seoulHm(start) : `${seoulHm(start)} ~ ${seoulHm(end)}`;
+}
+
+export const SCHEDULE_TYPE_LABEL: Record<ScheduleEventType, string> = {
+  google_event: 'Google 일정',
+  customer_alert: '알림일',
+  car_expiry: '자동차 만기',
+  insurance_age: '상령일',
+};
+
+export function taskSourceLabel(task: Pick<ScheduleTask, 'source'>): string {
+  return task.source === 'google_task' ? 'Google 할 일' : 'ONE FC 할 일';
+}
+
+// ---------------- 연결 고객 / 할 일 이동 ----------------
+
+export type ScheduleNativeRoute =
+  | { pathname: '/customers/[customerId]'; params: { customerId: string } }
+  | { pathname: '/customers/[customerId]/consultations'; params: { customerId: string } }
+  | { pathname: '/todos/[todoId]/edit'; params: { todoId: string } };
+
+/** 서버가 준 customerId 로만 고객을 연다(이름으로 찾지 않는다). 자동차 만기 → 고객 상세, 그 밖 → 상담. */
+export function customerRouteOfEvent(event: Pick<ScheduleEvent, 'source' | 'type' | 'customerId'>): ScheduleNativeRoute | null {
+  if (event.source !== 'crm' || !event.customerId) return null;
+  const customerId = String(event.customerId);
+  return event.type === 'car_expiry'
+    ? { pathname: '/customers/[customerId]', params: { customerId } }
+    : { pathname: '/customers/[customerId]/consultations', params: { customerId } };
+}
+
+export function customerRouteOfTask(task: Pick<ScheduleTask, 'source' | 'customerId'>): ScheduleNativeRoute | null {
+  if (task.source !== 'onefc_todo' || !task.customerId) return null;
+  return { pathname: '/customers/[customerId]/consultations', params: { customerId: String(task.customerId) } };
+}
+
+export function todoRouteOfTask(task: Pick<ScheduleTask, 'source' | 'sourceId'>): ScheduleNativeRoute | null {
+  if (task.source !== 'onefc_todo' || !/^\d+$/.test(task.sourceId)) return null;
+  return { pathname: '/todos/[todoId]/edit', params: { todoId: task.sourceId } };
+}
+
+// ---------------- Google 일정 쓰기(기존 /api/service-integrations/google/write/events) ----------------
+
+export function canCreateGoogleEvent(google: ScheduleEventsResult['google']): boolean {
+  return google.connected && google.write.enabled && google.write.calendarWritable;
+}
+
+export function canEditEvent(event: Pick<ScheduleEvent, 'source' | 'writable'>, google: ScheduleEventsResult['google']): boolean {
+  return event.source === 'google' && event.writable && canCreateGoogleEvent(google);
+}
+
+export function emptyEventForm(date: string, calendarId = ''): ScheduleEventForm {
+  return { calendarId, title: '', description: '', date, endDate: date, allDay: false, startTime: '09:00', endTime: '10:00' };
+}
+
+export function eventToForm(event: ScheduleEvent): ScheduleEventForm {
+  const range = eventDayRange(event);
+  if (event.allDay) {
+    return { calendarId: event.calendarId ?? '', title: event.title, description: event.description, date: range.first, endDate: range.last, allDay: true, startTime: '09:00', endTime: '10:00' };
+  }
+  const start = new Date(event.startAt);
+  const end = new Date(event.endAt);
+  return {
+    calendarId: event.calendarId ?? '',
+    title: event.title,
+    description: event.description,
+    date: range.first,
+    endDate: Number.isNaN(end.getTime()) ? range.first : seoulYmd(end),
+    allDay: false,
+    startTime: Number.isNaN(start.getTime()) ? '09:00' : seoulHm(start),
+    endTime: Number.isNaN(end.getTime()) ? '10:00' : seoulHm(end),
+  };
+}
+
+/** 서버 googleEventTimes 와 같은 규칙으로 미리 확인한다. 문제 없으면 null. */
+export function validateEventForm(form: ScheduleEventForm): string | null {
+  const title = form.title.trim();
+  if (!form.calendarId.trim()) return '캘린더를 선택해 주세요.';
+  if (!title) return '제목을 입력해 주세요.';
+  if (title.length > SCHEDULE_TITLE_MAX) return `제목은 ${SCHEDULE_TITLE_MAX}자 이하로 입력해 주세요.`;
+  if (form.description.length > SCHEDULE_NOTES_MAX) return '설명이 너무 깁니다.';
+  if (!YMD.test(form.date)) return '날짜는 YYYY-MM-DD 로 입력해 주세요.';
+  const endDate = form.endDate.trim() || form.date;
+  if (!YMD.test(endDate) || endDate < form.date) return '종료일은 시작일과 같거나 늦어야 합니다.';
+  if (form.allDay) return null;
+  if (!HM.test(form.startTime)) return '시작 시각은 HH:mm 으로 입력해 주세요.';
+  if (!HM.test(form.endTime)) return '종료 시각은 HH:mm 으로 입력해 주세요.';
+  if (`${endDate}T${form.endTime}` <= `${form.date}T${form.startTime}`) return '종료 시각은 시작 시각보다 늦어야 합니다.';
+  return null;
+}
+
+export function formToGoogleInput(form: ScheduleEventForm) {
+  return {
+    calendarId: form.calendarId.trim(),
+    title: form.title.trim(),
+    description: form.description,
+    date: form.date,
+    endDate: form.endDate.trim() || form.date,
+    allDay: form.allDay,
+    startTime: form.allDay ? '' : form.startTime,
+    endTime: form.allDay ? '' : form.endTime,
+  };
+}
+
+/** 중복 저장 방지용 요청 id(32 hex). 보안 토큰이 아니라 같은 저장 시도를 묶는 키다. */
+export function newScheduleRequestId(random: () => number = Math.random): string {
+  let out = '';
+  for (let index = 0; index < 32; index += 1) out += Math.floor(random() * 16).toString(16);
+  return out;
+}
+
+export const GOOGLE_READ_ONLY_REASON: Record<string, string> = {
+  calendar_read_only: '이 캘린더는 읽기 전용입니다.',
+  recurring: '반복 일정은 Google Calendar에서 수정해 주세요.',
+  attendees: '참석자가 있는 일정은 Google Calendar에서 수정해 주세요.',
+  conference: '화상 회의가 연결된 일정은 Google Calendar에서 수정해 주세요.',
+  not_organizer: '다른 사람이 만든 일정은 수정할 수 없습니다.',
+  special_type: '이 유형의 일정은 Google Calendar에서 수정해 주세요.',
+  locked: '잠긴 일정은 수정할 수 없습니다.',
+};
+
+export function readOnlyMessage(event: Pick<ScheduleEvent, 'source' | 'readOnlyReason'>, google: ScheduleEventsResult['google']): string {
+  if (event.source === 'crm') return '고객 정보에서 만든 일정입니다. 고객 화면에서 관리해 주세요.';
+  if (!google.write.enabled) return 'Google 일정 수정은 아직 이 계정에서 사용할 수 없습니다.';
+  if (!google.write.calendarWritable || google.write.needsWriteConsent) return 'Google 캘린더 쓰기 권한이 필요합니다. PC 일정 관리에서 다시 연결해 주세요.';
+  return GOOGLE_READ_ONLY_REASON[event.readOnlyReason] ?? '이 일정은 수정할 수 없습니다.';
+}
