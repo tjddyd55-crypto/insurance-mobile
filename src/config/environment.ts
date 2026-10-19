@@ -97,3 +97,15 @@ export function getEnvironmentConfig(environment: AppEnvironment = resolveAppEnv
 }
 
 export type EnvironmentConfig = ReturnType<typeof getEnvironmentConfig>;
+
+/** Production 웹 정식 주소(공유 링크가 이 주소로 나간다). 같은 Railway 서비스가 SPA·API 를 함께 제공한다. */
+export const PRODUCTION_WEB_ORIGIN = 'https://onefc.platform-assets.com';
+
+/**
+ * 앱 안 WebView(모바일 명함 편집)가 여는 웹 origin.
+ * Production 은 정식 도메인, DEV 는 DEV API origin(같은 서비스가 SPA 를 제공).
+ */
+export function resolveWebAppOrigin(environment: AppEnvironment = resolveAppEnvironment()): string {
+  if (environment === 'production') return PRODUCTION_WEB_ORIGIN;
+  return resolveApiBaseUrl('development');
+}

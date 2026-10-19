@@ -45,12 +45,13 @@ describe('menuConfig', () => {
     expect(item?.mode).toBe('NATIVE');
   });
 
-  it('puts exactly two native screens under 고객 상담', () => {
+  it('puts the three native screens under 고객 상담', () => {
     const section = USER_APP_MENU.find((entry) => entry.id === 'customer-consulting');
     expect(section?.label).toBe('고객 상담');
-    expect(section?.children.map((child) => child.label)).toEqual(['내 바인더', '시뮬레이션']);
+    expect(section?.children.map((child) => child.label)).toEqual(['내 바인더', '공유 바인더', '시뮬레이션']);
     expect(section?.children.map((child) => child.nativePath)).toEqual([
       '/customer-consulting/personal-binders',
+      '/customer-consulting/shared-binders',
       '/customer-consulting/coverage-simulation',
     ]);
     expect(section?.children.every((child) => child.mode === 'NATIVE')).toBe(true);

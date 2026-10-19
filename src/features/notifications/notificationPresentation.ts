@@ -7,6 +7,7 @@ export function notificationSectionTone(type: NotificationType): BadgeTone {
   if (type === 'insurance_age_date') return 'success';
   if (type === 'car_expiry') return 'info';
   if (type === 'claim_request_received') return 'warning';
+  if (type === 'advisor_consultation_lead') return 'warning';
   return 'default';
 }
 

@@ -1,3 +1,4 @@
+import { normalizeConsultationLeadId } from '../consultation-leads/consultationLeadModel';
 import type { PushPayloadData } from './pushRegistration';
 
 export const PUSH_FALLBACK_ROUTE = '/notifications' as const;
@@ -20,6 +21,8 @@ export type NativePushRoute =
       pathname: '/portal/boards/[slug]';
       params: { slug: string; newsletterId?: string };
     }
+  | { pathname: '/consultation-leads/[leadId]'; params: { leadId: string } }
+  | { pathname: '/consultation-leads' }
   | { pathname: '/notifications' };
 
 function positiveId(value: string | undefined): string | null {
@@ -31,6 +34,16 @@ function positiveId(value: string | undefined): string | null {
 function resolveRouteFromPath(route: string): NativePushRoute | null {
   const trimmed = String(route ?? '').trim();
   if (!trimmed.startsWith('/')) return null;
+
+  const leadMatch = trimmed.match(/^\/consultation-leads(?:\/([^/?#]+))?(?:\?(.*))?$/i);
+  if (leadMatch) {
+    const leadId = normalizeConsultationLeadId(
+      leadMatch[1] ?? new URLSearchParams(leadMatch[2] ?? '').get('lead') ?? '',
+    );
+    return leadId
+      ? { pathname: '/consultation-leads/[leadId]', params: { leadId } }
+      : { pathname: '/consultation-leads' };
+  }
 
   const newsletterMatch = trimmed.match(
     /^\/portal\/(?:newsletters|adjuster-news|boards\/([^/?]+))(?:\?(.+))?$/i,
@@ -134,6 +147,13 @@ export function resolvePushDeepLink(data: PushPayloadData | null | undefined): N
         ...(claimId ? { claimId } : {}),
       },
     };
+  }
+
+  if (type === 'ADVISOR_CONSULTATION_LEAD') {
+    const leadId = normalizeConsultationLeadId(data.leadId ?? data.referenceId);
+    return leadId
+      ? { pathname: '/consultation-leads/[leadId]', params: { leadId } }
+      : { pathname: '/consultation-leads' };
   }
 
   if (type === 'CUSTOMER_CREATED') {

@@ -9,7 +9,8 @@ import {
   CUSTOMER_CONSULTING_SECTION_LABEL,
 } from '../features/customer-consulting/customerConsultingCatalog';
 
-export type MenuImplementationMode = 'NATIVE' | 'WEBVIEW_TEMP' | 'PC_ONLY' | 'DISABLED';
+/** WEBVIEW: 앱 안 인증 WebView 로 여는 확정 화면(모바일 명함 편집 하나뿐). */
+export type MenuImplementationMode = 'NATIVE' | 'WEBVIEW' | 'WEBVIEW_TEMP' | 'PC_ONLY' | 'DISABLED';
 
 export type UserRole =
   | 'SUPER_ADMIN'
@@ -87,6 +88,13 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         label: '할일',
         legacyWebPath: '/todos',
         nativePath: '/todos',
+        mode: 'NATIVE',
+      }),
+      link({
+        id: 'schedule',
+        label: '일정 관리',
+        legacyWebPath: '/schedule',
+        nativePath: '/schedule',
         mode: 'NATIVE',
       }),
       link({
@@ -295,6 +303,20 @@ export const USER_APP_MENU: NativeMenuSection[] = [
     label: '내정보',
     roles: USER_ROLES,
     children: [
+      link({
+        id: 'mobile-card',
+        label: '모바일 명함',
+        legacyWebPath: '/profile/mobile-card',
+        nativePath: '/profile/mobile-card',
+        mode: 'WEBVIEW',
+      }),
+      link({
+        id: 'consultation-leads',
+        label: '상담 신청',
+        legacyWebPath: '/consultation-leads',
+        nativePath: '/consultation-leads',
+        mode: 'NATIVE',
+      }),
       link({
         id: 'storage',
         label: '내 저장공간',

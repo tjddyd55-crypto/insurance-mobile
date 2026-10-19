@@ -4,7 +4,7 @@
  * 화면은 WebView가 아니라 앱의 네이티브 라우트로 연다.
  */
 
-export type CustomerConsultingFeatureId = 'personal-binder' | 'coverage-simulation';
+export type CustomerConsultingFeatureId = 'personal-binder' | 'shared-binder' | 'coverage-simulation';
 
 export type CustomerConsultingFeature = {
   id: CustomerConsultingFeatureId;
@@ -18,7 +18,7 @@ export const CUSTOMER_CONSULTING_SECTION_LABEL = '고객 상담';
 
 /**
  * 배치: 고객관리 다음.
- * 하위 메뉴는 내 바인더, 시뮬레이션 두 개만 둔다.
+ * 하위 메뉴는 웹(gaTenantMenu)과 같은 순서: 내 바인더, 공유 바인더, 시뮬레이션.
  * 시뮬레이션 진입은 보장 시뮬레이션 시나리오 선택이다.
  */
 export const CUSTOMER_CONSULTING_FEATURES: readonly CustomerConsultingFeature[] = [
@@ -27,6 +27,12 @@ export const CUSTOMER_CONSULTING_FEATURES: readonly CustomerConsultingFeature[] 
     label: '내 바인더',
     nativePath: '/customer-consulting/personal-binders',
     legacyWebPath: '/personal-binders',
+  },
+  {
+    id: 'shared-binder',
+    label: '공유 바인더',
+    nativePath: '/customer-consulting/shared-binders',
+    legacyWebPath: '/personal-binders/shared',
   },
   {
     id: 'coverage-simulation',

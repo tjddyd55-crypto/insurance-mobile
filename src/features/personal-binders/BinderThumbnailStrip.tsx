@@ -3,17 +3,17 @@ import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { useAppTheme, type AppTheme } from '../../design-system';
 import { usePageImageLink } from './usePageImageLink';
-import type { BinderViewerPageRef } from './binderPageImage';
+import { viewerThumbRequest, type BinderViewerPageRef, type BinderViewerSource } from './binderPageImage';
 
 type Props = {
   token: string | null;
-  binderId: string;
+  source: BinderViewerSource;
   pages: BinderViewerPageRef[];
   selectedPosition: number;
   onSelect: (position: number) => void;
 };
 
-export function BinderThumbnailStrip({ token, binderId, pages, selectedPosition, onSelect }: Props) {
+export function BinderThumbnailStrip({ token, source, pages, selectedPosition, onSelect }: Props) {
   const theme = useAppTheme();
   const styles = createStripStyles(theme);
   return (
@@ -22,7 +22,7 @@ export function BinderThumbnailStrip({ token, binderId, pages, selectedPosition,
         <PageThumb
           key={page.index}
           token={token}
-          binderId={binderId}
+          source={source}
           page={page}
           selected={position === selectedPosition}
           onPress={() => onSelect(position)}
@@ -33,20 +33,17 @@ export function BinderThumbnailStrip({ token, binderId, pages, selectedPosition,
 }
 
 function PageThumb({
-  token, binderId, page, selected, onPress,
+  token, source, page, selected, onPress,
 }: {
   token: string | null;
-  binderId: string;
+  source: BinderViewerSource;
   page: BinderViewerPageRef;
   selected: boolean;
   onPress: () => void;
 }) {
   const theme = useAppTheme();
   const styles = createStripStyles(theme);
-  const request = useMemo(
-    () => ({ scope: 'binder-thumb' as const, binderId, index: page.index }),
-    [binderId, page.index],
-  );
+  const request = useMemo(() => viewerThumbRequest(source, page.index), [source, page.index]);
   const { uri } = usePageImageLink(token, request);
   return (
     <Pressable
