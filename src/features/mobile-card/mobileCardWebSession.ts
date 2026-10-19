@@ -17,6 +17,13 @@ export const ADVISOR_PUBLIC_PATH_PREFIX = '/fc/';
 
 export const MOBILE_CARD_BRIDGE_SHARE = 'ONEFC_MOBILE_CARD_SHARE';
 
+/**
+ * 앱 임베드 표시(비밀값 아님). 웹(insurance src/features/native-app/nativeAppEmbed.ts)은 이 값이 있고
+ * 경로가 /profile/mobile-card 일 때만 웹 공통 헤더를 그리지 않는다 → 앱 헤더만 보인다.
+ */
+export const NATIVE_EMBED_WINDOW_KEY = '__ONEFC_NATIVE_EMBED__';
+export const NATIVE_EMBED_MOBILE_CARD = 'mobile-card';
+
 export type WebSessionUser = Pick<
   AuthUser,
   'id' | 'username' | 'role' | 'gaId' | 'gaCode' | 'gaName' | 'companyId' | 'displayName' | 'teamId'
@@ -78,6 +85,7 @@ if(window.location.origin!==${jsLiteral(expectedOrigin)}){return;}
 try{window.localStorage.clear();}catch(e){}
 try{window.sessionStorage.clear();}catch(e){}
 window.localStorage.setItem(${jsLiteral(WEB_AUTH_STORAGE_KEY)},${jsLiteral(JSON.stringify(session))});
+try{Object.defineProperty(window,${jsLiteral(NATIVE_EMBED_WINDOW_KEY)},{configurable:true,value:${jsLiteral(NATIVE_EMBED_MOBILE_CARD)}});}catch(e){window[${jsLiteral(NATIVE_EMBED_WINDOW_KEY)}]=${jsLiteral(NATIVE_EMBED_MOBILE_CARD)};}
 var bridge=window.ReactNativeWebView;
 if(bridge&&typeof bridge.postMessage==='function'){
 var share=function(data){data=data||{};bridge.postMessage(JSON.stringify({type:${jsLiteral(MOBILE_CARD_BRIDGE_SHARE)},title:String(data.title||''),text:String(data.text||''),url:String(data.url||'')}));return Promise.resolve();};
