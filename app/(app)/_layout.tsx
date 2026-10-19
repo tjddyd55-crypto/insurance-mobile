@@ -15,6 +15,8 @@ export default function AppLayout() {
           <Drawer
             // expo-router vs @react-navigation/drawer prop type mismatch
             drawerContent={AppDrawerContent as never}
+            // 뒤로가기 = 직전 화면. 기본값(firstRoute)은 어떤 메뉴에서든 홈으로 보낸다.
+            backBehavior="history"
             screenOptions={{
               headerShown: false,
               drawerType: 'front',
