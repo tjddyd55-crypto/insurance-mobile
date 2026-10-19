@@ -1,5 +1,6 @@
 import { ApiError } from '../../api/client';
 import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
+import { normalizeConsultationLeadId } from '../consultation-leads/consultationLeadModel';
 import type {
   NotificationListResult,
   NotificationRecord,
@@ -24,6 +25,7 @@ export const NOTIFICATION_SECTIONS: { type: NotificationType; title: string; dat
   { type: 'customer_created', title: '신규 고객', dateLabel: '등록일' },
   { type: 'newsletter_published', title: '소식지', dateLabel: '게시일' },
   { type: 'claim_request_received', title: '청구요청', dateLabel: '접수일' },
+  { type: 'advisor_consultation_lead', title: '상담 신청', dateLabel: '신청일' },
   { type: 'insurance_age_date', title: '상령일', dateLabel: '상령일' },
   { type: 'car_expiry', title: '자동차만기', dateLabel: '만기일' },
   { type: 'special_date', title: '알림일', dateLabel: '알림일' },
@@ -44,16 +46,23 @@ function nullableNumber(value: unknown): number | null {
   return Number.isFinite(result) ? result : null;
 }
 
+const NOTIFICATION_TYPES: ReadonlySet<string> = new Set<NotificationType>([
+  'car_expiry',
+  'insurance_age_date',
+  'claim_request_received',
+  'special_date',
+  'customer_created',
+  'newsletter_published',
+  'advisor_consultation_lead',
+]);
+
+export function isSupportedNotificationType(value: unknown): value is NotificationType {
+  return NOTIFICATION_TYPES.has(text(value));
+}
+
 function notificationType(value: unknown): NotificationType {
   const raw = text(value);
-  if (
-    raw === 'car_expiry' ||
-    raw === 'insurance_age_date' ||
-    raw === 'claim_request_received' ||
-    raw === 'special_date' ||
-    raw === 'customer_created' ||
-    raw === 'newsletter_published'
-  ) {
+  if (isSupportedNotificationType(raw)) {
     return raw;
   }
   throw new ApiError('지원하지 않는 알림 유형입니다.', 500);
@@ -126,9 +135,10 @@ export function normalizeNotificationList(value: unknown): NotificationListResul
     throw new ApiError('알림 목록 응답 구조가 올바르지 않습니다.', 500);
   }
   return {
-    notifications: row.notifications.map((item, index) =>
-      normalizeNotification(item, `알림 목록 ${index + 1}번째 항목`),
-    ),
+    // 서버가 앱보다 먼저 새 알림 유형을 내려도 목록 전체가 깨지지 않게, 모르는 유형만 건너뛴다.
+    notifications: row.notifications
+      .filter((item) => isSupportedNotificationType((item as Record<string, unknown> | null)?.type))
+      .map((item, index) => normalizeNotification(item, `알림 목록 ${index + 1}번째 항목`)),
     settings: normalizeNotificationSettings(row.settings),
   };
 }
@@ -146,7 +156,9 @@ export function notificationReferenceDate(
 ): string | null {
   return (
     dateOnly(row.targetDate) ??
-    (row.type === 'claim_request_received' || row.type === 'customer_created'
+    (row.type === 'claim_request_received' ||
+    row.type === 'customer_created' ||
+    row.type === 'advisor_consultation_lead'
       ? dateOnly(row.createdAt)
       : null)
   );
@@ -185,4 +197,20 @@ export function groupNotifications(rows: NotificationRecord[]) {
         (notificationReferenceDate(a) ?? '').localeCompare(notificationReferenceDate(b) ?? ''),
       ),
   }));
+}
+
+/** 상담 신청 알림의 leadId(reference_id). UUID 가 아니면 null. */
+export function notificationLeadId(row: Pick<NotificationRecord, 'type' | 'referenceId'>): string | null {
+  if (row.type !== 'advisor_consultation_lead') return null;
+  return normalizeConsultationLeadId(row.referenceId);
+}
+
+export function notificationPrimaryText(row: Pick<NotificationRecord, 'type' | 'customerName'>): string {
+  if (row.type === 'advisor_consultation_lead') return '상담 신청';
+  return row.customerName || '고객 정보 없음';
+}
+
+export function canOpenNotification(row: Pick<NotificationRecord, 'type' | 'referenceId' | 'customerId'>): boolean {
+  if (row.type === 'advisor_consultation_lead') return notificationLeadId(row) != null;
+  return row.customerId != null && row.customerId > 0;
 }

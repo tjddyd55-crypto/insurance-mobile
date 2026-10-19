@@ -5,6 +5,9 @@ import {
   normalizeNotificationSettings,
   notificationDDay,
   notificationReferenceDate,
+  canOpenNotification,
+  notificationLeadId,
+  notificationPrimaryText,
 } from '../notificationModel';
 
 describe('notificationModel', () => {
@@ -68,10 +71,36 @@ describe('notificationModel', () => {
       'customer_created',
       'newsletter_published',
       'claim_request_received',
+      'advisor_consultation_lead',
       'insurance_age_date',
       'car_expiry',
       'special_date',
     ]);
     expect(groups.find((group) => group.type === 'car_expiry')?.data).toHaveLength(1);
+  });
+
+  test('supports advisor_consultation_lead and opens the lead by reference id', () => {
+    const lead = normalizeNotification({
+      id: '9',
+      type: 'advisor_consultation_lead',
+      reference_id: '1B4E28BA-2FA1-41D2-883F-0016D3CCA427',
+      message: '홍길동님의 상담 신청이 도착했습니다.',
+      created_at: '2026-10-19T01:00:00.000Z',
+    });
+    expect(lead.type).toBe('advisor_consultation_lead');
+    expect(notificationLeadId(lead)).toBe('1b4e28ba-2fa1-41d2-883f-0016d3cca427');
+    expect(canOpenNotification(lead)).toBe(true);
+    expect(notificationPrimaryText(lead)).toBe('상담 신청');
+    expect(notificationReferenceDate(lead)).toBe('2026-10-19');
+    expect(canOpenNotification({ ...lead, referenceId: 'nope' })).toBe(false);
+    expect(notificationLeadId({ type: 'car_expiry', referenceId: lead.referenceId })).toBeNull();
+  });
+
+  test('skips unknown notification types instead of failing the whole list', () => {
+    const result = normalizeNotificationList({
+      notifications: [raw, { id: '10', type: 'future_type_from_server' }],
+      settings: {},
+    });
+    expect(result.notifications.map((row) => row.id)).toEqual(['5']);
   });
 });

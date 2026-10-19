@@ -4,7 +4,8 @@ export type NotificationType =
   | 'claim_request_received'
   | 'special_date'
   | 'customer_created'
-  | 'newsletter_published';
+  | 'newsletter_published'
+  | 'advisor_consultation_lead';
 
 export type NotificationView = 'active' | 'confirmed';
 

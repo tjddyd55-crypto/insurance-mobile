@@ -9,6 +9,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { BillingStatusPill } from '../components/BillingStatusPill';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { AppText, Badge, Button, IconButton, useAppTheme, type AppTheme } from '../design-system';
+import { listConsultationLeads } from '../features/consultation-leads/consultationLeadsApi';
+import { consultationLeadQueryKeys } from '../features/consultation-leads/queryKeys';
 import { getUnreadNotificationCount } from '../features/notifications/notificationsApi';
 import { notificationQueryKeys } from '../features/notifications/queryKeys';
 import { type NativeMenuLink } from './menuConfig';
@@ -39,6 +41,14 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
     refetchInterval: 60_000,
   });
   const unreadCount = unreadQuery.data ?? 0;
+  // 상담 신청 배지 = status 'new' 건수(서버 newCount). 목록 화면과 같은 query 를 쓴다.
+  const leadsQuery = useQuery({
+    queryKey: consultationLeadQueryKeys.list(),
+    queryFn: () => listConsultationLeads(token),
+    enabled: Boolean(token && user?.role === 'USER'),
+    refetchInterval: 60_000,
+  });
+  const newLeadCount = leadsQuery.data?.newCount ?? 0;
 
   const onPressLink = (item: NativeMenuLink) => {
     if (item.disabled || item.mode === 'DISABLED' || item.mode === 'PC_ONLY') return;
@@ -94,6 +104,9 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
                     {child.badge ? <Badge label={child.badge} tone="default" /> : null}
                     {child.id === 'notifications' && unreadCount > 0 ? (
                       <Badge label={`${unreadCount}`} tone="warning" />
+                    ) : null}
+                    {child.id === 'consultation-leads' && newLeadCount > 0 ? (
+                      <Badge label={`${newLeadCount}`} tone="warning" />
                     ) : null}
                   </Pressable>
                 );

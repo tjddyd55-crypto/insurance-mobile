@@ -304,6 +304,13 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         mode: 'WEBVIEW',
       }),
       link({
+        id: 'consultation-leads',
+        label: '상담 신청',
+        legacyWebPath: '/consultation-leads',
+        nativePath: '/consultation-leads',
+        mode: 'NATIVE',
+      }),
+      link({
         id: 'storage',
         label: '내 저장공간',
         legacyWebPath: '/storage',

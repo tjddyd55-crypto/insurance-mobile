@@ -72,7 +72,7 @@ describe('native session menu policy', () => {
       '신청서 작성', '신청서 작성내역', '렌트(사고대차)',
       '팀원리스트', '팀 게시판', '팀 자료',
       '원수사 연락처', '계정관리', '설계사이트',
-      '모바일 명함', '내 저장공간', '내정보관리', '쿠폰 적용', '문의요청',
+      '모바일 명함', '상담 신청', '내 저장공간', '내정보관리', '쿠폰 적용', '문의요청',
     ]);
   });
 
@@ -169,7 +169,7 @@ describe('native session menu policy', () => {
         },
       }), capabilities);
       expect(menu).toHaveLength(8);
-      expect(labels(menu)).toHaveLength(27);
+      expect(labels(menu)).toHaveLength(28);
     },
   );
 

@@ -19,7 +19,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { NotificationCard } from './NotificationCard';
-import { groupNotifications, NOTIFICATION_PANEL_PREVIEW_COUNT } from './notificationModel';
+import { groupNotifications, notificationLeadId, NOTIFICATION_PANEL_PREVIEW_COUNT } from './notificationModel';
 import { notificationEmptyCopy, notificationSectionTone } from './notificationPresentation';
 import {
   confirmNotification,
@@ -90,6 +90,12 @@ export function NotificationsScreen() {
 
   const openNotification = (notification: NotificationRecord) => {
     if (!notification.isRead) readMutation.mutate(notification);
+    if (notification.type === 'advisor_consultation_lead') {
+      const leadId = notificationLeadId(notification);
+      if (!leadId) return;
+      router.push({ pathname: '/consultation-leads/[leadId]', params: { leadId } });
+      return;
+    }
     if (notification.type === 'newsletter_published') {
       const newsletterId = String(notification.referenceId ?? '').trim();
       if (!newsletterId) return;

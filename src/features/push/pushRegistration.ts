@@ -29,6 +29,9 @@ export type PushPayloadData = {
   boardSlug?: string;
   route?: string;
   notificationId?: string;
+  /** 상담 신청(ADVISOR_CONSULTATION_LEAD) — leadId 와 같은 값의 referenceId 를 함께 받는다. */
+  leadId?: string;
+  referenceId?: string;
 };
 
 type PermissionSnapshot = {
@@ -254,5 +257,7 @@ export function pushPayloadFromNotification(
     boardSlug: data.boardSlug != null ? String(data.boardSlug) : undefined,
     route: data.route != null ? String(data.route) : undefined,
     notificationId: data.notificationId != null ? String(data.notificationId) : undefined,
+    leadId: data.leadId != null ? String(data.leadId) : undefined,
+    referenceId: data.referenceId != null ? String(data.referenceId) : undefined,
   };
 }
