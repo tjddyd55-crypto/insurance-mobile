@@ -40,14 +40,14 @@ const path = jest.requireActual<{ join: (...parts: string[]) => string }>('path'
 const read = (file: string) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const mockedRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
-const writeOn = { connected: true, status: 'connected', write: { enabled: true, calendarWritable: true, tasksWritable: true, needsWriteConsent: false }, tasks: { status: 'connected', needsReconsent: false } };
-const writeOff = { connected: true, status: 'connected', write: { enabled: false, calendarWritable: false, tasksWritable: false, needsWriteConsent: false }, tasks: { status: 'connected', needsReconsent: false } };
+const writeOn = { connected: true, status: 'connected', connectAllowed: true, configured: true, write: { enabled: true, calendarWritable: true, tasksWritable: true, needsWriteConsent: false }, tasks: { status: 'connected', needsReconsent: false } };
+const writeOff = { connected: true, status: 'connected', connectAllowed: true, configured: true, write: { enabled: false, calendarWritable: false, tasksWritable: false, needsWriteConsent: false }, tasks: { status: 'connected', needsReconsent: false } };
 
 function serverPayload() {
   return {
     from: '2026-10-01',
     to: '2026-10-31',
-    google: { configured: true, ...writeOn },
+    google: { ...writeOn },
     events: [
       { id: 'google:primary:abc', source: 'google', sourceId: 'abc', calendarId: 'primary', calendarName: '내 캘린더', type: 'google_event', title: '미팅', description: '', startAt: '2026-10-19T14:00:00+09:00', endAt: '2026-10-19T15:30:00+09:00', allDay: false, customerId: null, customerName: '', location: '강남', readOnly: true, writable: true, readOnlyReason: '' },
       { id: 'crm:car:1', source: 'crm', sourceId: '1', calendarId: null, type: 'car_expiry', title: '자동차 만기', startAt: '2026-10-20', endAt: '2026-10-21', allDay: true, customerId: 42, customerName: '홍길동', readOnly: true },

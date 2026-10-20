@@ -28,8 +28,10 @@ function google(patch: Partial<Omit<ScheduleGoogleState, 'write'>> & { write?: P
   return {
     connected: true,
     status: 'connected',
+    connectAllowed: true,
+    configured: true,
     tasks: { status: 'connected', needsReconsent: false },
-    ...patch,
+    ...(patch as Partial<Omit<ScheduleGoogleState, 'write'>>),
     write: { enabled: true, calendarWritable: true, tasksWritable: true, needsWriteConsent: false, ...patch.write },
   };
 }
