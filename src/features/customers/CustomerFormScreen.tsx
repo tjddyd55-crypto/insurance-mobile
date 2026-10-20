@@ -244,7 +244,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
         });
       }
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.detail(saved.id) });
-      router.replace({ pathname: '/customers/[customerId]', params: { customerId: String(saved.id) } });
+      navigateToCustomerDetail(router, saved.id);
     },
   });
 

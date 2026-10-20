@@ -58,7 +58,7 @@ import {
   CustomerContactIconButton,
   openPhoneUrl,
 } from "./CustomerContactIconButton";
-import { useGoBackFromCustomerDetail } from "./customerWorkspaceNavigation";
+import { goBackFromCustomerDetail, useGoBackFromCustomerDetail } from "./customerWorkspaceNavigation";
 import {
   buildCustomerWorkspaceActions,
   resolveCustomerWorkspaceActionHref,
@@ -155,7 +155,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
       queryClient.removeQueries({ queryKey: customerQueryKeys.detail(idToDelete) });
       // List SSOT = server. Re-fetch customer lists so the deleted row disappears now.
       void invalidateCustomerListQueries(queryClient);
-      router.replace("/customers");
+      goBackFromCustomerDetail(router);
     },
   });
 
