@@ -35,12 +35,16 @@ export type ScheduleTask = {
   customerName: string;
 };
 
-export type ScheduleWriteState = { enabled: boolean; calendarWritable: boolean; needsWriteConsent: boolean };
+export type ScheduleWriteState = { enabled: boolean; calendarWritable: boolean; tasksWritable: boolean; needsWriteConsent: boolean };
+
+/** 서버 google.tasks.status (connected | scope_missing | needs_reauth | error | ...). */
+export type ScheduleGoogleTasksState = { status: string; needsReconsent: boolean };
 
 export type ScheduleGoogleState = {
   connected: boolean;
   status: string;
   write: ScheduleWriteState;
+  tasks: ScheduleGoogleTasksState;
 };
 
 export type ScheduleEventsResult = {
@@ -53,6 +57,15 @@ export type ScheduleEventsResult = {
 };
 
 export type GoogleCalendarTarget = { id: string; name: string; primary: boolean };
+
+export type GoogleTaskListTarget = { id: string; name: string };
+
+export type GoogleWriteTargets = { calendars: GoogleCalendarTarget[]; taskLists: GoogleTaskListTarget[] };
+
+/** 일정 관리 추가 저장 위치(웹 ScheduleGoogleWrite 와 같은 세 저장소). */
+export type ScheduleStorage = 'google_event' | 'google_task' | 'onefc_todo';
+
+export type ScheduleTaskForm = { taskListId: string; title: string; notes: string; dueDate: string; dueTime: string };
 
 export type ScheduleEventForm = {
   calendarId: string;

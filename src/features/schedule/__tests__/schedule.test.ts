@@ -40,8 +40,8 @@ const path = jest.requireActual<{ join: (...parts: string[]) => string }>('path'
 const read = (file: string) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const mockedRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
-const writeOn = { connected: true, status: 'connected', write: { enabled: true, calendarWritable: true, needsWriteConsent: false } };
-const writeOff = { connected: true, status: 'connected', write: { enabled: false, calendarWritable: false, needsWriteConsent: false } };
+const writeOn = { connected: true, status: 'connected', write: { enabled: true, calendarWritable: true, tasksWritable: true, needsWriteConsent: false }, tasks: { status: 'connected', needsReconsent: false } };
+const writeOff = { connected: true, status: 'connected', write: { enabled: false, calendarWritable: false, tasksWritable: false, needsWriteConsent: false }, tasks: { status: 'connected', needsReconsent: false } };
 
 function serverPayload() {
   return {

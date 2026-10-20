@@ -1,11 +1,12 @@
 /**
  * 일정 관리 — 웹과 같은 서버 API(SSOT). 새 테이블·새 API 없음.
  *  - 조회: GET /api/schedule/events?from&to&sources (Google 일정·할 일, CRM 알림일·자동차 만기·상령일, ONE FC 할 일)
- *  - 쓰기: Google 일정만 /api/service-integrations/google/write/events (POST/PATCH/DELETE), 서버가 매 요청 권한 확인.
+ *  - 쓰기: Google 일정 /api/service-integrations/google/write/events (POST/PATCH/DELETE), Google 할 일 POST /write/tasks,
+ *    ONE FC 할 일은 기존 POST /api/todos(features/todos/todosApi). 서버가 매 요청 권한 확인. Google 직접 호출 없음.
  */
 import { ApiError, apiRequest } from '../../api/client';
-import { formToGoogleInput, normalizeCalendarTargets, normalizeScheduleEvents } from './scheduleModel';
-import type { GoogleCalendarTarget, ScheduleEventForm, ScheduleEventsResult } from './types';
+import { formToGoogleInput, normalizeCalendarTargets, normalizeScheduleEvents, normalizeWriteTargets, taskFormToGoogleInput } from './scheduleModel';
+import type { GoogleCalendarTarget, GoogleWriteTargets, ScheduleEventForm, ScheduleEventsResult, ScheduleTaskForm } from './types';
 
 const WRITE_BASE = '/api/service-integrations/google/write';
 
@@ -29,6 +30,18 @@ export async function fetchScheduleEvents(
 
 export async function fetchWritableCalendars(token: string | null): Promise<GoogleCalendarTarget[]> {
   return normalizeCalendarTargets(await apiRequest<unknown>(`${WRITE_BASE}/targets`, { token: requireToken(token) }));
+}
+
+export async function fetchWriteTargets(token: string | null): Promise<GoogleWriteTargets> {
+  return normalizeWriteTargets(await apiRequest<unknown>(`${WRITE_BASE}/targets`, { token: requireToken(token) }));
+}
+
+export async function createGoogleTaskFromSchedule(token: string | null, form: ScheduleTaskForm, requestId: string): Promise<void> {
+  await apiRequest<unknown>(`${WRITE_BASE}/tasks`, {
+    method: 'POST',
+    token: requireToken(token),
+    body: JSON.stringify(taskFormToGoogleInput(form, requestId)),
+  });
 }
 
 export async function createScheduleEvent(token: string | null, form: ScheduleEventForm, requestId: string): Promise<void> {

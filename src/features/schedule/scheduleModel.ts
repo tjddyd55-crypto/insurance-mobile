@@ -1,11 +1,14 @@
 import { ApiError } from '../../api/client';
 import type {
   GoogleCalendarTarget,
+  GoogleWriteTargets,
   ScheduleEvent,
   ScheduleEventForm,
   ScheduleEventsResult,
   ScheduleEventType,
+  ScheduleStorage,
   ScheduleTask,
+  ScheduleTaskForm,
 } from './types';
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -162,7 +165,12 @@ export function normalizeScheduleEvents(payload: unknown): ScheduleEventsResult 
       write: {
         enabled: write.enabled === true,
         calendarWritable: write.calendarWritable === true,
+        tasksWritable: write.tasksWritable === true,
         needsWriteConsent: write.needsWriteConsent === true,
+      },
+      tasks: {
+        status: text(record(google.tasks).status) || 'skipped',
+        needsReconsent: record(google.tasks).needsReconsent === true,
       },
     },
     fetchedAt: text(data.fetchedAt),
@@ -170,8 +178,22 @@ export function normalizeScheduleEvents(payload: unknown): ScheduleEventsResult 
 }
 
 export function normalizeCalendarTargets(payload: unknown): GoogleCalendarTarget[] {
+  return normalizeWriteTargets(payload).calendars;
+}
+
+/** GET /google/write/targets → 쓰기 가능한 캘린더·할 일 목록(서버가 Google 에서 다시 읽은 것). */
+export function normalizeWriteTargets(payload: unknown): GoogleWriteTargets {
   const body = record(payload);
-  const data = Array.isArray(body.calendars) ? body : record(body.data);
+  const data = Array.isArray(body.calendars) || Array.isArray(body.taskLists) ? body : record(body.data);
+  const taskLists = (Array.isArray(data.taskLists) ? data.taskLists : []).flatMap((row) => {
+    const item = record(row);
+    const id = text(item.id).trim();
+    return id ? [{ id, name: text(item.name ?? item.title).trim() || id }] : [];
+  });
+  return { calendars: calendarTargets(data), taskLists };
+}
+
+function calendarTargets(data: Record<string, unknown>): GoogleCalendarTarget[] {
   return (Array.isArray(data.calendars) ? data.calendars : []).flatMap((row) => {
     const item = record(row);
     const id = text(item.id).trim();
@@ -354,4 +376,95 @@ export function readOnlyMessage(event: Pick<ScheduleEvent, 'source' | 'readOnlyR
   if (!google.write.enabled) return 'Google 일정 수정은 아직 이 계정에서 사용할 수 없습니다.';
   if (!google.write.calendarWritable || google.write.needsWriteConsent) return 'Google 캘린더 쓰기 권한이 필요합니다. PC 일정 관리에서 다시 연결해 주세요.';
   return GOOGLE_READ_ONLY_REASON[event.readOnlyReason] ?? '이 일정은 수정할 수 없습니다.';
+}
+
+// ---------------- 추가 저장 위치(웹 ScheduleGoogleWrite 와 같은 판정) ----------------
+
+export const SCHEDULE_STORAGE_LABEL: Record<ScheduleStorage, string> = {
+  google_event: 'Google 일정',
+  google_task: 'Google 할 일',
+  onefc_todo: 'ONE FC 할 일',
+};
+
+/** 저장 위치별 사용 가능 여부와 불가 사유. ONE FC 할 일은 Google 연결과 무관하게 항상 가능. 최종 판단은 서버가 매 요청 다시 한다. */
+export function storageAvailability(
+  google: ScheduleEventsResult['google'],
+  storage: ScheduleStorage,
+): { available: boolean; reason: string | null } {
+  if (storage === 'onefc_todo') return { available: true, reason: null };
+  if (google.status === 'needs_reauth') return { available: false, reason: 'Google 연결이 만료되었습니다. PC 서비스 연동에서 다시 연결해 주세요.' };
+  if (!google.connected) return { available: false, reason: 'Google 계정이 연결되어 있지 않습니다. PC 일정 관리에서 연결해 주세요.' };
+  if (!google.write.enabled) return { available: false, reason: '이 계정에서는 아직 Google 쓰기를 사용할 수 없습니다.' };
+  const writable = storage === 'google_event' ? google.write.calendarWritable : google.write.tasksWritable;
+  if (!writable) {
+    return {
+      available: false,
+      reason: storage === 'google_event'
+        ? 'Google 캘린더 쓰기 권한이 필요합니다. PC 일정 관리에서 다시 연결해 주세요.'
+        : 'Google 할 일 쓰기 권한이 필요합니다. PC 일정 관리에서 다시 연결해 주세요.',
+    };
+  }
+  return { available: true, reason: null };
+}
+
+export function emptyTaskForm(date: string, taskListId = ''): ScheduleTaskForm {
+  return { taskListId, title: '', notes: '', dueDate: date, dueTime: '' };
+}
+
+/** Google 할 일·ONE FC 할 일 공통 확인. 예정일은 비워도 된다(날짜 없음). 시각은 ONE FC 할 일만. */
+export function validateTaskForm(form: ScheduleTaskForm, storage: 'google_task' | 'onefc_todo'): string | null {
+  const title = form.title.trim();
+  if (storage === 'google_task' && !form.taskListId.trim()) return '할 일 목록을 선택해 주세요.';
+  if (!title) return '제목을 입력해 주세요.';
+  if (title.length > SCHEDULE_TITLE_MAX) return `제목은 ${SCHEDULE_TITLE_MAX}자 이하로 입력해 주세요.`;
+  if (form.notes.length > SCHEDULE_NOTES_MAX) return '메모가 너무 깁니다.';
+  const due = form.dueDate.trim();
+  if (due && !YMD.test(due)) return '예정일은 YYYY-MM-DD 로 입력해 주세요.';
+  const time = form.dueTime.trim();
+  if (storage === 'onefc_todo' && time) {
+    if (!due) return '시각을 지정하려면 예정일을 입력해 주세요.';
+    if (!HM.test(time)) return '시각은 HH:mm 으로 입력해 주세요.';
+  }
+  return null;
+}
+
+/** POST /api/service-integrations/google/write/tasks 본문(웹과 같은 필드). */
+export function taskFormToGoogleInput(form: ScheduleTaskForm, requestId: string) {
+  const due = form.dueDate.trim();
+  return { taskListId: form.taskListId.trim(), title: form.title.trim(), notes: form.notes, dueDate: due || null, requestId };
+}
+
+/** POST /api/todos 본문(기존 할 일 API). */
+export function taskFormToTodoPayload(form: ScheduleTaskForm) {
+  const due = form.dueDate.trim();
+  const time = form.dueTime.trim();
+  return {
+    title: form.title.trim(),
+    description: form.notes.trim() || null,
+    dueDate: due || null,
+    dueTime: due && time ? time : null,
+  };
+}
+
+export function defaultTaskListId(targets: GoogleWriteTargets | undefined): string {
+  return targets?.taskLists[0]?.id ?? '';
+}
+
+/** 예정일 없는 미완료 할 일(웹 목록 "날짜 없음"과 같은 묶음). */
+export function undatedOpenTasks(tasks: ScheduleTask[]): ScheduleTask[] {
+  return tasks
+    .filter((task) => !task.dueDate && task.status === 'open')
+    .sort((left, right) => left.title.localeCompare(right.title, 'ko'));
+}
+
+/** Google 할 일 조회 상태 안내(웹 ScheduleChrome 와 같은 문구). 정상이면 null. */
+export function googleTasksNotice(google: ScheduleEventsResult['google']): string | null {
+  if (google.status !== 'connected') return null;
+  if (google.tasks.status === 'scope_missing' || google.tasks.needsReconsent) {
+    return 'Google 할 일을 보려면 PC 서비스 연동에서 Google을 다시 연결해 Google Tasks 읽기 권한을 허용해 주세요.';
+  }
+  if (google.tasks.status === 'error' || google.tasks.status === 'needs_reauth') {
+    return 'Google 할 일을 불러오지 못했습니다. 다른 일정은 계속 표시됩니다.';
+  }
+  return null;
 }

@@ -24,15 +24,26 @@ import {
   type AppTheme,
 } from '../../design-system';
 import {
+  createGoogleTaskFromSchedule,
   createScheduleEvent,
   deleteScheduleEvent,
   fetchScheduleEvents,
-  fetchWritableCalendars,
+  fetchWriteTargets,
   updateScheduleEvent,
 } from './scheduleApi';
+import { createTodo } from '../todos/todosApi';
+import { todoQueryKeys } from '../todos/queryKeys';
 import {
+  SCHEDULE_STORAGE_LABEL,
   SCHEDULE_TYPE_LABEL,
   canCreateGoogleEvent,
+  defaultTaskListId,
+  emptyTaskForm,
+  googleTasksNotice,
+  storageAvailability,
+  taskFormToTodoPayload,
+  undatedOpenTasks,
+  validateTaskForm,
   canEditEvent,
   customerRouteOfEvent,
   customerRouteOfTask,
@@ -56,7 +67,7 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { scheduleQueryKeys } from './queryKeys';
-import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleTask } from './types';
+import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleStorage, ScheduleTask, ScheduleTaskForm } from './types';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -75,6 +86,9 @@ export function scheduleRefreshError(error: unknown): string | null {
 }
 
 type FormState = { mode: 'create' | 'edit'; event: ScheduleEvent | null; form: ScheduleEventForm; requestId: string };
+type TaskFormState = { storage: 'google_task' | 'onefc_todo'; form: ScheduleTaskForm; requestId: string };
+
+const STORAGES: ScheduleStorage[] = ['google_event', 'google_task', 'onefc_todo'];
 
 /** 일정 관리(Native). 웹 /schedule 과 같은 서버 API 를 쓴다. CRM 일정은 읽기 전용, Google 일정만 서버 권한이 있을 때 쓰기. */
 export function ScheduleScreen() {
@@ -92,6 +106,9 @@ export function ScheduleScreen() {
   const [deleting, setDeleting] = useState<ScheduleEvent | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const [taskState, setTaskState] = useState<TaskFormState | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
   const range = monthRange(month);
 
   const query = useQuery({
@@ -101,23 +118,47 @@ export function ScheduleScreen() {
   });
   const data = query.data;
   const writeReady = data ? canCreateGoogleEvent(data.google) : false;
-  const calendars = useQuery({
+  const tasksWriteReady = data ? storageAvailability(data.google, 'google_task').available : false;
+  const targets = useQuery({
     queryKey: scheduleQueryKeys.calendars(),
-    queryFn: () => fetchWritableCalendars(token),
-    enabled: Boolean(token) && writeReady && formState !== null,
+    queryFn: () => fetchWriteTargets(token),
+    enabled: Boolean(token) && ((writeReady && formState !== null) || (tasksWriteReady && taskState?.storage === 'google_task')),
   });
+  const calendars = { ...targets, data: targets.data?.calendars };
 
+  /** 저장 직후 refresh=1 로 다시 읽는다(서버는 쓰기 성공 시 그 사용자 Google 캐시도 비운다). 새로고침 간격 제한(429)이면 일반 재조회. */
+  const reloadAfterWrite = async () => {
+    try {
+      const next = await fetchScheduleEvents(token, { ...range, refresh: true });
+      queryClient.setQueryData(scheduleQueryKeys.range(range.from, range.to), next);
+      await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all, refetchType: 'none' });
+    } catch {
+      await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+    }
+  };
   const afterWrite = async () => {
     setFormState(null);
+    setTaskState(null);
     setDeleting(null);
     setDetail(null);
-    await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+    await reloadAfterWrite();
   };
   const save = useMutation({
     mutationFn: (state: FormState) =>
       state.mode === 'create'
         ? createScheduleEvent(token, state.form, state.requestId)
         : updateScheduleEvent(token, state.event?.sourceId ?? '', state.form),
+    onSuccess: afterWrite,
+  });
+  const saveTask = useMutation({
+    mutationFn: async (state: TaskFormState) => {
+      if (state.storage === 'google_task') {
+        await createGoogleTaskFromSchedule(token, state.form, state.requestId);
+        return;
+      }
+      await createTodo(token, taskFormToTodoPayload(state.form));
+      await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+    },
     onSuccess: afterWrite,
   });
   const remove = useMutation({
@@ -156,6 +197,25 @@ export function ScheduleScreen() {
     setFormError(null);
     setFormState({ mode: 'create', event: null, form: emptyEventForm(selected), requestId: newScheduleRequestId() });
   };
+  const chooseStorage = (storage: ScheduleStorage) => {
+    setChoosing(false);
+    if (storage === 'google_event') {
+      openCreate();
+      return;
+    }
+    setTaskError(null);
+    saveTask.reset();
+    setTaskState({ storage, form: emptyTaskForm(selected), requestId: newScheduleRequestId() });
+  };
+  const submitTask = () => {
+    if (!taskState) return;
+    const form = { ...taskState.form, taskListId: taskState.form.taskListId || defaultTaskListId(targets.data) };
+    const problem = validateTaskForm(form, taskState.storage);
+    setTaskError(problem);
+    if (!problem) saveTask.mutate({ ...taskState, form });
+  };
+  const patchTask = (patch: Partial<ScheduleTaskForm>) =>
+    setTaskState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
   const openEdit = (event: ScheduleEvent) => {
     setFormError(null);
     setDetail(null);
@@ -190,6 +250,8 @@ export function ScheduleScreen() {
   const marked = daysWithItems(data);
   const dayEvents = eventsOnDay(data.events, selected);
   const dayTasks = tasksOnDay(data.tasks, selected);
+  const undated = undatedOpenTasks(data.tasks);
+  const tasksNotice = googleTasksNotice(data.google);
 
   return (
     <View style={styles.root}>
@@ -238,9 +300,10 @@ export function ScheduleScreen() {
         {refreshError ? <AppText variant="caption" color="danger">{refreshError}</AppText> : null}
         <Inline justify="space-between">
           <AppText variant="sectionTitle">{formatDayTitle(selected)}</AppText>
-          {writeReady ? <Button label="일정 추가" variant="primary" size="sm" onPress={openCreate} /> : null}
+          <Button label="추가" variant="primary" size="sm" accessibilityLabel="일정·할 일 추가" onPress={() => setChoosing(true)} />
         </Inline>
         {!writeReady ? <AppText variant="helper" color="textMuted">{SCHEDULE_COPY.connectHint}</AppText> : null}
+        {tasksNotice ? <AppText variant="helper" color="warning">{tasksNotice}</AppText> : null}
         {dayEvents.length === 0 && dayTasks.length === 0 ? (
           <AppText variant="body" color="textMuted">이 날 일정이 없습니다.</AppText>
         ) : null}
@@ -269,7 +332,77 @@ export function ScheduleScreen() {
             </Card>
           </Pressable>
         ))}
+        {undated.length > 0 ? (
+          <Stack gap="sm">
+            <AppText variant="sectionTitle">날짜 없음</AppText>
+            {undated.map((task) => (
+              <Pressable key={task.id} accessibilityRole="button" onPress={() => setDetail(task)}>
+                <Card variant="outlined" padding="md">
+                  <Inline justify="space-between">
+                    <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{task.title}</AppText>
+                    <Badge label={taskSourceLabel(task)} tone="default" />
+                  </Inline>
+                </Card>
+              </Pressable>
+            ))}
+          </Stack>
+        ) : null}
       </ScrollView>
+
+      <ModalShell open={choosing} title="저장 위치" subtitle={formatDayTitle(selected)} presentation="dialog" onRequestClose={() => setChoosing(false)}>
+        <Stack gap="md">
+          {STORAGES.map((storage) => {
+            const state = storageAvailability(data.google, storage);
+            return (
+              <Stack key={storage} gap="xs">
+                <Button label={SCHEDULE_STORAGE_LABEL[storage]} variant={storage === 'onefc_todo' ? 'primary' : 'secondary'} fullWidth disabled={!state.available} onPress={() => chooseStorage(storage)} />
+                {state.reason ? <AppText variant="caption" color="textMuted">{state.reason}</AppText> : null}
+              </Stack>
+            );
+          })}
+        </Stack>
+      </ModalShell>
+
+      <ModalShell
+        open={taskState !== null}
+        title={taskState ? `${SCHEDULE_STORAGE_LABEL[taskState.storage]} 추가` : ''}
+        presentation="fullscreen"
+        busy={saveTask.isPending}
+        onRequestClose={() => setTaskState(null)}
+        footer={
+          <Inline gap="sm">
+            <View style={styles.flex}><Button label="취소" fullWidth disabled={saveTask.isPending} onPress={() => setTaskState(null)} /></View>
+            <View style={styles.flex}><Button label="저장" variant="primary" fullWidth loading={saveTask.isPending} onPress={submitTask} /></View>
+          </Inline>
+        }
+      >
+        {taskState ? (
+          <Stack gap="md">
+            {taskState.storage === 'google_task' ? (
+              <SelectField
+                label="할 일 목록"
+                required
+                value={taskState.form.taskListId || defaultTaskListId(targets.data)}
+                options={(targets.data?.taskLists ?? []).map((item) => ({ value: item.id, label: item.name }))}
+                placeholder={targets.isLoading ? '불러오는 중…' : '목록 선택'}
+                error={targets.isError ? describeApiError(targets.error, '할 일 목록을 불러오지 못했습니다.') : undefined}
+                onChange={(taskListId) => patchTask({ taskListId })}
+              />
+            ) : null}
+            <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
+            <Inline gap="sm">
+              <View style={styles.flex}><TextField label="예정일" placeholder="YYYY-MM-DD (비우면 날짜 없음)" value={taskState.form.dueDate} onChangeText={(dueDate) => patchTask({ dueDate })} /></View>
+              {taskState.storage === 'onefc_todo' ? (
+                <View style={styles.flex}><TextField label="시각" placeholder="HH:mm (선택)" value={taskState.form.dueTime} onChangeText={(dueTime) => patchTask({ dueTime })} /></View>
+              ) : null}
+            </Inline>
+            <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
+            {taskError || saveTask.isError ? (
+              <AppText variant="caption" color="danger">{taskError ?? describeApiError(saveTask.error, '할 일을 저장하지 못했습니다.')}</AppText>
+            ) : null}
+          </Stack>
+        ) : null}
+      </ModalShell>
 
       <ScheduleDetailModal
         item={detail}
