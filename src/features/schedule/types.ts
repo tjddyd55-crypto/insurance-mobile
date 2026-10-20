@@ -85,7 +85,13 @@ export type ScheduleEventForm = {
 export type GoogleConnectPurpose = 'connect' | 'write';
 export type ScheduleGoogleBanner = {
   tone: 'info' | 'warning' | 'danger' | 'success';
-  label: '연결 안 됨' | '재연결 필요' | '불러오기 실패' | '연결됨' | '권한 필요';
+  label: '연결 안 됨' | '재연결 필요' | '오류' | '연결됨' | '권한 필요' | '쓰기 권한 필요';
   message: string | null;
   action: { label: string; purpose: GoogleConnectPurpose } | null;
 };
+
+/** 일정 화면의 작은 경고 줄(정상 연결이면 null). 누르면 내 정보 > Google 연동으로 간다. */
+export type ScheduleGoogleWarning = { text: string };
+
+/** 내 정보 > Google 연동의 권한 표시. 서버 상태 그대로(토큰·계정 비밀값 없음). */
+export type GoogleIntegrationPermission = { key: 'read' | 'tasks_read' | 'calendar_write' | 'tasks_write'; label: string; granted: boolean };

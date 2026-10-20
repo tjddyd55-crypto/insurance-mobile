@@ -30,9 +30,9 @@ describe('Google 연결 상태 배너(서버 상태 기준)', () => {
   it('연결 안 됨 / 재연결 필요 / 불러오기 실패 / 권한 필요 / 연결됨', () => {
     expect(googleStatusBanner(g({ connected: false, status: 'disconnected' }))).toMatchObject({ label: '연결 안 됨', action: { purpose: 'connect' } });
     expect(googleStatusBanner(g({ status: 'needs_reauth' }))).toMatchObject({ label: '재연결 필요', action: { label: 'Google 재연결', purpose: 'connect' } });
-    expect(googleStatusBanner(g({ status: 'error' }))).toMatchObject({ label: '불러오기 실패', action: null });
+    expect(googleStatusBanner(g({ status: 'error' }))).toMatchObject({ label: '오류', action: null });
     expect(googleStatusBanner(g({ tasks: { status: 'scope_missing', needsReconsent: true } }))).toMatchObject({ label: '권한 필요', action: { purpose: 'connect' } });
-    expect(googleStatusBanner(g({ write: { calendarWritable: false, needsWriteConsent: true } }))).toMatchObject({ label: '연결됨', action: { purpose: 'write' } });
+    expect(googleStatusBanner(g({ write: { calendarWritable: false, needsWriteConsent: true } }))).toMatchObject({ label: '쓰기 권한 필요', action: { purpose: 'write' } });
     expect(googleStatusBanner(g())).toEqual({ tone: 'success', label: '연결됨', message: null, action: null });
     expect(googleStatusBanner(g({ write: { enabled: false, calendarWritable: false, tasksWritable: false } }))).toMatchObject({ label: '연결됨', action: null });
   });
@@ -73,10 +73,12 @@ describe('startGoogleConnectFromApp (서버 client=native)', () => {
     await expect(startGoogleConnectFromApp('t', 'connect', 'onefc')).rejects.toMatchObject({ status: 409 });
   });
 
-  it('화면: WebView 가 아니라 시스템 인증 세션, 끝나면 refresh=1, PC 안내 문구 제거', () => {
+  it('연동(공유 hook): WebView 가 아니라 시스템 인증 세션, 끝나면 refresh=1, PC 안내 문구 제거', () => {
+    const hook = read('useGoogleIntegration.ts');
     const screen = read('ScheduleScreen.tsx');
-    expect(screen).toContain('WebBrowser.openAuthSessionAsync(started.url, started.returnUrl)');
-    expect(screen).not.toMatch(/react-native-webview|<WebView/);
+    expect(hook).toContain('WebBrowser.openAuthSessionAsync(started.url, started.returnUrl)');
+    expect(hook).toContain('refresh: true');
+    expect(hook + screen).not.toMatch(/react-native-webview|<WebView/);
     expect(screen).toContain('await reloadAfterWrite();');
     expect(screen).not.toContain('PC 일정 관리에서 설정할 수 있습니다');
     expect(screen).toContain('label="새로고침"');

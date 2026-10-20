@@ -7,7 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,7 +31,8 @@ import { customerMatchesSearch, formatCustomerPhone } from '../customers/custome
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
-import { returnToTodoList, todoEditScreenId } from './todoNavigation';
+import { scheduleQueryKeys } from '../schedule/queryKeys';
+import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
 import { seedTodoCreateForm } from './consultationTodoCreate';
 import {
   buildTodoCreatePayload,
@@ -66,11 +67,18 @@ export function TodoFormScreen(props: TodoFormProps) {
 function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { consultationId?: string }) {
   const { token } = useAuth();
   const router = useRouter();
-  const navigation = useNavigation();
-  const leaveToList = useCallback(() => {
-    returnToTodoList(navigation, router);
-  }, [navigation, router]);
   const queryClient = useQueryClient();
+  const navigation = useNavigation();
+  const { from } = useLocalSearchParams<{ from?: string | string[] }>();
+  const returnSource = todoReturnSource(from);
+  const leaveToList = useCallback(() => {
+    leaveTodoForm(navigation as unknown as Parameters<typeof leaveTodoForm>[0], router, returnSource);
+  }, [navigation, returnSource, router]);
+  /** 할 일이 바뀌면 일정 화면의 ONE FC 할 일도 다시 읽는다(일반 재조회, refresh=1 아님 → 429 정책 영향 없음). */
+  const invalidateTodoViews = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+    await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+  }, [queryClient]);
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
@@ -153,14 +161,14 @@ function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { cons
     },
     onSuccess: async () => {
       setInitialSnapshot(JSON.stringify(form));
-      await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+      await invalidateTodoViews();
       leaveToList();
     },
   });
   const deleteMutation = useMutation({
     mutationFn: () => deleteTodo(token, todoId ?? ''),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+      await invalidateTodoViews();
       leaveToList();
     },
   });

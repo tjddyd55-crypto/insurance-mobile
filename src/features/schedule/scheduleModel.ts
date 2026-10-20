@@ -1,5 +1,8 @@
+import { TODO_RETURN_SOURCE_SCHEDULE } from '../todos/todoNavigation';
 import { ApiError } from '../../api/client';
 import type {
+  GoogleIntegrationPermission,
+  ScheduleGoogleWarning,
   GoogleCalendarTarget,
   GoogleWriteTargets,
   ScheduleEvent,
@@ -273,7 +276,7 @@ export function taskSourceLabel(task: Pick<ScheduleTask, 'source'>): string {
 export type ScheduleNativeRoute =
   | { pathname: '/customers/[customerId]'; params: { customerId: string } }
   | { pathname: '/customers/[customerId]/consultations'; params: { customerId: string } }
-  | { pathname: '/todos/[todoId]/edit'; params: { todoId: string } };
+  | { pathname: '/todos/[todoId]/edit'; params: { todoId: string; from: typeof TODO_RETURN_SOURCE_SCHEDULE } };
 
 /** 서버가 준 customerId 로만 고객을 연다(이름으로 찾지 않는다). 자동차 만기 → 고객 상세, 그 밖 → 상담. */
 export function customerRouteOfEvent(event: Pick<ScheduleEvent, 'source' | 'type' | 'customerId'>): ScheduleNativeRoute | null {
@@ -289,9 +292,10 @@ export function customerRouteOfTask(task: Pick<ScheduleTask, 'source' | 'custome
   return { pathname: '/customers/[customerId]/consultations', params: { customerId: String(task.customerId) } };
 }
 
+/** 일정에서 연 할 일은 저장·취소 후 일정으로 돌아온다(from=schedule, todoNavigation.leaveTodoForm). */
 export function todoRouteOfTask(task: Pick<ScheduleTask, 'source' | 'sourceId'>): ScheduleNativeRoute | null {
   if (task.source !== 'onefc_todo' || !/^\d+$/.test(task.sourceId)) return null;
-  return { pathname: '/todos/[todoId]/edit', params: { todoId: task.sourceId } };
+  return { pathname: '/todos/[todoId]/edit', params: { todoId: task.sourceId, from: TODO_RETURN_SOURCE_SCHEDULE } };
 }
 
 // ---------------- Google 일정 쓰기(기존 /api/service-integrations/google/write/events) ----------------
@@ -485,7 +489,7 @@ export function googleStatusBanner(google: ScheduleEventsResult['google']): Sche
     return { tone: 'warning', label: '재연결 필요', message: 'Google 연결이 만료되었습니다. 다시 연결하면 일정이 표시됩니다.', action: can ? { label: 'Google 재연결', purpose: 'connect' } : null };
   }
   if (google.status === 'error') {
-    return { tone: 'danger', label: '불러오기 실패', message: 'Google 일정을 불러오지 못했습니다. 새로고침해 보세요.', action: null };
+    return { tone: 'danger', label: '오류', message: 'Google 일정을 불러오지 못했습니다. 새로고침해 보세요.', action: null };
   }
   if (!google.connected || google.status === 'disconnected') {
     return { tone: 'info', label: '연결 안 됨', message: can ? 'Google 캘린더·할 일을 함께 보려면 Google을 연결해 주세요.' : 'Google 연동 준비 중입니다.', action: can ? { label: 'Google 연결', purpose: 'connect' } : null };
@@ -494,7 +498,7 @@ export function googleStatusBanner(google: ScheduleEventsResult['google']): Sche
     return { tone: 'warning', label: '권한 필요', message: 'Google 할 일을 보려면 Google Tasks 읽기 권한이 필요합니다.', action: can ? { label: 'Google 재연결', purpose: 'connect' } : null };
   }
   if (google.write.enabled && (google.write.needsWriteConsent || !google.write.calendarWritable || !google.write.tasksWritable)) {
-    return { tone: 'success', label: '연결됨', message: '앱에서 Google 일정·할 일을 추가하려면 쓰기 권한을 허용해 주세요.', action: { label: '쓰기 권한 허용', purpose: 'write' } };
+    return { tone: 'warning', label: '쓰기 권한 필요', message: '앱에서 Google 일정·할 일을 추가하려면 쓰기 권한을 허용해 주세요.', action: { label: '쓰기 권한 허용', purpose: 'write' } };
   }
   return { tone: 'success', label: '연결됨', message: null, action: null };
 }
@@ -520,4 +524,29 @@ export function googleConnectResultMessage(result: { type: string; url?: string 
   if (reason === 'access_denied') return { ok: false, text: 'Google 동의를 취소했습니다.' };
   if (reason === 'account_mismatch') return { ok: false, text: '이미 연결된 Google 계정과 같은 계정으로 다시 연결해 주세요.' };
   return { ok: false, text: 'Google 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.' };
+}
+
+/**
+ * 일정 화면 상단 작은 경고. 정상 연결(쓰기 권한 미허용 포함)이면 아무것도 안 보인다.
+ * 연결/재연결/권한은 일정 본문이 아니라 내 정보 > Google 연동에서 한다.
+ */
+export function scheduleGoogleWarning(google: ScheduleEventsResult['google']): ScheduleGoogleWarning | null {
+  if (!google.configured || google.status === 'unconfigured' || google.status === 'skipped') return null;
+  if (google.status === 'needs_reauth') return { text: 'Google 재연결 필요' };
+  if (google.status === 'error') return { text: 'Google 일정을 불러오지 못했습니다' };
+  if (!google.connected || google.status === 'disconnected') return google.connectAllowed ? { text: 'Google 일정 연결 필요' } : null;
+  if (google.tasks.status === 'scope_missing' || google.tasks.needsReconsent) return { text: 'Google 할 일 권한 필요' };
+  if (google.tasks.status === 'error' || google.tasks.status === 'needs_reauth') return { text: 'Google 할 일을 불러오지 못했습니다' };
+  return null;
+}
+
+/** 내 정보 > Google 연동 권한 목록(서버 google 상태 SSOT). */
+export function googleIntegrationPermissions(google: ScheduleEventsResult['google']): GoogleIntegrationPermission[] {
+  const connected = google.connected && google.status !== 'needs_reauth';
+  return [
+    { key: 'read', label: '일정 읽기', granted: connected },
+    { key: 'tasks_read', label: 'Google 할 일 읽기', granted: connected && google.tasks.status === 'connected' && !google.tasks.needsReconsent },
+    { key: 'calendar_write', label: '캘린더 쓰기', granted: connected && google.write.enabled && google.write.calendarWritable },
+    { key: 'tasks_write', label: 'Google 할 일 쓰기', granted: connected && google.write.enabled && google.write.tasksWritable },
+  ];
 }
