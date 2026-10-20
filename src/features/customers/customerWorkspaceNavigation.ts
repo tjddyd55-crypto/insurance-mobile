@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { BackHandler } from "react-native";
-import { useFocusEffect, useRouter, type Href } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+
+import { returnToSectionParent } from "../../navigation/sectionNavigation";
 
 type AppRouter = ReturnType<typeof useRouter>;
 
@@ -21,7 +23,7 @@ export function navigateToCustomerDetail(
   router: Pick<AppRouter, "dismissTo">,
   customerId: number,
 ): void {
-  router.dismissTo(customerDetailPath(customerId) as Href);
+  returnToSectionParent(router, customerDetailPath(customerId));
 }
 
 /**
@@ -31,7 +33,7 @@ export function navigateToCustomerDetail(
 export function goBackFromCustomerDetail(
   router: Pick<AppRouter, "dismissTo">,
 ): void {
-  router.dismissTo(customersListPath() as Href);
+  returnToSectionParent(router, customersListPath());
 }
 
 export function isCustomerDetailBackEnabled(

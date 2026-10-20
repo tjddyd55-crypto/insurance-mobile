@@ -62,6 +62,7 @@ import { resolveCoverageEditorBackPath } from './coverageSimulatorNavigation';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenario, CoverageScenarioItem } from './types';
 import { useCoverageShareSession } from './useCoverageShareSession';
+import { returnToSectionParent } from '../../navigation/sectionNavigation';
 
 type FormState =
   | { type: 'add'; afterOrder: number }
@@ -365,7 +366,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         showMenu={false}
         showBillingStatus={false}
         rightAction={headerSave}
-        onBackPress={() => router.replace(resolveCoverageEditorBackPath(scenario) as never)}
+        onBackPress={() => returnToSectionParent(router, resolveCoverageEditorBackPath(scenario))}
       />
       <Screen padded={false}>
         <View style={styles.body}>

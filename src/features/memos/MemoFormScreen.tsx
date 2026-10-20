@@ -12,6 +12,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { AppText, Button, TextField, useAppTheme, type AppTheme } from '../../design-system';
 import { createMemo, deleteMemo, listMemos, updateMemo } from './memosApi';
 import { memoQueryKeys } from './queryKeys';
+import { returnToSectionParent } from '../../navigation/sectionNavigation';
 
 export function MemoFormScreen({
   mode,
@@ -47,14 +48,14 @@ export function MemoFormScreen({
     onSuccess: async () => {
       setInitialContent(content);
       await queryClient.invalidateQueries({ queryKey: memoQueryKeys.all });
-      router.replace('/memo');
+      returnToSectionParent(router, '/memo');
     },
   });
   const deleteMutation = useMutation({
     mutationFn: () => deleteMemo(token, memoId ?? ''),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: memoQueryKeys.all });
-      router.replace('/memo');
+      returnToSectionParent(router, '/memo');
     },
   });
 
