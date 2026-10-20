@@ -6,6 +6,7 @@ import type {
   ScheduleEventForm,
   ScheduleEventsResult,
   ScheduleEventType,
+  ScheduleGoogleBanner,
   ScheduleStorage,
   ScheduleTask,
   ScheduleTaskForm,
@@ -162,6 +163,8 @@ export function normalizeScheduleEvents(payload: unknown): ScheduleEventsResult 
     google: {
       connected: google.connected === true,
       status: text(google.status) || 'unconfigured',
+      connectAllowed: google.connectAllowed !== false,
+      configured: google.configured !== false,
       write: {
         enabled: write.enabled === true,
         calendarWritable: write.calendarWritable === true,
@@ -392,16 +395,16 @@ export function storageAvailability(
   storage: ScheduleStorage,
 ): { available: boolean; reason: string | null } {
   if (storage === 'onefc_todo') return { available: true, reason: null };
-  if (google.status === 'needs_reauth') return { available: false, reason: 'Google 연결이 만료되었습니다. PC 서비스 연동에서 다시 연결해 주세요.' };
-  if (!google.connected) return { available: false, reason: 'Google 계정이 연결되어 있지 않습니다. PC 일정 관리에서 연결해 주세요.' };
+  if (google.status === 'needs_reauth') return { available: false, reason: 'Google 연결이 만료되었습니다. 위 재연결 버튼으로 다시 연결해 주세요.' };
+  if (!google.connected) return { available: false, reason: 'Google 계정이 연결되어 있지 않습니다. 위 Google 연결 버튼으로 연결해 주세요.' };
   if (!google.write.enabled) return { available: false, reason: '이 계정에서는 아직 Google 쓰기를 사용할 수 없습니다.' };
   const writable = storage === 'google_event' ? google.write.calendarWritable : google.write.tasksWritable;
   if (!writable) {
     return {
       available: false,
       reason: storage === 'google_event'
-        ? 'Google 캘린더 쓰기 권한이 필요합니다. PC 일정 관리에서 다시 연결해 주세요.'
-        : 'Google 할 일 쓰기 권한이 필요합니다. PC 일정 관리에서 다시 연결해 주세요.',
+        ? 'Google 캘린더 쓰기 권한이 필요합니다. 위 권한 허용 버튼으로 다시 연결해 주세요.'
+        : 'Google 할 일 쓰기 권한이 필요합니다. 위 권한 허용 버튼으로 다시 연결해 주세요.',
     };
   }
   return { available: true, reason: null };
@@ -461,10 +464,60 @@ export function undatedOpenTasks(tasks: ScheduleTask[]): ScheduleTask[] {
 export function googleTasksNotice(google: ScheduleEventsResult['google']): string | null {
   if (google.status !== 'connected') return null;
   if (google.tasks.status === 'scope_missing' || google.tasks.needsReconsent) {
-    return 'Google 할 일을 보려면 PC 서비스 연동에서 Google을 다시 연결해 Google Tasks 읽기 권한을 허용해 주세요.';
+    return 'Google 할 일을 보려면 Google을 다시 연결해 Google Tasks 읽기 권한을 허용해 주세요.';
   }
   if (google.tasks.status === 'error' || google.tasks.status === 'needs_reauth') {
     return 'Google 할 일을 불러오지 못했습니다. 다른 일정은 계속 표시됩니다.';
   }
   return null;
+}
+
+// ---------------- Google 연결 상태 안내 + 연결/재연결(t396) ----------------
+
+/**
+ * 서버 상태 → 배너. 연결·재연결은 읽기 연결(connect), 쓰기 권한만 없으면 증분 동의(write).
+ * 서버 미설정·준비 중(connectAllowed=false)이면 버튼 없이 안내만.
+ */
+export function googleStatusBanner(google: ScheduleEventsResult['google']): ScheduleGoogleBanner | null {
+  if (!google.configured || google.status === 'unconfigured' || google.status === 'skipped') return null;
+  const can = google.connectAllowed;
+  if (google.status === 'needs_reauth') {
+    return { tone: 'warning', label: '재연결 필요', message: 'Google 연결이 만료되었습니다. 다시 연결하면 일정이 표시됩니다.', action: can ? { label: 'Google 재연결', purpose: 'connect' } : null };
+  }
+  if (google.status === 'error') {
+    return { tone: 'danger', label: '불러오기 실패', message: 'Google 일정을 불러오지 못했습니다. 새로고침해 보세요.', action: null };
+  }
+  if (!google.connected || google.status === 'disconnected') {
+    return { tone: 'info', label: '연결 안 됨', message: can ? 'Google 캘린더·할 일을 함께 보려면 Google을 연결해 주세요.' : 'Google 연동 준비 중입니다.', action: can ? { label: 'Google 연결', purpose: 'connect' } : null };
+  }
+  if (google.tasks.status === 'scope_missing' || google.tasks.needsReconsent) {
+    return { tone: 'warning', label: '권한 필요', message: 'Google 할 일을 보려면 Google Tasks 읽기 권한이 필요합니다.', action: can ? { label: 'Google 재연결', purpose: 'connect' } : null };
+  }
+  if (google.write.enabled && (google.write.needsWriteConsent || !google.write.calendarWritable || !google.write.tasksWritable)) {
+    return { tone: 'success', label: '연결됨', message: '앱에서 Google 일정·할 일을 추가하려면 쓰기 권한을 허용해 주세요.', action: { label: '쓰기 권한 허용', purpose: 'write' } };
+  }
+  return { tone: 'success', label: '연결됨', message: null, action: null };
+}
+
+/** 시스템 브라우저 복귀 URL(<scheme>://google-connect?google=...&reason=) → 결과 문구. 실패·취소도 화면은 다시 읽는다. */
+export function googleConnectResultMessage(result: { type: string; url?: string }): { ok: boolean; text: string } {
+  if (result.type !== 'success' || !result.url) return { ok: false, text: 'Google 연결을 완료하지 않았습니다.' };
+  let google = '';
+  let reason = '';
+  try {
+    const query = result.url.split('?')[1] ?? '';
+    const params = new URLSearchParams(query);
+    google = params.get('google') ?? '';
+    reason = params.get('reason') ?? '';
+  } catch {
+    google = '';
+  }
+  if (google === 'connected' || google === 'write_connected') {
+    if (reason === 'tasks_scope_missing') return { ok: true, text: 'Google을 연결했습니다. Google 할 일은 Tasks 권한을 허용해야 보입니다.' };
+    if (reason === 'write_scope_partial') return { ok: true, text: '일부 쓰기 권한만 허용되었습니다.' };
+    return { ok: true, text: 'Google을 연결했습니다.' };
+  }
+  if (reason === 'access_denied') return { ok: false, text: 'Google 동의를 취소했습니다.' };
+  if (reason === 'account_mismatch') return { ok: false, text: '이미 연결된 Google 계정과 같은 계정으로 다시 연결해 주세요.' };
+  return { ok: false, text: 'Google 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.' };
 }

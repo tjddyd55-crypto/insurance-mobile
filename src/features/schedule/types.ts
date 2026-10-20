@@ -43,6 +43,9 @@ export type ScheduleGoogleTasksState = { status: string; needsReconsent: boolean
 export type ScheduleGoogleState = {
   connected: boolean;
   status: string;
+  /** 서버 isGoogleConnectAllowed(검증 기간 허용 목록). false 면 연결 버튼을 보이지 않는다. */
+  connectAllowed: boolean;
+  configured: boolean;
   write: ScheduleWriteState;
   tasks: ScheduleGoogleTasksState;
 };
@@ -76,4 +79,13 @@ export type ScheduleEventForm = {
   allDay: boolean;
   startTime: string;
   endTime: string;
+};
+
+/** 일정 관리 Google 연결 상태 안내(웹 ScheduleChrome 와 같은 서버 상태 기준). */
+export type GoogleConnectPurpose = 'connect' | 'write';
+export type ScheduleGoogleBanner = {
+  tone: 'info' | 'warning' | 'danger' | 'success';
+  label: '연결 안 됨' | '재연결 필요' | '불러오기 실패' | '연결됨' | '권한 필요';
+  message: string | null;
+  action: { label: string; purpose: GoogleConnectPurpose } | null;
 };
