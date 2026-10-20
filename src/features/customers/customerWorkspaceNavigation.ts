@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { BackHandler } from "react-native";
-import { useFocusEffect, useRouter, type Href } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+
+import { returnToSectionParent } from "../../navigation/sectionNavigation";
 
 type AppRouter = ReturnType<typeof useRouter>;
 
@@ -12,21 +14,26 @@ export function customersListPath(): "/customers" {
   return "/customers";
 }
 
+/**
+ * 고객 하위 화면 → 고객 상세(parent). customers Stack 안에서 dismissTo:
+ * 상세가 Stack 아래에 있으면 거기까지 pop, 없으면(딥링크) 현재 화면을 상세로 바꾼다.
+ * Drawer 에서 replace 하지 않는다(Drawer history 에 이전 화면이 남아 back 루프가 생긴다).
+ */
 export function navigateToCustomerDetail(
-  router: Pick<AppRouter, "replace">,
+  router: Pick<AppRouter, "dismissTo">,
   customerId: number,
 ): void {
-  router.replace(customerDetailPath(customerId) as Href);
+  returnToSectionParent(router, customerDetailPath(customerId));
 }
 
 /**
- * 고객 상세의 parent는 고객 리스트.
- * Drawer/history 오염으로 router.back()이 엉뚱한 곳으로 가지 않게 replace 사용.
+ * 고객 상세의 parent는 고객 리스트(customers Stack 의 initialRoute).
+ * dismissTo 로 리스트까지 pop 한다. 리스트에서의 back 은 Drawer history(직전 화면)로 간다.
  */
 export function goBackFromCustomerDetail(
-  router: Pick<AppRouter, "replace">,
+  router: Pick<AppRouter, "dismissTo">,
 ): void {
-  router.replace(customersListPath() as Href);
+  returnToSectionParent(router, customersListPath());
 }
 
 export function isCustomerDetailBackEnabled(

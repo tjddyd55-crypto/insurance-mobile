@@ -15,16 +15,16 @@ describe("customerWorkspaceNavigation", () => {
     expect(customersListPath()).toBe("/customers");
   });
 
-  it("navigates to detail with replace to avoid duplicate history", () => {
-    const replace = jest.fn();
-    navigateToCustomerDetail({ replace }, 42);
-    expect(replace).toHaveBeenCalledWith("/customers/42");
+  it("returns to detail by popping the customers stack (dismissTo), never a drawer replace", () => {
+    const dismissTo = jest.fn();
+    navigateToCustomerDetail({ dismissTo }, 42);
+    expect(dismissTo).toHaveBeenCalledWith("/customers/42");
   });
 
-  it("returns from detail to customers list with replace", () => {
-    const replace = jest.fn();
-    goBackFromCustomerDetail({ replace });
-    expect(replace).toHaveBeenCalledWith("/customers");
+  it("returns from detail to customers list by popping the customers stack (dismissTo)", () => {
+    const dismissTo = jest.fn();
+    goBackFromCustomerDetail({ dismissTo });
+    expect(dismissTo).toHaveBeenCalledWith("/customers");
   });
 
   it("disables customer detail back when customerId is missing", () => {

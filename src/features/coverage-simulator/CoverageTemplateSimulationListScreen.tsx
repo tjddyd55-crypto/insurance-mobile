@@ -25,6 +25,7 @@ import { consultationStorage } from './consultationStorage';
 import { createSimulationFromScenario } from './scenarioEdits';
 import { SavedScenarioCrudPanel } from './SavedScenarioCrudPanel';
 import { simulatorTheme as theme } from './simulatorTheme';
+import { returnToSectionParent } from '../../navigation/sectionNavigation';
 
 type Props = {
   templateId: string;
@@ -65,7 +66,7 @@ export function CoverageTemplateSimulationListScreen({ templateId }: Props) {
   if (!templateId) {
     return (
       <CoverageSimulatorScreen>
-        <CoverageSimulatorHeader title="보장 시뮬레이션" onBack={() => router.replace(COVERAGE_SIMULATION_HOME as never)} />
+        <CoverageSimulatorHeader title="보장 시뮬레이션" onBack={() => returnToSectionParent(router, COVERAGE_SIMULATION_HOME)} />
         <Text style={styles.muted}>시나리오를 찾을 수 없습니다.</Text>
       </CoverageSimulatorScreen>
     );
@@ -74,7 +75,7 @@ export function CoverageTemplateSimulationListScreen({ templateId }: Props) {
   if (templateQuery.isSuccess && !template) {
     return (
       <CoverageSimulatorScreen>
-        <CoverageSimulatorHeader title="보장 시뮬레이션" onBack={() => router.replace(COVERAGE_SIMULATION_HOME as never)} />
+        <CoverageSimulatorHeader title="보장 시뮬레이션" onBack={() => returnToSectionParent(router, COVERAGE_SIMULATION_HOME)} />
         <Text style={styles.muted}>시나리오를 찾을 수 없습니다.</Text>
       </CoverageSimulatorScreen>
     );
@@ -101,7 +102,7 @@ export function CoverageTemplateSimulationListScreen({ templateId }: Props) {
 
   return (
     <CoverageSimulatorScreen>
-      <CoverageSimulatorHeader title={title} onBack={() => router.replace(COVERAGE_SIMULATION_HOME as never)} />
+      <CoverageSimulatorHeader title={title} onBack={() => returnToSectionParent(router, COVERAGE_SIMULATION_HOME)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <CoverageCustomerBar />
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
