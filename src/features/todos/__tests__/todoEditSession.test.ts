@@ -81,7 +81,9 @@ describe('todo edit session', () => {
     expect(stackLayout).toContain('Stack');
     expect(stackLayout).toContain("initialRouteName: 'index'");
     expect(drawerLayout).not.toContain('dangerouslySingular');
-    expect(form).toContain('returnToTodoList');
+    // t402u: 출처(from) 기반 leaveTodoForm. 일정 외 출처는 그대로 returnToTodoList.
+    expect(form).toContain('leaveTodoForm');
+    expect(fs.readFileSync(path.join(__dirname, '../todoNavigation.ts'), 'utf8')).toMatch(/returnToTodoList\(navigation, router\);\n\}\s*$/);
     expect(form).not.toContain('router.back(');
   });
 

@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '../../api/client';
 import { describeApiError } from '../../api/apiErrorCopy';
 import { useAuth } from '../../auth/AuthProvider';
-import { getEnvironmentConfig } from '../../config/environment';
 import { AppHeader } from '../../components/AppHeader';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
@@ -31,7 +29,6 @@ import {
   deleteScheduleEvent,
   fetchScheduleEvents,
   fetchWriteTargets,
-  startGoogleConnectFromApp,
   updateScheduleEvent,
 } from './scheduleApi';
 import { createTodo } from '../todos/todosApi';
@@ -42,12 +39,9 @@ import {
   canCreateGoogleEvent,
   defaultTaskListId,
   emptyTaskForm,
-  googleConnectResultMessage,
-  googleStatusBanner,
-  googleTasksNotice,
+  scheduleGoogleWarning,
   storageAvailability,
   taskFormToTodoPayload,
-  undatedOpenTasks,
   validateTaskForm,
   canEditEvent,
   customerRouteOfEvent,
@@ -72,7 +66,8 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { scheduleQueryKeys } from './queryKeys';
-import type { GoogleConnectPurpose, ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleStorage, ScheduleTask, ScheduleTaskForm } from './types';
+import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
+import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleStorage, ScheduleTask, ScheduleTaskForm } from './types';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -113,8 +108,6 @@ export function ScheduleScreen() {
   const [choosing, setChoosing] = useState(false);
   const [taskState, setTaskState] = useState<TaskFormState | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [connectMessage, setConnectMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const range = monthRange(month);
 
   const query = useQuery({
@@ -185,23 +178,6 @@ export function ScheduleScreen() {
     }
   };
 
-  /** 시스템 브라우저 인증 세션(WebView 아님). 끝나면(성공·취소 모두) refresh=1 로 다시 읽는다. */
-  const connectGoogle = async (purpose: GoogleConnectPurpose) => {
-    if (connecting) return;
-    setConnecting(true);
-    setConnectMessage(null);
-    try {
-      const started = await startGoogleConnectFromApp(token, purpose, getEnvironmentConfig().scheme);
-      const result = await WebBrowser.openAuthSessionAsync(started.url, started.returnUrl);
-      setConnectMessage(googleConnectResultMessage(result));
-    } catch (error) {
-      setConnectMessage({ ok: false, text: describeApiError(error, 'Google 연결을 시작하지 못했습니다.') });
-    } finally {
-      setConnecting(false);
-      await reloadAfterWrite();
-    }
-  };
-
   const goMonth = (delta: number) => {
     const next = shiftMonth(month, delta);
     setMonth(next);
@@ -257,7 +233,15 @@ export function ScheduleScreen() {
   const patchForm = (patch: Partial<ScheduleEventForm>) =>
     setFormState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
 
-  const header = <AppHeader title={SCHEDULE_COPY.title} showMenu />;
+  const header = (
+    <AppHeader
+      title={SCHEDULE_COPY.title}
+      showMenu
+      rightAction={
+        <Button label="새로고침" variant="ghost" size="sm" accessibilityLabel="일정 새로고침" loading={refreshing} disabled={refreshing} onPress={() => void refresh()} />
+      }
+    />
+  );
   if (query.isLoading) {
     return <View style={styles.root}>{header}<LoadingState message="일정을 불러오는 중…" /></View>;
   }
@@ -273,9 +257,8 @@ export function ScheduleScreen() {
   const marked = daysWithItems(data);
   const dayEvents = eventsOnDay(data.events, selected);
   const dayTasks = tasksOnDay(data.tasks, selected);
-  const undated = undatedOpenTasks(data.tasks);
-  const banner = googleStatusBanner(data.google);
-  const tasksNotice = banner?.label === '권한 필요' ? null : googleTasksNotice(data.google);
+  // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
+  const googleWarning = scheduleGoogleWarning(data.google);
 
   return (
     <View style={styles.root}>
@@ -321,34 +304,17 @@ export function ScheduleScreen() {
             </View>
           ))}
         </Card>
-        {banner ? (
-          <Card variant="outlined" padding="md">
-            <Stack gap="sm">
-              <Inline justify="space-between">
-                <Inline gap="xs">
-                  <AppText variant="bodyStrong">Google</AppText>
-                  <Badge label={banner.label} tone={banner.tone} />
-                </Inline>
-                <Button label="새로고침" variant="ghost" size="sm" loading={refreshing} disabled={refreshing} onPress={() => void refresh()} />
-              </Inline>
-              {banner.message ? <AppText variant="helper" color="textMuted">{banner.message}</AppText> : null}
-              {banner.action ? (
-                <Button label={banner.action.label} variant="secondary" size="sm" loading={connecting} disabled={connecting} onPress={() => void connectGoogle(banner.action!.purpose)} />
-              ) : null}
-              {connectMessage ? <AppText variant="caption" color={connectMessage.ok ? 'success' : 'danger'}>{connectMessage.text}</AppText> : null}
-            </Stack>
-          </Card>
-        ) : (
-          <Inline justify="flex-end">
-            <Button label="새로고침" variant="ghost" size="sm" loading={refreshing} disabled={refreshing} onPress={() => void refresh()} />
+        {googleWarning ? (
+          <Inline justify="space-between">
+            <AppText variant="caption" color="warning" style={styles.flex}>{googleWarning.text}</AppText>
+            <Button label="연동 관리" variant="ghost" size="sm" accessibilityLabel="Google 연동 관리" onPress={() => router.push(GOOGLE_INTEGRATION_HREF)} />
           </Inline>
-        )}
+        ) : null}
         {refreshError ? <AppText variant="caption" color="danger">{refreshError}</AppText> : null}
         <Inline justify="space-between">
           <AppText variant="sectionTitle">{formatDayTitle(selected)}</AppText>
           <Button label="추가" variant="primary" size="sm" accessibilityLabel="일정·할 일 추가" onPress={() => setChoosing(true)} />
         </Inline>
-        {tasksNotice ? <AppText variant="helper" color="warning">{tasksNotice}</AppText> : null}
         {dayEvents.length === 0 && dayTasks.length === 0 ? (
           <AppText variant="body" color="textMuted">이 날 일정이 없습니다.</AppText>
         ) : null}
@@ -377,21 +343,6 @@ export function ScheduleScreen() {
             </Card>
           </Pressable>
         ))}
-        {undated.length > 0 ? (
-          <Stack gap="sm">
-            <AppText variant="sectionTitle">날짜 없음</AppText>
-            {undated.map((task) => (
-              <Pressable key={task.id} accessibilityRole="button" onPress={() => setDetail(task)}>
-                <Card variant="outlined" padding="md">
-                  <Inline justify="space-between">
-                    <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{task.title}</AppText>
-                    <Badge label={taskSourceLabel(task)} tone="default" />
-                  </Inline>
-                </Card>
-              </Pressable>
-            ))}
-          </Stack>
-        ) : null}
       </ScrollView>
 
       <ModalShell open={choosing} title="저장 위치" subtitle={formatDayTitle(selected)} presentation="dialog" onRequestClose={() => setChoosing(false)}>

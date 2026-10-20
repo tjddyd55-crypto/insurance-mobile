@@ -105,7 +105,7 @@ describe('schedule model (웹 /api/schedule/events SSOT)', () => {
     expect(customerRouteOfEvent(events[1]!)).toEqual({ pathname: '/customers/[customerId]', params: { customerId: '42' } });
     expect(customerRouteOfEvent({ source: 'crm', type: 'customer_alert', customerId: 5 })).toEqual({ pathname: '/customers/[customerId]/consultations', params: { customerId: '5' } });
     expect(customerRouteOfEvent(events[0]!)).toBeNull();
-    expect(todoRouteOfTask(tasks[0]!)).toEqual({ pathname: '/todos/[todoId]/edit', params: { todoId: '7' } });
+    expect(todoRouteOfTask(tasks[0]!)).toEqual({ pathname: '/todos/[todoId]/edit', params: { todoId: '7', from: 'schedule' } });
     expect(todoRouteOfTask(tasks[1]!)).toBeNull();
     expect(customerRouteOfTask(tasks[0]!)).toEqual({ pathname: '/customers/[customerId]/consultations', params: { customerId: '42' } });
   });

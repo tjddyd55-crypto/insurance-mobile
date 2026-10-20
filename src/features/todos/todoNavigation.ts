@@ -62,3 +62,65 @@ export function returnToTodoList(navigation: TodoStackNavigation, router: TodoLi
   }
   router.replace(TODO_LIST_HREF);
 }
+
+// ---------------- 진입 출처 기반 복귀(t402u) ----------------
+
+/** 일정 관리에서 연 할 일 수정. 라우트 파라미터 `from` 값. */
+export const TODO_RETURN_SOURCE_SCHEDULE = 'schedule' as const;
+
+export type TodoReturnSource = typeof TODO_RETURN_SOURCE_SCHEDULE | 'todos';
+
+/** 라우트 파라미터 from → 복귀 출처. 모르는 값·없음은 할 일 목록(기존 규칙). */
+export function todoReturnSource(from: unknown): TodoReturnSource {
+  const value = Array.isArray(from) ? from.at(-1) : from;
+  return value === TODO_RETURN_SOURCE_SCHEDULE ? TODO_RETURN_SOURCE_SCHEDULE : 'todos';
+}
+
+type DrawerHistoryState = {
+  routes?: { key?: string; name?: string }[];
+  history?: { type?: string; key?: string }[];
+};
+
+type DrawerNavigation = {
+  getState: () => DrawerHistoryState | undefined;
+  goBack: () => void;
+};
+
+/** 일정 화면 Drawer 라우트 이름(`app/(app)/schedule/index.tsx`). */
+function isScheduleDrawerRoute(name: string | undefined): boolean {
+  return name === 'schedule' || name === 'schedule/index';
+}
+
+/**
+ * Drawer(backBehavior='history') 기록에서 바로 이전 화면이 일정인지.
+ * 일정 화면은 Drawer 에 마운트된 채 남아 있어 goBack 이면 보던 월·선택 날짜가 그대로다.
+ */
+export function previousDrawerRouteIsSchedule(state: DrawerHistoryState | undefined): boolean {
+  const history = (state?.history ?? []).filter((entry) => entry.type === undefined || entry.type === 'route');
+  if (history.length < 2) return false;
+  const previousKey = history[history.length - 2]?.key;
+  const previous = state?.routes?.find((route) => route.key === previousKey);
+  return isScheduleDrawerRoute(previous?.name);
+}
+
+type TodoFormNavigation = TodoStackNavigation & {
+  getParent: () => DrawerNavigation | undefined;
+};
+
+/**
+ * 할 일 추가/수정 화면을 떠날 때(저장·삭제·취소·Android back) 한 곳.
+ *  - 일정에서 열었고 Drawer 기록의 직전이 일정이면: 할 일 스택을 목록으로 접고 Drawer history 로 일정에 돌아간다.
+ *  - 그 밖(할 일 목록, 딥링크·알림, 기록 없음): 기존 returnToTodoList.
+ */
+export function leaveTodoForm(navigation: TodoFormNavigation, router: TodoListRouter, source: TodoReturnSource): void {
+  if (source === TODO_RETURN_SOURCE_SCHEDULE) {
+    const drawer = navigation.getParent();
+    if (drawer && previousDrawerRouteIsSchedule(drawer.getState())) {
+      // 다음에 할 일 메뉴를 열면 이 수정 화면이 아니라 목록이 보이게 스택을 접는다.
+      if (shouldPopTodoStackToList(navigation.getState())) navigation.dispatch(POP_TODO_STACK_TO_LIST);
+      drawer.goBack();
+      return;
+    }
+  }
+  returnToTodoList(navigation, router);
+}
