@@ -251,7 +251,7 @@ export function daysWithItems(result: Pick<ScheduleEventsResult, 'events' | 'tas
 
 /**
  * 날짜별 항목 수(달력 숫자 배지). 날짜별 목록(eventsOnDay + tasksOnDay)과 같은 집합만 센다.
- * 예정일 없는 할 일(ONE FC·Google)은 세지 않는다. 원본 데이터는 바꾸지 않는다.
+ * 예정일 없는 할 일·완료한 할 일(ONE FC·Google)은 세지 않는다. 원본 데이터는 바꾸지 않는다.
  */
 export function countItemsByDay(result: Pick<ScheduleEventsResult, 'events' | 'tasks'>): Map<string, number> {
   const counts = new Map<string, number>();
@@ -260,7 +260,7 @@ export function countItemsByDay(result: Pick<ScheduleEventsResult, 'events' | 't
     const range = eventDayRange(event);
     for (let day = range.first, guard = 0; day <= range.last && guard < 400; day = addDaysYmd(day, 1), guard += 1) bump(day);
   }
-  for (const task of result.tasks) if (task.dueDate) bump(task.dueDate);
+  for (const task of result.tasks) if (task.dueDate && task.status !== 'completed') bump(task.dueDate);
   return counts;
 }
 
