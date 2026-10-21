@@ -38,6 +38,19 @@ describe('menuConfig', () => {
     expect(filterMenuForRole(USER_APP_MENU, 'GA_ADMIN')).toEqual([]);
   });
 
+  it('keeps device contacts separate from the customer list and insurer contacts', () => {
+    const deviceContacts = findMenuLinkByNativePath('/device-contacts');
+    const customers = USER_APP_MENU.find((section) => section.id === 'customers');
+    expect(deviceContacts?.label).toBe('연락처');
+    expect(deviceContacts?.mode).toBe('NATIVE');
+    expect(deviceContacts?.badge).toBeUndefined();
+    expect(customers?.children.map((child) => child.id).slice(0, 2)).toEqual([
+      'customer-list',
+      'device-contacts',
+    ]);
+    expect(findMenuLinkByNativePath('/insurance/contacts')?.label).toBe('원수사 연락처');
+  });
+
   it('maps native paths and keeps legacyWebPath', () => {
     const item = findMenuLinkByNativePath('/customers');
     expect(item?.label).toBe('고객리스트');

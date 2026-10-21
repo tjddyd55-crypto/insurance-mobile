@@ -97,6 +97,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           '필요한 파일을 기기에 저장하기 위해 사진 보관함 저장 권한이 필요할 수 있습니다.',
         NSLocationWhenInUseUsageDescription:
           '고객 지도에서 내 위치를 표시하기 위해 위치 접근이 필요합니다.',
+        NSContactsUsageDescription:
+          '휴대폰 연락처를 ONE FC에서 확인하려면 연락처 접근 권한이 필요합니다.',
       },
     },
     android: {
@@ -108,7 +110,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#003D1F',
       },
       predictiveBackGestureEnabled: false,
-      permissions: ['POST_NOTIFICATIONS', 'ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+      permissions: [
+        'POST_NOTIFICATIONS',
+        'ACCESS_COARSE_LOCATION',
+        'ACCESS_FINE_LOCATION',
+        'READ_CONTACTS',
+      ],
       // Legacy apps/mobile parity: onefc://customers/... (DEV uses onefc-dev)
       intentFilters: [
         {
@@ -147,6 +154,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       // Dangerous mods execute in reverse registration order: crop after Expo.
+      // withContactsReadOnly is listed before expo-contacts so it runs after and
+      // strips the write-contacts permission (tools:node=remove) from the merged manifest.
+      './plugins/withContactsReadOnly.js',
+      [
+        'expo-contacts',
+        {
+          contactsPermission:
+            '휴대폰 연락처를 ONE FC에서 확인하려면 연락처 접근 권한이 필요합니다.',
+        },
+      ],
       './plugins/withApprovedAndroidSplash.js',
       [
         'expo-splash-screen',

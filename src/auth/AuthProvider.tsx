@@ -19,6 +19,7 @@ import {
   unregisterPushDeviceWithServer,
 } from '../features/push/pushRegistration';
 import { usePushRegistrationLifecycle } from '../features/push/usePushRegistrationLifecycle';
+import { purgeDeviceContactCache } from '../features/device-contacts/deviceContactSession';
 import { purgeWidgets } from '../features/home-widgets/engine/widgetRefreshCoordinator';
 import { ensureNativeUpgradeMigration } from './nativeUpgradeMigration';
 import {
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   const clearLocalSession = useCallback(async () => {
+    await purgeDeviceContactCache();
     await clearAuthSession();
     // 홈 화면 위젯의 개인 데이터도 즉시 지운다(로그아웃·세션 만료 공통).
     await purgeWidgets(handlingUnauthorized.current ? 'session_expired' : 'logged_out');
@@ -123,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     const session = await loginRequest(username, password);
+    await purgeDeviceContactCache();
     await saveAuthSession(session);
     setToken(session.token);
     setUser(session.user);
