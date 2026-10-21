@@ -42,6 +42,15 @@ class WidgetEngineTest {
     val schedule = SchedulePayload.parse(parsed)!!
     assertEquals("미팅", schedule.events["2026-10-21"]!![0].title)
     assertEquals("", schedule.events["2026-10-21"]!![0].link) // 다른 scheme 링크 차단
+    assertEquals(1, schedule.countOn("2026-10-21")) // calendarCounts 없으면 items 수
+  }
+
+  @Test fun calendarCountsParsed() {
+    val payload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"calendarDays":["2026-10-21"],"calendarCounts":{"2026-10-21":3,"bad":2,"2026-10-22":0},"events":[{"date":"2026-10-21","items":[{"id":"e1","title":"a","time":"","kind":"event","done":false,"link":""}]}]}"""
+    val schedule = SchedulePayload.parse(WidgetEnvelope.parse(envelope(payload = payload), OneFcWidgetType.SCHEDULE)!!)!!
+    assertEquals(3, schedule.countOn("2026-10-21"))
+    assertEquals(0, schedule.countOn("2026-10-22"))
+    assertEquals(0, schedule.countOn("bad"))
   }
 
   @Test fun displayStates() {

@@ -1,16 +1,32 @@
 package expo.modules.onefchomewidgets
 
 import android.content.Context
+import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 
 /** ONE FC 일정: 월간 달력 + 선택 날짜 일정. 인스턴스 상태 = 보던 달(month) + 선택 날짜(selected). */
 object ScheduleWidgetRenderer : OneFcWidgetRenderer {
   override val type = OneFcWidgetType.SCHEDULE
-  const val MAX_ROWS = 8
+  const val CHIP_SLOTS = 2
 
-  /** 높이(dp) → 일정 줄 수. 4x4 ≈ 3줄, 4x5~6 ≈ 5~8줄. */
-  fun rows(heightDp: Int, weeks: Int): Int = ((heightDp - (145 + weeks * 28) - 22) / 24).coerceIn(1, MAX_ROWS)
+  /** 칸 높이(dp) 추정: 위젯 높이에서 머리·요일·목록 머리·상태줄을 빼고 달력(7/10)을 주 수로 나눈다. */
+  fun cellHeightDp(heightDp: Int, weeks: Int): Int = (((heightDp - 146).coerceAtLeast(0) * 7 / 10) / weeks.coerceAtLeast(1)) - 2
+
+  /** 칸에 넣을 제목 줄 수(0 이면 숫자 배지). 날짜 20dp, 제목 줄 15dp, "+N" 13dp. */
+  fun chipSlots(heightDp: Int, weeks: Int): Int = ((cellHeightDp(heightDp, weeks) - 20 - 13) / 15).coerceIn(0, CHIP_SLOTS)
+
+  data class Cell(val titles: List<String>, val more: Int, val badge: String)
+
+  /** 칸 내용(순수 함수). 제목 수 + more = total. 자리가 없으면 숫자 배지(9+). */
+  fun cell(total: Int, titles: List<String>, slots: Int): Cell {
+    if (total <= 0) return Cell(emptyList(), 0, "")
+    if (slots <= 0 || titles.isEmpty()) return Cell(emptyList(), 0, badge(total))
+    val shown = titles.take(if (total > slots) slots else total).take(total)
+    return Cell(shown, total - shown.size, "")
+  }
+
+  fun badge(count: Int): String = if (count <= 0) "" else if (count > 9) "9+" else count.toString()
 
   data class State(val month: String, val selected: String)
 
@@ -66,6 +82,9 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     val sunday = context.getColor(R.color.onefc_widget_sunday)
     val saturday = context.getColor(R.color.onefc_widget_saturday)
     val onBrand = context.getColor(R.color.onefc_widget_on_brand)
+    val brand = context.getColor(R.color.onefc_widget_brand)
+    val secondary = context.getColor(R.color.onefc_widget_text_secondary)
+    val slots = chipSlots(heightDp, weeks.size)
     for (row in 0 until 6) {
       views.setViewVisibility(WidgetIds.WEEKS[row], if (row < weeks.size) View.VISIBLE else View.GONE)
       if (row >= weeks.size) continue
@@ -73,10 +92,10 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
         val cell = weeks[row][col]
         val cellId = WidgetIds.CELLS[row][col]
         val dayId = WidgetIds.DAYS[row][col]
-        val dotId = WidgetIds.DOTS[row][col]
         val selected = cell.ymd == state.selected
         val isToday = cell.ymd == today
-        val hasItems = cell.ymd in payload.calendarDays
+        val total = payload.countOn(cell.ymd)
+        val content = cell(total, payload.events[cell.ymd].orEmpty().map { if (it.done) "✓ ${it.title}" else it.title }, slots)
         views.setTextViewText(dayId, cell.day.toString())
         views.setTextColor(dayId, when {
           selected -> onBrand
@@ -90,11 +109,27 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
           isToday -> R.drawable.onefc_widget_today
           else -> 0
         })
-        views.setImageViewResource(dotId, if (selected) R.drawable.onefc_widget_dot_on_brand else R.drawable.onefc_widget_dot)
-        views.setViewVisibility(dotId, if (hasItems) View.VISIBLE else View.INVISIBLE)
+        for (slot in 0 until CHIP_SLOTS) {
+          val chipId = WidgetIds.CHIPS[slot][row][col]
+          val title = content.titles.getOrNull(slot)
+          views.setViewVisibility(chipId, if (title != null) View.VISIBLE else View.GONE)
+          if (title != null) views.setTextViewText(chipId, title)
+        }
+        val moreId = WidgetIds.CELL_MORE[row][col]
+        views.setViewVisibility(moreId, if (content.more > 0) View.VISIBLE else View.GONE)
+        if (content.more > 0) {
+          views.setTextViewText(moreId, "+${content.more}")
+          views.setTextColor(moreId, if (selected) onBrand else secondary)
+        }
+        val countId = WidgetIds.COUNTS[row][col]
+        // 배지 칸 높이를 항상 차지(INVISIBLE)해 숫자 유무로 흔들리지 않는다.
+        views.setViewVisibility(countId, if (content.badge.isNotEmpty()) View.VISIBLE else if (slots == 0) View.INVISIBLE else View.GONE)
+        views.setTextViewText(countId, content.badge)
+        views.setInt(countId, "setBackgroundResource", if (selected) R.drawable.onefc_widget_count_on_brand else R.drawable.onefc_widget_count)
+        views.setTextColor(countId, if (selected) brand else onBrand)
         val label = StringBuilder(WidgetDates.dayTitle(cell.ymd))
         if (isToday) label.append(", 오늘")
-        if (hasItems) label.append(", 일정 있음")
+        if (total > 0) label.append(", 일정 ${total}건")
         if (selected) label.append(", 선택됨")
         views.setContentDescription(cellId, label.toString())
         views.setOnClickPendingIntent(cellId, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_SELECT, widgetId, cell.ymd))
@@ -103,41 +138,31 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
 
     val items = payload.events[state.selected].orEmpty()
     val dayLink = link(WidgetDeepLink.Action.OPEN, mapOf("date" to state.selected))
+    val selectedTotal = payload.countOn(state.selected)
     views.setTextViewText(R.id.w_sel_title, WidgetDates.dayTitle(state.selected))
-    views.setTextViewText(R.id.w_sel_count, if (items.isNotEmpty()) "${items.size}건" else "")
-    val maxRows = rows(heightDp, weeks.size)
-    val shown = (if (items.size > maxRows) maxRows - 1 else items.size).coerceAtLeast(0)
-    for (index in 0 until MAX_ROWS) {
-      val rowId = WidgetIds.ITEMS[index]
-      if (index >= shown) {
-        views.setViewVisibility(rowId, View.GONE)
-        continue
-      }
-      val item = items[index]
-      val time = when {
-        item.time.isNotBlank() -> item.time
-        item.kind == "event" -> ""
-        else -> "할 일"
-      }
-      views.setViewVisibility(rowId, View.VISIBLE)
-      views.setTextViewText(WidgetIds.ITEM_TIMES[index], time)
-      views.setTextViewText(WidgetIds.ITEM_TITLES[index], if (item.done) "✓ ${item.title}" else item.title)
-      views.setTextColor(WidgetIds.ITEM_TITLES[index], if (item.done) muted else text)
-      views.setContentDescription(rowId, listOf(time, item.title, if (item.done) "완료" else "").filter { it.isNotBlank() }.joinToString(", "))
-      views.setOnClickPendingIntent(rowId, WidgetIntents.openApp(context, item.link.ifBlank { dayLink }, nonce))
-    }
-    val more = items.size - shown
-    views.setViewVisibility(R.id.w_more, if (more > 0) View.VISIBLE else View.GONE)
-    if (more > 0) {
-      views.setTextViewText(R.id.w_more, "+${more}개 더보기")
-      views.setOnClickPendingIntent(R.id.w_more, WidgetIntents.openApp(context, dayLink, nonce))
-    }
-    views.setViewVisibility(R.id.w_empty, if (items.isEmpty()) View.VISIBLE else View.GONE)
-    if (items.isEmpty()) {
-      views.setTextViewText(R.id.w_empty, if (payload.covers(state.selected)) context.getString(R.string.onefc_widget_empty_schedule) else "이 날짜는 앱에서 볼 수 있어요 ›")
-      views.setOnClickPendingIntent(R.id.w_empty, WidgetIntents.openApp(context, dayLink, nonce))
-    }
+    views.setTextViewText(R.id.w_sel_count, if (selectedTotal > 0) "${selectedTotal}건" else "")
+    // 선택 날짜 전체 목록: 스크롤되는 collection. 항목 탭 = fill-in 으로 각 deep link.
+    views.setRemoteAdapter(R.id.w_list, ScheduleWidgetListService.intent(context, widgetId))
+    views.setPendingIntentTemplate(R.id.w_list, WidgetIntents.openTemplate(context, widgetId))
+    views.setEmptyView(R.id.w_list, R.id.w_empty)
+    views.setTextViewText(R.id.w_empty, if (payload.covers(state.selected)) context.getString(R.string.onefc_widget_empty_schedule) else "이 날짜는 앱에서 볼 수 있어요 ›")
+    views.setOnClickPendingIntent(R.id.w_empty, WidgetIntents.openApp(context, dayLink, nonce))
     views.setTextViewText(R.id.w_status, WidgetCommonViews.statusLine(envelope, refreshing, payload.googleNotice))
     return views
+  }
+}
+
+/** 선택 날짜 목록 한 줄(순수 매핑, 테스트용). */
+internal object ScheduleListRows {
+  data class Row(val time: String, val title: String, val done: Boolean, val link: String, val description: String)
+
+  fun rows(items: List<SchedulePayload.Item>, dayLink: String): List<Row> = items.map { item ->
+    val time = when {
+      item.time.isNotBlank() -> item.time
+      item.kind == "event" -> ""
+      else -> "할 일"
+    }
+    Row(time, if (item.done) "✓ ${item.title}" else item.title, item.done, item.link.ifBlank { dayLink },
+      listOf(time, item.title, if (item.done) "완료" else "").filter { it.isNotBlank() }.joinToString(", "))
   }
 }

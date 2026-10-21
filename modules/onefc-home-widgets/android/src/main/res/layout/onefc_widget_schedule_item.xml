@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/w_item" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="32dp" android:orientation="horizontal" android:gravity="center_vertical">
+  <TextView android:id="@+id/w_item_time" android:layout_width="84dp" android:layout_height="wrap_content" android:textSize="@dimen/onefc_widget_small_text" android:textColor="@color/onefc_widget_brand" android:maxLines="1" android:ellipsize="end" />
+  <TextView android:id="@+id/w_item_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" android:maxLines="1" android:ellipsize="end" />
+</LinearLayout>

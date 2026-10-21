@@ -1,6 +1,6 @@
 import { ApiError } from '../../../api/client';
 import { fetchScheduleEvents } from '../../schedule/scheduleApi';
-import { addDaysYmd, eventDayRange, eventTimeLabel, eventsOnDay, scheduleGoogleWarning, tasksOnDay } from '../../schedule/scheduleModel';
+import { addDaysYmd, countItemsByDay, eventDayRange, eventTimeLabel, eventsOnDay, scheduleGoogleWarning, tasksOnDay } from '../../schedule/scheduleModel';
 import type { ScheduleEventsResult } from '../../schedule/types';
 import { buildWidgetDeepLink } from '../engine/widgetDeepLink';
 import { clipWidgetTitle, type WidgetAdapter } from './adapterTypes';
@@ -23,8 +23,10 @@ export type ScheduleWidgetPayload = {
   visibleRange: { from: string; to: string };
   /** 새 위젯 인스턴스의 기본 선택 날짜(오늘). 인스턴스별 선택은 native 상태. */
   selectedDate: string;
-  /** 일정 점을 찍을 날짜. */
+  /** 항목이 있는 날짜(v1 호환). */
   calendarDays: string[];
+  /** 날짜별 항목 수. 앱·웹 달력 배지와 같은 규칙(countItemsByDay). 칸 제목 + "+N" 합계 = 이 값. */
+  calendarCounts: Record<string, number>;
   events: WidgetScheduleDay[];
   googleNotice: string | null;
 };
@@ -68,7 +70,9 @@ export function buildScheduleDays(result: Pick<ScheduleEventsResult, 'events' | 
 export function scheduleWidgetPayload(result: ScheduleEventsResult, scheme: string, today: string): ScheduleWidgetPayload {
   const range = widgetWindow(today);
   const events = buildScheduleDays(result, scheme, range.from, range.to);
-  return { visibleRange: range, selectedDate: today, calendarDays: events.map((day) => day.date), events, googleNotice: widgetGoogleNotice(result.google) };
+  const calendarCounts: Record<string, number> = {};
+  for (const [day, count] of countItemsByDay(result)) if (day >= range.from && day <= range.to) calendarCounts[day] = count;
+  return { visibleRange: range, selectedDate: today, calendarDays: events.map((day) => day.date), calendarCounts, events, googleNotice: widgetGoogleNotice(result.google) };
 }
 
 /** 수동 새로고침만 refresh=1. 서버 간격 제한(429)이면 일반 조회. */

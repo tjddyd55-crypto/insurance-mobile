@@ -30,6 +30,13 @@ object WidgetIntents {
     return PendingIntent.getBroadcast(context, widgetId, intent, FLAGS)
   }
 
+  /** 목록(collection) 항목용 템플릿: 같은 패키지 ACTION_VIEW. 항목마다 fill-in 으로 data(deep link)만 채운다. */
+  fun openTemplate(context: Context, widgetId: Int): PendingIntent {
+    val intent = Intent(Intent.ACTION_VIEW).setPackage(context.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (android.os.Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+    return PendingIntent.getActivity(context, 10_000 + widgetId, intent, flags)
+  }
+
   /** 앱 화면 열기: 같은 패키지의 deep link 만. 링크가 없으면 앱 첫 화면. */
   fun openApp(context: Context, link: String?, nonce: Long): PendingIntent {
     val intent = if (!link.isNullOrBlank()) {

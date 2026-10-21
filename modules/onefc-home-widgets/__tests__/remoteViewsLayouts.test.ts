@@ -28,7 +28,7 @@ const layouts = fs.readdirSync(LAYOUT_DIR).filter((f: string) => f.endsWith('.xm
 describe('home widget RemoteViews layouts', () => {
   it('has the expected widget layouts', () => {
     expect(layouts).toEqual(
-      expect.arrayContaining(['onefc_widget_message.xml', 'onefc_widget_schedule.xml', 'onefc_widget_todo.xml']),
+      expect.arrayContaining(['onefc_widget_message.xml', 'onefc_widget_schedule.xml', 'onefc_widget_schedule_item.xml', 'onefc_widget_todo.xml']),
     );
   });
 
@@ -47,5 +47,20 @@ describe('home widget RemoteViews layouts', () => {
         expect(layouts).toContain(`${m[1]}.xml`);
       }
     }
+  });
+  it('schedule widget: no legacy dots, every cell has day/chips/+N/count ids, list is a ListView collection', () => {
+    const xml = fs.readFileSync(path.join(LAYOUT_DIR, 'onefc_widget_schedule.xml'), 'utf8');
+    expect(xml).not.toContain('w_dot_');
+    for (let r = 0; r < 6; r += 1) for (let c = 0; c < 7; c += 1) {
+      for (const id of [`w_cell_${r}_${c}`, `w_day_${r}_${c}`, `w_chip_${r}_${c}_0`, `w_chip_${r}_${c}_1`, `w_cmore_${r}_${c}`, `w_cnt_${r}_${c}`]) expect(xml).toContain(`@+id/${id}"`);
+    }
+    expect(xml).toMatch(/<ListView android:id="@\+id\/w_list"/);
+    // 글자 크기는 dimens(sp) 로만
+    expect(xml).not.toMatch(/textSize="(\d+)sp"/);
+  });
+
+  it('collection service is declared with BIND_REMOTEVIEWS', () => {
+    const manifest = fs.readFileSync(path.join(__dirname, '..', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
+    expect(manifest).toMatch(/ScheduleWidgetListService"[\s\S]*?android:permission="android.permission.BIND_REMOTEVIEWS"/);
   });
 });

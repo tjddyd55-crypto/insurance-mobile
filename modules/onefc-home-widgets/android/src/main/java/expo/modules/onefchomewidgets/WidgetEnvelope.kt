@@ -69,7 +69,11 @@ data class SchedulePayload(
   val calendarDays: Set<String>,
   val events: Map<String, List<Item>>,
   val googleNotice: String?,
+  /** 날짜별 항목 수(앱·웹 달력과 같은 규칙). 없으면 그 날 items 수. */
+  val calendarCounts: Map<String, Int> = emptyMap(),
 ) {
+  fun countOn(ymd: String): Int = calendarCounts[ymd] ?: events[ymd]?.size ?: 0
+
   data class Item(val id: String, val title: String, val time: String, val kind: String, val done: Boolean, val link: String)
 
   fun covers(ymd: String): Boolean = ymd >= visibleFrom && ymd <= visibleTo
@@ -85,12 +89,20 @@ data class SchedulePayload(
           Item(item.optString("id"), item.optString("title"), item.optString("time"), item.optString("kind"), item.optBoolean("done"), WidgetEnvelope.safeLink(item.optString("link"), envelope.scheme))
         }
         days.addAll(events.keys)
+        val counts = HashMap<String, Int>()
+        payload.optJSONObject("calendarCounts")?.let { obj ->
+          for (key in obj.keys()) {
+            val n = obj.optInt(key, 0)
+            if (WidgetDates.isYmd(key) && n > 0) counts[key] = n
+          }
+        }
         SchedulePayload(
           range.optString("from"),
           range.optString("to"),
           days,
           events,
           if (payload.isNull("googleNotice")) null else payload.optString("googleNotice").ifBlank { null },
+          counts,
         )
       } catch (error: Exception) {
         null

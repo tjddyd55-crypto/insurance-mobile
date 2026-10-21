@@ -50,11 +50,28 @@ class WidgetDatesTest {
   }
 
   @Test fun rowsBySize() {
-    assertEquals(1, ScheduleWidgetRenderer.rows(250, 6))
-    assertEquals(3, ScheduleWidgetRenderer.rows(380, 5))
-    assertTrue(ScheduleWidgetRenderer.rows(480, 5) >= 5)
-    assertEquals(8, ScheduleWidgetRenderer.rows(900, 6))
+    // 작은 위젯: 제목 자리 없음 → 숫자 배지. 큰 위젯: 제목 2줄 + "+N".
+    assertEquals(0, ScheduleWidgetRenderer.chipSlots(320, 6))
+    assertEquals(2, ScheduleWidgetRenderer.chipSlots(900, 5))
+    assertTrue(ScheduleWidgetRenderer.chipSlots(600, 5) >= 1)
     assertEquals(2, TodoWidgetRenderer.rows(180))
     assertTrue(TodoWidgetRenderer.rows(300) >= 6)
+  }
+
+  @Test fun cellContentKeepsTotal() {
+    val r = ScheduleWidgetRenderer
+    // Google 2 + ONE FC 할 일 1 = 3: 제목 2 + "+1"
+    val three = r.cell(3, listOf("회의", "점심", "서류"), 2)
+    assertEquals(listOf("회의", "점심"), three.titles)
+    assertEquals(1, three.more)
+    assertEquals(3, three.titles.size + three.more)
+    assertEquals(ScheduleWidgetRenderer.Cell(listOf("회의"), 0, ""), r.cell(1, listOf("회의"), 2))
+    assertEquals(ScheduleWidgetRenderer.Cell(emptyList(), 0, ""), r.cell(0, emptyList(), 2))
+    // 자리가 없으면 숫자 배지(9 / 10 → 9+)
+    assertEquals("3", r.cell(3, listOf("a", "b", "c"), 0).badge)
+    assertEquals("9", r.cell(9, List(9) { "x" }, 0).badge)
+    assertEquals("9+", r.cell(10, List(10) { "x" }, 0).badge)
+    val ten = r.cell(10, List(10) { "x" }, 2)
+    assertEquals(10, ten.titles.size + ten.more)
   }
 }

@@ -22,6 +22,11 @@
         android:name="android.appwidget.provider"
         android:resource="@xml/onefc_widget_todo_info" />
     </receiver>
+    <!-- 일정 위젯 선택 날짜 목록(RemoteViews collection). 런처만 바인딩 가능. -->
+    <service
+      android:name="expo.modules.onefchomewidgets.ScheduleWidgetListService"
+      android:exported="false"
+      android:permission="android.permission.BIND_REMOTEVIEWS" />
     <!-- 부팅·앱 업데이트·시간대 변경·자정: 위젯 상태 초기화 정책 적용 + 다시 그리기 + 갱신 예약 -->
     <receiver
       android:name="expo.modules.onefchomewidgets.WidgetSystemReceiver"
