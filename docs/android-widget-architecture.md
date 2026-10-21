@@ -52,8 +52,42 @@ timeZone, authState, syncState(ready|stale|error), errorCode(network|server|unkn
 
 ### 갱신 사유·정책
 
-사유: `login, appForeground, appMutation, manual, periodic, boot, midnight, appUpdate, googleReconnect, accountChanged`.
+코드 enum (`WIDGET_REFRESH_REASONS`, JS·native 공통 문자열):
+
+| 점검 이름 | 코드 값 | 언제 |
+| --- | --- | --- |
+| login | `login` | 로그인 직후 |
+| foreground | `appForeground` | 앱이 앞으로 나옴 |
+| mutation | `appMutation` | 일정·할 일 저장/삭제 등 앱 쓰기 |
+| manual | `manual` | 위젯 새로고침 버튼 |
+| periodic | `periodic` | WorkManager 주기 |
+| boot | `boot` | `BOOT_COMPLETED` |
+| midnight | `midnight` | 자정(비정확 알람) |
+| appUpdate | `appUpdate` | `MY_PACKAGE_REPLACED` |
+| googleReconnect | `googleReconnect` | Google 다시 연결 |
+| accountSwitch | `accountChanged` | 계정 변경. 이름은 코드에 `accountChanged` 로 고정 |
+
+이름을 점검용 별칭으로 바꾸지 않는다. 모르는 문자열은 `periodic` 으로 떨어진다.
 정책(현재 두 위젯): 주기 30분, 수동 30초 간격 제한(위젯 종류별), 앱 내 변경 시 즉시.
+WorkManager unique 이름 `onefc-widget-engine-periodic` (`ExistingPeriodicWorkPolicy.KEEP`). 주기(분)는 설치된 종류의 최소값이며 15 미만으로 내려가지 않는다. 현재 일정·할 일은 둘 다 30.
+1회 갱신 unique 접두사 `onefc-widget-engine-refresh-` (`ExistingWorkPolicy.KEEP`). 1분 polling·무한 서비스는 없다. 이전 이름 `onefc-home-widgets-periodic`, `onefc-home-widgets-refresh` 는 취소한다.
+수동 새로고침은 `meta.lastManual.<type>` 으로 종류별 30_000ms 를 지킨다.
+
+### 부팅·업데이트·캐시 실패
+
+- `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED`: `resetAllInstances` 후 다시 그리고, `boot` 또는 `appUpdate` 로 force 갱신, 주기 작업을 다시 등록.
+- `TIMEZONE_CHANGED` / `TIME_SET`: 다시 그리기. `MIDNIGHT`: 다시 그리기 + `midnight` force 갱신.
+- `meta.schema` 가 schemaVersion(1)과 다르면 SharedPreferences `onefc_widget_engine` 과 이전 저장소 `onefc_home_widgets_v1` 를 비우고 다음 갱신에서 다시 만든다.
+- 봉투 JSON 이 깨졌거나 버전·종류가 다르면 그 키를 지우고 null. 화면은 로그인 필요/불러오는 중 등 `WidgetDisplayState` 로 떨어진다.
+
+### appWidgetId 별 상태
+
+같은 종류라도 홈 화면 인스턴스마다 따로 둔다. 키 `inst.<type>.<appWidgetId>.<field>`. 저장한 날의 오늘(`anchor`)이 지나면 기본값(오늘)으로 돌아간다. 재부팅·앱 업데이트는 인스턴스를 전부 지운다. 위젯 삭제 시 그 id 만 지운다.
+
+| 위젯 | 필드 |
+| --- | --- |
+| 일정 | `month`(보던 달 1일), `selected`(선택 날짜) |
+| 할 일 | `date`(선택 날짜) |
 
 ### Provider 를 하나로 합치지 않은 이유
 
@@ -64,23 +98,79 @@ timeZone, authState, syncState(ready|stale|error), errorCode(network|server|unkn
 
 - 데이터 없는 위젯(빠른 실행, AI 비서): Registry `dataKind: 'none'`, `adapter: null`, 주기 갱신 없음.
 - 목록 위젯(알림, 상담, 청구, 고객 현황): `dataKind: 'list'`, `sensitiveDataPolicy: 'counts_only'` 기본.
-- 현재 둘 다 구현하지 않았다(enabled=false, provider·manifest 없음, 위젯 목록에 나오지 않음).
+- 후보 `notifications`, `consultation`, `claims`, `customerSummary`, `quickActions`, `aiAssistant` 는 `enabled: false`, `adapter: null`, `providerClass: null`. provider·피커·전용 API·추가 permission 이 없다. 위젯 목록에 나오지 않는다.
+
+## 현재 위젯 기능
+
+### ONE FC 일정
+
+- 월 달력(일요일 시작), 이전/다음 달, 오늘, 날짜 선택.
+- 칸: 날짜 숫자, 제목 칩(최대 2)과 `+N`, 그 아래 개수 배지. 배지는 `w_day_*` 와 같은 세로 LinearLayout 의 다음 TextView(`layout_marginTop` 1dp)라 날짜 숫자를 덮지 않는다. 앱 일정 화면도 날짜 숫자 아래 별도 TextView(`marginTop: 1`).
+- 선택 날짜 목록(RemoteViews ListView). 범위 밖은 앱에서 보도록 안내.
+- 추가 버튼 → `schedule?date&create=1&src=widget`. 항목·월 제목 → `schedule?date&event&src=widget`.
+- 수동 새로고침(30초 간격). 상태 줄(마지막 업데이트 / 새로고침 중 / 오프라인).
+- 로그인 필요·세션 만료 화면은 공통 `WidgetCopy`.
+
+### ONE FC 할 일
+
+- 선택 날짜 목록(오늘·이전/다음 날·오늘로). 높이만큼 행, 넘치면 `+N개 더보기`.
+- 행: 완료면 `✓` 와 흐린 제목, 미완료면 `○`. 탭하면 그 할 일 수정(`todos/<id>/edit?src=widget`).
+- 추가 버튼 → `todos/new?dueDate&src=widget`. 제목·더보기 → 할 일 목록.
+- 범위 안이고 항목이 없으면 "등록된 할 일이 없습니다". 캐시 범위 밖은 "이 날짜는 앱에서 볼 수 있어요".
+- 수동 새로고침, 공통 로그인/만료/오류 화면.
+
+### 할 일 목록과 배지
+
+할 일 위젯 목록(`buildTodoDays`)은 앱이 `listTodos` 로 받는 ONE FC 할 일 원본을 쓴다. 예정일이 있는 미완료와 완료를 같이 보여 주고 완료는 `completed: true` 로 표시한다. 취소·예정일 없음은 빼며, 정렬은 앱과 같은 `sortTodosByRecentWrite` 다. 앱 할 일 화면의 기본 필터는 `미완료`(`bucket=open`)이고, 완료 항목은 그 화면의 `완료` 필터에서 같은 원본을 본다. 위젯은 필터 UI 가 없으므로 그 날짜의 취소되지 않은 항목(완료 포함)을 목록에 둔다.
+
+개수 배지는 목록과 다른 집합이다. SSOT 는 `countItemsByDay` + `dayCountLabel` (`src/features/schedule/scheduleModel.ts`). 일정 화면과 `scheduleWidgetAdapter` 가 같은 함수를 쓴다.
+
+- 일정 이벤트: KST 로 걸친 날마다 1. Google 일정 포함. 끝이 자정이면 그 날은 빼며, 하루 범위 가드는 400.
+- 할 일: `dueDate` 가 있고 `status !== 'completed'` 인 것만. 완료·예정일 없음·취소는 배지에 넣지 않는다. 같은 항목을 이벤트와 할 일로 두 번 세지 않는다(이벤트 루프와 할 일 루프가 분리).
+- 라벨: 0 은 빈 문자열(숨김), 1–9 는 숫자, 10 이상은 `9+`.
+- 웹과 같은 케이스: `src/features/schedule/__fixtures__/scheduleDayCountCases.json`, 테스트 `scheduleDayCount.test.ts`.
 
 ## 새 위젯 추가 절차
 
-1. **WidgetType**: `engine/widgetTypes.ts` 와 `OneFcWidgetType.kt` 에 같은 id(이미 있으면 생략).
-2. **Registry**: `WIDGET_REGISTRY` 항목을 채우고 `enabled: true`, refreshPolicy, sensitiveDataPolicy, watchesQueryKeys 지정.
-3. **Adapter**: `adapters/<name>WidgetAdapter.ts` — 기존 API·선택자만 사용, 최소 필드(연락처·주민번호·상담/청구 상세 금지).
-4. **Payload DTO**: JS 타입 + native `<Name>Payload.parse(envelope)`.
-5. **Renderer**: `OneFcWidgetRenderer` 구현, 공통 상태 화면은 `WidgetCommonViews` 사용. `WidgetEngine.renderers` 에 등록.
-6. **Deep link**: JS `ROUTES` 와 native `WidgetDeepLink` 표에 같은 경로(`src=widget&wt=<type>` 자동).
-7. **Provider(필요 시)**: `class XWidgetProvider : BaseOneFcWidgetProvider(OneFcWidgetType.X)` 와 `OneFcWidgetType.providerClass`.
-8. **Manifest metadata**: `<receiver>` + `res/xml/onefc_widget_<name>_info.xml` + 레이아웃·문자열.
-9. **Tests**: Registry, payload 파싱, deep link, adapter 최소 필드, native 상태/렌더러 단위 테스트.
-10. **Binary check**: 아래 참고.
+1. **WidgetType**: `engine/widgetTypes.ts` 의 `WIDGET_TYPES` 와 `OneFcWidgetType.kt` 에 같은 id.
+2. **Registry**: `WIDGET_REGISTRY` 항목. 켤 때만 `enabled: true`. refreshPolicy, sensitiveDataPolicy, watchesQueryKeys.
+3. **Payload DTO**: JS payload 타입과 native `<Name>Payload.parse(envelope)`. 공통 봉투 필드는 그대로 두고 payload 만 추가한다.
+4. **Adapter**: `adapters/<name>WidgetAdapter.ts`. 기존 앱 API·선택자만 사용. 연락처·주민번호·상담/청구 본문·토큰 금지.
+5. **Renderer**: `OneFcWidgetRenderer` 구현. 공통 상태 화면은 `WidgetCommonViews`. `WidgetEngine.renderers` 에 등록.
+6. **Deep Link**: JS `ROUTES` 와 native `WidgetDeepLink` 에 같은 경로. `src=widget&wt=<type>` 는 빌더가 붙인다. scheme 은 `getEnvironmentConfig().scheme` (dev `onefc-dev`, prod `onefc`).
+7. **Provider 필요 여부**: 홈 화면 위젯 목록에 새 항목이 필요하면 `class XWidgetProvider : BaseOneFcWidgetProvider(OneFcWidgetType.X)` 와 `providerClass`. 기존 provider 의 데이터만 바꾸면 새 provider 는 만들지 않는다.
+8. **Manifest metadata**: 새 provider 일 때만 `<receiver>` + `res/xml/onefc_widget_<name>_info.xml` + 레이아웃·문자열. `enabled=false` 후보는 receiver 를 넣지 않는다.
+9. **Tests**: Registry enabled 여부, payload 파싱, deep link(dev/prod scheme), adapter 최소 필드, native 상태/렌더러.
+10. **Binary build 필요 여부**: 아래 조건을 따른다.
 
-## 바이너리(OTA 불가) 규칙
+## 바이너리 빌드가 필요한 조건
 
-새 `AppWidgetProvider` 종류(위젯 목록 항목), manifest·레이아웃·native 코드 변경은 **새 바이너리(스토어/APK 빌드)가 필요하다**.
-OTA 로는 기존 위젯의 JS 측(Adapter 데이터, deep link 대상 화면)만 바꿀 수 있다. Registry 에서 `enabled: true` 로 바꿔도
-native provider 가 없는 바이너리에서는 위젯 목록에 나타나지 않는다.
+현재 ONE FC 일정·ONE FC 할 일 위젯은 provider, manifest, 레이아웃, native Widget Engine 이 들어 있다. 이 두 위젯을 기기에 넣으려면 **새 binary(스토어 또는 내부 APK 빌드)가 필요하다**. 지금 스토어에 있는 바이너리만으로는 홈 화면 목록에 나오지 않는다.
+
+새 provider(새 위젯 목록 항목, manifest receiver, 레이아웃, native 렌더러)를 추가할 때도 **새 binary가 필요하다**. Registry 만 `enabled: true` 로 바꿔도 provider 가 없는 바이너리의 위젯 목록에는 나타나지 않는다.
+
+이미 그 provider 가 들어 있는 binary 위에서는 JS/data 만 바뀌는 변경(adapter 가 채우는 필드, deep link 대상 화면, 서버에서 오는 일정·할 일 데이터)이 **OTA 로 반영될 수 있다**. OTA 는 그 binary 가 이미 있을 때의 데이터 경로이지, 현재 위젯을 처음 배포하는 방법이 아니다.
+
+## SharedPreferences (`onefc_widget_engine`, MODE_PRIVATE)
+
+토큰, refresh token, ONE FC bearer, Google access token, 연락처, 상담 본문은 키로도 값으로도 저장하지 않는다. native 는 HTTP/Google API 를 호출하지 않는다. 세션 토큰은 JS secure-store 에만 있고 위젯 저장소로 복사하지 않는다.
+
+| 키 | 값 |
+| --- | --- |
+| `meta.schema` | 엔진 schemaVersion (1) |
+| `meta.scheme` | 앱 scheme (`onefc` 또는 `onefc-dev`) |
+| `meta.clearReason` | `logged_out` / `session_expired` / `account_changed` / `schema_reset` |
+| `meta.refreshing.<type>` | 새로고침 시작 시각(ms) |
+| `meta.lastManual.<type>` | 마지막 수동 새로고침 시각(ms) |
+| `widget.<type>` | 봉투 JSON 한 덩어리 |
+| `inst.<type>.<appWidgetId>.anchor` | 그 상태를 저장한 날(YYYY-MM-DD) |
+| `inst.<type>.<appWidgetId>.month` / `.selected` / `.date` | 위 인스턴스 상태 |
+
+봉투 JSON 필드: `schemaVersion, widgetType, accountKey(u:<userId>|ga:<gaId>), gaId, userId, scheme, generatedAt, lastSuccessfulSyncAt, timeZone, authState, syncState, errorCode, payload`.
+일정 payload: `visibleRange, selectedDate, calendarDays, calendarCounts, events[{date, items[{id, title, time, kind, done, link}]}], googleNotice`(짧은 안내 문구만).
+할 일 payload: `visibleRange, selectedDate, todos[{date, items[{id, title, completed, link}]}]`.
+`userId`/`gaId` 는 계정 격리용이고 인증 비밀이 아니다. `link` 는 앱 scheme deep link 이며 토큰 쿼리를 넣지 않는다.
+
+## 로그아웃·계정 전환
+
+`AuthProvider` 로그아웃·401 은 `purgeWidgets('logged_out' | 'session_expired')`. 계정 키가 바뀌면 `accountChanged` 전에 `purgeWidgets('account_changed')`. native `clearAll` 은 Registry 의 `widget.*`, `inst.*`, `meta.refreshing.*` 를 지우고 `LOGGED_OUT` 또는 `AUTH_EXPIRED` 로 즉시 다시 그린다. 문구는 "로그인이 필요합니다" / "ONE FC에 로그인해 주세요".

@@ -164,6 +164,16 @@ describe('todo stack plan', () => {
     });
   });
 
+  it('cold create-only stack (route new) is also replaced with the list', () => {
+    const createOnly = stack(0, [{ name: 'new' }]);
+    expect(isEditOnlyTodoStack(createOnly)).toBe(true);
+    expect(planTodoWidgetExit({ warm: false, stack: createOnly, drawerHasPrevious: false })).toEqual({
+      popToList: false,
+      replaceWithList: true,
+      restorePrevious: false,
+    });
+  });
+
   it('collapses to the list when the list is already underneath', () => {
     expect(planTodoWidgetExit({ warm: false, stack: listUnderEdit, drawerHasPrevious: true })).toEqual({
       popToList: true,
@@ -306,6 +316,7 @@ describe('schedule modal flow', () => {
     { action: 'cancel', events: [link, open, close], effect: 'return', saved: false },
     { action: 'back', events: [link, open, close], effect: 'return', saved: false },
     { action: 'save', events: [link, open, { type: 'mark-saved' as const }, close], effect: 'return', saved: true },
+    { action: 'delete', events: [link, open, { type: 'mark-saved' as const }, close], effect: 'return', saved: true },
   ])('widget $action closes the last modal and returns (saved=$saved)', ({ events, effect, saved }) => {
     const played = play(events);
     expect(played.effects.at(-1)).toBe(effect);
@@ -390,7 +401,7 @@ describe('router: widget vs in-app leave', () => {
     'schedule/index': leaf('SCHEDULE'),
     'todos/_layout': { default: todosLayout.default, unstable_settings: todosLayout.unstable_settings },
     'todos/index': leaf('TODO_LIST'),
-    'todos/new': leaf('TODO_NEW'),
+    'todos/new': TodoEditStub,
     'todos/[todoId]/edit': TodoEditStub,
   });
   const pathname = () => (screen as unknown as { getPathname: () => string }).getPathname();
@@ -439,6 +450,23 @@ describe('router: widget vs in-app leave', () => {
     expect(pathname()).toBe('/todos');
   });
 
+  it.each(['SAVE', 'DELETE'])('widget cold start create: %s refreshes and leaves the list', async (action) => {
+    renderRouter(routes(), { initialUrl: `/todos/new?src=widget&wt=todo&_w=create-${action}` });
+    fireEvent.press(screen.getByText(action));
+    await waitFor(() => expect(pathname()).toBe('/todos'));
+    expect(calls[0]).toBe('refresh');
+    expect(calls).toContain('move');
+    expect(screen.getByText('TODO_LIST')).toBeTruthy();
+  });
+
+  it.each(['CANCEL', 'BACK'])('widget cold start create: %s moves back without refresh', async (action) => {
+    renderRouter(routes(), { initialUrl: `/todos/new?src=widget&wt=todo&_w=create-${action}` });
+    fireEvent.press(screen.getByText(action));
+    await waitFor(() => expect(pathname()).toBe('/todos'));
+    expect(refreshWidgets).not.toHaveBeenCalled();
+    expect(moveNative).toHaveBeenCalledTimes(1);
+  });
+
   it('widget warm start: cancel restores the previous screen', async () => {
     renderRouter(routes(), { initialUrl: '/' });
     go('/schedule');
@@ -475,6 +503,9 @@ describe('static guards', () => {
     expect(form).toMatch(/leaveTodoForm\(/);
     expect(form).toMatch(/leave\(true\)/);
     expect(form).toMatch(/leave\(false\)/);
+    expect(form).toMatch(/hardwareBackPress[\s\S]*requestBack\(\)/);
+    expect(form).toMatch(/onBackPress=\{requestBack\}/);
+    expect(form).toMatch(/const requestBack = useCallback\(\(\) => \{[\s\S]*leave\(false\)/);
     expect(form).not.toMatch(/router\.replace\(/);
     expect(form).not.toMatch(/router\.back\(/);
   });
@@ -487,6 +518,7 @@ describe('static guards', () => {
     expect(after.indexOf('markScheduleWidgetSaved')).toBeGreaterThan(-1);
     expect(after.indexOf('markScheduleWidgetSaved')).toBeLessThan(after.indexOf('setFormState(null)'));
     expect(open.indexOf('endScheduleWidgetFlow')).toBeLessThan(open.indexOf('router.push'));
+    expect(schedule.match(/onSuccess: afterWrite/g)).toHaveLength(3);
     expect(schedule).not.toMatch(/BackHandler|router\.replace|setTimeout/);
   });
 
