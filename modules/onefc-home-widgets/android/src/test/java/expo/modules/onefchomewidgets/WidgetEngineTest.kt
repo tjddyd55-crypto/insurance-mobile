@@ -51,6 +51,9 @@ class WidgetEngineTest {
     assertEquals(3, schedule.countOn("2026-10-21"))
     assertEquals(0, schedule.countOn("2026-10-22"))
     assertEquals(0, schedule.countOn("bad"))
+    // calendarCounts 가 없으면 완료 항목은 세지 않는다.
+    val donePayload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"events":[{"date":"2026-10-21","items":[{"id":"t","title":"a","time":"","kind":"onefc_todo","done":true,"link":""},{"id":"e","title":"b","time":"","kind":"event","done":false,"link":""}]}]}"""
+    assertEquals(1, SchedulePayload.parse(WidgetEnvelope.parse(envelope(payload = donePayload), OneFcWidgetType.SCHEDULE)!!)!!.countOn("2026-10-21"))
   }
 
   @Test fun displayStates() {

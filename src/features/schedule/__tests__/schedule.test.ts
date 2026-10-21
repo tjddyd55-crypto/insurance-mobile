@@ -106,9 +106,8 @@ describe('schedule model (웹 /api/schedule/events SSOT)', () => {
     const { events, tasks } = normalizeScheduleEvents(serverPayload());
     const counts = countItemsByDay({ events, tasks });
     for (const day of ['2026-10-18', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23']) {
-      expect(counts.get(day) ?? 0).toBe(eventsOnDay(events, day).length + tasksOnDay(tasks, day).length);
+      expect(counts.get(day) ?? 0).toBe(eventsOnDay(events, day).length + tasksOnDay(tasks, day).filter((task) => task.status !== 'completed').length);
     }
-    expect([...counts.keys()].sort()).toEqual([...daysWithItems({ events, tasks })].sort());
     const undated = { ...tasks[0]!, id: 'x', dueDate: null };
     expect(countItemsByDay({ events: [], tasks: [undated] }).size).toBe(0);
     expect(countItemsByDay({ events: [], tasks: [] }).size).toBe(0);

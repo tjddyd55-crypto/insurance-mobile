@@ -11,7 +11,8 @@ describe('schedule widget calendarCounts = app/web count rule (shared fixture)',
       expect(payload.calendarCounts).toEqual(c.expect);
       expect(payload.calendarCounts).toEqual(Object.fromEntries(countItemsByDay(result)));
       // 칸에 그릴 항목 수와 합계가 같다(제목 + "+N" = count).
-      for (const day of payload.events) expect(day.items.length).toBe(payload.calendarCounts[day.date]);
+      // 칸 제목(완료 제외) + "+N" = count. 아래 목록은 완료도 보여 줄 수 있다.
+      for (const day of payload.events) expect(day.items.filter((item) => !item.done).length).toBe(payload.calendarCounts[day.date] ?? 0);
     });
   }
 });

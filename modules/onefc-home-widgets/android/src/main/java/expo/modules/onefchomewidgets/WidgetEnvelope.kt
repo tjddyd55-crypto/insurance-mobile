@@ -69,10 +69,10 @@ data class SchedulePayload(
   val calendarDays: Set<String>,
   val events: Map<String, List<Item>>,
   val googleNotice: String?,
-  /** 날짜별 항목 수(앱·웹 달력과 같은 규칙). 없으면 그 날 items 수. */
+  /** 날짜별 항목 수(앱·웹 달력과 같은 규칙). 없으면 그 날 미완료 items 수. */
   val calendarCounts: Map<String, Int> = emptyMap(),
 ) {
-  fun countOn(ymd: String): Int = calendarCounts[ymd] ?: events[ymd]?.size ?: 0
+  fun countOn(ymd: String): Int = calendarCounts[ymd] ?: events[ymd]?.count { !it.done } ?: 0
 
   data class Item(val id: String, val title: String, val time: String, val kind: String, val done: Boolean, val link: String)
 

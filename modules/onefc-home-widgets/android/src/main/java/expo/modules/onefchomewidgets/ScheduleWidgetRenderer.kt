@@ -95,7 +95,7 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
         val selected = cell.ymd == state.selected
         val isToday = cell.ymd == today
         val total = payload.countOn(cell.ymd)
-        val content = cell(total, payload.events[cell.ymd].orEmpty().map { if (it.done) "✓ ${it.title}" else it.title }, slots)
+        val content = cell(total, payload.events[cell.ymd].orEmpty().filterNot { it.done }.map { it.title }, slots)
         views.setTextViewText(dayId, cell.day.toString())
         views.setTextColor(dayId, when {
           selected -> onBrand
