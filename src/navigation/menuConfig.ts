@@ -126,6 +126,14 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         nativePath: '/customers',
         mode: 'NATIVE',
       }),
+      // 웹 메뉴에는 없다. 고객리스트와 분리된 휴대폰 연락처 화면이다.
+      link({
+        id: 'device-contacts',
+        label: '연락처',
+        legacyWebPath: '/device-contacts',
+        nativePath: '/device-contacts',
+        mode: 'NATIVE',
+      }),
       link({
         id: 'customer-map',
         label: '고객 지도',
