@@ -249,6 +249,27 @@ export function daysWithItems(result: Pick<ScheduleEventsResult, 'events' | 'tas
   return days;
 }
 
+/**
+ * 날짜별 항목 수(달력 숫자 배지). 날짜별 목록(eventsOnDay + tasksOnDay)과 같은 집합만 센다.
+ * 예정일 없는 할 일·완료한 할 일(ONE FC·Google)은 세지 않는다. 원본 데이터는 바꾸지 않는다.
+ */
+export function countItemsByDay(result: Pick<ScheduleEventsResult, 'events' | 'tasks'>): Map<string, number> {
+  const counts = new Map<string, number>();
+  const bump = (day: string) => counts.set(day, (counts.get(day) ?? 0) + 1);
+  for (const event of result.events) {
+    const range = eventDayRange(event);
+    for (let day = range.first, guard = 0; day <= range.last && guard < 400; day = addDaysYmd(day, 1), guard += 1) bump(day);
+  }
+  for (const task of result.tasks) if (task.dueDate && task.status !== 'completed') bump(task.dueDate);
+  return counts;
+}
+
+/** 배지 문구: 0 이면 빈 문자열(표시 안 함), 10 이상은 "9+". */
+export function dayCountLabel(count: number): string {
+  if (!Number.isFinite(count) || count <= 0) return '';
+  return count > 9 ? '9+' : String(Math.floor(count));
+}
+
 export function eventTimeLabel(event: Pick<ScheduleEvent, 'allDay' | 'startAt' | 'endAt'>): string {
   if (event.allDay) {
     const range = eventDayRange(event);

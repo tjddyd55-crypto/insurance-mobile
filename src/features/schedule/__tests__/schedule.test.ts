@@ -11,6 +11,8 @@ import {
   canEditEvent,
   customerRouteOfEvent,
   customerRouteOfTask,
+  countItemsByDay,
+  dayCountLabel,
   daysWithItems,
   eventDayRange,
   eventTimeLabel,
@@ -98,6 +100,25 @@ describe('schedule model (웹 /api/schedule/events SSOT)', () => {
     expect(eventTimeLabel(events[1]!)).toBe('종일');
     expect(tasksOnDay(tasks, '2026-10-19').map((task) => task.sourceId)).toEqual(['7']);
     expect([...daysWithItems({ events, tasks })].sort()).toEqual(['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22']);
+  });
+
+  it('counts dated items per day like the per-day list, excluding undated todos', () => {
+    const { events, tasks } = normalizeScheduleEvents(serverPayload());
+    const counts = countItemsByDay({ events, tasks });
+    for (const day of ['2026-10-18', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23']) {
+      expect(counts.get(day) ?? 0).toBe(eventsOnDay(events, day).length + tasksOnDay(tasks, day).filter((task) => task.status !== 'completed').length);
+    }
+    const undated = { ...tasks[0]!, id: 'x', dueDate: null };
+    expect(countItemsByDay({ events: [], tasks: [undated] }).size).toBe(0);
+    expect(countItemsByDay({ events: [], tasks: [] }).size).toBe(0);
+  });
+
+  it('formats the day count badge', () => {
+    expect(dayCountLabel(0)).toBe('');
+    expect(dayCountLabel(1)).toBe('1');
+    expect(dayCountLabel(9)).toBe('9');
+    expect(dayCountLabel(10)).toBe('9+');
+    expect(dayCountLabel(57)).toBe('9+');
   });
 
   it('opens linked customers and todos only by server ids', () => {

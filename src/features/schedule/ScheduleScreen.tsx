@@ -46,7 +46,8 @@ import {
   canEditEvent,
   customerRouteOfEvent,
   customerRouteOfTask,
-  daysWithItems,
+  countItemsByDay,
+  dayCountLabel,
   emptyEventForm,
   eventTimeLabel,
   eventToForm,
@@ -254,7 +255,7 @@ export function ScheduleScreen() {
     );
   }
 
-  const marked = daysWithItems(data);
+  const dayCounts = countItemsByDay(data);
   const dayEvents = eventsOnDay(data.events, selected);
   const dayTasks = tasksOnDay(data.tasks, selected);
   // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
@@ -282,11 +283,13 @@ export function ScheduleScreen() {
             <View key={week[0]!.ymd} style={styles.weekRow}>
               {week.map((cell) => {
                 const active = cell.ymd === selected;
+                const count = dayCounts.get(cell.ymd) ?? 0;
+                const countLabel = dayCountLabel(count);
                 return (
                   <Pressable
                     key={cell.ymd}
                     accessibilityRole="button"
-                    accessibilityLabel={`${formatDayTitle(cell.ymd)}${marked.has(cell.ymd) ? ', 일정 있음' : ''}`}
+                    accessibilityLabel={`${formatDayTitle(cell.ymd)}${count > 0 ? `, 일정 ${count}건` : ''}`}
                     accessibilityState={{ selected: active }}
                     style={[styles.cell, styles.dayCell, active && styles.dayActive]}
                     onPress={() => {
@@ -297,7 +300,17 @@ export function ScheduleScreen() {
                     <AppText variant="body" color={active ? 'onPrimary' : cell.inMonth ? (cell.ymd === today ? 'primary' : 'text') : 'textMuted'}>
                       {cell.day}
                     </AppText>
-                    <View style={[styles.dot, marked.has(cell.ymd) && (active ? styles.dotOnActive : styles.dotOn)]} />
+                    <AppText
+                      variant="caption"
+                      align="center"
+                      numberOfLines={1}
+                      allowFontScaling={false}
+                      style={[styles.count, active ? styles.countOnActive : styles.countOn]}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                    >
+                      {countLabel}
+                    </AppText>
                   </Pressable>
                 );
               })}
@@ -547,8 +560,9 @@ function createStyles(theme: AppTheme) {
     cell: { flex: 1 },
     dayCell: { alignItems: 'center', paddingVertical: theme.spacing.xs, borderRadius: theme.radius.md, minHeight: 44 },
     dayActive: { backgroundColor: theme.colors.primary },
-    dot: { width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: 'transparent' },
-    dotOn: { backgroundColor: theme.colors.primary },
-    dotOnActive: { backgroundColor: theme.colors.onPrimary },
+    // 고정 높이: 숫자가 없어도 칸 높이가 같아 레이아웃이 흔들리지 않는다.
+    count: { height: 14, lineHeight: 14, fontSize: 11, fontWeight: '700', marginTop: 1 },
+    countOn: { color: theme.colors.primary },
+    countOnActive: { color: theme.colors.onPrimary },
   });
 }
