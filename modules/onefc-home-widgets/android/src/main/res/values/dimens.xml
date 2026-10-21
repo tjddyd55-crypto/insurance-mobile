@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <!-- 위젯 글자 크기(sp). 실기기에서 작다는 피드백으로 상향. -->
+  <!-- 일정·할 일·로그인 메시지 공통 글자 크기(sp). 레이아웃에 sp 를 직접 쓰지 않는다. -->
   <dimen name="onefc_widget_title_text">16sp</dimen>
   <dimen name="onefc_widget_month_text">17sp</dimen>
   <dimen name="onefc_widget_day_text">14sp</dimen>

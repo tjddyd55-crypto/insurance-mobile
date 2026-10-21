@@ -59,6 +59,20 @@ describe('home widget RemoteViews layouts', () => {
     expect(xml).not.toMatch(/textSize="(\d+)sp"/);
   });
 
+  it('todo and login message use the shared text dimens', () => {
+    for (const file of ['onefc_widget_todo.xml', 'onefc_widget_message.xml']) {
+      const xml = fs.readFileSync(path.join(LAYOUT_DIR, file), 'utf8');
+      expect(xml).not.toMatch(/textSize="(\d+)sp"/);
+      expect(xml).toContain('@dimen/onefc_widget_title_text');
+      expect(xml).toContain('@dimen/onefc_widget_item_text');
+    }
+    const todo = fs.readFileSync(path.join(LAYOUT_DIR, 'onefc_widget_todo.xml'), 'utf8');
+    expect(todo).toContain('@dimen/onefc_widget_month_text');
+    expect(todo).toContain('@dimen/onefc_widget_nav_text');
+    expect(todo).toContain('@dimen/onefc_widget_status_text');
+    expect(todo).toContain('ellipsize="end"');
+  });
+
   it('collection service is declared with BIND_REMOTEVIEWS', () => {
     const manifest = fs.readFileSync(path.join(__dirname, '..', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     expect(manifest).toMatch(/ScheduleWidgetListService"[\s\S]*?android:permission="android.permission.BIND_REMOTEVIEWS"/);

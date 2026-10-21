@@ -54,8 +54,9 @@ class WidgetDatesTest {
     assertEquals(0, ScheduleWidgetRenderer.chipSlots(320, 6))
     assertEquals(2, ScheduleWidgetRenderer.chipSlots(900, 5))
     assertTrue(ScheduleWidgetRenderer.chipSlots(600, 5) >= 1)
-    assertEquals(2, TodoWidgetRenderer.rows(180))
-    assertTrue(TodoWidgetRenderer.rows(300) >= 6)
+    assertEquals(1, TodoWidgetRenderer.rows(180))
+    assertEquals(5, TodoWidgetRenderer.rows(300))
+    assertTrue(TodoWidgetRenderer.rows(330) >= 6)
   }
 
   @Test fun cellContentKeepsTotal() {

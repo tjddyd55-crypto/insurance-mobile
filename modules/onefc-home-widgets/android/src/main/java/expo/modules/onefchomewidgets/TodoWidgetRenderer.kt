@@ -17,7 +17,11 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
   /** 목록이 비었을 때: 조회 범위 안이면 "할 일 없음", 밖이면 "앱에서 확인"(일정 위젯과 같은 규칙). */
   fun emptyState(payload: TodoPayload, date: String): EmptyState = if (payload.covers(date)) EmptyState.NO_TODOS else EmptyState.OUT_OF_RANGE
 
-  fun rows(heightDp: Int): Int = ((heightDp - 106 - 22) / 26).coerceIn(1, MAX_ROWS)
+  /**
+   * 보이는 행 수. 헤더 32 + 날짜 32 + 패딩 20 + 상태 24 = 108, 더보기 22, 행 32(15sp).
+   * 집계와 무관하고, 작은 위젯에서 글자가 겹치지 않게 행을 줄인다.
+   */
+  fun rows(heightDp: Int): Int = ((heightDp - 108 - 22) / 32).coerceIn(1, MAX_ROWS)
 
   fun date(context: Context, widgetId: Int, today: String): String =
     WidgetCacheManager.instanceValue(context, type, widgetId, "date", today)?.takeIf { WidgetDates.isYmd(it) } ?: today
