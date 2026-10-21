@@ -1,17 +1,18 @@
 package expo.modules.onefchomewidgets
 
 import android.content.Context
-import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 
-/** ONE FC 일정: 월간 달력 + 선택 날짜 일정. 인스턴스 상태 = 보던 달(month) + 선택 날짜(selected). */
+/** ONE FC 일정: 월 헤더 한 줄 + 달력. 인스턴스 상태 = 보던 달(month) + 추가 기본 날짜(selected). */
 object ScheduleWidgetRenderer : OneFcWidgetRenderer {
   override val type = OneFcWidgetType.SCHEDULE
   const val CHIP_SLOTS = 2
+  /** 월 헤더 36 + 요일 20 + 패딩 20 + 상태 줄 16. */
+  const val CHROME_DP = 92
 
-  /** 칸 높이(dp) 추정: 위젯 높이에서 머리·요일·목록 머리·상태줄을 빼고 달력(7/10)을 주 수로 나눈다. */
-  fun cellHeightDp(heightDp: Int, weeks: Int): Int = (((heightDp - 146).coerceAtLeast(0) * 7 / 10) / weeks.coerceAtLeast(1)) - 2
+  /** 칸 높이(dp). 달력이 위젯의 남은 높이를 채운다. */
+  fun cellHeightDp(heightDp: Int, weeks: Int): Int = ((heightDp - CHROME_DP).coerceAtLeast(0) / weeks.coerceAtLeast(1)) - 2
 
   /** 칸에 넣을 제목 줄 수(0 이면 숫자 배지). 날짜 20dp, 제목 줄 15dp, "+N" 13dp. */
   fun chipSlots(heightDp: Int, weeks: Int): Int = ((cellHeightDp(heightDp, weeks) - 20 - 13) / 15).coerceIn(0, CHIP_SLOTS)
@@ -66,12 +67,10 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     fun link(action: WidgetDeepLink.Action, params: Map<String, String?>) = WidgetDeepLink.build(scheme, type, action, params)
 
     views.setTextViewText(R.id.w_month, WidgetDates.monthTitle(state.month))
-    views.setContentDescription(R.id.w_month, "${WidgetDates.monthTitle(state.month)}, 앱에서 열기")
-    views.setOnClickPendingIntent(R.id.w_month, WidgetIntents.openApp(context, link(WidgetDeepLink.Action.OPEN, mapOf("date" to state.selected)), nonce))
+    views.setContentDescription(R.id.w_month, "${WidgetDates.monthTitle(state.month)}, 오늘로")
+    views.setOnClickPendingIntent(R.id.w_month, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
     views.setOnClickPendingIntent(R.id.w_prev, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_PREV, widgetId))
     views.setOnClickPendingIntent(R.id.w_next, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_NEXT, widgetId))
-    views.setOnClickPendingIntent(R.id.w_today, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
-    views.setViewVisibility(R.id.w_today, if (state.selected == today && state.month == WidgetDates.monthStart(today)) View.GONE else View.VISIBLE)
     WidgetCommonViews.bindRefresh(context, views, type, widgetId)
     views.setOnClickPendingIntent(R.id.w_add, WidgetIntents.openApp(context, link(WidgetDeepLink.Action.CREATE, mapOf("date" to state.selected)), nonce))
     views.setContentDescription(R.id.w_add, "${WidgetDates.dayTitle(state.selected)} 일정 추가")
@@ -82,7 +81,6 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     val sunday = context.getColor(R.color.onefc_widget_sunday)
     val saturday = context.getColor(R.color.onefc_widget_saturday)
     val onBrand = context.getColor(R.color.onefc_widget_on_brand)
-    val brand = context.getColor(R.color.onefc_widget_brand)
     val secondary = context.getColor(R.color.onefc_widget_text_secondary)
     val slots = chipSlots(heightDp, weeks.size)
     for (row in 0 until 6) {
@@ -92,23 +90,17 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
         val cell = weeks[row][col]
         val cellId = WidgetIds.CELLS[row][col]
         val dayId = WidgetIds.DAYS[row][col]
-        val selected = cell.ymd == state.selected
         val isToday = cell.ymd == today
         val total = payload.countOn(cell.ymd)
         val content = cell(total, payload.events[cell.ymd].orEmpty().filterNot { it.done }.map { it.title }, slots)
         views.setTextViewText(dayId, cell.day.toString())
         views.setTextColor(dayId, when {
-          selected -> onBrand
           !cell.inMonth -> muted
           col == 0 -> sunday
           col == 6 -> saturday
           else -> text
         })
-        views.setInt(cellId, "setBackgroundResource", when {
-          selected -> R.drawable.onefc_widget_selected
-          isToday -> R.drawable.onefc_widget_today
-          else -> 0
-        })
+        views.setInt(cellId, "setBackgroundResource", if (isToday) R.drawable.onefc_widget_today else 0)
         for (slot in 0 until CHIP_SLOTS) {
           val chipId = WidgetIds.CHIPS[slot][row][col]
           val title = content.titles.getOrNull(slot)
@@ -119,34 +111,22 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
         views.setViewVisibility(moreId, if (content.more > 0) View.VISIBLE else View.GONE)
         if (content.more > 0) {
           views.setTextViewText(moreId, "+${content.more}")
-          views.setTextColor(moreId, if (selected) onBrand else secondary)
+          views.setTextColor(moreId, secondary)
         }
         val countId = WidgetIds.COUNTS[row][col]
         // 배지 칸 높이를 항상 차지(INVISIBLE)해 숫자 유무로 흔들리지 않는다.
         views.setViewVisibility(countId, if (content.badge.isNotEmpty()) View.VISIBLE else if (slots == 0) View.INVISIBLE else View.GONE)
         views.setTextViewText(countId, content.badge)
-        views.setInt(countId, "setBackgroundResource", if (selected) R.drawable.onefc_widget_count_on_brand else R.drawable.onefc_widget_count)
-        views.setTextColor(countId, if (selected) brand else onBrand)
+        views.setInt(countId, "setBackgroundResource", R.drawable.onefc_widget_count)
+        views.setTextColor(countId, onBrand)
         val label = StringBuilder(WidgetDates.dayTitle(cell.ymd))
         if (isToday) label.append(", 오늘")
         if (total > 0) label.append(", 일정 ${total}건")
-        if (selected) label.append(", 선택됨")
         views.setContentDescription(cellId, label.toString())
-        views.setOnClickPendingIntent(cellId, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_SELECT, widgetId, cell.ymd))
+        views.setOnClickPendingIntent(cellId, WidgetIntents.openDay(context, cell.ymd))
       }
     }
 
-    val items = payload.events[state.selected].orEmpty()
-    val dayLink = link(WidgetDeepLink.Action.OPEN, mapOf("date" to state.selected))
-    val selectedTotal = payload.countOn(state.selected)
-    views.setTextViewText(R.id.w_sel_title, WidgetDates.dayTitle(state.selected))
-    views.setTextViewText(R.id.w_sel_count, if (selectedTotal > 0) "${selectedTotal}건" else "")
-    // 선택 날짜 전체 목록: 스크롤되는 collection. 항목 탭 = fill-in 으로 각 deep link.
-    views.setRemoteAdapter(R.id.w_list, ScheduleWidgetListService.intent(context, widgetId))
-    views.setPendingIntentTemplate(R.id.w_list, WidgetIntents.openTemplate(context, widgetId))
-    views.setEmptyView(R.id.w_list, R.id.w_empty)
-    views.setTextViewText(R.id.w_empty, if (payload.covers(state.selected)) context.getString(R.string.onefc_widget_empty_schedule) else "이 날짜는 앱에서 볼 수 있어요 ›")
-    views.setOnClickPendingIntent(R.id.w_empty, WidgetIntents.openApp(context, dayLink, nonce))
     views.setTextViewText(R.id.w_status, WidgetCommonViews.statusLine(envelope, refreshing, payload.googleNotice))
     return views
   }

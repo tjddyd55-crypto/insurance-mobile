@@ -26,13 +26,13 @@ const ALLOWED = new Set([
 const layouts = fs.readdirSync(LAYOUT_DIR).filter((f: string) => f.endsWith('.xml'));
 
 describe('home widget RemoteViews layouts', () => {
+  const remoteLayouts = ['onefc_widget_message.xml', 'onefc_widget_schedule.xml', 'onefc_widget_todo.xml'];
+
   it('has the expected widget layouts', () => {
-    expect(layouts).toEqual(
-      expect.arrayContaining(['onefc_widget_message.xml', 'onefc_widget_schedule.xml', 'onefc_widget_schedule_item.xml', 'onefc_widget_todo.xml']),
-    );
+    expect(layouts).toEqual(expect.arrayContaining(remoteLayouts));
   });
 
-  it.each(layouts.map((f: string) => [f]))('%s uses only RemoteViews-allowed classes', (file: string) => {
+  it.each(remoteLayouts.map((f: string) => [f]))('%s uses only RemoteViews-allowed classes', (file: string) => {
     const xml = fs.readFileSync(path.join(LAYOUT_DIR, file), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
     const tags = Array.from(xml.matchAll(/<([A-Za-z][\w.]*)[\s/>]/g)).map((m: RegExpMatchArray) => m[1]);
     const bad = tags.filter((t: string) => !ALLOWED.has(t));
@@ -48,14 +48,18 @@ describe('home widget RemoteViews layouts', () => {
       }
     }
   });
-  it('schedule widget: no legacy dots, every cell has day/chips/+N/count ids, list is a ListView collection', () => {
+  it('schedule widget is a full month grid without an in-widget list or app title', () => {
     const xml = fs.readFileSync(path.join(LAYOUT_DIR, 'onefc_widget_schedule.xml'), 'utf8');
     expect(xml).not.toContain('w_dot_');
+    expect(xml).not.toContain('w_title');
+    expect(xml).not.toContain('w_list');
+    expect(xml).not.toContain('ONE FC 일정');
+    expect(xml).toContain('@+id/w_month"');
+    expect(xml).toContain('@+id/w_refresh"');
+    expect(xml).toContain('@+id/w_add"');
     for (let r = 0; r < 6; r += 1) for (let c = 0; c < 7; c += 1) {
       for (const id of [`w_cell_${r}_${c}`, `w_day_${r}_${c}`, `w_chip_${r}_${c}_0`, `w_chip_${r}_${c}_1`, `w_cmore_${r}_${c}`, `w_cnt_${r}_${c}`]) expect(xml).toContain(`@+id/${id}"`);
     }
-    expect(xml).toMatch(/<ListView android:id="@\+id\/w_list"/);
-    // 글자 크기는 dimens(sp) 로만
     expect(xml).not.toMatch(/textSize="(\d+)sp"/);
   });
 
@@ -73,8 +77,14 @@ describe('home widget RemoteViews layouts', () => {
     expect(todo).toContain('ellipsize="end"');
   });
 
-  it('collection service is declared with BIND_REMOTEVIEWS', () => {
+  it('manifest keeps two providers, a day dialog, and no list service or extra permission', () => {
     const manifest = fs.readFileSync(path.join(__dirname, '..', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
-    expect(manifest).toMatch(/ScheduleWidgetListService"[\s\S]*?android:permission="android.permission.BIND_REMOTEVIEWS"/);
+    expect(manifest).toContain('ScheduleWidgetProvider');
+    expect(manifest).toContain('TodoWidgetProvider');
+    expect(manifest.match(/android.appwidget.action.APPWIDGET_UPDATE/g)).toHaveLength(2);
+    expect(manifest).toContain('ScheduleDayActivity');
+    expect(manifest).not.toContain('ScheduleWidgetListService');
+    expect(manifest).not.toContain('uses-permission');
+    expect(manifest).toContain('android:exported="false"');
   });
 });

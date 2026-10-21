@@ -83,6 +83,31 @@ class WidgetEngineTest {
     assertFalse(WidgetDeepLink.build("onefc", OneFcWidgetType.TODO, WidgetDeepLink.Action.OPEN)!!.contains("token"))
   }
 
+  @Test fun dayDialogUsesSnapshotLinksOnly() {
+    val payload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"events":[{"date":"2026-10-21","items":[
+      {"id":"e1","title":"미팅","time":"10:00","kind":"event","done":false,"link":"onefc://schedule?date=2026-10-21&event=e1&src=widget&wt=schedule"},
+      {"id":"t1","title":"서류","time":"","kind":"onefc_todo","done":true,"link":"onefc://todos/3/edit?src=widget&wt=todo"}]}]}"""
+    val signedIn = WidgetEnvelope.parse(envelope(payload = payload), OneFcWidgetType.SCHEDULE)
+    val day = ScheduleDayModel.content(signedIn, null, "2026-10-21")
+    assertEquals(ScheduleDayModel.Mode.LIST, day.mode)
+    assertEquals(2, day.rows.size)
+    assertEquals("10:00", day.rows[0].time)
+    assertTrue(day.rows[1].title.startsWith("✓"))
+    assertTrue(day.addLink!!.contains("create=1"))
+    assertTrue(day.addLink!!.contains("date=2026-10-21"))
+    assertTrue(day.addLink!!.contains("src=widget"))
+    assertFalse(day.addLink!!.contains("token"))
+    assertFalse(day.rows[0].link.contains("token"))
+    assertEquals(ScheduleDayModel.Mode.EMPTY, ScheduleDayModel.content(signedIn, null, "2026-10-22").mode)
+    assertEquals(ScheduleDayModel.Mode.OUT_OF_RANGE, ScheduleDayModel.content(signedIn, null, "2027-02-01").mode)
+    val loggedOut = ScheduleDayModel.content(null, "logged_out", "2026-10-21")
+    assertEquals(ScheduleDayModel.Mode.LOGIN, loggedOut.mode)
+    assertTrue(loggedOut.rows.isEmpty())
+    assertEquals(null, loggedOut.addLink)
+    val expired = WidgetEnvelope.parse(envelope(payload = payload, extra = "").replace("signed_in", "expired"), OneFcWidgetType.SCHEDULE)
+    assertEquals(ScheduleDayModel.Mode.LOGIN, ScheduleDayModel.content(expired, null, "2026-10-21").mode)
+  }
+
   @Test fun scheduleNavigationMatchesApp() {
     val today = "2026-10-21"
     val s = ScheduleWidgetRenderer.State("2026-10-01", today)

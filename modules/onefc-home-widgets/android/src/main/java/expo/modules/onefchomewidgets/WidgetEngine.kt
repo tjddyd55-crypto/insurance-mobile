@@ -40,8 +40,6 @@ object WidgetEngine {
     }
     try {
       if (views != null) manager.updateAppWidget(widgetId, views)
-      // 선택 날짜 목록(collection)도 같은 캐시로 다시 읽게 한다.
-      if (type == OneFcWidgetType.SCHEDULE) manager.notifyAppWidgetViewDataChanged(widgetId, R.id.w_list)
     } catch (error: Throwable) {
     }
   }

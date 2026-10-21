@@ -104,10 +104,10 @@ WorkManager unique 이름 `onefc-widget-engine-periodic` (`ExistingPeriodicWorkP
 
 ### ONE FC 일정
 
-- 월 달력(일요일 시작), 이전/다음 달, 오늘, 날짜 선택.
-- 칸: 날짜 숫자, 제목 칩(최대 2)과 `+N`, 그 아래 개수 배지. 배지는 `w_day_*` 와 같은 세로 LinearLayout 의 다음 TextView(`layout_marginTop` 1dp)라 날짜 숫자를 덮지 않는다. 앱 일정 화면도 날짜 숫자 아래 별도 TextView(`marginTop: 1`).
-- 선택 날짜 목록(RemoteViews ListView). 범위 밖은 앱에서 보도록 안내.
-- 추가 버튼 → `schedule?date&create=1&src=widget`. 항목·월 제목 → `schedule?date&event&src=widget`.
+- 월 헤더 한 줄(`2026년 10월`)에 이전/다음 달, 새로고침, 추가. 앱 이름은 위젯 선택 목록 라벨에만 있다. 월 제목을 누르면 오늘이 있는 달로 돌아간다.
+- 달력이 위젯 높이를 채운다. 칸이 크면 날짜 숫자와 제목(최대 2줄)과 `+N`. 칸이 낮으면 개수 배지만(`9+`). 배지는 `w_day_*` 아래 별도 TextView.
+- 날짜 칸은 `ScheduleDayActivity`(다이얼로그 테마)로 그 날 스냅샷 목록을 연다. 항목은 상세 deep link, `+` 는 `schedule?date&create=1&src=widget`. 닫기·백은 다이얼로그를 끝내 홈으로 돌아간다. 앱 안 저장·취소·뒤로가기는 기존 `moveTaskToBack`.
+- 헤더 추가도 같은 create deep link(보고 있는 달의 오늘 또는 그 달 1일).
 - 수동 새로고침(30초 간격). 상태 줄(마지막 업데이트 / 새로고침 중 / 오프라인).
 - 로그인 필요·세션 만료 화면은 공통 `WidgetCopy`.
 

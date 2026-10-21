@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:minHeight="40dp"
+  android:orientation="horizontal"
+  android:gravity="center_vertical"
+  android:paddingTop="6dp"
+  android:paddingBottom="6dp">
+  <TextView android:id="@+id/day_row_time" android:layout_width="84dp" android:layout_height="wrap_content" android:textSize="@dimen/onefc_widget_small_text" android:textColor="@color/onefc_widget_brand" android:maxLines="1" android:ellipsize="end" />
+  <TextView android:id="@+id/day_row_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" android:maxLines="1" android:ellipsize="end" />
+</LinearLayout>
