@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.onefchomewidgets'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.onefchomewidgets"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+  testOptions {
+    unitTests.returnDefaultValues = true
+  }
+}
+
+dependencies {
+  implementation 'com.facebook.react:react-android'
+  // 이미 앱 의존성 그래프에 있는 버전(2.9.1)을 그대로 쓴다. 주기 갱신(15분 이상)·부팅 후 재예약.
+  implementation 'androidx.work:work-runtime:2.9.1'
+  testImplementation 'junit:junit:4.13.2'
+  testImplementation 'org.json:json:20240303'
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="onefc_widget_schedule_name">ONE FC 일정</string>
+  <string name="onefc_widget_todo_name">ONE FC 할 일</string>
+  <string name="onefc_widget_schedule_description">이번 달 달력과 날짜별 일정</string>
+  <string name="onefc_widget_todo_description">오늘·내일·모레 할 일</string>
+  <string name="onefc_widget_login_required">로그인이 필요합니다</string>
+  <string name="onefc_widget_login_hint">ONE FC에 로그인해 주세요</string>
+  <string name="onefc_widget_open_app_hint">앱을 열어 위젯을 준비해 주세요</string>
+  <string name="onefc_widget_refresh">새로고침</string>
+  <string name="onefc_widget_add_schedule">일정 추가</string>
+  <string name="onefc_widget_add_todo">할 일 추가</string>
+  <string name="onefc_widget_prev_month">이전 달</string>
+  <string name="onefc_widget_next_month">다음 달</string>
+  <string name="onefc_widget_prev_day">이전 날짜</string>
+  <string name="onefc_widget_next_day">다음 날짜</string>
+  <string name="onefc_widget_today">오늘</string>
+  <string name="onefc_widget_to_today">오늘로</string>
+  <string name="onefc_widget_empty_todo">등록된 할 일이 없습니다</string>
+  <string name="onefc_widget_empty_todo_add">+ 할 일 추가</string>
+  <string name="onefc_widget_empty_schedule">이 날 일정이 없습니다</string>
+</resources>

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '../../api/client';
@@ -66,6 +66,7 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { scheduleQueryKeys } from './queryKeys';
+import { scheduleLinkTarget } from './scheduleLinkParams';
 import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
 import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleStorage, ScheduleTask, ScheduleTaskForm } from './types';
 
@@ -109,6 +110,18 @@ export function ScheduleScreen() {
   const [taskState, setTaskState] = useState<TaskFormState | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
   const range = monthRange(month);
+  // 홈 화면 위젯 deep link(<scheme>://schedule?date&event&create). 같은 날짜를 다시 눌러도 _w 로 다시 적용된다.
+  const linkParams = useLocalSearchParams<{ date?: string; event?: string; create?: string; _w?: string }>();
+  const linkTarget = scheduleLinkTarget(linkParams);
+  const [pendingLinkItem, setPendingLinkItem] = useState<string | null>(null);
+  useEffect(() => {
+    if (!linkTarget.date) return;
+    setMonth(`${linkTarget.date.slice(0, 7)}-01`);
+    setSelected(linkTarget.date);
+    setDetail(null);
+    setPendingLinkItem(linkTarget.itemId);
+    if (linkTarget.create) setChoosing(true);
+  }, [linkTarget.date, linkTarget.itemId, linkTarget.create, linkTarget.nonce]);
 
   const query = useQuery({
     queryKey: scheduleQueryKeys.range(range.from, range.to),
@@ -116,6 +129,12 @@ export function ScheduleScreen() {
     enabled: Boolean(token),
   });
   const data = query.data;
+  useEffect(() => {
+    if (!pendingLinkItem || !data) return;
+    const item = [...data.events, ...data.tasks].find((entry) => entry.id === pendingLinkItem);
+    if (item) setDetail(item);
+    setPendingLinkItem(null);
+  }, [pendingLinkItem, data]);
   const writeReady = data ? canCreateGoogleEvent(data.google) : false;
   const tasksWriteReady = data ? storageAvailability(data.google, 'google_task').available : false;
   const targets = useQuery({

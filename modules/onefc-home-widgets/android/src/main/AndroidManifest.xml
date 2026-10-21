@@ -1,0 +1,37 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <receiver
+      android:name="expo.modules.onefchomewidgets.ScheduleWidgetProvider"
+      android:exported="true"
+      android:label="@string/onefc_widget_schedule_name">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/onefc_widget_schedule_info" />
+    </receiver>
+    <receiver
+      android:name="expo.modules.onefchomewidgets.TodoWidgetProvider"
+      android:exported="true"
+      android:label="@string/onefc_widget_todo_name">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/onefc_widget_todo_info" />
+    </receiver>
+    <!-- 부팅·앱 업데이트·시간대 변경·자정: 위젯 상태 초기화 정책 적용 + 다시 그리기 + 갱신 예약 -->
+    <receiver
+      android:name="expo.modules.onefchomewidgets.WidgetSystemReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.TIME_SET" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

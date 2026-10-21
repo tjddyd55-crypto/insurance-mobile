@@ -48,13 +48,13 @@ import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
 type TodoFormProps =
-  | { mode: 'create'; todoId?: never; consultationId?: string }
+  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string }
   | { mode: 'edit'; todoId: string };
 
 export function TodoFormScreen(props: TodoFormProps) {
   if (props.mode === 'create') {
-    const sessionKey = props.consultationId?.trim() || 'manual';
-    return <TodoFormEditor key={sessionKey} mode="create" consultationId={props.consultationId} />;
+    const sessionKey = props.consultationId?.trim() || `manual:${props.dueDate ?? ''}`;
+    return <TodoFormEditor key={sessionKey} mode="create" consultationId={props.consultationId} dueDate={props.dueDate} />;
   }
   const screenId = todoEditScreenId(props.todoId);
   if (!screenId) {
@@ -64,7 +64,7 @@ export function TodoFormScreen(props: TodoFormProps) {
   return <TodoFormEditor key={screenId} mode="edit" todoId={screenId} />;
 }
 
-function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { consultationId?: string }) {
+function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps & { consultationId?: string; dueDate?: string }) {
   const { token } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -82,7 +82,7 @@ function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { cons
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
-  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId) : null;
+  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId, dueDate) : null;
   const [boundTodoId, setBoundTodoId] = useState<string | null>(activeTodoId);
   const [form, setForm] = useState<TodoFormDraft>(() => createSeed?.draft ?? cloneTodoFormDraft());
   const [initialSnapshot, setInitialSnapshot] = useState(() =>
