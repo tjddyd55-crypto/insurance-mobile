@@ -1,4 +1,4 @@
-import { singleParam, validWidgetDate } from '../home-widgets/widgetLinks';
+import { singleParam, validWidgetDate } from '../home-widgets/engine/widgetDeepLink';
 
 export type ScheduleLinkTarget = { date: string | undefined; itemId: string | null; create: boolean; nonce: string };
 

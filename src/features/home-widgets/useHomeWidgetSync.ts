@@ -3,65 +3,71 @@ import { AppState, Platform } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
-import { scheduleQueryKeys } from '../schedule/queryKeys';
-import { todoQueryKeys } from '../todos/queryKeys';
-import { purgeHomeWidgets, syncHomeWidgets, type WidgetSyncReason } from './widgetSync';
+import { purgeWidgets, refreshWidgets, type WidgetSession } from './engine/widgetRefreshCoordinator';
+import { widgetTypesWatching } from './engine/widgetRegistry';
+import type { WidgetRefreshReason, WidgetType } from './engine/widgetTypes';
 
 /** 쓰기 직후 연속 이벤트를 한 번으로 묶는다. */
 export const WIDGET_CHANGE_DEBOUNCE_MS = 1_500;
 
-function touchesWidgetData(queryKey: readonly unknown[] | undefined): boolean {
-  const head = queryKey?.[0];
-  return head === scheduleQueryKeys.all[0] || head === todoQueryKeys.all[0];
-}
-
 /**
- * 로그인·앱 복귀·일정/할 일 변경 후 위젯을 갱신하고, 로그아웃이면 지운다.
- * AuthProvider 안에서 한 번만 마운트한다.
+ * 앱 쪽 트리거: 로그인/계정 변경, 앱 복귀, 앱 쓰기(뮤테이션), 일정 새로고침·Google 재연결(setQueryData).
+ * 로그아웃이면 Registry 기반 전체 purge. AuthProvider 안에서 한 번만 마운트.
  */
 export function useHomeWidgetSync(): void {
   const { status, token, user } = useAuth();
   const queryClient = useQueryClient();
-  const sessionRef = useRef<{ token: string; user: { id: string; gaId: number } } | null>(null);
+  const sessionRef = useRef<WidgetSession | null>(null);
+  const pending = useRef<{ reason: WidgetRefreshReason; types: Set<WidgetType> | null } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountKey = user ? `${user.id}|${user.gaId}` : '';
+  const previousAccount = useRef<string>('');
 
   useEffect(() => {
     sessionRef.current = status === 'authenticated' && token && user ? { token, user } : null;
   }, [status, token, user]);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    if (status === 'booting') return;
+    if (Platform.OS !== 'android' || status === 'booting') return;
     if (status === 'anonymous' || !token || !user) {
-      void purgeHomeWidgets('logged_out');
+      previousAccount.current = '';
+      void purgeWidgets('logged_out');
       return;
     }
-    void syncHomeWidgets({ token, user }, 'login');
-    // 계정·로그인 상태가 바뀔 때만(토큰 객체 재생성마다 아님).
+    const reason: WidgetRefreshReason = previousAccount.current && previousAccount.current !== accountKey ? 'accountChanged' : 'login';
+    previousAccount.current = accountKey;
+    void refreshWidgets({ token, user }, { reason });
+    // 로그인 상태·계정이 바뀔 때만.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, accountKey]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const schedule = (reason: WidgetSyncReason) => {
+    const schedule = (reason: WidgetRefreshReason, types: WidgetType[] | null) => {
       if (!sessionRef.current) return;
+      const current = pending.current;
+      // 같은 묶음 안에서는 더 강한 사유(appMutation)를 유지하고 대상 위젯을 합친다.
+      const merged = current?.types && types ? new Set([...current.types, ...types]) : null;
+      pending.current = { reason: current?.reason === 'appMutation' ? 'appMutation' : reason, types: current ? merged : types ? new Set(types) : null };
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
+        const next = pending.current;
+        pending.current = null;
         timer.current = null;
-        void syncHomeWidgets(sessionRef.current, reason, { force: reason === 'app_change' });
+        if (next) void refreshWidgets(sessionRef.current, { reason: next.reason, widgetTypes: next.types ? [...next.types] : undefined });
       }, WIDGET_CHANGE_DEBOUNCE_MS);
     };
-    const appState = AppState.addEventListener('change', (next) => {
-      if (next === 'active') schedule('foreground');
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') schedule('appForeground', null);
     });
-    // 일정/할 일 생성·수정·삭제·완료(뮤테이션 성공) → 즉시 반영.
     const mutations = queryClient.getMutationCache().subscribe((event) => {
-      if (event.type === 'updated' && event.action.type === 'success') schedule('app_change');
+      if (event.type === 'updated' && event.action.type === 'success') schedule('appMutation', null);
     });
-    // 일정 새로고침·Google 연결 후 다시 읽기(setQueryData 포함)·할 일 목록 갱신 → 최소 간격 안에서 반영.
+    // setQueryData(manual) = 일정 새로고침·Google 재연결 후 다시 읽기. 일반 조회 성공은 루프 방지를 위해 무시.
     const queries = queryClient.getQueryCache().subscribe((event) => {
-      if (event.type === 'updated' && event.action.type === 'success' && touchesWidgetData(event.query.queryKey)) schedule('foreground');
+      if (event.type !== 'updated' || event.action.type !== 'success' || !event.action.manual) return;
+      const types = widgetTypesWatching(event.query.queryKey[0]);
+      if (types.length) schedule('googleReconnect', types);
     });
     return () => {
       appState.remove();

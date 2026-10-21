@@ -2,17 +2,10 @@ import { normalizeScheduleEvents } from '../../schedule/scheduleModel';
 import { scheduleLinkTarget } from '../../schedule/scheduleLinkParams';
 import { normalizeTodo } from '../../todos/todoModel';
 import { seedTodoCreateForm } from '../../todos/consultationTodoCreate';
-import { WIDGET_SNAPSHOT_VERSION } from '../widgetContract';
-import {
-  consumePendingWidgetHref,
-  stashPendingWidgetHref,
-  validWidgetDate,
-  widgetReturnHref,
-  widgetScheduleLink,
-  widgetTodoEditLink,
-  widgetTodoNewLink,
-} from '../widgetLinks';
-import { buildScheduleDays, buildTodoDays, buildWidgetSnapshot, widgetAccountKey, widgetGoogleNotice, widgetWindow } from '../widgetSnapshot';
+import { buildScheduleDays, widgetGoogleNotice } from '../adapters/scheduleWidgetAdapter';
+import { buildTodoDays } from '../adapters/todoWidgetAdapter';
+import { widgetWindow } from '../adapters/widgetWindow';
+import { buildWidgetDeepLink, consumePendingWidgetHref, stashPendingWidgetHref, validWidgetDate, widgetReturnHref } from '../engine/widgetDeepLink';
 
 const google = { connected: true, status: 'connected', connectAllowed: true, configured: true, write: { enabled: true, calendarWritable: true, tasksWritable: true, needsWriteConsent: false }, tasks: { status: 'connected', needsReconsent: false } };
 
@@ -42,7 +35,7 @@ function todo(id: string, dueDate: string | null, extra: Record<string, unknown>
   return normalizeTodo({ id, title: `할 일 ${id}`, description: `상세 ${id} 010-1234-5678`, dueDate, status: 'pending', createdAt: `2026-10-0${id}T00:00:00Z`, ...extra });
 }
 
-describe('home widget snapshot', () => {
+describe('widget adapters', () => {
   it('uses one window: previous month ~ +2 months', () => {
     expect(widgetWindow('2026-10-21')).toEqual({ from: '2026-09-01', to: '2026-12-31' });
     expect(widgetWindow('2026-01-05')).toEqual({ from: '2025-12-01', to: '2026-03-31' });
@@ -72,8 +65,8 @@ describe('home widget snapshot', () => {
 
   it('links: ONE FC todo → todo edit, event → schedule date + event', () => {
     const oct21 = buildScheduleDays(schedule(), 'onefc', '2026-09-01', '2026-12-31').find((day) => day.date === '2026-10-21')!;
-    expect(oct21.items.find((item) => item.title === '서류 확인')!.link).toBe('onefc://todos/7/edit?src=widget');
-    expect(oct21.items.find((item) => item.title === '김철수 상담')!.link).toBe('onefc://schedule?date=2026-10-21&src=widget&event=g%3Aearly');
+    expect(oct21.items.find((item) => item.title === '서류 확인')!.link).toBe('onefc://todos/7/edit?src=widget&wt=todo');
+    expect(oct21.items.find((item) => item.title === '김철수 상담')!.link).toBe('onefc://schedule?date=2026-10-21&event=g%3Aearly&src=widget&wt=schedule');
   });
 
   it('todo days: dated only, canceled excluded, app todo sort (recent write first)', () => {
@@ -87,27 +80,6 @@ describe('home widget snapshot', () => {
     expect(days[0]!.items.map((item) => [item.id, item.completed])).toEqual([['2', true], ['1', false]]);
   });
 
-  it('account-scoped versioned snapshot; failed part keeps previous only for the same account', () => {
-    const now = new Date('2026-10-21T03:00:00Z');
-    const first = buildWidgetSnapshot({ user: { id: 'u1', gaId: 2 }, scheme: 'onefc', now, schedule: schedule(), todos: [todo('1', '2026-10-21')] });
-    expect(first.version).toBe(WIDGET_SNAPSHOT_VERSION);
-    expect(first.accountKey).toBe(widgetAccountKey({ id: 'u1', gaId: 2 }));
-    expect(first.timeZone).toBe('Asia/Seoul');
-    expect(JSON.stringify(first)).not.toMatch(/token/i);
-    const kept = buildWidgetSnapshot({ user: { id: 'u1', gaId: 2 }, scheme: 'onefc', now, schedule: null, todos: [], previous: first });
-    expect(kept.schedule.days).toEqual(first.schedule.days);
-    expect(kept.schedule.ok).toBe(false);
-    const other = buildWidgetSnapshot({ user: { id: 'u2', gaId: 2 }, scheme: 'onefc', now, schedule: null, todos: [], previous: first });
-    expect(other.schedule.days).toEqual([]);
-    expect(other.accountKey).not.toBe(first.accountKey);
-  });
-
-  it('timezone boundary: snapshot window uses KST today', () => {
-    const snap = buildWidgetSnapshot({ user: { id: 'u1', gaId: 1 }, scheme: 'onefc', now: new Date('2026-11-30T15:30:00Z'), schedule: null, todos: null });
-    expect(snap.schedule.from).toBe('2026-11-01'); // KST 12/01 → 이전 달 11/01
-    expect(snap.schedule.to).toBe('2027-02-28');
-  });
-
   it('google notice only when sync is broken (not for never-connected users)', () => {
     expect(widgetGoogleNotice(google)).toBeNull();
     expect(widgetGoogleNotice({ ...google, status: 'needs_reauth' })).toBe('Google 일정 동기화 필요');
@@ -117,11 +89,18 @@ describe('home widget snapshot', () => {
 });
 
 describe('home widget deep links', () => {
-  it('builds the route contract on the given scheme', () => {
-    expect(widgetScheduleLink('onefc', '2026-10-21', { create: true })).toBe('onefc://schedule?date=2026-10-21&src=widget&create=1');
-    expect(widgetTodoNewLink('onefc', '2026-10-21')).toBe('onefc://todos/new?dueDate=2026-10-21&src=widget');
-    expect(widgetTodoEditLink('onefc-dev', '12')).toBe('onefc-dev://todos/12/edit?src=widget');
-    expect(() => widgetScheduleLink('ONE FC', '2026-10-21')).toThrow();
+  it('builds the route contract on the given scheme via one builder', () => {
+    expect(buildWidgetDeepLink('onefc', 'schedule', 'create', { date: '2026-10-21' })).toBe('onefc://schedule?date=2026-10-21&create=1&src=widget&wt=schedule');
+    expect(buildWidgetDeepLink('onefc', 'todo', 'create', { date: '2026-10-21' })).toBe('onefc://todos/new?dueDate=2026-10-21&src=widget&wt=todo');
+    expect(buildWidgetDeepLink('onefc-dev', 'todo', 'edit', { id: '12' })).toBe('onefc-dev://todos/12/edit?src=widget&wt=todo');
+    expect(buildWidgetDeepLink('onefc', 'schedule', 'open', { date: 'bad' })).toBe('onefc://schedule?src=widget&wt=schedule');
+    expect(buildWidgetDeepLink('onefc', 'claims', 'open')).toBeNull();
+    expect(buildWidgetDeepLink('onefc', 'todo', 'edit', {})).toBeNull();
+    expect(() => buildWidgetDeepLink('ONE FC', 'schedule', 'open')).toThrow();
+  });
+
+  it('timezone boundary: adapter window uses the KST day', () => {
+    expect(widgetWindow('2026-12-01')).toEqual({ from: '2026-11-01', to: '2027-02-28' });
   });
 
   it('validates dates and schedule params', () => {

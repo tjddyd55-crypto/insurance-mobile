@@ -1,19 +1,22 @@
 import { Platform } from 'react-native';
 
-import type { WidgetClearReason, WidgetSnapshot } from './widgetContract';
-import { WIDGET_SNAPSHOT_VERSION } from './widgetContract';
+import type { WidgetSnapshotEnvelope } from './engine/widgetEnvelope';
+import { parseWidgetEnvelope } from './engine/widgetEnvelope';
+import type { WidgetClearReason, WidgetType } from './engine/widgetTypes';
+import { isWidgetType } from './engine/widgetTypes';
 
+/** native OnefcHomeWidgets 모듈. 봉투(JSON)만 주고받고 토큰은 받지 않는다. */
 type OnefcHomeWidgetsNative = {
   configure(scheme: string): Promise<void>;
-  writeSnapshot(json: string): Promise<boolean>;
-  readSnapshot(): Promise<string | null>;
-  clearSnapshot(reason: string): Promise<void>;
-  installedWidgetCount(): Promise<number>;
+  writeEnvelope(widgetType: string, json: string): Promise<boolean>;
+  readEnvelope(widgetType: string): Promise<string | null>;
+  clearAll(reason: string): Promise<void>;
+  installedWidgetTypes(): Promise<string[]>;
 };
 
 let cached: OnefcHomeWidgetsNative | null | undefined;
 
-/** 위젯 모듈이 없는 바이너리(1.0.4 이하)·iOS·web 에서는 null. 호출부는 예외 없이 아무 일도 하지 않는다. */
+/** 위젯 모듈이 없는 바이너리(1.0.4 이하)·iOS·web → null. 호출부는 예외 없이 no-op. */
 export function loadWidgetNative(platform: string = Platform.OS): OnefcHomeWidgetsNative | null {
   if (platform !== 'android') return null;
   if (cached !== undefined) return cached;
@@ -27,60 +30,27 @@ export function loadWidgetNative(platform: string = Platform.OS): OnefcHomeWidge
   return cached;
 }
 
-/** 테스트용. */
 export function setWidgetNativeForTests(native: OnefcHomeWidgetsNative | null | undefined): void {
   cached = native;
 }
 
-export async function configureWidgets(scheme: string): Promise<void> {
+async function safe<T>(fallback: T, run: (native: OnefcHomeWidgetsNative) => Promise<T>): Promise<T> {
   const native = loadWidgetNative();
-  if (!native) return;
+  if (!native) return fallback;
   try {
-    await native.configure(scheme);
+    return await run(native);
   } catch {
-    // 위젯 실패가 앱 동작을 막지 않는다.
+    return fallback;
   }
 }
 
-export async function writeWidgetSnapshot(snapshot: WidgetSnapshot): Promise<boolean> {
-  const native = loadWidgetNative();
-  if (!native) return false;
-  try {
-    return Boolean(await native.writeSnapshot(JSON.stringify(snapshot)));
-  } catch {
-    return false;
-  }
-}
-
-export async function readWidgetSnapshot(): Promise<WidgetSnapshot | null> {
-  const native = loadWidgetNative();
-  if (!native) return null;
-  try {
-    const raw = await native.readSnapshot();
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as WidgetSnapshot;
-    return parsed?.version === WIDGET_SNAPSHOT_VERSION ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function clearWidgetSnapshot(reason: WidgetClearReason): Promise<void> {
-  const native = loadWidgetNative();
-  if (!native) return;
-  try {
-    await native.clearSnapshot(reason);
-  } catch {
-    // ignore
-  }
-}
-
-export async function installedWidgetCount(): Promise<number> {
-  const native = loadWidgetNative();
-  if (!native) return 0;
-  try {
-    return Number(await native.installedWidgetCount()) || 0;
-  } catch {
-    return 0;
-  }
-}
+export const widgetBridge = {
+  configure: (scheme: string) => safe(undefined, (native) => native.configure(scheme)),
+  writeEnvelope: (envelope: WidgetSnapshotEnvelope) =>
+    safe(false, async (native) => Boolean(await native.writeEnvelope(envelope.widgetType, JSON.stringify(envelope)))),
+  /** 깨진 값·다른 버전은 null(native 도 같은 규칙으로 지운다). */
+  readEnvelope: (type: WidgetType) => safe(null, async (native) => parseWidgetEnvelope(await native.readEnvelope(type), type)),
+  clearAll: (reason: WidgetClearReason) => safe(undefined, (native) => native.clearAll(reason)),
+  installedWidgetTypes: () =>
+    safe<WidgetType[]>([], async (native) => (await native.installedWidgetTypes()).filter(isWidgetType)),
+};

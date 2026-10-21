@@ -14,7 +14,7 @@ import { getEnvironmentConfig } from '../src/config/environment';
 import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { AppUpdateHost } from '../src/features/app-update';
 import { HomeWidgetSyncLifecycle } from '../src/features/home-widgets/useHomeWidgetSync';
-import { consumePendingWidgetHref, stashPendingWidgetHref, widgetReturnHref } from '../src/features/home-widgets/widgetLinks';
+import { consumePendingWidgetHref, stashPendingWidgetHref, widgetReturnHref } from '../src/features/home-widgets/engine/widgetDeepLink';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
 
 void SplashScreen.preventAutoHideAsync();

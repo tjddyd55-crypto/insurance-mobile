@@ -4,28 +4,24 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-/**
- * 부팅·앱 업데이트: 위젯별 상태(보던 달·날짜)를 초기화하고 오늘 기준으로 다시 그린 뒤 갱신을 예약한다.
- * 시간대·시각 변경·자정: 다시 그리기(오늘 표시 이동).
- */
+/** 부팅·앱 업데이트: 인스턴스 상태 초기화 + 다시 그리기 + 갱신. 시간대·시각 변경·자정: 다시 그리기. */
 class WidgetSystemReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     try {
       when (intent.action) {
         Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
-          WidgetStore.resetAllWidgetStates(context)
-          WidgetRenderer.renderAll(context)
+          WidgetCacheManager.resetAllInstances(context)
+          WidgetEngine.renderAll(context)
           WidgetScheduler.ensurePeriodic(context)
-          WidgetScheduler.refreshNow(context, if (intent.action == Intent.ACTION_BOOT_COMPLETED) "boot" else "app_update")
+          WidgetScheduler.refreshNow(context, emptyList(), if (intent.action == Intent.ACTION_BOOT_COMPLETED) "boot" else "appUpdate", force = true)
         }
-        Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_TIME_CHANGED -> WidgetRenderer.renderAll(context)
+        Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_TIME_CHANGED -> WidgetEngine.renderAll(context)
         WidgetScheduler.ACTION_MIDNIGHT -> {
-          WidgetRenderer.renderAll(context)
-          WidgetScheduler.refreshNow(context, "midnight")
+          WidgetEngine.renderAll(context)
+          WidgetScheduler.refreshNow(context, emptyList(), "midnight", force = true)
         }
       }
     } catch (error: Throwable) {
-      // 무시
     }
   }
 }

@@ -50,11 +50,11 @@ class WidgetDatesTest {
   }
 
   @Test fun rowsBySize() {
-    assertEquals(1, WidgetRenderer.scheduleRows(250, 6))
-    assertEquals(3, WidgetRenderer.scheduleRows(380, 5))
-    assertTrue(WidgetRenderer.scheduleRows(480, 5) >= 5)
-    assertEquals(8, WidgetRenderer.scheduleRows(900, 6))
-    assertEquals(2, WidgetRenderer.todoRows(180))
-    assertTrue(WidgetRenderer.todoRows(300) >= 6)
+    assertEquals(1, ScheduleWidgetRenderer.rows(250, 6))
+    assertEquals(3, ScheduleWidgetRenderer.rows(380, 5))
+    assertTrue(ScheduleWidgetRenderer.rows(480, 5) >= 5)
+    assertEquals(8, ScheduleWidgetRenderer.rows(900, 6))
+    assertEquals(2, TodoWidgetRenderer.rows(180))
+    assertTrue(TodoWidgetRenderer.rows(300) >= 6)
   }
 }
