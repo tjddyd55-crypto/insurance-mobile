@@ -103,6 +103,9 @@ data class SchedulePayload(
 data class TodoPayload(val visibleFrom: String, val visibleTo: String, val todos: Map<String, List<Item>>) {
   data class Item(val id: String, val title: String, val completed: Boolean, val link: String)
 
+  /** 캐시가 이 날짜를 조회했는지. 범위 밖이면 "할 일 없음"이 아니라 "앱에서 확인". */
+  fun covers(ymd: String): Boolean = WidgetDates.isYmd(visibleFrom) && WidgetDates.isYmd(visibleTo) && ymd >= visibleFrom && ymd <= visibleTo
+
   companion object {
     fun parse(envelope: WidgetEnvelope): TodoPayload? {
       val payload = envelope.payload ?: return null

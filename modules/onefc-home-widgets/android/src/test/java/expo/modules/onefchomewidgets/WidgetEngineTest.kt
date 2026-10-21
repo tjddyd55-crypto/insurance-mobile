@@ -80,4 +80,14 @@ class WidgetEngineTest {
     assertEquals("2026-10-20", TodoWidgetRenderer.next(today, WidgetIntents.ACTION_PREV, today))
     assertTrue(TodoWidgetRenderer.next(today, "unknown", today) == null)
   }
+
+  @Test fun todoOutOfRangeIsNotEmpty() {
+    val payload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"selectedDate":"2026-10-21","todos":[]}"""
+    val todo = TodoPayload.parse(WidgetEnvelope.parse(envelope(type = "todo", payload = payload))!!)!!
+    assertEquals(TodoWidgetRenderer.EmptyState.NO_TODOS, TodoWidgetRenderer.emptyState(todo, "2026-10-22"))
+    assertEquals(TodoWidgetRenderer.EmptyState.OUT_OF_RANGE, TodoWidgetRenderer.emptyState(todo, "2027-01-01"))
+    assertEquals(TodoWidgetRenderer.EmptyState.OUT_OF_RANGE, TodoWidgetRenderer.emptyState(todo, "2026-08-31"))
+    val noRange = TodoPayload.parse(WidgetEnvelope.parse(envelope(type = "todo", payload = "{}"))!!)!!
+    assertEquals(TodoWidgetRenderer.EmptyState.OUT_OF_RANGE, TodoWidgetRenderer.emptyState(noRange, "2026-10-21"))
+  }
 }

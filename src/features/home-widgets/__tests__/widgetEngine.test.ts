@@ -1,5 +1,6 @@
 import { ApiError } from '../../../api/client';
 import { setWidgetNativeForTests } from '../widgetBridge';
+import { widgetChangeForQueryAction, widgetTypesForMutationKey } from '../useHomeWidgetSync';
 import { runWidgetHeadlessRefresh, WIDGET_HEADLESS_TASK } from '../widgetHeadlessTask';
 import { parseWidgetEnvelope, WIDGET_ENGINE_SCHEMA_VERSION, widgetAccountKey } from '../engine/widgetEnvelope';
 import { enabledWidgetTypes, WIDGET_REGISTRY, widgetDefinition, widgetTypesWatching } from '../engine/widgetRegistry';
@@ -10,6 +11,7 @@ jest.mock('react-native', () => ({ Platform: { OS: 'android' }, AppRegistry: { r
 jest.mock('../../../config/environment', () => ({ getEnvironmentConfig: () => ({ scheme: 'onefc' }) }));
 jest.mock('../../schedule/scheduleApi', () => ({ fetchScheduleEvents: jest.fn() }));
 jest.mock('../../todos/todosApi', () => ({ listTodos: jest.fn() }));
+jest.mock('../../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('../../../auth/secureStorage', () => ({ readAuthSession: jest.fn() }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -140,6 +142,17 @@ describe('refresh coordinator', () => {
     expect(native.writeEnvelope).not.toHaveBeenCalled();
   });
 
+  it('403 is a per-widget failure, not a session purge (other widget keeps its data)', async () => {
+    const { native, get } = nativeMock();
+    await refreshWidgets(session, { reason: 'login', now });
+    listTodos.mockRejectedValueOnce(new ApiError('forbidden', 403));
+    const result = await refreshWidgets(session, { reason: 'manual', now });
+    expect(result).toEqual({ schedule: 'written', todo: 'stale' });
+    expect(native.clearAll).not.toHaveBeenCalled();
+    expect(get('todo')).toMatchObject({ syncState: 'stale', errorCode: 'forbidden' });
+    expect(get('schedule')).toMatchObject({ syncState: 'ready' });
+  });
+
   it('keeps the last payload as stale when offline, error when none', async () => {
     const { get } = nativeMock(['todo']);
     listTodos.mockRejectedValueOnce(new ApiError('offline', 0));
@@ -184,5 +197,18 @@ describe('refresh coordinator', () => {
     setWidgetNativeForTests(null);
     expect(await refreshWidgets(session, { reason: 'login', now })).toEqual({});
     await expect(purgeWidgets('logged_out')).resolves.toBeUndefined();
+  });
+});
+
+describe('app-side mutation triggers', () => {
+  it('only widget-data invalidations or tagged mutations refresh widgets', () => {
+    expect(widgetChangeForQueryAction('invalidate', false)).toBe('appMutation');
+    expect(widgetChangeForQueryAction('success', true)).toBe('googleReconnect');
+    expect(widgetChangeForQueryAction('success', false)).toBeNull();
+    expect(widgetChangeForQueryAction('fetch', false)).toBeNull();
+    expect(widgetTypesForMutationKey(undefined)).toEqual([]);
+    expect(widgetTypesForMutationKey(['uploads'])).toEqual([]);
+    expect(widgetTypesForMutationKey(['todos', 'create'])).toEqual(['todo']);
+    expect(widgetTypesForMutationKey(['schedule'])).toEqual(['schedule', 'todo']);
   });
 });

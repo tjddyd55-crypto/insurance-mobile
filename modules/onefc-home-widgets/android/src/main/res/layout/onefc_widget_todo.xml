@@ -47,7 +47,7 @@
   </LinearLayout>
   <TextView android:id="@+id/w_more" android:layout_width="match_parent" android:layout_height="22dp" android:gravity="center_vertical" android:textSize="12sp" android:textColor="@color/onefc_widget_brand" />
   <LinearLayout android:id="@+id/w_empty_box" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center" android:paddingTop="6dp" android:paddingBottom="6dp">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/onefc_widget_empty_todo" android:textSize="13sp" android:textColor="@color/onefc_widget_text_muted" />
+    <TextView android:id="@+id/w_empty_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/onefc_widget_empty_todo" android:textSize="13sp" android:textColor="@color/onefc_widget_text_muted" />
     <TextView android:id="@+id/w_empty_add" android:layout_width="wrap_content" android:layout_height="28dp" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="10dp" android:layout_marginTop="4dp" android:background="@drawable/onefc_widget_pill" android:text="@string/onefc_widget_empty_todo_add" android:textSize="12sp" android:textColor="@color/onefc_widget_brand" />
   </LinearLayout>
   <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />

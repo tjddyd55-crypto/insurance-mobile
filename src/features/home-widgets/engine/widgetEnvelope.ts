@@ -7,7 +7,7 @@ export const WIDGET_ENGINE_SCHEMA_VERSION = 1 as const;
 export type WidgetAuthState = 'signed_in' | 'signed_out' | 'expired';
 export type WidgetSyncState = 'ready' | 'stale' | 'error';
 /** 사용자에게 보이는 문구는 native 공통 문구로만 바뀐다(서버 오류 원문 노출 금지). */
-export type WidgetErrorCode = 'network' | 'server' | 'unknown';
+export type WidgetErrorCode = 'network' | 'server' | 'forbidden' | 'unknown';
 
 export type WidgetSnapshotEnvelope<P = unknown> = {
   schemaVersion: typeof WIDGET_ENGINE_SCHEMA_VERSION;

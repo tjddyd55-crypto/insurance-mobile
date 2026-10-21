@@ -36,12 +36,13 @@ export function resetWidgetRefreshStateForTests(): void {
 }
 
 function errorCode(error: unknown): WidgetErrorCode {
-  if (error instanceof ApiError) return error.status === 0 ? 'network' : error.status >= 500 ? 'server' : 'unknown';
+  if (error instanceof ApiError) return error.status === 0 ? 'network' : error.status >= 500 ? 'server' : error.status === 403 ? 'forbidden' : 'unknown';
   return error instanceof TypeError ? 'network' : 'unknown';
 }
 
 function isAuthError(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+  // 세션 무효화는 401 만(api/client 와 같은 규칙). 403 은 권한·플랜 문제라 해당 위젯만 실패 처리하고 다른 위젯 데이터는 유지.
+  return error instanceof ApiError && error.status === 401;
 }
 
 export function shouldRun(type: WidgetType, reason: WidgetRefreshReason, force: boolean, nowMs: number): boolean {
