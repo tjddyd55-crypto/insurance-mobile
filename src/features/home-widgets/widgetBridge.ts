@@ -12,6 +12,8 @@ type OnefcHomeWidgetsNative = {
   readEnvelope(widgetType: string): Promise<string | null>;
   clearAll(reason: string): Promise<void>;
   installedWidgetTypes(): Promise<string[]>;
+  /** 1.0.4 이하 바이너리에는 없다. 없으면 호출부는 앱 안 이동으로 돌아간다. */
+  moveTaskToBack?: () => Promise<boolean> | boolean;
 };
 
 let cached: OnefcHomeWidgetsNative | null | undefined;
@@ -44,6 +46,17 @@ async function safe<T>(fallback: T, run: (native: OnefcHomeWidgetsNative) => Pro
   }
 }
 
+/**
+ * 작업을 홈 뒤로 보낸다. 모듈이 없거나(iOS·구 바이너리) 함수가 없거나 실패하면 false.
+ * false 이면 호출부가 오늘의 앱 안 이동을 그대로 한다.
+ */
+export function moveTaskToBack(): Promise<boolean> {
+  return safe(false, async (native) => {
+    if (typeof native.moveTaskToBack !== 'function') return false;
+    return Boolean(await native.moveTaskToBack());
+  });
+}
+
 export const widgetBridge = {
   configure: (scheme: string) => safe(undefined, (native) => native.configure(scheme)),
   writeEnvelope: (envelope: WidgetSnapshotEnvelope) =>
@@ -53,4 +66,5 @@ export const widgetBridge = {
   clearAll: (reason: WidgetClearReason) => safe(undefined, (native) => native.clearAll(reason)),
   installedWidgetTypes: () =>
     safe<WidgetType[]>([], async (native) => (await native.installedWidgetTypes()).filter(isWidgetType)),
+  moveTaskToBack,
 };

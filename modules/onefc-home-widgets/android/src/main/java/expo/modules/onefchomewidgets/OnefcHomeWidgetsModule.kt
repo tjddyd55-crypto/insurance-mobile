@@ -1,6 +1,7 @@
 package expo.modules.onefchomewidgets
 
 import android.content.Context
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -39,6 +40,15 @@ class OnefcHomeWidgetsModule : Module() {
     AsyncFunction("installedWidgetTypes") {
       WidgetEngine.installedTypes(context).map { it.id }
     }
+
+    /**
+     * 위젯에서 연 화면을 닫을 때 앱을 종료하지 않고 홈(위젯)이 보이게 작업을 뒤로 보낸다.
+     * Activity 가 없으면 false. 호출부(구 바이너리·실패)는 앱 안 이동으로 돌아간다.
+     */
+    AsyncFunction("moveTaskToBack") {
+      val activity = appContext.currentActivity ?: return@AsyncFunction false
+      runCatching { activity.moveTaskToBack(true) }.getOrDefault(false)
+    }.runOnQueue(Queues.MAIN)
   }
 
   companion object {

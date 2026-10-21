@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '../../api/client';
@@ -68,6 +68,15 @@ import {
 } from './scheduleModel';
 import { scheduleQueryKeys } from './queryKeys';
 import { scheduleLinkTarget } from './scheduleLinkParams';
+import {
+  scheduleModalsOpen,
+  shouldStartScheduleWidgetFlow,
+  useScheduleWidgetReturn,
+  widgetEntryId,
+  widgetTypeOf,
+  isPendingWidgetOrigin,
+  type WidgetDrawerNavigation,
+} from '../home-widgets/widgetReturn';
 import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
 import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleStorage, ScheduleTask, ScheduleTaskForm } from './types';
 
@@ -93,8 +102,9 @@ const STORAGES: ScheduleStorage[] = ['google_event', 'google_task', 'onefc_todo'
 
 /** 일정 관리(Native). 웹 /schedule 과 같은 서버 API 를 쓴다. CRM 일정은 읽기 전용, Google 일정만 서버 권한이 있을 때 쓰기. */
 export function ScheduleScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -112,9 +122,33 @@ export function ScheduleScreen() {
   const [taskError, setTaskError] = useState<string | null>(null);
   const range = monthRange(month);
   // 홈 화면 위젯 deep link(<scheme>://schedule?date&event&create). 같은 날짜를 다시 눌러도 _w 로 다시 적용된다.
-  const linkParams = useLocalSearchParams<{ date?: string; event?: string; create?: string; _w?: string }>();
+  const linkParams = useLocalSearchParams<{ date?: string; event?: string; create?: string; _w?: string; src?: string | string[]; wt?: string | string[] }>();
   const linkTarget = scheduleLinkTarget(linkParams);
   const [pendingLinkItem, setPendingLinkItem] = useState<string | null>(null);
+  const widgetSession = token && user ? { token, user } : null;
+  const { armScheduleWidgetFlow, markScheduleWidgetSaved, endScheduleWidgetFlow } = useScheduleWidgetReturn({
+    open: scheduleModalsOpen({
+      detail: detail !== null || pendingLinkItem !== null,
+      choosing,
+      form: formState !== null,
+      task: taskState !== null,
+      deleting: deleting !== null,
+    }),
+    widgetType: widgetTypeOf(linkParams) ?? 'schedule',
+    session: widgetSession,
+    navigation: navigation as unknown as WidgetDrawerNavigation,
+  });
+  // 링크 효과는 날짜·nonce 가 바뀔 때만 돌린다. 출처 판단은 그 직전에 ref 에 담아 최신 값을 읽는다.
+  const widgetArm = useRef({ start: false, entryId: null as string | null });
+  useLayoutEffect(() => {
+    widgetArm.current = {
+      entryId: widgetEntryId(linkParams),
+      start: isPendingWidgetOrigin(linkParams) && shouldStartScheduleWidgetFlow(linkParams, {
+        itemId: linkTarget.itemId,
+        create: linkTarget.create,
+      }),
+    };
+  }, [linkParams, linkTarget.create, linkTarget.date, linkTarget.itemId, linkTarget.nonce]);
   useEffect(() => {
     if (!linkTarget.date) return;
     setMonth(`${linkTarget.date.slice(0, 7)}-01`);
@@ -122,7 +156,9 @@ export function ScheduleScreen() {
     setDetail(null);
     setPendingLinkItem(linkTarget.itemId);
     if (linkTarget.create) setChoosing(true);
-  }, [linkTarget.date, linkTarget.itemId, linkTarget.create, linkTarget.nonce]);
+    const arm = widgetArm.current;
+    if (arm.start && arm.entryId) armScheduleWidgetFlow(arm.entryId);
+  }, [armScheduleWidgetFlow, linkTarget.date, linkTarget.itemId, linkTarget.create, linkTarget.nonce]);
 
   const query = useQuery({
     queryKey: scheduleQueryKeys.range(range.from, range.to),
@@ -156,6 +192,7 @@ export function ScheduleScreen() {
     }
   };
   const afterWrite = async () => {
+    markScheduleWidgetSaved();
     setFormState(null);
     setTaskState(null);
     setDeleting(null);
@@ -209,6 +246,7 @@ export function ScheduleScreen() {
   };
   const openRoute = (route: ScheduleNativeRoute | null) => {
     if (!route) return;
+    endScheduleWidgetFlow();
     setDetail(null);
     router.push(route);
   };

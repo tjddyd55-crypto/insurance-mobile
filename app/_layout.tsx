@@ -15,6 +15,7 @@ import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { AppUpdateHost } from '../src/features/app-update';
 import { HomeWidgetSyncLifecycle } from '../src/features/home-widgets/useHomeWidgetSync';
 import { consumePendingWidgetHref, stashPendingWidgetHref, widgetReturnHref } from '../src/features/home-widgets/engine/widgetDeepLink';
+import { beginStashedWidgetOpen, observeAppPath } from '../src/features/home-widgets/widgetReturn';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
 
 void SplashScreen.preventAutoHideAsync();
@@ -41,6 +42,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // 아래 이동 effect 보다 먼저 선언해 같은 커밋에서 최신 값을 쓴다.
   useEffect(() => {
     widgetHrefRef.current = widgetReturnHref(pathname, searchParams);
+    observeAppPath(pathname, searchParams);
   }, [pathname, searchParams]);
 
   useEffect(() => {
@@ -57,8 +59,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace('/(auth)/login');
       return;
     } else if (status === 'authenticated' && inAuthGroup) {
-      router.replace('/(app)');
       const widgetHref = consumePendingWidgetHref();
+      if (widgetHref) beginStashedWidgetOpen();
+      router.replace('/(app)');
       if (widgetHref) router.push(widgetHref as Parameters<typeof router.push>[0]);
       return;
     }
