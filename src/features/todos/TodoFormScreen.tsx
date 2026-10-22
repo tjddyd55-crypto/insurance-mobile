@@ -32,7 +32,9 @@ import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
 import { scheduleQueryKeys } from '../schedule/queryKeys';
+import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
+import { leaveTodoOpenedFromWidget, type TodoWidgetNavigation } from './todoWidgetReturn';
 import { seedTodoCreateForm } from './consultationTodoCreate';
 import {
   buildTodoCreatePayload,
@@ -48,13 +50,13 @@ import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
 type TodoFormProps =
-  | { mode: 'create'; todoId?: never; consultationId?: string }
+  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string }
   | { mode: 'edit'; todoId: string };
 
 export function TodoFormScreen(props: TodoFormProps) {
   if (props.mode === 'create') {
-    const sessionKey = props.consultationId?.trim() || 'manual';
-    return <TodoFormEditor key={sessionKey} mode="create" consultationId={props.consultationId} />;
+    const sessionKey = props.consultationId?.trim() || `manual:${props.dueDate ?? ''}`;
+    return <TodoFormEditor key={sessionKey} mode="create" consultationId={props.consultationId} dueDate={props.dueDate} />;
   }
   const screenId = todoEditScreenId(props.todoId);
   if (!screenId) {
@@ -64,16 +66,33 @@ export function TodoFormScreen(props: TodoFormProps) {
   return <TodoFormEditor key={screenId} mode="edit" todoId={screenId} />;
 }
 
-function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { consultationId?: string }) {
-  const { token } = useAuth();
+function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps & { consultationId?: string; dueDate?: string }) {
+  const { token, user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const navigation = useNavigation();
-  const { from } = useLocalSearchParams<{ from?: string | string[] }>();
-  const returnSource = todoReturnSource(from);
-  const leaveToList = useCallback(() => {
+  const params = useLocalSearchParams<{ from?: string | string[]; src?: string | string[]; wt?: string | string[]; _w?: string | string[] }>();
+  const returnSource = todoReturnSource(params.from);
+  const leaveInApp = useCallback(() => {
     leaveTodoForm(navigation as unknown as Parameters<typeof leaveTodoForm>[0], router, returnSource);
   }, [navigation, returnSource, router]);
+  // 위젯(src=widget)에서 연 경우만 홈으로 보낸다. 그 외는 leaveTodoForm 그대로.
+  const leave = useCallback((saved: boolean) => {
+    if (!isWidgetOrigin(params)) {
+      leaveInApp();
+      return;
+    }
+    const session = token && user ? { token, user } : null;
+    void leaveTodoOpenedFromWidget({
+      params,
+      navigation: navigation as unknown as TodoWidgetNavigation,
+      router,
+      saved,
+      widgetType: widgetTypeOf(params),
+      session,
+      fallback: leaveInApp,
+    });
+  }, [leaveInApp, navigation, params, router, token, user]);
   /** 할 일이 바뀌면 일정 화면의 ONE FC 할 일도 다시 읽는다(일반 재조회, refresh=1 아님 → 429 정책 영향 없음). */
   const invalidateTodoViews = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
@@ -82,7 +101,7 @@ function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { cons
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
-  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId) : null;
+  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId, dueDate) : null;
   const [boundTodoId, setBoundTodoId] = useState<string | null>(activeTodoId);
   const [form, setForm] = useState<TodoFormDraft>(() => createSeed?.draft ?? cloneTodoFormDraft());
   const [initialSnapshot, setInitialSnapshot] = useState(() =>
@@ -162,14 +181,14 @@ function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { cons
     onSuccess: async () => {
       setInitialSnapshot(JSON.stringify(form));
       await invalidateTodoViews();
-      leaveToList();
+      leave(true);
     },
   });
   const deleteMutation = useMutation({
     mutationFn: () => deleteTodo(token, todoId ?? ''),
     onSuccess: async () => {
       await invalidateTodoViews();
-      leaveToList();
+      leave(true);
     },
   });
 
@@ -178,8 +197,8 @@ function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { cons
       setDiscardOpen(true);
       return;
     }
-    leaveToList();
-  }, [dirty, leaveToList, saveMutation.isPending]);
+    leave(false);
+  }, [dirty, leave, saveMutation.isPending]);
 
   useFocusEffect(
     useCallback(() => {
@@ -346,7 +365,7 @@ function TodoFormEditor({ mode, todoId, consultationId }: TodoFormProps & { cons
         onConfirm={() => {
           setDiscardOpen(false);
           setInitialSnapshot(JSON.stringify(form));
-          leaveToList();
+          leave(false);
         }}
       />
       <ConfirmDialog

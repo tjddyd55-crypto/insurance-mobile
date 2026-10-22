@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="onefc_widget_bg">#FFFFFFFF</color>
+  <color name="onefc_widget_border">#FFE2E6E3</color>
+  <color name="onefc_widget_brand">#FF065123</color>
+  <color name="onefc_widget_brand_soft">#FFE6F1EA</color>
+  <color name="onefc_widget_text">#FF1A1F1C</color>
+  <color name="onefc_widget_text_secondary">#FF5B655F</color>
+  <color name="onefc_widget_text_muted">#FFA3ACA6</color>
+  <color name="onefc_widget_sunday">#FFC0392B</color>
+  <color name="onefc_widget_saturday">#FF2D6CB5</color>
+  <color name="onefc_widget_warning">#FFB26A00</color>
+  <color name="onefc_widget_on_brand">#FFFFFFFF</color>
+</resources>

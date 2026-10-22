@@ -1,0 +1,130 @@
+package expo.modules.onefchomewidgets
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class WidgetEngineTest {
+  private fun envelope(type: String = "schedule", version: Int = 1, extra: String = "", payload: String = "null", sync: String = "ready") =
+    """{"schemaVersion":$version,"widgetType":"$type","accountKey":"u:1|ga:2","scheme":"onefc","timeZone":"Asia/Seoul",
+      "generatedAt":"2026-10-21T01:00:00.000Z","lastSuccessfulSyncAt":"2026-10-21T01:00:00.000Z","authState":"signed_in",
+      "syncState":"$sync","errorCode":null,"payload":$payload $extra}"""
+
+  @Test fun registryOnlyScheduleAndTodoHaveProviders() {
+    assertEquals(listOf(OneFcWidgetType.SCHEDULE, OneFcWidgetType.TODO), OneFcWidgetType.enabledTypes())
+    OneFcWidgetType.values().filter { !it.enabled }.forEach { assertNull(it.providerClass) }
+    assertEquals(8, OneFcWidgetType.values().size)
+  }
+
+  @Test fun cacheNamespacePerType() {
+    assertEquals("widget.schedule", OneFcWidgetType.SCHEDULE.cacheKey)
+    assertEquals("widget.todo", OneFcWidgetType.TODO.cacheKey)
+  }
+
+  @Test fun unknownTypeIsSafe() {
+    assertNull(OneFcWidgetType.fromId("weather"))
+    assertNull(WidgetEnvelope.parse(envelope(type = "weather")))
+  }
+
+  @Test fun schemaVersionAndCorruptionRejected() {
+    assertNull(WidgetEnvelope.parse(envelope(version = 2)))
+    assertNull(WidgetEnvelope.parse("{not json"))
+    assertNull(WidgetEnvelope.parse(envelope(), OneFcWidgetType.TODO))
+    assertNotNull(WidgetEnvelope.parse(envelope(), OneFcWidgetType.SCHEDULE))
+  }
+
+  @Test fun futureFieldsIgnored() {
+    val payload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"calendarDays":["2026-10-21"],"events":[{"date":"2026-10-21","items":[{"id":"e1","title":"미팅","time":"10:00","kind":"event","done":false,"link":"evil://x","color":"red"}]}],"newThing":1}"""
+    val parsed = WidgetEnvelope.parse(envelope(payload = payload, extra = ""","futureTop":{"a":1}"""))!!
+    val schedule = SchedulePayload.parse(parsed)!!
+    assertEquals("미팅", schedule.events["2026-10-21"]!![0].title)
+    assertEquals("", schedule.events["2026-10-21"]!![0].link) // 다른 scheme 링크 차단
+    assertEquals(1, schedule.countOn("2026-10-21")) // calendarCounts 없으면 items 수
+  }
+
+  @Test fun calendarCountsParsed() {
+    val payload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"calendarDays":["2026-10-21"],"calendarCounts":{"2026-10-21":3,"bad":2,"2026-10-22":0},"events":[{"date":"2026-10-21","items":[{"id":"e1","title":"a","time":"","kind":"event","done":false,"link":""}]}]}"""
+    val schedule = SchedulePayload.parse(WidgetEnvelope.parse(envelope(payload = payload), OneFcWidgetType.SCHEDULE)!!)!!
+    assertEquals(3, schedule.countOn("2026-10-21"))
+    assertEquals(0, schedule.countOn("2026-10-22"))
+    assertEquals(0, schedule.countOn("bad"))
+    // calendarCounts 가 없으면 완료 항목은 세지 않는다.
+    val donePayload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"events":[{"date":"2026-10-21","items":[{"id":"t","title":"a","time":"","kind":"onefc_todo","done":true,"link":""},{"id":"e","title":"b","time":"","kind":"event","done":false,"link":""}]}]}"""
+    assertEquals(1, SchedulePayload.parse(WidgetEnvelope.parse(envelope(payload = donePayload), OneFcWidgetType.SCHEDULE)!!)!!.countOn("2026-10-21"))
+  }
+
+  @Test fun displayStates() {
+    assertEquals(WidgetDisplayState.LOGGED_OUT, WidgetDisplayState.resolve(null, "logged_out", false, false))
+    assertEquals(WidgetDisplayState.LOGGED_OUT, WidgetDisplayState.resolve(null, "account_changed", false, false))
+    assertEquals(WidgetDisplayState.AUTH_EXPIRED, WidgetDisplayState.resolve(null, "session_expired", false, false))
+    assertEquals(WidgetDisplayState.LOADING, WidgetDisplayState.resolve(null, null, false, false))
+    val error = WidgetEnvelope.parse(envelope(sync = "error"))!!
+    assertEquals(WidgetDisplayState.ERROR, WidgetDisplayState.resolve(error, null, false, false))
+    assertEquals(WidgetDisplayState.LOADING, WidgetDisplayState.resolve(error, null, true, false))
+    val stale = WidgetEnvelope.parse(envelope(sync = "stale", payload = "{}"))!!
+    assertEquals(WidgetDisplayState.OFFLINE_STALE, WidgetDisplayState.resolve(stale, null, false, true))
+    assertEquals(WidgetDisplayState.READY, WidgetDisplayState.resolve(WidgetEnvelope.parse(envelope(payload = "{}"))!!, null, false, true))
+  }
+
+  @Test fun copyNeverShowsServerText() {
+    assertEquals("마지막 업데이트 10:00", WidgetCopy.lastUpdated("10:00"))
+    assertEquals("ONE FC에 로그인해 주세요", WidgetCopy.LOGIN_HINT)
+    assertEquals("정보를 불러올 수 없습니다", WidgetCopy.LOAD_FAILED)
+  }
+
+  @Test fun deepLinks() {
+    assertEquals("onefc://schedule?date=2026-10-21&src=widget&wt=schedule", WidgetDeepLink.build("onefc", OneFcWidgetType.SCHEDULE, WidgetDeepLink.Action.OPEN, mapOf("date" to "2026-10-21")))
+    assertEquals("onefc://schedule?date=2026-10-21&create=1&src=widget&wt=schedule", WidgetDeepLink.build("onefc", OneFcWidgetType.SCHEDULE, WidgetDeepLink.Action.CREATE, mapOf("date" to "2026-10-21")))
+    assertEquals("onefc://todos/new?dueDate=2026-10-21&src=widget&wt=todo", WidgetDeepLink.build("onefc", OneFcWidgetType.TODO, WidgetDeepLink.Action.CREATE, mapOf("date" to "2026-10-21")))
+    assertNull(WidgetDeepLink.build("onefc", OneFcWidgetType.CLAIMS, WidgetDeepLink.Action.OPEN))
+    assertFalse(WidgetDeepLink.build("onefc", OneFcWidgetType.TODO, WidgetDeepLink.Action.OPEN)!!.contains("token"))
+  }
+
+  @Test fun dayDialogUsesSnapshotLinksOnly() {
+    val payload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"events":[{"date":"2026-10-21","items":[
+      {"id":"e1","title":"미팅","time":"10:00","kind":"event","done":false,"link":"onefc://schedule?date=2026-10-21&event=e1&src=widget&wt=schedule"},
+      {"id":"t1","title":"서류","time":"","kind":"onefc_todo","done":true,"link":"onefc://todos/3/edit?src=widget&wt=todo"}]}]}"""
+    val signedIn = WidgetEnvelope.parse(envelope(payload = payload), OneFcWidgetType.SCHEDULE)
+    val day = ScheduleDayModel.content(signedIn, null, "2026-10-21")
+    assertEquals(ScheduleDayModel.Mode.LIST, day.mode)
+    assertEquals(2, day.rows.size)
+    assertEquals("10:00", day.rows[0].time)
+    assertTrue(day.rows[1].title.startsWith("✓"))
+    assertTrue(day.addLink!!.contains("create=1"))
+    assertTrue(day.addLink!!.contains("date=2026-10-21"))
+    assertTrue(day.addLink!!.contains("src=widget"))
+    assertFalse(day.addLink!!.contains("token"))
+    assertFalse(day.rows[0].link.contains("token"))
+    assertEquals(ScheduleDayModel.Mode.EMPTY, ScheduleDayModel.content(signedIn, null, "2026-10-22").mode)
+    assertEquals(ScheduleDayModel.Mode.OUT_OF_RANGE, ScheduleDayModel.content(signedIn, null, "2027-02-01").mode)
+    val loggedOut = ScheduleDayModel.content(null, "logged_out", "2026-10-21")
+    assertEquals(ScheduleDayModel.Mode.LOGIN, loggedOut.mode)
+    assertTrue(loggedOut.rows.isEmpty())
+    assertEquals(null, loggedOut.addLink)
+    val expired = WidgetEnvelope.parse(envelope(payload = payload, extra = "").replace("signed_in", "expired"), OneFcWidgetType.SCHEDULE)
+    assertEquals(ScheduleDayModel.Mode.LOGIN, ScheduleDayModel.content(expired, null, "2026-10-21").mode)
+  }
+
+  @Test fun scheduleNavigationMatchesApp() {
+    val today = "2026-10-21"
+    val s = ScheduleWidgetRenderer.State("2026-10-01", today)
+    assertEquals(ScheduleWidgetRenderer.State("2026-11-01", "2026-11-01"), ScheduleWidgetRenderer.next(s, WidgetIntents.ACTION_NEXT, null, today))
+    assertEquals(ScheduleWidgetRenderer.State("2026-10-01", today), ScheduleWidgetRenderer.next(ScheduleWidgetRenderer.State("2026-11-01", "2026-11-05"), WidgetIntents.ACTION_PREV, null, today))
+    assertNull(ScheduleWidgetRenderer.next(s, WidgetIntents.ACTION_SELECT, "bad", today))
+    assertEquals("2026-10-20", TodoWidgetRenderer.next(today, WidgetIntents.ACTION_PREV, today))
+    assertTrue(TodoWidgetRenderer.next(today, "unknown", today) == null)
+  }
+
+  @Test fun todoOutOfRangeIsNotEmpty() {
+    val payload = """{"visibleRange":{"from":"2026-09-01","to":"2026-12-31"},"selectedDate":"2026-10-21","todos":[]}"""
+    val todo = TodoPayload.parse(WidgetEnvelope.parse(envelope(type = "todo", payload = payload))!!)!!
+    assertEquals(TodoWidgetRenderer.EmptyState.NO_TODOS, TodoWidgetRenderer.emptyState(todo, "2026-10-22"))
+    assertEquals(TodoWidgetRenderer.EmptyState.OUT_OF_RANGE, TodoWidgetRenderer.emptyState(todo, "2027-01-01"))
+    assertEquals(TodoWidgetRenderer.EmptyState.OUT_OF_RANGE, TodoWidgetRenderer.emptyState(todo, "2026-08-31"))
+    val noRange = TodoPayload.parse(WidgetEnvelope.parse(envelope(type = "todo", payload = "{}"))!!)!!
+    assertEquals(TodoWidgetRenderer.EmptyState.OUT_OF_RANGE, TodoWidgetRenderer.emptyState(noRange, "2026-10-21"))
+  }
+}

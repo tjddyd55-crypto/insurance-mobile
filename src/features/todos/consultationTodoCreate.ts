@@ -71,13 +71,16 @@ export function consultationTodoCreateRoute(prefill: ConsultationTodoCreatePrefi
   };
 }
 
-export function seedTodoCreateForm(consultationId?: string): {
+export function seedTodoCreateForm(consultationId?: string, dueDate?: string): {
   draft: TodoFormDraft;
   source: TodoCreateSource;
 } {
   const prefill = peekConsultationTodoCreate(consultationId);
   if (!prefill) {
-    return { draft: cloneTodoFormDraft(), source: MANUAL_SOURCE };
+    // 홈 화면 위젯 '+ 할 일 추가': 위젯에서 보던 날짜를 마감일로 미리 채운다(올바른 날짜만).
+    const draft = cloneTodoFormDraft();
+    const seededDue = dueDate && isValidOptionalYmd(dueDate) ? dueDate : '';
+    return { draft: seededDue ? { ...draft, dueDate: seededDue } : draft, source: MANUAL_SOURCE };
   }
   return {
     draft: {

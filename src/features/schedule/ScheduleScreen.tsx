@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '../../api/client';
@@ -46,7 +46,8 @@ import {
   canEditEvent,
   customerRouteOfEvent,
   customerRouteOfTask,
-  daysWithItems,
+  countItemsByDay,
+  dayCountLabel,
   emptyEventForm,
   eventTimeLabel,
   eventToForm,
@@ -66,6 +67,16 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { scheduleQueryKeys } from './queryKeys';
+import { scheduleLinkTarget } from './scheduleLinkParams';
+import {
+  scheduleModalsOpen,
+  shouldStartScheduleWidgetFlow,
+  useScheduleWidgetReturn,
+  widgetEntryId,
+  widgetTypeOf,
+  isPendingWidgetOrigin,
+  type WidgetDrawerNavigation,
+} from '../home-widgets/widgetReturn';
 import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
 import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleStorage, ScheduleTask, ScheduleTaskForm } from './types';
 
@@ -91,8 +102,9 @@ const STORAGES: ScheduleStorage[] = ['google_event', 'google_task', 'onefc_todo'
 
 /** 일정 관리(Native). 웹 /schedule 과 같은 서버 API 를 쓴다. CRM 일정은 읽기 전용, Google 일정만 서버 권한이 있을 때 쓰기. */
 export function ScheduleScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -109,6 +121,44 @@ export function ScheduleScreen() {
   const [taskState, setTaskState] = useState<TaskFormState | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
   const range = monthRange(month);
+  // 홈 화면 위젯 deep link(<scheme>://schedule?date&event&create). 같은 날짜를 다시 눌러도 _w 로 다시 적용된다.
+  const linkParams = useLocalSearchParams<{ date?: string; event?: string; create?: string; _w?: string; src?: string | string[]; wt?: string | string[] }>();
+  const linkTarget = scheduleLinkTarget(linkParams);
+  const [pendingLinkItem, setPendingLinkItem] = useState<string | null>(null);
+  const widgetSession = token && user ? { token, user } : null;
+  const { armScheduleWidgetFlow, markScheduleWidgetSaved, endScheduleWidgetFlow } = useScheduleWidgetReturn({
+    open: scheduleModalsOpen({
+      detail: detail !== null || pendingLinkItem !== null,
+      choosing,
+      form: formState !== null,
+      task: taskState !== null,
+      deleting: deleting !== null,
+    }),
+    widgetType: widgetTypeOf(linkParams) ?? 'schedule',
+    session: widgetSession,
+    navigation: navigation as unknown as WidgetDrawerNavigation,
+  });
+  // 링크 효과는 날짜·nonce 가 바뀔 때만 돌린다. 출처 판단은 그 직전에 ref 에 담아 최신 값을 읽는다.
+  const widgetArm = useRef({ start: false, entryId: null as string | null });
+  useLayoutEffect(() => {
+    widgetArm.current = {
+      entryId: widgetEntryId(linkParams),
+      start: isPendingWidgetOrigin(linkParams) && shouldStartScheduleWidgetFlow(linkParams, {
+        itemId: linkTarget.itemId,
+        create: linkTarget.create,
+      }),
+    };
+  }, [linkParams, linkTarget.create, linkTarget.date, linkTarget.itemId, linkTarget.nonce]);
+  useEffect(() => {
+    if (!linkTarget.date) return;
+    setMonth(`${linkTarget.date.slice(0, 7)}-01`);
+    setSelected(linkTarget.date);
+    setDetail(null);
+    setPendingLinkItem(linkTarget.itemId);
+    if (linkTarget.create) setChoosing(true);
+    const arm = widgetArm.current;
+    if (arm.start && arm.entryId) armScheduleWidgetFlow(arm.entryId);
+  }, [armScheduleWidgetFlow, linkTarget.date, linkTarget.itemId, linkTarget.create, linkTarget.nonce]);
 
   const query = useQuery({
     queryKey: scheduleQueryKeys.range(range.from, range.to),
@@ -116,6 +166,12 @@ export function ScheduleScreen() {
     enabled: Boolean(token),
   });
   const data = query.data;
+  useEffect(() => {
+    if (!pendingLinkItem || !data) return;
+    const item = [...data.events, ...data.tasks].find((entry) => entry.id === pendingLinkItem);
+    if (item) setDetail(item);
+    setPendingLinkItem(null);
+  }, [pendingLinkItem, data]);
   const writeReady = data ? canCreateGoogleEvent(data.google) : false;
   const tasksWriteReady = data ? storageAvailability(data.google, 'google_task').available : false;
   const targets = useQuery({
@@ -136,6 +192,7 @@ export function ScheduleScreen() {
     }
   };
   const afterWrite = async () => {
+    markScheduleWidgetSaved();
     setFormState(null);
     setTaskState(null);
     setDeleting(null);
@@ -189,6 +246,7 @@ export function ScheduleScreen() {
   };
   const openRoute = (route: ScheduleNativeRoute | null) => {
     if (!route) return;
+    endScheduleWidgetFlow();
     setDetail(null);
     router.push(route);
   };
@@ -254,7 +312,7 @@ export function ScheduleScreen() {
     );
   }
 
-  const marked = daysWithItems(data);
+  const dayCounts = countItemsByDay(data);
   const dayEvents = eventsOnDay(data.events, selected);
   const dayTasks = tasksOnDay(data.tasks, selected);
   // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
@@ -282,11 +340,13 @@ export function ScheduleScreen() {
             <View key={week[0]!.ymd} style={styles.weekRow}>
               {week.map((cell) => {
                 const active = cell.ymd === selected;
+                const count = dayCounts.get(cell.ymd) ?? 0;
+                const countLabel = dayCountLabel(count);
                 return (
                   <Pressable
                     key={cell.ymd}
                     accessibilityRole="button"
-                    accessibilityLabel={`${formatDayTitle(cell.ymd)}${marked.has(cell.ymd) ? ', 일정 있음' : ''}`}
+                    accessibilityLabel={`${formatDayTitle(cell.ymd)}${count > 0 ? `, 일정 ${count}건` : ''}`}
                     accessibilityState={{ selected: active }}
                     style={[styles.cell, styles.dayCell, active && styles.dayActive]}
                     onPress={() => {
@@ -297,7 +357,17 @@ export function ScheduleScreen() {
                     <AppText variant="body" color={active ? 'onPrimary' : cell.inMonth ? (cell.ymd === today ? 'primary' : 'text') : 'textMuted'}>
                       {cell.day}
                     </AppText>
-                    <View style={[styles.dot, marked.has(cell.ymd) && (active ? styles.dotOnActive : styles.dotOn)]} />
+                    <AppText
+                      variant="caption"
+                      align="center"
+                      numberOfLines={1}
+                      allowFontScaling={false}
+                      style={[styles.count, active ? styles.countOnActive : styles.countOn]}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                    >
+                      {countLabel}
+                    </AppText>
                   </Pressable>
                 );
               })}
@@ -547,8 +617,9 @@ function createStyles(theme: AppTheme) {
     cell: { flex: 1 },
     dayCell: { alignItems: 'center', paddingVertical: theme.spacing.xs, borderRadius: theme.radius.md, minHeight: 44 },
     dayActive: { backgroundColor: theme.colors.primary },
-    dot: { width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: 'transparent' },
-    dotOn: { backgroundColor: theme.colors.primary },
-    dotOnActive: { backgroundColor: theme.colors.onPrimary },
+    // 고정 높이: 숫자가 없어도 칸 높이가 같아 레이아웃이 흔들리지 않는다.
+    count: { height: 14, lineHeight: 14, fontSize: 11, fontWeight: '700', marginTop: 1 },
+    countOn: { color: theme.colors.primary },
+    countOnActive: { color: theme.colors.onPrimary },
   });
 }
