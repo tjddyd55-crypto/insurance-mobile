@@ -295,6 +295,12 @@ export const SCHEDULE_TYPE_LABEL: Record<ScheduleEventType, string> = {
   insurance_age: '상령일',
 };
 
+/** 카드·상세 문구만. type·집계·정렬·필터는 바꾸지 않는다. */
+export function scheduleEventSourceLabel(event: Pick<ScheduleEvent, 'type' | 'origin'>): string {
+  if (event.origin === 'onefc') return 'ONE FC 일정';
+  return SCHEDULE_TYPE_LABEL[event.type];
+}
+
 export function taskSourceLabel(task: Pick<ScheduleTask, 'source'>): string {
   return task.source === 'google_task' ? 'Google 할 일' : 'ONE FC 할 일';
 }

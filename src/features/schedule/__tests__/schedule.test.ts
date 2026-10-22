@@ -15,6 +15,7 @@ import {
   isOnefcSchedule,
   onefcScheduleRawId,
   scheduleDeletePrompt,
+  scheduleEventSourceLabel,
   customerRouteOfEvent,
   customerRouteOfTask,
   countItemsByDay,
@@ -193,6 +194,24 @@ function onefcPayload() {
     google: writeOff,
   };
 }
+
+describe('schedule event source label', () => {
+  it('CASE1 origin onefc google_event is ONE FC 일정', () => {
+    expect(scheduleEventSourceLabel({ type: 'google_event', origin: 'onefc' })).toBe('ONE FC 일정');
+  });
+  it('CASE2 google_event without origin is Google 일정', () => {
+    expect(scheduleEventSourceLabel({ type: 'google_event' })).toBe('Google 일정');
+  });
+  it('CASE3 customer_alert keeps 알림일', () => {
+    expect(scheduleEventSourceLabel({ type: 'customer_alert' })).toBe('알림일');
+  });
+  it('CASE4 car_expiry keeps 자동차 만기', () => {
+    expect(scheduleEventSourceLabel({ type: 'car_expiry' })).toBe('자동차 만기');
+  });
+  it('CASE5 insurance_age keeps 상령일', () => {
+    expect(scheduleEventSourceLabel({ type: 'insurance_age' })).toBe('상령일');
+  });
+});
 
 describe('ONE FC schedule (insurance #210)', () => {
   it('keeps a local schedule as one event and does not turn it into a todo', () => {

@@ -33,7 +33,7 @@ import {
 import { createTodo } from '../todos/todosApi';
 import { todoQueryKeys } from '../todos/queryKeys';
 import {
-  SCHEDULE_TYPE_LABEL,
+  scheduleEventSourceLabel,
   emptyTaskForm,
   isOnefcSchedule,
   onefcScheduleRawId,
@@ -390,7 +390,7 @@ export function ScheduleScreen() {
               <Stack gap="xs">
                 <Inline justify="space-between">
                   <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{event.title}</AppText>
-                  <Badge label={SCHEDULE_TYPE_LABEL[event.type]} tone={event.source === 'google' ? 'info' : 'warning'} />
+                  <Badge label={scheduleEventSourceLabel(event)} tone={event.source === 'google' ? 'info' : 'warning'} />
                 </Inline>
                 <AppText variant="caption" color="textSecondary">
                   {[eventTimeLabel(event), event.customerName, event.calendarName].filter(Boolean).join(' · ')}
@@ -538,7 +538,7 @@ function ScheduleDetailModal({
   const customer = customerRouteOfEvent(item);
   const editable = canEditEvent(item, data.google);
   return (
-    <ModalShell open title={item.title} subtitle={SCHEDULE_TYPE_LABEL[item.type]} presentation="dialog" scroll onRequestClose={onClose}>
+    <ModalShell open title={item.title} subtitle={scheduleEventSourceLabel(item)} presentation="dialog" scroll onRequestClose={onClose}>
       <Stack gap="md">
         <AppText variant="body">{`${formatDayTitle(eventDayStart(item))} · ${eventTimeLabel(item)}`}</AppText>
         {item.calendarName ? <AppText variant="caption" color="textMuted">{item.calendarName}</AppText> : null}
