@@ -55,7 +55,7 @@ import { NewsletterDetailGalleryImage } from './NewsletterDetailGalleryImage';
 import { getNewsletterLinkPreview } from './getNewsletterLinkPreview';
 import { NewsletterLinkPreviewCard } from './NewsletterLinkPreviewCard';
 import { NEWSLETTER_IMAGE_ASPECT_RATIO } from './newsletterImageLayout';
-import { sortPublishedNews } from './newslettersModel';
+import { resolveNewsletterListGaBadge, sortPublishedNews } from './newslettersModel';
 import { formatInsurerNewsDateLabel, formatInsurerNewsDateTime } from './utils/formatInsurerNewsDate';
 import {
   newsletterDetailBodyText,
@@ -110,6 +110,12 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
     : channel === 'INSURER'
       ? '원수사소식지'
       : '손해사정사 소식지';
+
+  const listGaBadge = resolveNewsletterListGaBadge({
+    isBoard,
+    boardScope: boardQuery.data?.board.boardScope ?? null,
+    gaName: user?.gaName,
+  });
 
   const items = sortPublishedNews(newsletters).filter((row) => {
     if (insurer && row.insurerSlug !== insurer) {
@@ -183,7 +189,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
       ) : null}
       <Inline wrap>
         <Badge label={`${items.length}건`} tone="info" />
-        {user?.gaName ? <Badge label={user.gaName} /> : null}
+        {listGaBadge ? <Badge label={listGaBadge} /> : null}
       </Inline>
       {!query.isLoading && !query.isError && !items.length ? (
         <Card variant="outlined">
