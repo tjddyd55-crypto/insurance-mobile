@@ -31,6 +31,8 @@ import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
 import { ScheduleDateField } from '../schedule/ScheduleDateField';
+import { WidgetQuickAddSheet } from '../schedule/WidgetQuickAddSheet';
+import { widgetQuickTodoPayload, type WidgetQuickDraft } from '../schedule/widgetQuickAddModel';
 import { scheduleQueryKeys } from '../schedule/queryKeys';
 import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
@@ -223,6 +225,10 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
     saveMutation.mutate();
   };
 
+  if (mode === 'create' && !consultationId && isWidgetOrigin(params)) {
+    return <TodoWidgetQuickCreate token={token} date={form.dueDate} onLeave={leave} />;
+  }
+
   if (mode === 'edit' && todosQuery.isLoading) {
     return <LoadingState message="할 일을 불러오는 중…" />;
   }
@@ -381,6 +387,53 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
         onConfirm={() => deleteMutation.mutate()}
       />
     </KeyboardAvoidingView>
+  );
+}
+
+function TodoWidgetQuickCreate({
+  token,
+  date,
+  onLeave,
+}: {
+  token: string | null;
+  date: string;
+  onLeave: (saved: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const customersQuery = useQuery({
+    queryKey: customerQueryKeys.all,
+    queryFn: () => listCustomers(token),
+    enabled: Boolean(token),
+    staleTime: 60_000,
+  });
+  const save = useMutation({
+    mutationFn: (draft: WidgetQuickDraft) => createTodo(token, widgetQuickTodoPayload(draft)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+      onLeave(true);
+    },
+  });
+  const customers = (customersQuery.data?.customers ?? []).map((customer) => ({
+    id: String(customer.id),
+    name: customer.name,
+    phone: customer.phone,
+  }));
+  const message = save.error instanceof Error ? save.error.message : '할 일을 저장하지 못했습니다.';
+  return (
+    <View style={{ flex: 1 }}>
+      <WidgetQuickAddSheet
+        open
+        kind="todo"
+        date={date}
+        busy={save.isPending}
+        error={save.isError ? message : null}
+        customers={customers}
+        customersLoading={customersQuery.isLoading}
+        onClose={() => onLeave(false)}
+        onSubmit={(draft) => save.mutate(draft)}
+      />
+    </View>
   );
 }
 

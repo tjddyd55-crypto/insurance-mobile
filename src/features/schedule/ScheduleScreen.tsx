@@ -30,6 +30,8 @@ import {
   updateOnefcSchedule,
   updateScheduleEvent,
 } from './scheduleApi';
+import { listCustomers } from '../customers/customersApi';
+import { customerQueryKeys } from '../customers/queryKeys';
 import { createTodo } from '../todos/todosApi';
 import { todoQueryKeys } from '../todos/queryKeys';
 import {
@@ -65,6 +67,9 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { ScheduleDateField } from './ScheduleDateField';
+import { ScheduleTimeField } from './ScheduleTimeField';
+import { WidgetQuickAddSheet, type QuickAddCustomer } from './WidgetQuickAddSheet';
+import { widgetQuickScheduleForm, type WidgetQuickDraft } from './widgetQuickAddModel';
 import { scheduleQueryKeys } from './queryKeys';
 import { scheduleLinkTarget } from './scheduleLinkParams';
 import {
@@ -131,6 +136,7 @@ export function ScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [taskState, setTaskState] = useState<TaskFormState | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [widgetQuick, setWidgetQuick] = useState<{ date: string; requestId: string } | null>(null);
   const range = monthRange(month);
   // 홈 화면 위젯 deep link(<scheme>://schedule?date&event&create). 같은 날짜를 다시 눌러도 _w 로 다시 적용된다.
   const linkParams = useLocalSearchParams<{ date?: string; event?: string; create?: string; _w?: string; src?: string | string[]; wt?: string | string[] }>();
@@ -140,7 +146,7 @@ export function ScheduleScreen() {
   const { armScheduleWidgetFlow, markScheduleWidgetSaved, endScheduleWidgetFlow } = useScheduleWidgetReturn({
     open: scheduleModalsOpen({
       detail: detail !== null || pendingLinkItem !== null,
-      form: formState !== null,
+      form: formState !== null || widgetQuick !== null,
       task: taskState !== null,
       deleting: deleting !== null,
     }),
@@ -168,7 +174,13 @@ export function ScheduleScreen() {
     if (linkTarget.create) {
       setTaskState(null);
       setFormError(null);
-      setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
+      if (widgetArm.current.start) {
+        setFormState(null);
+        setWidgetQuick({ date: linkTarget.date, requestId: newScheduleRequestId() });
+      } else {
+        setWidgetQuick(null);
+        setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
+      }
     }
     const arm = widgetArm.current;
     if (arm.start && arm.entryId) armScheduleWidgetFlow(arm.entryId);
@@ -179,6 +191,17 @@ export function ScheduleScreen() {
     queryFn: () => fetchScheduleEvents(token, range),
     enabled: Boolean(token),
   });
+  const customersQuery = useQuery({
+    queryKey: customerQueryKeys.all,
+    queryFn: () => listCustomers(token),
+    enabled: Boolean(token) && widgetQuick !== null,
+    staleTime: 60_000,
+  });
+  const quickCustomers: QuickAddCustomer[] = (customersQuery.data?.customers ?? []).map((customer) => ({
+    id: String(customer.id),
+    name: customer.name,
+    phone: customer.phone,
+  }));
   const data = query.data;
   useEffect(() => {
     if (!pendingLinkItem || !data) return;
@@ -199,6 +222,7 @@ export function ScheduleScreen() {
   const afterWrite = async () => {
     markScheduleWidgetSaved();
     setFormState(null);
+    setWidgetQuick(null);
     setTaskState(null);
     setDeleting(null);
     setDetail(null);
@@ -255,12 +279,21 @@ export function ScheduleScreen() {
     setFormError(null);
     save.reset();
     setTaskState(null);
+    setWidgetQuick(null);
     setFormState({ mode: 'create', event: null, form: emptyEventForm(selected), requestId: newScheduleRequestId() });
+  };
+  const submitWidgetQuick = (draft: WidgetQuickDraft) => {
+    if (!widgetQuick) return;
+    const form = widgetQuickScheduleForm(draft);
+    const problem = validateEventForm(form, { calendarRequired: false });
+    setFormError(problem);
+    if (!problem) save.mutate({ mode: 'create', event: null, form, requestId: widgetQuick.requestId });
   };
   const openTodoCreate = () => {
     setTaskError(null);
     saveTask.reset();
     setFormState(null);
+    setWidgetQuick(null);
     setTaskState({ form: emptyTaskForm(selected) });
   };
   const submitTask = () => {
@@ -412,6 +445,18 @@ export function ScheduleScreen() {
         ))}
       </ScrollView>
 
+      <WidgetQuickAddSheet
+        open={widgetQuick !== null}
+        kind="schedule"
+        date={widgetQuick?.date ?? selected}
+        busy={save.isPending}
+        error={formError ?? (save.isError ? describeApiError(save.error, '일정을 저장하지 못했습니다.') : null)}
+        customers={quickCustomers}
+        customersLoading={customersQuery.isLoading}
+        onClose={() => setWidgetQuick(null)}
+        onSubmit={submitWidgetQuick}
+      />
+
       <ModalShell
         open={taskState !== null}
         title="할 일 추가"
@@ -430,7 +475,7 @@ export function ScheduleScreen() {
             <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
             <Inline gap="sm">
               <ScheduleDateField label="날짜" value={taskState.form.dueDate} onChange={(dueDate) => patchTask({ dueDate })} clearable placeholder="날짜 없음" />
-              <View style={styles.flex}><TextField label="시각" placeholder="HH:mm (선택)" value={taskState.form.dueTime} onChangeText={(dueTime) => patchTask({ dueTime })} /></View>
+              <ScheduleTimeField label="시각" value={taskState.form.dueTime} optional onChange={(dueTime) => patchTask({ dueTime })} />
             </Inline>
             <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
             {taskError || saveTask.isError ? (
@@ -476,8 +521,8 @@ export function ScheduleScreen() {
             </Inline>
             {!formState.form.allDay ? (
               <Inline gap="sm">
-                <View style={styles.flex}><TextField label="시작 시각" placeholder="HH:mm" value={formState.form.startTime} onChangeText={(startTime) => patchForm({ startTime })} /></View>
-                <View style={styles.flex}><TextField label="종료 시각" placeholder="HH:mm" value={formState.form.endTime} onChangeText={(endTime) => patchForm({ endTime })} /></View>
+                <ScheduleTimeField label="시작 시각" value={formState.form.startTime} onChange={(startTime) => patchForm({ startTime })} />
+                <ScheduleTimeField label="종료 시각" value={formState.form.endTime} onChange={(endTime) => patchForm({ endTime })} />
               </Inline>
             ) : null}
             <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />

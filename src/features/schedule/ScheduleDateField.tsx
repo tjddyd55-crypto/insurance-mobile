@@ -11,25 +11,28 @@ type ScheduleDateFieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  /** 할 일 예정일처럼 비워 둘 수 있다. */
+  /** 할 일 날짜처럼 비워 둘 수 있다. */
   clearable?: boolean;
   placeholder?: string;
 };
 
-/** 일정·할 일 날짜. 칸의 YYYY-MM-DD 문자열을 그대로 넣는다. */
+/** 일정·할 일 날짜. 칸을 고른 뒤 완료를 눌러야 YYYY-MM-DD 가 반영된다. */
 export function ScheduleDateField({ label, value, onChange, clearable = false, placeholder = '날짜 선택' }: ScheduleDateFieldProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(() => monthAnchor(value));
+  const [draft, setDraft] = useState('');
+  const [pickerKey, setPickerKey] = useState(0);
   const stored = YMD.test(value) ? value : '';
 
   const openPicker = () => {
-    setMonth(monthAnchor(stored));
+    setDraft(stored);
+    setPickerKey((key) => key + 1);
     setOpen(true);
   };
-  const choose = (ymd: string) => {
-    onChange(ymd);
+  const cancel = () => setOpen(false);
+  const commit = () => {
+    onChange(draft);
     setOpen(false);
   };
 
@@ -38,9 +41,21 @@ export function ScheduleDateField({ label, value, onChange, clearable = false, p
       <Pressable accessibilityRole="button" accessibilityLabel={`${label} 달력 열기`} onPress={openPicker}>
         <TextField label={label} value={stored} placeholder={placeholder} editable={false} pointerEvents="none" importantForAccessibility="no-hide-descendants" />
       </Pressable>
-      <ModalShell open={open} title={label} presentation="dialog" scroll onRequestClose={() => setOpen(false)}>
-        <StackMonth month={month} value={stored} styles={styles} onMonth={setMonth} onChoose={choose} />
-        {clearable ? <Button label="날짜 없음" variant="ghost" onPress={() => choose('')} /> : null}
+      <ModalShell
+        open={open}
+        title={label}
+        presentation="dialog"
+        scroll
+        onRequestClose={cancel}
+        footer={
+          <Inline gap="sm">
+            <View style={styles.flex}><Button label="취소" fullWidth onPress={cancel} /></View>
+            <View style={styles.flex}><Button label="완료" variant="primary" fullWidth onPress={commit} /></View>
+          </Inline>
+        }
+      >
+        <ScheduleMonthCalendar key={pickerKey} value={draft} onChoose={setDraft} />
+        {clearable ? <Button label="날짜 없음" variant="ghost" onPress={() => setDraft('')} /> : null}
       </ModalShell>
     </View>
   );
@@ -49,6 +64,14 @@ export function ScheduleDateField({ label, value, onChange, clearable = false, p
 function monthAnchor(value: string): string {
   const base = YMD.test(value) ? value : seoulYmd();
   return `${base.slice(0, 7)}-01`;
+}
+
+/** 월 그리드. 칸을 누르면 그 날의 YYYY-MM-DD 를 고른 상태로만 둔다. */
+export function ScheduleMonthCalendar({ value, onChoose }: { value: string; onChoose: (ymd: string) => void }) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const [month, setMonth] = useState(() => monthAnchor(value));
+  return <StackMonth month={month} value={value} styles={styles} onMonth={setMonth} onChoose={onChoose} />;
 }
 
 function StackMonth({
