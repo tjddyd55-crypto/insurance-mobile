@@ -64,6 +64,7 @@ import {
   validateEventForm,
   type ScheduleNativeRoute,
 } from './scheduleModel';
+import { ScheduleDateField } from './ScheduleDateField';
 import { scheduleQueryKeys } from './queryKeys';
 import { scheduleLinkTarget } from './scheduleLinkParams';
 import {
@@ -260,7 +261,7 @@ export function ScheduleScreen() {
     setTaskError(null);
     saveTask.reset();
     setFormState(null);
-    setTaskState({ form: emptyTaskForm(selected) });
+    setTaskState({ form: emptyTaskForm(seoulYmd()) });
   };
   const submitTask = () => {
     if (!taskState) return;
@@ -428,7 +429,7 @@ export function ScheduleScreen() {
           <Stack gap="md">
             <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
             <Inline gap="sm">
-              <View style={styles.flex}><TextField label="예정일" placeholder="YYYY-MM-DD (비우면 날짜 없음)" value={taskState.form.dueDate} onChangeText={(dueDate) => patchTask({ dueDate })} /></View>
+              <ScheduleDateField label="예정일" value={taskState.form.dueDate} onChange={(dueDate) => patchTask({ dueDate })} clearable placeholder="날짜 없음" />
               <View style={styles.flex}><TextField label="시각" placeholder="HH:mm (선택)" value={taskState.form.dueTime} onChangeText={(dueTime) => patchTask({ dueTime })} /></View>
             </Inline>
             <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
@@ -470,8 +471,8 @@ export function ScheduleScreen() {
               <Button label="종일" variant={formState.form.allDay ? 'selected' : 'secondary'} size="sm" onPress={() => patchForm({ allDay: true })} />
             </Inline>
             <Inline gap="sm">
-              <View style={styles.flex}><TextField label="시작일" placeholder="YYYY-MM-DD" value={formState.form.date} onChangeText={(date) => patchForm({ date })} /></View>
-              <View style={styles.flex}><TextField label="종료일" placeholder="YYYY-MM-DD" value={formState.form.endDate} onChangeText={(endDate) => patchForm({ endDate })} /></View>
+              <ScheduleDateField label="시작일" value={formState.form.date} onChange={(date) => patchForm({ date })} />
+              <ScheduleDateField label="종료일" value={formState.form.endDate} onChange={(endDate) => patchForm({ endDate })} />
             </Inline>
             {!formState.form.allDay ? (
               <Inline gap="sm">

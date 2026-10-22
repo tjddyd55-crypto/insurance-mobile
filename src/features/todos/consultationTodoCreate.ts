@@ -1,4 +1,5 @@
 import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
+import { todayInSeoul } from '../../utils/dateInput';
 import { isValidOptionalYmd, suggestTodoDueDate } from './todoModel';
 import { cloneTodoFormDraft, type TodoFormDraft } from './todoFormSession';
 
@@ -71,21 +72,23 @@ export function consultationTodoCreateRoute(prefill: ConsultationTodoCreatePrefi
   };
 }
 
-export function seedTodoCreateForm(consultationId?: string, dueDate?: string): {
+/**
+ * 할 일 추가 초안. 마감일은 진입점과 상관없이 KST 오늘(YYYY-MM-DD)이다.
+ * 위젯이 넘긴 날짜·상담 본문 제안은 초기값으로 쓰지 않는다. 수정 화면은 이 함수를 쓰지 않는다.
+ */
+export function seedTodoCreateForm(consultationId?: string, _dueDate?: string, now = new Date()): {
   draft: TodoFormDraft;
   source: TodoCreateSource;
 } {
+  const dueDate = todayInSeoul(now);
   const prefill = peekConsultationTodoCreate(consultationId);
   if (!prefill) {
-    // 홈 화면 위젯 '+ 할 일 추가': 위젯에서 보던 날짜를 마감일로 미리 채운다(올바른 날짜만).
-    const draft = cloneTodoFormDraft();
-    const seededDue = dueDate && isValidOptionalYmd(dueDate) ? dueDate : '';
-    return { draft: seededDue ? { ...draft, dueDate: seededDue } : draft, source: MANUAL_SOURCE };
+    return { draft: { ...cloneTodoFormDraft(), dueDate }, source: MANUAL_SOURCE };
   }
   return {
     draft: {
       description: prefill.description,
-      dueDate: prefill.dueDate,
+      dueDate,
       relatedCustomerId: prefill.relatedCustomerId,
       relatedCustomerName: prefill.relatedCustomerName,
     },

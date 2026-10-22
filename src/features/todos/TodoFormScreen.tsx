@@ -13,7 +13,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
-import { DateField } from '../../components/DateField';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -31,6 +30,7 @@ import { customerMatchesSearch, formatCustomerPhone } from '../customers/custome
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
+import { ScheduleDateField } from '../schedule/ScheduleDateField';
 import { scheduleQueryKeys } from '../schedule/queryKeys';
 import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
@@ -269,9 +269,11 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
               }}
               placeholder="할 일을 입력하세요."
             />
-            <DateField
+            <ScheduleDateField
               label="마감일"
               value={form.dueDate}
+              clearable
+              placeholder="날짜 없음"
               onChange={(dueDate) => setForm((previous) => ({ ...previous, dueDate }))}
             />
           </Stack>

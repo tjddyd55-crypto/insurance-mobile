@@ -3,6 +3,7 @@ import { createGoogleTaskFromSchedule, fetchWriteTargets } from '../scheduleApi'
 import {
   emptyEventForm,
   emptyTaskForm,
+  seoulYmd,
   googleTasksNotice,
   normalizeScheduleEvents,
   normalizeWriteTargets,
@@ -55,6 +56,17 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
     expect(screen).not.toContain('SCHEDULE_STORAGE_LABEL');
     expect(screen).not.toContain('createGoogleTaskFromSchedule');
     expect(screen).not.toContain('createScheduleEvent(');
+    expect(screen).toContain('<ScheduleDateField label="시작일"');
+    expect(screen).toContain('<ScheduleDateField label="종료일"');
+    expect(screen).toContain('<ScheduleDateField label="예정일"');
+    expect(screen).toContain('emptyTaskForm(seoulYmd())');
+    expect(screen).not.toContain('emptyTaskForm(selected)');
+    expect(screen).toContain('label="시작 시각"');
+    expect(screen).toContain('label="종료 시각"');
+    expect(screen).toContain('label="시각"');
+    expect(screen).not.toContain('onChangeText={(date)');
+    expect(screen).not.toContain('onChangeText={(endDate)');
+    expect(screen).not.toContain('onChangeText={(dueDate)');
     expect(model).not.toContain('SCHEDULE_STORAGE_LABEL');
     expect(model).not.toContain('storageAvailability');
   });
@@ -75,10 +87,12 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
 });
 
 describe('일정 관리 추가 — 할 일 폼', () => {
-  it('선택한 날로 예정일을 채우고, 비우면 날짜 없음으로 저장', () => {
-    const form = { ...emptyTaskForm('2026-10-21'), title: '  서류 ' };
-    expect(form.dueDate).toBe('2026-10-21');
-    expect(taskFormToTodoPayload(form)).toEqual({ title: '서류', description: null, dueDate: '2026-10-21', dueTime: null });
+  it('추가 예정일은 KST 오늘 문자열이고, 비우면 날짜 없음으로 저장', () => {
+    expect(seoulYmd(new Date('2026-10-01T14:59:00.000Z'))).toBe('2026-10-01');
+    expect(seoulYmd(new Date('2026-10-01T15:00:00.000Z'))).toBe('2026-10-02');
+    const form = { ...emptyTaskForm(seoulYmd(new Date('2026-10-01T15:00:00.000Z'))), title: '  서류 ' };
+    expect(form.dueDate).toBe('2026-10-02');
+    expect(taskFormToTodoPayload(form)).toEqual({ title: '서류', description: null, dueDate: '2026-10-02', dueTime: null });
     expect(taskFormToTodoPayload({ ...form, dueDate: '', dueTime: '09:00' })).toEqual({ title: '서류', description: null, dueDate: null, dueTime: null });
     expect(taskFormToGoogleInput({ ...form, taskListId: 'L1', dueDate: '' }, 'r'.repeat(32))).toEqual({ taskListId: 'L1', title: '서류', notes: '', dueDate: null, requestId: 'r'.repeat(32) });
   });
