@@ -14,6 +14,8 @@ type OnefcHomeWidgetsNative = {
   installedWidgetTypes(): Promise<string[]>;
   /** 1.0.4 이하 바이너리에는 없다. 없으면 호출부는 앱 안 이동으로 돌아간다. */
   moveTaskToBack?: () => Promise<boolean> | boolean;
+  /** 빠른 추가 결과(JSON)를 열려 있는 날짜 모달에 전달. 구 바이너리에는 없다. */
+  reportQuickAddResult?: (requestId: string, json: string) => Promise<boolean> | boolean;
 };
 
 let cached: OnefcHomeWidgetsNative | null | undefined;
@@ -67,4 +69,9 @@ export const widgetBridge = {
   installedWidgetTypes: () =>
     safe<WidgetType[]>([], async (native) => (await native.installedWidgetTypes()).filter(isWidgetType)),
   moveTaskToBack,
+  reportQuickAddResult: (requestId: string, json: string) =>
+    safe(false, async (native) => {
+      if (typeof native.reportQuickAddResult !== 'function') return false;
+      return Boolean(await native.reportQuickAddResult(requestId, json));
+    }),
 };

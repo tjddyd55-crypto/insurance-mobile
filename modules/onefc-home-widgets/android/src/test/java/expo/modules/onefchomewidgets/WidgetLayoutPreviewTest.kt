@@ -14,6 +14,7 @@ import androidx.test.core.app.ApplicationProvider
 import expo.modules.onefchomewidgets.test.R as PreviewR
 import org.json.JSONArray
 import org.json.JSONObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -67,12 +68,13 @@ class WidgetLayoutPreviewTest {
     assertTrue(dialogText.contains("미팅"))
     assertTrue(dialogText.contains("하루 종일"))
     assertTrue(dialogText.contains("✓"))
-    assertTrue(dialogText.contains("10월 21일에 추가"))
+    assertTrue(threeItems.findViewById<android.widget.EditText>(R.id.day_input).hint.toString() == "10월 21일에 추가")
+    assertFalse("empty input disables send", threeItems.findViewById<View>(R.id.day_send).isEnabled)
     captureDialog("schedule-day-dialog", threeItems, 340)
 
     val empty = dayDialog("2026-10-22")
     assertTrue(texts(empty).contains("이 날 일정이 없습니다"))
-    assertTrue(texts(empty).contains("10월 22일에 추가"))
+    assertEquals("10월 22일에 추가", empty.findViewById<android.widget.EditText>(R.id.day_input).hint.toString())
     captureDialog("schedule-day-dialog-empty", empty, 340)
 
     // 많은 항목: 목록만 화면 높이 절반으로 잘리고 추가 버튼은 남는다.
@@ -82,7 +84,35 @@ class WidgetLayoutPreviewTest {
     val half = (many.resources.displayMetrics.heightPixels * 0.5f).toInt()
     captureDialog("schedule-day-dialog-many", many, 340, maxHeightPx = half)
     assertTrue("scroll ${scroll.height} <= $half", scroll.height <= half)
-    assertTrue(many.findViewById<View>(R.id.day_add).height > 0)
+    assertTrue(many.findViewById<View>(R.id.day_input_row).height > 0)
+
+    // 빠른 추가: 입력 + 키보드(시뮬레이션), 오류(입력 유지), 저장 직후 새 항목(바로 누를 수 있음).
+    val typingActivity = dayActivity("2026-10-21")
+    val typing = typingActivity.findViewById<View>(R.id.day_card)
+    typing.findViewById<android.widget.EditText>(R.id.day_input).setText("고객 미팅")
+    assertTrue("text enables send", typing.findViewById<View>(R.id.day_send).isEnabled)
+    captureDialog("quickadd-typing-keyboard", typing, 340, keyboardDp = 260)
+
+    val errorActivity = dayActivity("2026-10-21")
+    val errorId = errorActivity.beginForTest("고객 미팅")!!
+    assertFalse("busy blocks double submit", errorActivity.findViewById<View>(R.id.day_send).isEnabled)
+    errorActivity.deliverForTest(errorId, """{"ok":false,"requestId":"$errorId","code":"server","message":"Google 연결이 만료되었습니다. 서비스 연동에서 다시 연결해 주세요."}""")
+    val errorCard = errorActivity.findViewById<View>(R.id.day_card)
+    assertTrue(texts(errorCard).contains("Google 연결이 만료되었습니다"))
+    assertEquals("고객 미팅", errorCard.findViewById<android.widget.EditText>(R.id.day_input).text.toString())
+    captureDialog("quickadd-error", errorCard, 340)
+
+    val createdActivity = dayActivity("2026-10-22")
+    val createdId = createdActivity.beginForTest("고객 미팅")!!
+    createdActivity.deliverForTest(createdId, """{"ok":true,"requestId":"$createdId","eventId":"g:primary:abc","date":"2026-10-22","title":"고객 미팅","refreshed":false}""")
+    val createdCard = createdActivity.findViewById<View>(R.id.day_card)
+    assertTrue(texts(createdCard).contains("고객 미팅"))
+    assertEquals("", createdCard.findViewById<android.widget.EditText>(R.id.day_input).text.toString())
+    val newRow = createdCard.findViewById<android.widget.LinearLayout>(R.id.day_rows).getChildAt(0)
+    newRow.performClick()
+    val opened = org.robolectric.Shadows.shadowOf(createdActivity).nextStartedActivity
+    assertTrue(opened.dataString, opened.dataString!!.contains("event=g%3Aprimary%3Aabc") && opened.dataString!!.contains("src=widget"))
+    captureDialog("quickadd-created", createdCard, 340)
 
     val after = apply(context, TodoWidgetRenderer.render(context, WidgetEnvelope.parse(todoRaw(), OneFcWidgetType.TODO)!!, 2, 280, false)!!)
     val before = apply(context, beforeTodo(context))
@@ -107,21 +137,20 @@ class WidgetLayoutPreviewTest {
     val afterPng = File(outDir, "todo-after-font.png").readBytes()
     assertNotEquals(beforePng.size, 0)
     assertFalse(beforePng.contentEquals(afterPng))
-    for (name in listOf("schedule-4x4", "schedule-small", "schedule-day-dialog", "schedule-day-dialog-empty", "schedule-day-dialog-many", "todo-before-font", "todo-after-font")) {
+    for (name in listOf("schedule-4x4", "schedule-small", "schedule-day-dialog", "schedule-day-dialog-empty", "schedule-day-dialog-many", "quickadd-typing-keyboard", "quickadd-error", "quickadd-created", "quickadd-typing-keyboard", "quickadd-error", "quickadd-created", "todo-before-font", "todo-after-font")) {
       assertTrue(name, File(outDir, "$name.png").length() > 2_000)
     }
   }
 
-  private fun dayDialog(date: String): View {
-    val activity = Robolectric.buildActivity(
-      ScheduleDayActivity::class.java,
-      Intent().putExtra(ScheduleDayActivity.EXTRA_DATE, date),
-    ).setup().get()
-    return activity.findViewById(R.id.day_card)
-  }
+  private fun dayActivity(date: String): ScheduleDayActivity = Robolectric.buildActivity(
+    ScheduleDayActivity::class.java,
+    Intent().putExtra(ScheduleDayActivity.EXTRA_DATE, date),
+  ).setup().get()
+
+  private fun dayDialog(date: String): View = dayActivity(date).findViewById(R.id.day_card)
 
   /** 다이얼로그는 실제 drawable 색·모서리로 그린다. maxHeightPx 가 있으면 목록 높이를 기기 규칙대로 자른다. */
-  private fun captureDialog(name: String, view: View, widthDp: Int, maxHeightPx: Int? = null) {
+  private fun captureDialog(name: String, view: View, widthDp: Int, maxHeightPx: Int? = null, keyboardDp: Int = 0) {
     val width = dp(view, widthDp)
     fun measure() {
       view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(dp(view, 2000), View.MeasureSpec.AT_MOST))
@@ -135,7 +164,16 @@ class WidgetLayoutPreviewTest {
     }
     val nodes = JSONArray()
     collectReal(view, 0, 0, nodes)
-    scenes.put(JSONObject().put("name", name).put("width", view.width).put("height", view.height).put("background", "#8A8F8C").put("nodes", nodes))
+    var height = view.height
+    if (keyboardDp > 0) {
+      // 미리보기용 키보드 자리(adjustResize: 카드는 키보드 위에 그대로 남는다).
+      val gap = dp(view, 12)
+      val keyboard = dp(view, keyboardDp)
+      nodes.put(JSONObject().put("kind", "box").put("x", 0).put("y", height + gap).put("w", view.width).put("h", keyboard).put("fill", "#D5D9D7").put("radius", 0.0))
+      nodes.put(JSONObject().put("kind", "text").put("x", 0).put("y", height + gap).put("w", view.width).put("h", keyboard).put("text", "키보드 (미리보기)").put("size", (14 * view.resources.displayMetrics.scaledDensity).toDouble()).put("color", "#5B655F").put("bold", false).put("gravity", "center_h center_v").put("padX", 0).put("padY", 0).put("ellipsize", false))
+      height += gap + keyboard
+    }
+    scenes.put(JSONObject().put("name", name).put("width", view.width).put("height", height).put("background", "#8A8F8C").put("nodes", nodes))
   }
 
   private fun collectReal(view: View, originX: Int, originY: Int, nodes: JSONArray) {
@@ -144,13 +182,23 @@ class WidgetLayoutPreviewTest {
     val y = originY + view.top
     val bg = view.background as? android.graphics.drawable.GradientDrawable
     if (bg != null) {
+      val raw = bg.color?.defaultColor ?: Color.WHITE
+      val a = view.alpha
+      val mixed = Color.rgb(
+        (Color.red(raw) * a + 255 * (1 - a)).toInt(),
+        (Color.green(raw) * a + 255 * (1 - a)).toInt(),
+        (Color.blue(raw) * a + 255 * (1 - a)).toInt(),
+      )
       val node = JSONObject().put("kind", "box").put("x", x).put("y", y).put("w", view.width).put("h", view.height)
-        .put("fill", String.format("#%06X", 0xFFFFFF and (bg.color?.defaultColor ?: Color.WHITE)))
-        .put("radius", bg.cornerRadius.toDouble())
+        .put("fill", String.format("#%06X", 0xFFFFFF and mixed))
+        .put("radius", if (bg.shape == android.graphics.drawable.GradientDrawable.OVAL) minOf(view.width, view.height) / 2.0 else bg.cornerRadius.toDouble())
       if (view.id == R.id.day_card) node.put("stroke", "#E2E6E3").put("strokeWidth", view.resources.displayMetrics.density.toDouble())
       nodes.put(node)
     }
     if (view is TextView && !view.text.isNullOrEmpty()) nodes.put(label(view, x, y))
+    if (view is TextView && view.text.isNullOrEmpty() && !view.hint.isNullOrEmpty()) {
+      nodes.put(label(view, x, y).put("text", view.hint.toString()).put("color", String.format("#%06X", 0xFFFFFF and view.currentHintTextColor)))
+    }
     if (view is ViewGroup) {
       val clip = view.id == R.id.day_scroll
       for (index in 0 until view.childCount) {

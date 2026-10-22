@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 빠른 추가 보내기 버튼. 비활성은 alpha 로 흐리게. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+  <solid android:color="@color/onefc_widget_brand" />
+</shape>

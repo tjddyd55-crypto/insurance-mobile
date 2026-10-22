@@ -100,6 +100,13 @@ export function formatDayTitle(ymd: string): string {
 
 const EVENT_TYPES: ScheduleEventType[] = ['google_event', 'customer_alert', 'car_expiry', 'insurance_age'];
 
+/** 생성 응답({ data: { event } } 또는 { event })의 일정 id. 목록(normalizeScheduleEvents)과 같은 정규화라 id 가 같다. */
+export function createdEventId(payload: unknown): string | null {
+  const body = record(payload);
+  const data = record(body.data);
+  return normalizeEvent(data.event ?? body.event)?.id ?? null;
+}
+
 function normalizeEvent(value: unknown): ScheduleEvent | null {
   const row = record(value);
   const id = text(row.id).trim();

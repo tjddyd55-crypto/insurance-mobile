@@ -25,8 +25,16 @@
     </LinearLayout>
   </ScrollView>
 
-  <LinearLayout android:id="@+id/day_add" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="16dp" android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/onefc_day_add_bg" android:paddingStart="22dp" android:paddingEnd="22dp" android:clickable="true" android:focusable="true">
-    <TextView android:id="@+id/day_add_label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="@dimen/onefc_widget_item_text" android:textStyle="bold" android:textColor="@color/onefc_widget_on_brand" android:maxLines="1" android:ellipsize="end" />
-    <TextView android:id="@+id/day_add_plus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="+" android:textSize="@dimen/onefc_widget_nav_text" android:textColor="@color/onefc_widget_on_brand" />
+  <!-- 빠른 추가 오류(입력은 그대로 둔다). -->
+  <TextView android:id="@+id/day_error" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:visibility="gone" android:textSize="@dimen/onefc_widget_small_text" android:textColor="@color/onefc_widget_sunday" android:maxLines="2" android:ellipsize="end" />
+
+  <!-- Google Calendar 식 빠른 추가: 제목 입력 후 완료/보내기 → 그 날짜 하루 종일 일정. -->
+  <LinearLayout android:id="@+id/day_input_row" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="12dp" android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/onefc_day_input_bg" android:paddingStart="18dp" android:paddingEnd="6dp">
+    <EditText android:id="@+id/day_input" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@null" android:inputType="text|textCapSentences" android:imeOptions="actionDone|flagNoExtractUi" android:maxLines="1" android:maxLength="200" android:importantForAutofill="no" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" android:textColorHint="@color/onefc_widget_text_secondary" />
+    <TextView android:id="@+id/day_expand" android:layout_width="wrap_content" android:minWidth="44dp" android:layout_height="40dp" android:gravity="center" android:paddingStart="6dp" android:paddingEnd="6dp" android:text="@string/onefc_widget_day_expand_label" android:textSize="@dimen/onefc_widget_small_text" android:textColor="@color/onefc_widget_text_secondary" android:contentDescription="@string/onefc_widget_day_expand" />
+    <TextView android:id="@+id/day_send" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="2dp" android:gravity="center" android:background="@drawable/onefc_day_send_bg" android:text="+" android:textSize="@dimen/onefc_widget_nav_text" android:textColor="@color/onefc_widget_on_brand" android:contentDescription="@string/onefc_widget_day_send" />
   </LinearLayout>
+
+  <!-- 로그인 필요: 기존처럼 앱 로그인으로. -->
+  <TextView android:id="@+id/day_login" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="16dp" android:visibility="gone" android:gravity="center" android:background="@drawable/onefc_day_add_bg" android:text="@string/onefc_widget_day_login" android:textSize="@dimen/onefc_widget_item_text" android:textStyle="bold" android:textColor="@color/onefc_widget_on_brand" />
 </LinearLayout>
