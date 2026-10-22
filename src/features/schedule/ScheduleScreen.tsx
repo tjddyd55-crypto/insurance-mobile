@@ -48,8 +48,8 @@ import {
   customerRouteOfTask,
   countItemsByDay,
   dayCountLabel,
-  applyScheduleDateTime,
   emptyEventForm,
+  toggleScheduleTime,
   eventTimeLabel,
   eventToForm,
   eventsOnDay,
@@ -68,6 +68,7 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { ScheduleDateField } from './ScheduleDateField';
+import { ScheduleTimeField } from './ScheduleTimeField';
 import { WidgetQuickAddSheet, type QuickAddCustomer } from './WidgetQuickAddSheet';
 import { widgetQuickScheduleForm, type WidgetQuickDraft } from './widgetQuickAddModel';
 import { scheduleQueryKeys } from './queryKeys';
@@ -525,17 +526,29 @@ export function ScheduleScreen() {
             <Inline gap="sm">
               <ScheduleDateField
                 label="시작일"
+                withTime={false}
                 value={formState.form.date}
-                time={formState.form.allDay ? '' : formState.form.startTime}
-                onComplete={(next) => patchForm(applyScheduleDateTime(formState.form, 'start', next))}
+                onComplete={({ date }) => patchForm({ date, endDate: formState.form.endDate < date ? date : formState.form.endDate })}
               />
               <ScheduleDateField
                 label="종료일"
+                withTime={false}
                 value={formState.form.endDate}
-                time={formState.form.allDay ? '' : formState.form.endTime}
-                onComplete={(next) => patchForm(applyScheduleDateTime(formState.form, 'end', next))}
+                onComplete={({ date }) => patchForm({ endDate: date < formState.form.date ? formState.form.date : date })}
               />
             </Inline>
+            <Button
+              label="시간 지정"
+              variant={formState.form.allDay ? 'secondary' : 'selected'}
+              accessibilityState={{ selected: !formState.form.allDay }}
+              onPress={() => patchForm(toggleScheduleTime(formState.form))}
+            />
+            {formState.form.allDay ? null : (
+              <Inline gap="sm">
+                <ScheduleTimeField label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm({ startTime })} />
+                <ScheduleTimeField label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm({ endTime })} />
+              </Inline>
+            )}
             <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />
             {formError || save.isError ? (
               <AppText variant="caption" color="danger">{formError ?? describeApiError(save.error, '일정을 저장하지 못했습니다.')}</AppText>

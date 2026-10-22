@@ -9,6 +9,8 @@ export type WidgetQuickDraft = {
   date: string;
   /** 비어 있으면 시각 없음. 일정은 종일, 할 일은 dueTime 없음. */
   time: string;
+  /** 일정에서 시간 지정을 켰을 때의 종료 시각. 비어 있으면 시작에서 1시간 뒤. */
+  endTime?: string;
   customerId: string | null;
   customerName: string;
 };
@@ -17,15 +19,17 @@ export type WidgetQuickDraft = {
 export function widgetQuickScheduleForm(draft: WidgetQuickDraft): ScheduleEventForm {
   const title = draft.title.trim();
   const base = emptyEventForm(draft.date);
-  if (!draft.time.trim()) return { ...base, title, allDay: true };
-  const end = plusOneHour(draft.time.trim());
+  const start = draft.time.trim();
+  if (!start) return { ...base, title, allDay: true };
+  const explicitEnd = draft.endTime?.trim() ?? '';
+  const end = /^([01]\d|2[0-3]):[0-5]\d$/.test(explicitEnd) ? { time: explicitEnd, dayOffset: explicitEnd <= start ? 1 as const : 0 as const } : plusOneHour(start);
   return {
     ...base,
     title,
     allDay: false,
     date: draft.date,
     endDate: end.dayOffset ? addDaysYmd(draft.date, end.dayOffset) : draft.date,
-    startTime: draft.time.trim(),
+    startTime: start,
     endTime: end.time,
   };
 }

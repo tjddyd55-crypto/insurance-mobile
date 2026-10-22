@@ -364,9 +364,21 @@ export function scheduleDeletePrompt(event: Pick<ScheduleEvent, 'origin'>): { ti
   return { title: '일정을 삭제할까요?', message: 'Google 캘린더에서도 삭제됩니다.' };
 }
 
-/** 새 일정. 날짜는 고른 날이고, 시각을 고르기 전에는 종일이다. 09:00·10:00 은 화면 밖 자리표시자다. */
+/** 새 일정. 날짜는 고른 날이고, 시각을 고르기 전에는 종일이다. 09:00·10:00 은 시간 지정을 켠 뒤의 시작값이다. */
 export function emptyEventForm(date: string, calendarId = ''): ScheduleEventForm {
   return { calendarId, title: '', description: '', date, endDate: date, allDay: true, startTime: '09:00', endTime: '10:00' };
+}
+
+/** 시간 지정을 켜면 시작·종료 시각이 보이고 종일이 아니다. 끄면 다시 종일이다. */
+export function toggleScheduleTime(
+  form: Pick<ScheduleEventForm, 'allDay' | 'startTime' | 'endTime'>,
+): Pick<ScheduleEventForm, 'allDay' | 'startTime' | 'endTime'> {
+  if (!form.allDay) return { allDay: true, startTime: form.startTime, endTime: form.endTime };
+  return {
+    allDay: false,
+    startTime: HM.test(form.startTime) ? form.startTime : '09:00',
+    endTime: HM.test(form.endTime) ? form.endTime : '10:00',
+  };
 }
 
 const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;

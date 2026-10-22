@@ -34,6 +34,22 @@ describe('위젯 빠른 추가 저장 값', () => {
       customerId: null,
       customerName: '',
     })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '00:30', endDate: '2026-10-23' });
+    expect(widgetQuickScheduleForm({
+      title: '상담',
+      date: '2026-10-22',
+      time: '14:00',
+      endTime: '15:30',
+      customerId: null,
+      customerName: '',
+    })).toMatchObject({ allDay: false, startTime: '14:00', endTime: '15:30', endDate: '2026-10-22' });
+    expect(widgetQuickScheduleForm({
+      title: '상담',
+      date: '2026-10-22',
+      time: '23:30',
+      endTime: '00:30',
+      customerId: null,
+      customerName: '',
+    })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '00:30', endDate: '2026-10-23' });
   });
 
   it('일정 수정은 저장된 시각을 유지하고, 종일에서 시각을 고르면 종료가 1시간 뒤다', () => {

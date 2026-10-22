@@ -20,6 +20,8 @@ type ScheduleDateFieldProps = {
   onComplete?: (value: { date: string; time: string }) => void;
   /** 할 일 날짜처럼 비워 둘 수 있다. */
   clearable?: boolean;
+  /** 일정 시작일·종료일은 날짜만. 시각은 시간 지정으로 따로 연다. */
+  withTime?: boolean;
   placeholder?: string;
   /** 위젯 시트처럼 바깥 버튼이 달력을 연다. */
   hideTrigger?: boolean;
@@ -27,8 +29,9 @@ type ScheduleDateFieldProps = {
   openRequest?: { id: number; clock: boolean } | null;
 };
 
-function shownValue(date: string, time: string): string {
+function shownValue(date: string, time: string, withTime: boolean): string {
   if (!date) return '';
+  if (!withTime) return date;
   return HM.test(time) ? `${date} ${time}` : `${date} · 종일`;
 }
 
@@ -40,6 +43,7 @@ export function ScheduleDateField({
   onChange,
   onComplete,
   clearable = false,
+  withTime = true,
   placeholder = '날짜 선택',
   hideTrigger = false,
   openRequest = null,
@@ -80,7 +84,7 @@ export function ScheduleDateField({
   const cancel = () => setOpen(false);
   const commit = () => {
     onChange?.(draft);
-    onComplete?.({ date: draft, time: draftTime });
+    onComplete?.({ date: draft, time: withTime ? draftTime : '' });
     setOpen(false);
   };
   const openClock = () => {
@@ -101,7 +105,7 @@ export function ScheduleDateField({
     <View style={styles.flex}>
       {hideTrigger ? null : (
         <Pressable accessibilityRole="button" accessibilityLabel={`${label} 달력 열기`} onPress={openPicker}>
-          <TextField label={label} value={shownValue(stored, storedTime)} placeholder={placeholder} editable={false} pointerEvents="none" importantForAccessibility="no-hide-descendants" />
+          <TextField label={label} value={shownValue(stored, storedTime, withTime)} placeholder={placeholder} editable={false} pointerEvents="none" importantForAccessibility="no-hide-descendants" />
         </Pressable>
       )}
       <ModalShell
@@ -118,11 +122,13 @@ export function ScheduleDateField({
         }
       >
         <ScheduleMonthCalendar key={pickerKey} value={draft} onChoose={setDraft} />
-        <Pressable accessibilityRole="button" accessibilityLabel="시간 설정" onPress={openClock} style={styles.timeRow}>
-          <AppText variant="bodyStrong">시간 설정</AppText>
-          <AppText variant="body" color="textSecondary">{draftTime || '종일'}</AppText>
-        </Pressable>
-        {clockOpen ? (
+        {withTime ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="시간 설정" onPress={openClock} style={styles.timeRow}>
+            <AppText variant="bodyStrong">시간 설정</AppText>
+            <AppText variant="body" color="textSecondary">{draftTime || '종일'}</AppText>
+          </Pressable>
+        ) : null}
+        {withTime && clockOpen ? (
           <View style={styles.clock}>
             <DateTimePicker
               mode="time"
@@ -134,7 +140,7 @@ export function ScheduleDateField({
             />
           </View>
         ) : null}
-        {draftTime ? <Button label="종일" variant="ghost" onPress={() => { setDraftTime(''); setClockOpen(false); }} /> : null}
+        {withTime && draftTime ? <Button label="종일" variant="ghost" onPress={() => { setDraftTime(''); setClockOpen(false); }} /> : null}
         {clearable ? <Button label="날짜 없음" variant="ghost" onPress={() => { setDraft(''); setDraftTime(''); }} /> : null}
       </ModalShell>
     </View>

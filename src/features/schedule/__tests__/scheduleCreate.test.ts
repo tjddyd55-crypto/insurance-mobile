@@ -3,6 +3,7 @@ import { createGoogleTaskFromSchedule, fetchWriteTargets } from '../scheduleApi'
 import {
   emptyEventForm,
   emptyTaskForm,
+  toggleScheduleTime,
   seoulYmd,
   googleTasksNotice,
   normalizeScheduleEvents,
@@ -60,19 +61,23 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
     const taskForm = screen.slice(screen.indexOf('title="할 일 추가"'), screen.indexOf('title={scheduleFormTitle(formState)}'));
     expect(eventForm).toContain('label="시작일"');
     expect(eventForm).toContain('label="종료일"');
+    expect(eventForm).toContain('withTime={false}');
+    expect(eventForm).toContain('label="시간 지정"');
+    expect(eventForm).toContain('toggleScheduleTime');
+    expect(eventForm).toContain('label="시작 시간"');
+    expect(eventForm).toContain('label="종료 시간"');
     expect(eventForm).not.toContain('label="날짜"');
     expect(taskForm).toContain('label="날짜"');
+    expect(taskForm).toContain('time={taskState.form.dueTime}');
     expect(taskForm).not.toContain('시작일');
+    expect(taskForm).not.toContain('시간 지정');
     expect(screen).toContain('label="날짜"');
     expect(screen).toContain('emptyTaskForm(selected)');
     expect(screen).toContain('emptyEventForm(selected)');
     expect(screen).toContain('emptyEventForm(linkTarget.date)');
     expect(screen).not.toContain('emptyTaskForm(seoulYmd())');
     expect(screen).not.toContain('emptyEventForm(seoulYmd())');
-    expect(screen).toContain('time={formState.form.allDay ? \'\' : formState.form.startTime}');
-    expect(screen).toContain('time={formState.form.allDay ? \'\' : formState.form.endTime}');
-    expect(screen).toContain('time={taskState.form.dueTime}');
-    expect(screen).not.toContain('ScheduleTimeField');
+    expect(screen).toContain('ScheduleTimeField');
     expect(screen).not.toContain('onChangeText={(startTime)');
     expect(screen).not.toContain('onChangeText={(endTime)');
     expect(screen).not.toContain('onChangeText={(dueTime)');
@@ -117,6 +122,12 @@ describe('일정 관리 추가 — 할 일 폼', () => {
     expect(seoulYmd(new Date('2026-10-01T15:00:00.000Z'))).toBe('2026-10-02');
     const today = seoulYmd(new Date('2026-10-01T15:00:00.000Z'));
     expect(emptyEventForm(today)).toMatchObject({ date: '2026-10-02', endDate: '2026-10-02', allDay: true });
+    const timed = toggleScheduleTime(emptyEventForm(today));
+    expect(timed).toMatchObject({ allDay: false, startTime: '09:00', endTime: '10:00' });
+    const kept = toggleScheduleTime({ allDay: false, startTime: '14:00', endTime: '15:30' });
+    expect(kept).toEqual({ allDay: true, startTime: '14:00', endTime: '15:30' });
+    expect(toggleScheduleTime(kept)).toMatchObject({ allDay: false, startTime: '14:00', endTime: '15:30' });
+    expect(toggleScheduleTime({ allDay: true, startTime: 'bad', endTime: '' })).toMatchObject({ allDay: false, startTime: '09:00', endTime: '10:00' });
     const form = { ...emptyTaskForm(today), title: '  서류 ' };
     expect(form.dueDate).toBe('2026-10-02');
     expect(taskFormToTodoPayload(form)).toEqual({ title: '서류', description: null, dueDate: '2026-10-02', dueTime: null });

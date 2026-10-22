@@ -98,4 +98,20 @@ describe('일정 날짜 달력', () => {
     finish(ui);
     expect(onComplete).toHaveBeenCalledWith({ date: '2026-10-22', time: '14:30' });
   });
+
+  it('날짜만 고르는 칸에는 시간 설정이 없다', () => {
+    const onComplete = jest.fn();
+    const ui = render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <DesignSystemProvider>
+          <ScheduleDateField label="시작일" value="2026-10-22" withTime={false} onComplete={onComplete} />
+        </DesignSystemProvider>
+      </SafeAreaProvider>,
+    );
+    fireEvent.press(ui.getByRole('button', { name: '시작일 달력 열기' }));
+    expect(ui.queryByRole('button', { name: '시간 설정' })).toBeNull();
+    expect(ui.queryByText('반복')).toBeNull();
+    finish(ui);
+    expect(onComplete).toHaveBeenCalledWith({ date: '2026-10-22', time: '' });
+  });
 });
