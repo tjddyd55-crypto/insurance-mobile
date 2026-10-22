@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
@@ -21,6 +21,10 @@ type ScheduleDateFieldProps = {
   /** 할 일 날짜처럼 비워 둘 수 있다. */
   clearable?: boolean;
   placeholder?: string;
+  /** 위젯 시트처럼 바깥 버튼이 달력을 연다. */
+  hideTrigger?: boolean;
+  /** id 가 늘 때만 연다. clock 이면 시계를 바로 보여 준다. */
+  openRequest?: { id: number; clock: boolean } | null;
 };
 
 function shownValue(date: string, time: string): string {
@@ -29,7 +33,17 @@ function shownValue(date: string, time: string): string {
 }
 
 /** 일정·할 일 날짜와 시각. 달력과 시간 설정은 완료를 눌러야 반영된다. */
-export function ScheduleDateField({ label, value, time = '', onChange, onComplete, clearable = false, placeholder = '날짜 선택' }: ScheduleDateFieldProps) {
+export function ScheduleDateField({
+  label,
+  value,
+  time = '',
+  onChange,
+  onComplete,
+  clearable = false,
+  placeholder = '날짜 선택',
+  hideTrigger = false,
+  openRequest = null,
+}: ScheduleDateFieldProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
@@ -40,6 +54,21 @@ export function ScheduleDateField({ label, value, time = '', onChange, onComplet
   const [clock, setClock] = useState(() => dateFromHm('09:00'));
   const stored = YMD.test(value) ? value : '';
   const storedTime = HM.test(time) ? time : '';
+  const requestId = openRequest?.id ?? 0;
+
+  useEffect(() => {
+    if (!requestId) return;
+    const nextDate = YMD.test(value) ? value : '';
+    const nextTime = HM.test(time ?? '') ? time ?? '' : '';
+    setDraft(nextDate);
+    setDraftTime(nextTime);
+    setClock(dateFromHm(nextTime || '09:00'));
+    setClockOpen(openRequest?.clock === true);
+    setPickerKey((key) => key + 1);
+    setOpen(true);
+    // 요청 id 가 늘 때만 연다. 완료로 날짜가 바뀌면 다시 열지 않는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
 
   const openPicker = () => {
     setDraft(stored);
@@ -70,9 +99,11 @@ export function ScheduleDateField({ label, value, time = '', onChange, onComplet
 
   return (
     <View style={styles.flex}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 달력 열기`} onPress={openPicker}>
-        <TextField label={label} value={shownValue(stored, storedTime)} placeholder={placeholder} editable={false} pointerEvents="none" importantForAccessibility="no-hide-descendants" />
-      </Pressable>
+      {hideTrigger ? null : (
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label} 달력 열기`} onPress={openPicker}>
+          <TextField label={label} value={shownValue(stored, storedTime)} placeholder={placeholder} editable={false} pointerEvents="none" importantForAccessibility="no-hide-descendants" />
+        </Pressable>
+      )}
       <ModalShell
         open={open}
         title={label}

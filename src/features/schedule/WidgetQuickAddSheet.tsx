@@ -48,8 +48,9 @@ export function WidgetQuickAddSheet({
   const [pickedDate, setPickedDate] = useState(date);
   const [time, setTime] = useState('');
   const [customer, setCustomer] = useState<QuickAddCustomer | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [customerOpen, setCustomerOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [openRequest, setOpenRequest] = useState<{ id: number; clock: boolean } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -57,8 +58,9 @@ export function WidgetQuickAddSheet({
     setPickedDate(date);
     setTime('');
     setCustomer(null);
-    setExpanded(false);
+    setCustomerOpen(false);
     setSearch('');
+    setOpenRequest(null);
   }, [open, date]);
 
   const submit = () => {
@@ -75,6 +77,11 @@ export function WidgetQuickAddSheet({
   const matches = search.trim().length < 2
     ? []
     : customers.filter((item) => matchesCustomerPickerQuery({ name: item.name, phone: item.phone }, search)).slice(0, 10);
+  const askWhen = (clock: boolean) => {
+    setCustomerOpen(false);
+    setOpenRequest((current) => ({ id: (current?.id ?? 0) + 1, clock }));
+  };
+  const whenLabel = time ? `${pickedDate} ${time}` : `${pickedDate} · 종일`;
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
@@ -96,32 +103,52 @@ export function WidgetQuickAddSheet({
               />
               <Button label="OK" variant="primary" disabled={!title.trim() || busy} loading={busy} onPress={submit} />
             </Inline>
-            <Button label="부가정보" variant={expanded ? 'selected' : 'secondary'} onPress={() => setExpanded((current) => !current)} />
-            {expanded ? (
+            <AppText variant="caption" color="textSecondary">{whenLabel}</AppText>
+            {customer ? (
+              <Inline gap="xs" align="center" style={styles.chip}>
+                <AppText variant="bodyStrong">{customer.name}</AppText>
+                <Button label="해제" variant="ghost" size="sm" accessibilityLabel={`${customer.name} 해제`} onPress={() => setCustomer(null)} />
+              </Inline>
+            ) : null}
+            <ScheduleDateField
+              label="날짜"
+              hideTrigger
+              value={pickedDate}
+              time={time}
+              openRequest={openRequest}
+              onComplete={({ date: nextDate, time: nextTime }) => {
+                setPickedDate(nextDate || date);
+                setTime(nextTime);
+              }}
+            />
+            {customerOpen ? (
               <View style={styles.extra}>
-                <ScheduleDateField
-                  label="날짜"
-                  value={pickedDate}
-                  time={time}
-                  onComplete={({ date: nextDate, time: nextTime }) => {
-                    setPickedDate(nextDate);
-                    setTime(nextTime);
-                  }}
-                />
                 <TextField label="고객 검색" value={search} onChangeText={setSearch} placeholder="이름 또는 전화번호 2글자 이상" />
                 {customersLoading && search.trim().length >= 2 ? <AppText variant="caption">검색 중…</AppText> : null}
                 {matches.map((item) => (
-                  <Button key={item.id} label={item.name} variant="secondary" size="sm" fullWidth onPress={() => { setCustomer(item); setSearch(''); }} />
+                  <Button
+                    key={item.id}
+                    label={item.name}
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    onPress={() => { setCustomer(item); setSearch(''); setCustomerOpen(false); }}
+                  />
                 ))}
-                {customer ? (
-                  <Inline gap="sm" align="center">
-                    <AppText variant="bodyStrong">{customer.name}</AppText>
-                    <Button label="해제" variant="ghost" size="sm" accessibilityLabel={`${customer.name} 해제`} onPress={() => setCustomer(null)} />
-                  </Inline>
-                ) : null}
               </View>
             ) : null}
             {error ? <AppText variant="caption" color="danger">{error}</AppText> : null}
+            <View style={styles.toolbar}>
+              <Pressable accessibilityRole="button" accessibilityLabel="날짜" onPress={() => askWhen(false)} style={styles.tool}>
+                <AppText variant="caption" color="textSecondary">날짜</AppText>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="시간" onPress={() => askWhen(true)} style={[styles.tool, time ? styles.toolOn : null]}>
+                <AppText variant="caption" color={time ? 'primary' : 'textSecondary'}>시간</AppText>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="고객 연결" onPress={() => setCustomerOpen((current) => !current)} style={[styles.tool, customer ? styles.toolOn : null]}>
+                <AppText variant="caption" color={customer ? 'primary' : 'textSecondary'}>고객 연결</AppText>
+              </Pressable>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -155,5 +182,27 @@ function createStyles(theme: AppTheme) {
       paddingHorizontal: theme.spacing.sm,
     },
     extra: { gap: theme.spacing.sm },
+    chip: {
+      alignSelf: 'flex-start',
+      backgroundColor: theme.colors.primarySoft,
+      borderRadius: theme.radius.full,
+      paddingLeft: theme.spacing.sm,
+    },
+    toolbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+      paddingTop: theme.spacing.sm,
+    },
+    tool: {
+      minHeight: 36,
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.surfaceSubtle,
+    },
+    toolOn: { backgroundColor: theme.colors.primarySoft },
   });
 }

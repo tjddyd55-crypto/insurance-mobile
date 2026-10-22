@@ -38,9 +38,14 @@ function sheet(onSubmit = jest.fn(), kind: 'schedule' | 'todo' = 'schedule') {
   return { ui, onSubmit };
 }
 
-describe('위젯 부가정보 시트', () => {
+describe('위젯 빠른 추가 시트', () => {
   it('제목과 OK만 누르면 고른 날짜, 시각 없음, 고객 없음', () => {
     const { ui, onSubmit } = sheet();
+    expect(ui.getByRole('button', { name: '날짜' })).toBeTruthy();
+    expect(ui.getByRole('button', { name: '시간' })).toBeTruthy();
+    expect(ui.getByRole('button', { name: '고객 연결' })).toBeTruthy();
+    expect(ui.queryByText('반복')).toBeNull();
+    expect(ui.queryByText('별표')).toBeNull();
     fireEvent.changeText(ui.getByPlaceholderText('새 일정'), '고객 미팅');
     fireEvent.press(ui.getByRole('button', { name: 'OK' }));
     expect(onSubmit).toHaveBeenCalledWith({
@@ -50,19 +55,18 @@ describe('위젯 부가정보 시트', () => {
       customerId: null,
       customerName: '',
     });
-    expect(ui.queryByText('반복')).toBeNull();
   });
 
-  it('부가정보의 날짜는 시간 설정이 있는 달력으로 고른다', () => {
+  it('날짜·시간 아이콘은 달력이고, 고객 연결은 기존 검색으로 칩을 만든다', () => {
     const { ui, onSubmit } = sheet();
-    fireEvent.press(ui.getByRole('button', { name: '부가정보' }));
-    fireEvent.press(ui.getByRole('button', { name: '날짜 달력 열기' }));
+    fireEvent.press(ui.getByRole('button', { name: '날짜' }));
     expect(ui.getByRole('button', { name: '시간 설정' })).toBeTruthy();
     expect(ui.queryByText('반복')).toBeNull();
     fireEvent.press(ui.getByRole('button', { name: '10월 23일 (금)' }));
     fireEvent.press(ui.getByRole('button', { name: '시간 설정' }));
     fireEvent.press(ui.getByRole('button', { name: '시계 다이얼' }));
     fireEvent.press(ui.getByRole('button', { name: '완료' }));
+    fireEvent.press(ui.getByRole('button', { name: '고객 연결' }));
     fireEvent.changeText(ui.getByPlaceholderText('이름 또는 전화번호 2글자 이상'), '홍길');
     fireEvent.press(ui.getByRole('button', { name: '홍길동' }));
     expect(ui.getByRole('button', { name: '홍길동 해제' })).toBeTruthy();
@@ -77,4 +81,9 @@ describe('위젯 부가정보 시트', () => {
     });
   });
 
+  it('시간 아이콘은 시계를 바로 연다', () => {
+    const { ui } = sheet();
+    fireEvent.press(ui.getByRole('button', { name: '시간' }));
+    expect(ui.getByRole('button', { name: '시계 다이얼' })).toBeTruthy();
+  });
 });
