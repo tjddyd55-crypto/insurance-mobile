@@ -43,7 +43,12 @@ class ScheduleDayActivity : Activity() {
   }
 
   private fun bind(content: ScheduleDayModel.Content) {
-    findViewById<TextView>(R.id.day_title).text = content.title
+    val number = findViewById<TextView>(R.id.day_number)
+    number.visibility = if (content.dayNumber.isBlank()) View.GONE else View.VISIBLE
+    number.text = content.dayNumber
+    // 숫자가 있으면 옆에 요일만, 없으면(로그인 등) 기존 제목 그대로.
+    findViewById<TextView>(R.id.day_title).text = if (content.dayNumber.isBlank()) content.title else content.weekday
+    findViewById<View>(R.id.day_card).contentDescription = content.title
     findViewById<View>(R.id.day_close).setOnClickListener { finish() }
     val message = findViewById<TextView>(R.id.day_message)
     val rows = findViewById<LinearLayout>(R.id.day_rows)
@@ -67,8 +72,9 @@ class ScheduleDayActivity : Activity() {
     if (content.mode != ScheduleDayModel.Mode.LIST) return
     for (row in content.rows) {
       val line = layoutInflater.inflate(R.layout.onefc_day_row, rows, false)
+      line.findViewById<TextView>(R.id.day_row_mark).text = if (row.todo) (if (row.done) "✓" else "○") else "●"
       line.findViewById<TextView>(R.id.day_row_time).text = row.time
-      line.findViewById<TextView>(R.id.day_row_title).text = row.title
+      line.findViewById<TextView>(R.id.day_row_title).text = if (row.todo && row.done) row.title.removePrefix("✓ ") else row.title
       line.contentDescription = row.description
       line.setOnClickListener { open(row.link) }
       rows.addView(line)
@@ -76,7 +82,8 @@ class ScheduleDayActivity : Activity() {
   }
 
   private fun bindAdd(content: ScheduleDayModel.Content) {
-    val add = findViewById<TextView>(R.id.day_add)
+    val add = findViewById<View>(R.id.day_add)
+    val label = findViewById<TextView>(R.id.day_add_label)
     val login = content.mode == ScheduleDayModel.Mode.LOGIN
     val link = if (login) content.openLink else content.addLink
     if (!login && link.isNullOrBlank()) {
@@ -84,7 +91,10 @@ class ScheduleDayActivity : Activity() {
       return
     }
     add.visibility = View.VISIBLE
-    add.text = getString(if (login) R.string.onefc_widget_day_login else R.string.onefc_widget_day_add)
+    findViewById<View>(R.id.day_add_plus).visibility = if (login) View.GONE else View.VISIBLE
+    label.text = if (login) getString(R.string.onefc_widget_day_login) else getString(R.string.onefc_widget_day_add, content.monthDay.ifBlank { content.title })
+    add.contentDescription = label.text
+    // 입력은 기존 일정 추가 화면(date 미리 채움, src=widget)에서 한다. 저장·취소 후 moveTaskToBack 복귀.
     add.setOnClickListener { open(link) }
   }
 

@@ -134,15 +134,19 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
 
 /** 선택 날짜 목록 한 줄(순수 매핑, 테스트용). */
 internal object ScheduleListRows {
-  data class Row(val time: String, val title: String, val done: Boolean, val link: String, val description: String)
+  /** todo=할 일 항목(일정과 아이콘 구분). time 은 부제: 시간 / 하루 종일 / 할 일. */
+  data class Row(val time: String, val title: String, val done: Boolean, val link: String, val description: String, val todo: Boolean = false)
+
+  const val ALL_DAY = "하루 종일"
 
   fun rows(items: List<SchedulePayload.Item>, dayLink: String): List<Row> = items.map { item ->
+    val todo = item.kind != "event"
     val time = when {
       item.time.isNotBlank() -> item.time
-      item.kind == "event" -> ""
+      !todo -> ALL_DAY
       else -> "할 일"
     }
     Row(time, if (item.done) "✓ ${item.title}" else item.title, item.done, item.link.ifBlank { dayLink },
-      listOf(time, item.title, if (item.done) "완료" else "").filter { it.isNotBlank() }.joinToString(", "))
+      listOf(time, item.title, if (item.done) "완료" else "").filter { it.isNotBlank() }.joinToString(", "), todo)
   }
 }

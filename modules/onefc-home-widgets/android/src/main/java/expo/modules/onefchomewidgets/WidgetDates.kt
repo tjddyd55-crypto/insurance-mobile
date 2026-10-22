@@ -105,6 +105,8 @@ object WidgetDates {
 
   fun monthTitle(anchor: String): String = "${anchor.substring(0, 4).toInt()}년 ${anchor.substring(5, 7).toInt()}월"
 
+  fun weekdayName(ymd: String): String = WEEKDAYS[weekday(ymd)]
+
   fun monthDay(ymd: String): String = "${ymd.substring(5, 7).toInt()}월 ${ymd.substring(8, 10).toInt()}일"
 
   fun dayTitle(ymd: String): String = "${monthDay(ymd)} ${WEEKDAYS[weekday(ymd)]}"

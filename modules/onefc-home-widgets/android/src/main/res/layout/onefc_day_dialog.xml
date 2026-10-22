@@ -1,23 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 날짜 탭 모달: 날짜 머리글 · 그 날 목록 · 하단 "M월 D일에 추가 +" 알약. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/day_card"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
   android:orientation="vertical"
-  android:background="@color/onefc_widget_bg"
-  android:padding="16dp"
-  android:minWidth="280dp">
+  android:background="@drawable/onefc_day_dialog_bg"
+  android:paddingStart="20dp"
+  android:paddingEnd="20dp"
+  android:paddingTop="20dp"
+  android:paddingBottom="20dp"
+  android:minWidth="300dp">
 
-  <LinearLayout android:layout_width="match_parent" android:layout_height="36dp" android:orientation="horizontal" android:gravity="center_vertical">
-    <TextView android:id="@+id/day_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="@dimen/onefc_widget_month_text" android:textStyle="bold" android:textColor="@color/onefc_widget_text" android:maxLines="1" android:ellipsize="end" />
-    <TextView android:id="@+id/day_close" android:layout_width="wrap_content" android:layout_height="36dp" android:gravity="center" android:paddingStart="12dp" android:paddingEnd="4dp" android:text="@string/onefc_widget_day_close" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text_secondary" />
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+    <TextView android:id="@+id/day_number" android:layout_width="wrap_content" android:minWidth="36dp" android:layout_height="wrap_content" android:textSize="@dimen/onefc_day_number_text" android:textStyle="bold" android:textColor="@color/onefc_widget_text" android:maxLines="1" />
+    <TextView android:id="@+id/day_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp" android:textSize="@dimen/onefc_widget_month_text" android:textStyle="bold" android:textColor="@color/onefc_widget_text" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/day_close" android:layout_width="wrap_content" android:layout_height="40dp" android:gravity="center" android:paddingStart="12dp" android:paddingEnd="4dp" android:text="@string/onefc_widget_day_close" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text_secondary" />
   </LinearLayout>
 
-  <ScrollView android:id="@+id/day_scroll" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
+  <ScrollView android:id="@+id/day_scroll" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:fadeScrollbars="false">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-      <TextView android:id="@+id/day_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="12dp" android:paddingBottom="12dp" android:gravity="center" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text_secondary" android:maxLines="3" android:ellipsize="end" />
+      <TextView android:id="@+id/day_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="32dp" android:paddingBottom="32dp" android:gravity="center" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text_secondary" android:maxLines="3" android:ellipsize="end" />
       <LinearLayout android:id="@+id/day_rows" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
     </LinearLayout>
   </ScrollView>
 
-  <TextView android:id="@+id/day_add" android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="8dp" android:gravity="center" android:background="@drawable/onefc_widget_pill" android:text="@string/onefc_widget_day_add" android:textSize="@dimen/onefc_widget_item_text" android:textStyle="bold" android:textColor="@color/onefc_widget_brand" android:maxLines="1" android:ellipsize="end" />
+  <LinearLayout android:id="@+id/day_add" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="16dp" android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/onefc_day_add_bg" android:paddingStart="22dp" android:paddingEnd="22dp" android:clickable="true" android:focusable="true">
+    <TextView android:id="@+id/day_add_label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="@dimen/onefc_widget_item_text" android:textStyle="bold" android:textColor="@color/onefc_widget_on_brand" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/day_add_plus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="+" android:textSize="@dimen/onefc_widget_nav_text" android:textColor="@color/onefc_widget_on_brand" />
+  </LinearLayout>
 </LinearLayout>

@@ -5,7 +5,18 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-FONT = "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
+import os
+
+# 한글 글꼴: ONEFC_PREVIEW_FONT 우선, 없으면 흔한 CJK 글꼴 경로 중 처음 있는 것.
+FONT_CANDIDATES = [
+    os.environ.get("ONEFC_PREVIEW_FONT", ""),
+    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+]
+FONT = next((p for p in FONT_CANDIDATES if p and os.path.exists(p)), None)
+if FONT is None:
+    sys.exit("no CJK font found; set ONEFC_PREVIEW_FONT")
 
 
 def color(value):
@@ -24,7 +35,7 @@ def ellipsize(draw, text, font, available):
 
 
 def render(scene, out_dir):
-    image = Image.new("RGB", (scene["width"], scene["height"]), color("#F4F6F5"))
+    image = Image.new("RGB", (scene["width"], scene["height"]), color(scene.get("background", "#F4F6F5")))
     draw = ImageDraw.Draw(image)
     for node in scene["nodes"]:
         x, y, w, h = node["x"], node["y"], node["w"], node["h"]
@@ -39,7 +50,7 @@ def render(scene, out_dir):
             if node.get("bold"):
                 font = ImageFont.truetype(FONT, max(1, int(round(node["size"]))))
             available = max(0, w - node.get("padX", 0) * 2)
-            text = ellipsize(draw, node["text"], font, available)
+            text = ellipsize(draw, node["text"], font, available) if node.get("ellipsize", True) else node["text"]
             bbox = draw.textbbox((0, 0), text, font=font)
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
