@@ -71,12 +71,11 @@ export function buildTodoCreatePayload(
 ): SaveTodoPayload {
   const content = form.description.trim();
   const dueDate = form.dueDate.trim();
-  const dueTime = form.dueTime.trim();
   const payload: SaveTodoPayload = {
     title: firstLineTodoTitle(content),
     description: content,
     dueDate: dueDate || null,
-    dueTime: dueDate && dueTime ? dueTime : null,
+    dueTime: null,
     priority: 'normal',
     relatedEntityType: form.relatedCustomerId ? 'customer' : null,
     relatedEntityId: form.relatedCustomerId || null,

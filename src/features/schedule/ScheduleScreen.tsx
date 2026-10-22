@@ -49,7 +49,10 @@ import {
   countItemsByDay,
   dayCountLabel,
   emptyEventForm,
+  scheduleEventWriteTimes,
   toggleScheduleTime,
+  withScheduleEndTime,
+  withScheduleStartTime,
   eventTimeLabel,
   eventToForm,
   eventsOnDay,
@@ -69,6 +72,7 @@ import {
 } from './scheduleModel';
 import { ScheduleDateField } from './ScheduleDateField';
 import { ScheduleTimeField } from './ScheduleTimeField';
+import { refreshWidgets } from '../home-widgets/engine/widgetRefreshCoordinator';
 import { WidgetQuickAddSheet, type QuickAddCustomer } from './WidgetQuickAddSheet';
 import { widgetQuickScheduleForm, type WidgetQuickDraft } from './widgetQuickAddModel';
 import { scheduleQueryKeys } from './queryKeys';
@@ -135,6 +139,7 @@ export function ScheduleScreen() {
   const [deleting, setDeleting] = useState<ScheduleEvent | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [customerLookup, setCustomerLookup] = useState(false);
   const [taskState, setTaskState] = useState<TaskFormState | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
   const [widgetQuick, setWidgetQuick] = useState<{ date: string; requestId: string } | null>(null);
@@ -177,6 +182,7 @@ export function ScheduleScreen() {
       setFormError(null);
       if (widgetArm.current.start) {
         setFormState(null);
+        setCustomerLookup(false);
         setWidgetQuick({ date: linkTarget.date, requestId: newScheduleRequestId() });
       } else {
         setWidgetQuick(null);
@@ -195,7 +201,7 @@ export function ScheduleScreen() {
   const customersQuery = useQuery({
     queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
-    enabled: Boolean(token) && widgetQuick !== null,
+    enabled: Boolean(token) && customerLookup,
     staleTime: 60_000,
   });
   const quickCustomers: QuickAddCustomer[] = (customersQuery.data?.customers ?? []).map((customer) => ({
@@ -224,10 +230,15 @@ export function ScheduleScreen() {
     markScheduleWidgetSaved();
     setFormState(null);
     setWidgetQuick(null);
+    setCustomerLookup(false);
     setTaskState(null);
     setDeleting(null);
     setDetail(null);
     await reloadAfterWrite();
+    await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+    if (token && user) {
+      await refreshWidgets({ token, user }, { reason: 'appMutation', widgetTypes: ['schedule', 'todo'], force: true });
+    }
   };
   const save = useMutation({
     mutationFn: (state: FormState) => saveSchedule(token, state),
@@ -299,8 +310,7 @@ export function ScheduleScreen() {
   };
   const submitTask = () => {
     if (!taskState) return;
-    const dueDate = taskState.form.dueDate.trim() || selected || seoulYmd();
-    const form = { ...taskState.form, dueDate, dueTime: dueDate ? taskState.form.dueTime : '' };
+    const form = { ...taskState.form, dueTime: '' };
     const problem = validateTaskForm(form, 'onefc_todo');
     setTaskError(problem);
     if (!problem) saveTask.mutate({ form });
@@ -316,7 +326,15 @@ export function ScheduleScreen() {
     if (!formState) return;
     const date = formState.form.date.trim() || selected || seoulYmd();
     const endDate = formState.form.endDate.trim() || date;
-    const form = { ...formState.form, date, endDate };
+    const clock = scheduleEventWriteTimes(formState.form);
+    const form = {
+      ...formState.form,
+      date,
+      endDate,
+      allDay: clock.allDay,
+      startTime: clock.startTime ?? formState.form.startTime,
+      endTime: clock.endTime ?? formState.form.endTime,
+    };
     const calendarRequired = formState.mode === 'edit' && !isOnefcSchedule(formState.event ?? { origin: undefined });
     const problem = validateEventForm(form, { calendarRequired });
     setFormError(problem);
@@ -348,7 +366,7 @@ export function ScheduleScreen() {
 
   const dayCounts = countItemsByDay(data);
   const dayEvents = eventsOnDay(data.events, selected);
-  const dayTasks = tasksOnDay(data.tasks, selected);
+  const dayTasks = tasksOnDay(data.tasks, selected).filter((task) => task.status !== 'completed');
   // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
   const googleWarning = scheduleGoogleWarning(data.google);
   const deletePrompt = deleting ? scheduleDeletePrompt(deleting) : scheduleDeletePrompt({});
@@ -459,7 +477,8 @@ export function ScheduleScreen() {
         error={formError ?? (save.isError ? describeApiError(save.error, '일정을 저장하지 못했습니다.') : null)}
         customers={quickCustomers}
         customersLoading={customersQuery.isLoading}
-        onClose={() => setWidgetQuick(null)}
+        onClose={() => { setWidgetQuick(null); setCustomerLookup(false); }}
+        onNeedCustomers={() => setCustomerLookup(true)}
         onSubmit={submitWidgetQuick}
       />
 
@@ -482,11 +501,11 @@ export function ScheduleScreen() {
             <Inline gap="sm">
               <ScheduleDateField
                 label="날짜"
+                withTime={false}
                 value={taskState.form.dueDate}
-                time={taskState.form.dueTime}
                 clearable
                 placeholder="날짜 없음"
-                onComplete={({ date, time }) => patchTask({ dueDate: date, dueTime: time })}
+                onComplete={({ date }) => patchTask({ dueDate: date, dueTime: '' })}
               />
             </Inline>
             <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
@@ -545,8 +564,8 @@ export function ScheduleScreen() {
             />
             {formState.form.allDay ? null : (
               <Inline gap="sm">
-                <ScheduleTimeField label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm({ startTime })} />
-                <ScheduleTimeField label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm({ endTime })} />
+                <ScheduleTimeField label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm(withScheduleStartTime(formState.form, startTime))} />
+                <ScheduleTimeField label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm(withScheduleEndTime(formState.form, endTime))} />
               </Inline>
             )}
             <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />

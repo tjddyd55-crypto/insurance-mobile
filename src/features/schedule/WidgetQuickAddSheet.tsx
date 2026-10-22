@@ -12,8 +12,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { matchesCustomerPickerQuery } from '../customers/customerPickerSearch';
 import { AppText, Button, Inline, TextField, useAppTheme, type AppTheme } from '../../design-system';
-import { ScheduleDateField } from './ScheduleDateField';
-import { ScheduleTimeField } from './ScheduleTimeField';
+import { ScheduleMonthCalendar } from './ScheduleDateField';
+import { formatKoreanClock, ScheduleTimeField } from './ScheduleTimeField';
+import { setScheduleTimeSpecified, withScheduleEndTime, withScheduleStartTime } from './scheduleModel';
 import type { WidgetQuickDraft } from './widgetQuickAddModel';
 
 export type QuickAddCustomer = { id: string; name: string; phone: string };
@@ -28,9 +29,13 @@ type WidgetQuickAddSheetProps = {
   customersLoading?: boolean;
   onClose: () => void;
   onSubmit: (draft: WidgetQuickDraft) => void;
+  /** 고객 연결을 열 때만 고객 목록을 불러 제목 저장이 느려지지 않게 한다. */
+  onNeedCustomers?: () => void;
 };
 
-/** 위젯이 앱에서 여는 빠른 추가. 시간은 끄면 종일, 시간 지정을 켜야 시각이 있다. */
+type ExtraMode = 'date' | 'time' | 'customer';
+
+/** 위젯이 앱에서 여는 빠른 추가. 제목만 저장하면 종일. 시간은 부가정보에서 켠다. */
 export function WidgetQuickAddSheet({
   open,
   kind,
@@ -41,6 +46,7 @@ export function WidgetQuickAddSheet({
   customersLoading = false,
   onClose,
   onSubmit,
+  onNeedCustomers,
 }: WidgetQuickAddSheetProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -52,6 +58,7 @@ export function WidgetQuickAddSheet({
   const [endTime, setEndTime] = useState('10:00');
   const [customer, setCustomer] = useState<QuickAddCustomer | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [mode, setMode] = useState<ExtraMode>('date');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -63,6 +70,7 @@ export function WidgetQuickAddSheet({
     setEndTime('10:00');
     setCustomer(null);
     setExpanded(false);
+    setMode('date');
     setSearch('');
   }, [open, date]);
 
@@ -72,16 +80,30 @@ export function WidgetQuickAddSheet({
     onSubmit({
       title: trimmed,
       date: pickedDate,
-      time: timed ? startTime : '',
+      time: timed && kind === 'schedule' ? startTime : '',
       endTime: timed && kind === 'schedule' ? endTime : '',
       customerId: customer?.id ?? null,
       customerName: customer?.name ?? '',
     });
   };
+  const showTime = () => setMode('time');
+  const showCustomers = () => {
+    setMode('customer');
+    onNeedCustomers?.();
+  };
+  const enableTime = () => {
+    if (timed) {
+      setTimed(false);
+      return;
+    }
+    const next = setScheduleTimeSpecified({ allDay: true, startTime, endTime }, true);
+    setStartTime(next.startTime);
+    setEndTime(next.endTime);
+    setTimed(true);
+  };
   const matches = search.trim().length < 2
     ? []
     : customers.filter((item) => matchesCustomerPickerQuery({ name: item.name, phone: item.phone }, search)).slice(0, 10);
-  const timeLabel = timed ? (kind === 'schedule' ? `${startTime} ~ ${endTime}` : startTime) : '종일';
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
@@ -101,54 +123,78 @@ export function WidgetQuickAddSheet({
                 returnKeyType="done"
                 onSubmitEditing={submit}
               />
-              <Button label="OK" variant="primary" disabled={!title.trim() || busy} loading={busy} onPress={submit} />
+              <Button label="확인" variant="primary" disabled={!title.trim() || busy} loading={busy} onPress={submit} />
             </Inline>
             <Button label="부가정보" variant={expanded ? 'selected' : 'secondary'} onPress={() => setExpanded((current) => !current)} />
             {expanded ? (
               <View style={styles.extra}>
-                <ScheduleDateField
-                  label="날짜"
-                  withTime={false}
-                  value={pickedDate}
-                  onComplete={({ date: nextDate }) => setPickedDate(nextDate || date)}
-                />
-                <Inline justify="space-between" align="center" style={styles.row}>
-                  <AppText variant="bodyStrong">시간</AppText>
-                  <AppText variant="body" color="textSecondary">{timeLabel}</AppText>
+                <Inline gap="sm">
+                  <Button label="날짜" size="sm" variant={mode === 'date' ? 'selected' : 'secondary'} onPress={() => setMode('date')} />
+                  {kind === 'schedule' ? (
+                    <Button label="시간" size="sm" variant={mode === 'time' ? 'selected' : 'secondary'} onPress={showTime} />
+                  ) : null}
+                  <Button label="고객 연결" size="sm" variant={mode === 'customer' ? 'selected' : 'secondary'} onPress={showCustomers} />
                 </Inline>
-                <Button
-                  label="시간 지정"
-                  variant={timed ? 'selected' : 'secondary'}
-                  accessibilityState={{ selected: timed }}
-                  onPress={() => setTimed((current) => !current)}
-                />
-                {timed ? (
-                  kind === 'schedule' ? (
-                    <Inline gap="sm">
-                      <ScheduleTimeField label="시작 시간" value={startTime} onChange={setStartTime} />
-                      <ScheduleTimeField label="종료 시간" value={endTime} onChange={setEndTime} />
-                    </Inline>
-                  ) : (
-                    <ScheduleTimeField label="시간" value={startTime} onChange={setStartTime} />
-                  )
+                {mode === 'date' ? (
+                  <ScheduleMonthCalendar value={pickedDate} onChoose={setPickedDate} />
                 ) : null}
-                <TextField label="고객 검색" value={search} onChangeText={setSearch} placeholder="이름 또는 전화번호 2글자 이상" />
-                {customersLoading && search.trim().length >= 2 ? <AppText variant="caption">검색 중…</AppText> : null}
-                {matches.map((item) => (
-                  <Button
-                    key={item.id}
-                    label={item.name}
-                    variant="secondary"
-                    size="sm"
-                    fullWidth
-                    onPress={() => { setCustomer(item); setSearch(''); }}
-                  />
-                ))}
-                {customer ? (
-                  <Inline gap="sm" align="center" style={styles.chip}>
-                    <AppText variant="bodyStrong">{customer.name}</AppText>
-                    <Button label="해제" variant="ghost" size="sm" accessibilityLabel={`${customer.name} 해제`} onPress={() => setCustomer(null)} />
-                  </Inline>
+                {mode === 'time' && kind === 'schedule' ? (
+                  <View style={styles.extra}>
+                    <Inline justify="space-between" align="center" style={styles.row}>
+                      <AppText variant="bodyStrong">시간</AppText>
+                      <AppText variant="body" color="textSecondary">{timed ? `${formatKoreanClock(startTime)} ~ ${formatKoreanClock(endTime)}` : '종일'}</AppText>
+                    </Inline>
+                    <Button
+                      label="시간 지정"
+                      variant={timed ? 'selected' : 'secondary'}
+                      accessibilityState={{ selected: timed }}
+                      onPress={enableTime}
+                    />
+                    {timed ? (
+                      <View style={styles.extra}>
+                        <ScheduleTimeField
+                          label="시작 시간"
+                          value={startTime}
+                          onChange={(next) => {
+                            const fixed = withScheduleStartTime({ allDay: false, startTime, endTime }, next);
+                            setStartTime(fixed.startTime);
+                            setEndTime(fixed.endTime);
+                          }}
+                        />
+                        <ScheduleTimeField
+                          label="종료 시간"
+                          value={endTime}
+                          onChange={(next) => {
+                            const fixed = withScheduleEndTime({ allDay: false, startTime, endTime }, next);
+                            setStartTime(fixed.startTime);
+                            setEndTime(fixed.endTime);
+                          }}
+                        />
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+                {mode === 'customer' ? (
+                  <View style={styles.extra}>
+                    <TextField label="고객 검색" value={search} onChangeText={setSearch} placeholder="이름 또는 전화번호 2글자 이상" />
+                    {customersLoading && search.trim().length >= 2 ? <AppText variant="caption">검색 중…</AppText> : null}
+                    {matches.map((item) => (
+                      <Button
+                        key={item.id}
+                        label={item.name}
+                        variant="secondary"
+                        size="sm"
+                        fullWidth
+                        onPress={() => { setCustomer(item); setSearch(''); }}
+                      />
+                    ))}
+                    {customer ? (
+                      <Inline gap="sm" align="center" style={styles.chip}>
+                        <AppText variant="bodyStrong">{customer.name}</AppText>
+                        <Button label="×" variant="ghost" size="sm" accessibilityLabel={`${customer.name} 해제`} onPress={() => setCustomer(null)} />
+                      </Inline>
+                    ) : null}
+                  </View>
                 ) : null}
               </View>
             ) : null}

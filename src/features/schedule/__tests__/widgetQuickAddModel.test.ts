@@ -24,7 +24,7 @@ describe('위젯 빠른 추가 저장 값', () => {
     });
   });
 
-  it('시각은 시작이고 종료는 1시간 뒤다. 자정을 넘기면 다음 날', () => {
+  it('시각은 시작이고 종료가 시작보다 이르면 같은 날 한 시간 뒤다', () => {
     expect(plusOneHour('14:15')).toEqual({ time: '15:15', dayOffset: 0 });
     expect(plusOneHour('23:30')).toEqual({ time: '00:30', dayOffset: 1 });
     expect(widgetQuickScheduleForm({
@@ -33,7 +33,7 @@ describe('위젯 빠른 추가 저장 값', () => {
       time: '23:30',
       customerId: null,
       customerName: '',
-    })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '00:30', endDate: '2026-10-23' });
+    })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '23:59', endDate: '2026-10-22' });
     expect(widgetQuickScheduleForm({
       title: '상담',
       date: '2026-10-22',
@@ -49,7 +49,7 @@ describe('위젯 빠른 추가 저장 값', () => {
       endTime: '00:30',
       customerId: null,
       customerName: '',
-    })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '00:30', endDate: '2026-10-23' });
+    })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '23:59', endDate: '2026-10-22' });
   });
 
   it('일정 수정은 저장된 시각을 유지하고, 종일에서 시각을 고르면 종료가 1시간 뒤다', () => {
@@ -74,7 +74,7 @@ describe('위젯 빠른 추가 저장 값', () => {
     const draft = { title: '서류', date: '2026-10-21', time: '09:00', customerId: '42', customerName: '홍길동' };
     expect(widgetQuickTodoPayload(draft)).toMatchObject({
       dueDate: '2026-10-21',
-      dueTime: '09:00',
+      dueTime: null,
       relatedEntityType: 'customer',
       relatedEntityId: '42',
     });

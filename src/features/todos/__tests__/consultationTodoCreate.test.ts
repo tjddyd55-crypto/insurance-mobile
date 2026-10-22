@@ -119,8 +119,9 @@ describe('consultation todo create', () => {
     expect(form).toContain('updateTodo');
     expect(form).toContain('ScheduleDateField');
     expect(form).toContain('label="날짜"');
-    expect(form).toContain('time={form.dueTime}');
-    expect(form).not.toContain('dueTime: null');
+    expect(form).toContain('withTime={false}');
+    expect(form).toContain('dueTime: null');
+    expect(form).not.toContain('time={form.dueTime}');
     expect(form).toContain('clearable');
     expect(form).not.toContain('<DateField');
     expect(form).not.toContain('suggestTodoDueDate');

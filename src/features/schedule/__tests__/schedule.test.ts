@@ -158,7 +158,7 @@ describe('schedule model (웹 /api/schedule/events SSOT)', () => {
     expect(timed).toMatchObject({ calendarId: 'primary', date: '2026-10-19', endDate: '2026-10-19', allDay: false, startTime: '14:00', endTime: '15:30' });
     const allDay = eventToForm(events[2]! as ScheduleEvent);
     expect(allDay).toMatchObject({ date: '2026-10-20', endDate: '2026-10-22', allDay: true });
-    expect(formToGoogleInput(allDay)).toMatchObject({ allDay: true, startTime: '', endTime: '', endDate: '2026-10-22' });
+    expect(formToGoogleInput(allDay)).toMatchObject({ allDay: true, startTime: null, endTime: null, endDate: '2026-10-22' });
     expect(validateEventForm(timed)).toBeNull();
     expect(validateEventForm({ ...timed, title: ' ' })).toContain('제목');
     expect(validateEventForm({ ...timed, calendarId: '' })).toContain('캘린더');

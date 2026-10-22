@@ -364,21 +364,51 @@ export function scheduleDeletePrompt(event: Pick<ScheduleEvent, 'origin'>): { ti
   return { title: '일정을 삭제할까요?', message: 'Google 캘린더에서도 삭제됩니다.' };
 }
 
+export const DEFAULT_SCHEDULE_START_TIME = '09:00';
+export const DEFAULT_SCHEDULE_END_TIME = '10:00';
+
 /** 새 일정. 날짜는 고른 날이고, 시각을 고르기 전에는 종일이다. 09:00·10:00 은 시간 지정을 켠 뒤의 시작값이다. */
 export function emptyEventForm(date: string, calendarId = ''): ScheduleEventForm {
-  return { calendarId, title: '', description: '', date, endDate: date, allDay: true, startTime: '09:00', endTime: '10:00' };
+  return { calendarId, title: '', description: '', date, endDate: date, allDay: true, startTime: DEFAULT_SCHEDULE_START_TIME, endTime: DEFAULT_SCHEDULE_END_TIME };
 }
 
-/** 시간 지정을 켜면 시작·종료 시각이 보이고 종일이 아니다. 끄면 다시 종일이다. */
-export function toggleScheduleTime(
-  form: Pick<ScheduleEventForm, 'allDay' | 'startTime' | 'endTime'>,
-): Pick<ScheduleEventForm, 'allDay' | 'startTime' | 'endTime'> {
-  if (!form.allDay) return { allDay: true, startTime: form.startTime, endTime: form.endTime };
-  return {
-    allDay: false,
-    startTime: HM.test(form.startTime) ? form.startTime : '09:00',
-    endTime: HM.test(form.endTime) ? form.endTime : '10:00',
-  };
+/** 같은 날 안에서 시작보다 뒤인 끝 시각. 23시대는 23:59. 다음 날로 넘기지 않는다. */
+export function sensibleEndTime(startTime: string): string {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(startTime);
+  if (!match) return DEFAULT_SCHEDULE_END_TIME;
+  const hour = Number(match[1]);
+  if (hour >= 23) return '23:59';
+  return `${String(hour + 1).padStart(2, '0')}:${match[2]}`;
+}
+
+type ScheduleClock = Pick<ScheduleEventForm, 'allDay' | 'startTime' | 'endTime'>;
+
+/** 시간 지정을 켜면 종일이 아니고, 종료가 시작보다 이르면 시작 한 시간 뒤다. 끄면 종일이다. */
+export function setScheduleTimeSpecified(fields: ScheduleClock, specified: boolean): ScheduleClock {
+  if (!specified) return { ...fields, allDay: true };
+  const startTime = HM.test(fields.startTime) ? fields.startTime : DEFAULT_SCHEDULE_START_TIME;
+  const endTime = HM.test(fields.endTime) && fields.endTime > startTime ? fields.endTime : sensibleEndTime(startTime);
+  return { allDay: false, startTime, endTime };
+}
+
+/** 종일 ↔ 시간 지정. 현재 종일이면 시간을 켜고, 시간 일정이면 끈다. */
+export function toggleScheduleTime(form: ScheduleClock): ScheduleClock {
+  return setScheduleTimeSpecified(form, form.allDay);
+}
+
+export function withScheduleStartTime(fields: ScheduleClock, startTime: string): ScheduleClock {
+  return setScheduleTimeSpecified({ ...fields, allDay: false, startTime }, true);
+}
+
+export function withScheduleEndTime(fields: ScheduleClock, endTime: string): ScheduleClock {
+  return setScheduleTimeSpecified({ ...fields, allDay: false, endTime }, true);
+}
+
+/** 저장 본문. 종일은 시각 null. 시간 일정은 저장 직전에 종료를 맞춘다. */
+export function scheduleEventWriteTimes(fields: ScheduleClock): { allDay: boolean; startTime: string | null; endTime: string | null } {
+  if (fields.allDay) return { allDay: true, startTime: null, endTime: null };
+  const fixed = setScheduleTimeSpecified(fields, true);
+  return { allDay: false, startTime: fixed.startTime, endTime: fixed.endTime };
 }
 
 const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -468,15 +498,16 @@ export function validateEventForm(form: ScheduleEventForm, options?: { calendarR
 }
 
 export function formToGoogleInput(form: ScheduleEventForm) {
+  const times = scheduleEventWriteTimes(form);
   return {
     calendarId: form.calendarId.trim(),
     title: form.title.trim(),
     description: form.description,
     date: form.date,
     endDate: form.endDate.trim() || form.date,
-    allDay: form.allDay,
-    startTime: form.allDay ? '' : form.startTime,
-    endTime: form.allDay ? '' : form.endTime,
+    allDay: times.allDay,
+    startTime: times.startTime,
+    endTime: times.endTime,
   };
 }
 
@@ -508,7 +539,7 @@ export function emptyTaskForm(date: string, taskListId = ''): ScheduleTaskForm {
   return { taskListId, title: '', notes: '', dueDate: date, dueTime: '' };
 }
 
-/** Google 할 일·ONE FC 할 일 공통 확인. 예정일은 비워도 된다(날짜 없음). 시각은 ONE FC 할 일만. */
+/** Google 할 일·ONE FC 할 일 공통 확인. 날짜는 비워도 된다. 시각 칸은 없다. */
 export function validateTaskForm(form: ScheduleTaskForm, storage: 'google_task' | 'onefc_todo'): string | null {
   const title = form.title.trim();
   if (storage === 'google_task' && !form.taskListId.trim()) return '할 일 목록을 선택해 주세요.';
@@ -517,11 +548,6 @@ export function validateTaskForm(form: ScheduleTaskForm, storage: 'google_task' 
   if (form.notes.length > SCHEDULE_NOTES_MAX) return '메모가 너무 깁니다.';
   const due = form.dueDate.trim();
   if (due && !YMD.test(due)) return '날짜는 YYYY-MM-DD 로 입력해 주세요.';
-  const time = form.dueTime.trim();
-  if (storage === 'onefc_todo' && time) {
-    if (!due) return '시각을 지정하려면 날짜를 입력해 주세요.';
-    if (!HM.test(time)) return '시각은 HH:mm 으로 입력해 주세요.';
-  }
   return null;
 }
 
@@ -534,12 +560,11 @@ export function taskFormToGoogleInput(form: ScheduleTaskForm, requestId: string)
 /** POST /api/todos 본문(기존 할 일 API). */
 export function taskFormToTodoPayload(form: ScheduleTaskForm) {
   const due = form.dueDate.trim();
-  const time = form.dueTime.trim();
   return {
     title: form.title.trim(),
     description: form.notes.trim() || null,
     dueDate: due || null,
-    dueTime: due && time ? time : null,
+    dueTime: null,
   };
 }
 

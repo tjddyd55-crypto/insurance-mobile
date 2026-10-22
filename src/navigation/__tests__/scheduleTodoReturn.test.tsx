@@ -128,7 +128,9 @@ describe('static guards', () => {
     expect(form).not.toMatch(/returnToTodoList\(/);
   });
   it('todo save/delete also invalidates schedule queries (normal refetch, not refresh=1)', () => {
-    expect(form).toMatch(/invalidateQueries\(\{ queryKey: scheduleQueryKeys\.all \}\)/);
+    expect(form).toContain('refreshScheduleSurfaces');
+    const surfaces = fs.readFileSync(path.join(repo, 'src', 'features', 'home-widgets', 'refreshScheduleSurfaces.ts'), 'utf8');
+    expect(surfaces).toMatch(/invalidateQueries\(\{ queryKey: scheduleQueryKeys\.all \}\)/);
     expect(form).not.toMatch(/refresh: true/);
   });
 });

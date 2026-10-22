@@ -3,6 +3,8 @@ import { AppState, Platform } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
+import { scheduleQueryKeys } from '../schedule/queryKeys';
+import { todoQueryKeys } from '../todos/queryKeys';
 import { purgeWidgets, refreshWidgets, type WidgetSession } from './engine/widgetRefreshCoordinator';
 import { widgetTypesWatching } from './engine/widgetRegistry';
 import type { WidgetRefreshReason, WidgetType } from './engine/widgetTypes';
@@ -42,6 +44,19 @@ export function useHomeWidgetSync(): void {
   }, [status, accountKey]);
 
   useEffect(() => {
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      void queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+      const session = sessionRef.current;
+      if (Platform.OS === 'android' && session) {
+        void refreshWidgets(session, { reason: 'appMutation', widgetTypes: ['schedule', 'todo'], force: true });
+      }
+    });
+    return () => appState.remove();
+  }, [queryClient]);
+
+  useEffect(() => {
     if (Platform.OS !== 'android') return;
     const schedule = (reason: WidgetRefreshReason, types: WidgetType[] | null) => {
       if (!sessionRef.current) return;
@@ -57,10 +72,7 @@ export function useHomeWidgetSync(): void {
         if (next) void refreshWidgets(sessionRef.current, { reason: next.reason, widgetTypes: next.types ? [...next.types] : undefined });
       }, WIDGET_CHANGE_DEBOUNCE_MS);
     };
-    const appState = AppState.addEventListener('change', (state) => {
-      if (state === 'active') schedule('appForeground', null);
-    });
-    // 앱 쓰기 → 위젯 데이터가 바뀐 경우만 즉시 갱신: 위젯이 보는 쿼리 키(schedule·todos)가 무효화되었거나
+    // 앱 쓰기 → 위젯 데이터가 바뀐 경우만 묶어서 갱신: 위젯이 보는 쿼리 키(schedule·todos)가 무효화되었거나
     // 뮤테이션에 그 키가 mutationKey 로 붙은 경우. 업로드·알림 읽음·SMS·고객 수정 등 무관한 뮤테이션은 무시.
     const mutations = queryClient.getMutationCache().subscribe((event) => {
       if (event.type !== 'updated' || event.action.type !== 'success') return;
@@ -76,7 +88,6 @@ export function useHomeWidgetSync(): void {
       if (types.length) schedule(change, types);
     });
     return () => {
-      appState.remove();
       mutations();
       queries();
       if (timer.current) clearTimeout(timer.current);

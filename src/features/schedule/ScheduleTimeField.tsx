@@ -1,22 +1,53 @@
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText, Button, Inline, TextField, useAppTheme, type AppTheme } from '../../design-system';
+import { AppText, Button, TextField, useAppTheme, type AppTheme } from '../../design-system';
 
 const HM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+type Meridiem = 'am' | 'pm';
+type ClockParts = { hour12: number; minute: number; meridiem: Meridiem };
 
 type ScheduleTimeFieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  /** 할 일 시각처럼 비워 둘 수 있다. 비우면 시각 없음이다. */
-  optional?: boolean;
 };
 
-/** 고른 시계의 시·분을 HH:mm 으로 넣는다. 기기 시간대 변환은 하지 않는다. */
+const FALLBACK: ClockParts = { hour12: 9, minute: 0, meridiem: 'am' };
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+export function parseClock(value: string): ClockParts | null {
+  const match = HM.exec(value.trim());
+  if (!match) return null;
+  const hour24 = Number(match[1]);
+  const minute = Number(match[2]);
+  return {
+    hour12: hour24 % 12 === 0 ? 12 : hour24 % 12,
+    minute,
+    meridiem: hour24 >= 12 ? 'pm' : 'am',
+  };
+}
+
+export function clockToHm(parts: ClockParts): string {
+  const hour12 = Math.min(12, Math.max(1, parts.hour12));
+  const minute = Math.min(59, Math.max(0, parts.minute));
+  const hour24 = parts.meridiem === 'pm' ? (hour12 % 12) + 12 : hour12 % 12;
+  return `${pad2(hour24)}:${pad2(minute)}`;
+}
+
+/** 화면 문구. 저장값은 24시간 HH:mm. */
+export function formatKoreanClock(value: string): string {
+  const parts = parseClock(value);
+  if (!parts) return '';
+  return `${parts.meridiem === 'am' ? '오전' : '오후'} ${parts.hour12}:${pad2(parts.minute)}`;
+}
+
 export function hmFromDate(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
 export function dateFromHm(value: string): Date {
@@ -26,68 +57,63 @@ export function dateFromHm(value: string): Date {
   return date;
 }
 
+function shiftHour(parts: ClockParts, delta: number): ClockParts {
+  const hour12 = ((parts.hour12 - 1 + delta) % 12 + 12) % 12 + 1;
+  return { ...parts, hour12 };
+}
+
+function shiftMinute(parts: ClockParts, delta: number): ClockParts {
+  return { ...parts, minute: (parts.minute + delta + 60) % 60 };
+}
+
 /**
- * 시각 칸. Android 는 이미 들어 있는 datetimepicker 의 시계(AM/PM, 키보드 전환은 시스템 다이얼로그).
- * iOS 는 같은 모듈의 스피너와 취소/완료.
+ * 시·분·오전/오후를 한 줄에 고른다. HH:mm 직접 입력은 없다.
+ * 고른 값은 24시간 HH:mm 으로 올린다.
  */
-export function ScheduleTimeField({ label, value, onChange, optional = false }: ScheduleTimeFieldProps) {
+export function ScheduleTimeField({ label, value, onChange }: ScheduleTimeFieldProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const shown = HM.test(value) ? value : '';
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(() => dateFromHm(shown));
-
-  const openPicker = () => {
-    setDraft(dateFromHm(shown || '09:00'));
-    setOpen(true);
-  };
-  const commit = (date: Date) => {
-    onChange(hmFromDate(date));
-    setOpen(false);
-  };
-  const onPickerChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (event.type === 'dismissed') {
-      setOpen(false);
-      return;
-    }
-    if (!selected) return;
-    setDraft(selected);
-    if (Platform.OS === 'android') commit(selected);
-  };
+  const parts = parseClock(value) ?? FALLBACK;
+  const commit = (next: ClockParts) => onChange(clockToHm(next));
 
   return (
     <View style={styles.flex}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 시계 열기`} onPress={openPicker}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 시간 열기`} onPress={() => setOpen((current) => !current)}>
         <TextField
           label={label}
-          value={shown}
-          placeholder={optional ? '시간 없음' : '시간 선택'}
+          value={formatKoreanClock(value)}
+          placeholder="시간 선택"
           editable={false}
           pointerEvents="none"
           importantForAccessibility="no-hide-descendants"
         />
       </Pressable>
-      {optional && shown ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`${label} 지우기`} onPress={() => onChange('')}>
-          <AppText variant="caption" color="primary">시간 없음</AppText>
-        </Pressable>
-      ) : null}
       {open ? (
-        <View style={styles.picker}>
-          <DateTimePicker
-            mode="time"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            is24Hour={false}
-            value={draft}
-            onChange={onPickerChange}
-            style={styles.pickerControl}
+        <View style={styles.line} accessibilityRole="adjustable" accessibilityLabel={`${label} 시간 선택`}>
+          <AppText variant="caption" color="textSecondary">시</AppText>
+          <Button label="−" size="sm" accessibilityLabel="시 내리기" onPress={() => commit(shiftHour(parts, -1))} />
+          <AppText variant="bodyStrong" align="center" style={styles.digit}>{parts.hour12}</AppText>
+          <Button label="+" size="sm" accessibilityLabel="시 올리기" onPress={() => commit(shiftHour(parts, 1))} />
+          <AppText variant="bodyStrong">:</AppText>
+          <AppText variant="caption" color="textSecondary">분</AppText>
+          <Button label="−" size="sm" accessibilityLabel="분 내리기" onPress={() => commit(shiftMinute(parts, -1))} />
+          <AppText variant="bodyStrong" align="center" style={styles.digit}>{pad2(parts.minute)}</AppText>
+          <Button label="+" size="sm" accessibilityLabel="분 올리기" onPress={() => commit(shiftMinute(parts, 1))} />
+          <Button
+            label="오전"
+            size="sm"
+            variant={parts.meridiem === 'am' ? 'selected' : 'secondary'}
+            accessibilityState={{ selected: parts.meridiem === 'am' }}
+            onPress={() => commit({ ...parts, meridiem: 'am' })}
           />
-          {Platform.OS === 'ios' ? (
-            <Inline gap="sm" justify="flex-end">
-              <Button label="취소" size="sm" onPress={() => setOpen(false)} />
-              <Button label="완료" variant="primary" size="sm" onPress={() => commit(draft)} />
-            </Inline>
-          ) : null}
+          <Button
+            label="오후"
+            size="sm"
+            variant={parts.meridiem === 'pm' ? 'selected' : 'secondary'}
+            accessibilityState={{ selected: parts.meridiem === 'pm' }}
+            onPress={() => commit({ ...parts, meridiem: 'pm' })}
+          />
         </View>
       ) : null}
     </View>
@@ -97,7 +123,14 @@ export function ScheduleTimeField({ label, value, onChange, optional = false }: 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     flex: { flex: 1 },
-    picker: { width: '100%', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm },
-    pickerControl: { alignSelf: 'center', width: 320 },
+    line: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexWrap: 'nowrap',
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.sm,
+    },
+    digit: { minWidth: 28, textAlign: 'center' },
   });
 }

@@ -29,12 +29,11 @@ import {
 import { customerMatchesSearch, formatCustomerPhone } from '../customers/customerModel';
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
-import { todayInSeoul } from '../../utils/dateInput';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
 import { ScheduleDateField } from '../schedule/ScheduleDateField';
 import { WidgetQuickAddSheet } from '../schedule/WidgetQuickAddSheet';
 import { widgetQuickTodoPayload, type WidgetQuickDraft } from '../schedule/widgetQuickAddModel';
-import { scheduleQueryKeys } from '../schedule/queryKeys';
+import { refreshScheduleSurfaces } from '../home-widgets/refreshScheduleSurfaces';
 import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
 import { leaveTodoOpenedFromWidget, type TodoWidgetNavigation } from './todoWidgetReturn';
@@ -98,9 +97,8 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
   }, [leaveInApp, navigation, params, router, token, user]);
   /** 할 일이 바뀌면 일정 화면의 ONE FC 할 일도 다시 읽는다(일반 재조회, refresh=1 아님 → 429 정책 영향 없음). */
   const invalidateTodoViews = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
-    await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
-  }, [queryClient]);
+    await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
+  }, [queryClient, token, user]);
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
@@ -163,10 +161,9 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const dueDate = mode === 'create' ? (form.dueDate.trim() || todayInSeoul()) : form.dueDate.trim();
-      const dueTime = dueDate && form.dueTime.trim() ? form.dueTime.trim() : null;
+      const dueDate = form.dueDate.trim();
       if (mode === 'create') {
-        return createTodo(token, buildTodoCreatePayload({ ...form, dueDate, dueTime: dueTime ?? '' }, createSource));
+        return createTodo(token, buildTodoCreatePayload({ ...form, dueDate, dueTime: '' }, createSource));
       }
       if (!isTodoEditDraftChanged(JSON.parse(initialSnapshot) as TodoFormDraft, form)) {
         // 바뀐 값 없음: 수정 요청을 보내지 않아 수정 시각·목록 순서를 그대로 둔다.
@@ -177,7 +174,7 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
         title: firstLineTodoTitle(content),
         description: content,
         dueDate: dueDate || null,
-        dueTime,
+        dueTime: null,
         priority: 'normal',
         relatedEntityType: form.relatedCustomerId ? 'customer' : null,
         relatedEntityId: form.relatedCustomerId || null,
@@ -280,11 +277,11 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
             />
             <ScheduleDateField
               label="날짜"
+              withTime={false}
               value={form.dueDate}
-              time={form.dueTime}
               clearable
               placeholder="날짜 없음"
-              onComplete={({ date, time }) => setForm((previous) => ({ ...previous, dueDate: date, dueTime: time }))}
+              onComplete={({ date }) => setForm((previous) => ({ ...previous, dueDate: date, dueTime: '' }))}
             />
           </Stack>
         </Card>
@@ -404,17 +401,18 @@ function TodoWidgetQuickCreate({
   onLeave: (saved: boolean) => void;
 }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [customerLookup, setCustomerLookup] = useState(false);
   const customersQuery = useQuery({
     queryKey: customerQueryKeys.all,
     queryFn: () => listCustomers(token),
-    enabled: Boolean(token),
+    enabled: Boolean(token) && customerLookup,
     staleTime: 60_000,
   });
   const save = useMutation({
     mutationFn: (draft: WidgetQuickDraft) => createTodo(token, widgetQuickTodoPayload(draft)),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
-      await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+      await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
       onLeave(true);
     },
   });
@@ -434,6 +432,7 @@ function TodoWidgetQuickCreate({
         error={save.isError ? message : null}
         customers={customers}
         customersLoading={customersQuery.isLoading}
+        onNeedCustomers={() => setCustomerLookup(true)}
         onClose={() => onLeave(false)}
         onSubmit={(draft) => save.mutate(draft)}
       />
