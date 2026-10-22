@@ -1,6 +1,6 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 describe('coverage inline edit focus during scroll', () => {
   it('does not commit when the amount cell is scrolled into view', () => {

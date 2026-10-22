@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 
 import {
@@ -361,10 +361,13 @@ function InlineAmountCell({
   const anchorRef = useRef<View>(null);
   const [draft, setDraft] = useState(() => formatManWonInputDisplay(amount));
   const draftRef = useRef(draft);
-  draftRef.current = draft;
   const committedRef = useRef(false);
   const ignoreBlurUntilRef = useRef(0);
   const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     if (!editing) {
@@ -387,17 +390,17 @@ function InlineAmountCell({
     };
   }, [amount, editing, onInlineAmountEditFocus]);
 
-  const commitAndClose = () => {
+  const commitAndClose = useCallback(() => {
     if (committedRef.current) return;
     committedRef.current = true;
     onCommit(draftRef.current);
     onCancel();
-  };
+  }, [onCancel, onCommit]);
 
-  const registerInlineCommit = () => {
+  const registerInlineCommit = useCallback(() => {
     if (!editing) return;
     onRegisterCommit?.(() => commitAndClose());
-  };
+  }, [commitAndClose, editing, onRegisterCommit]);
 
   const handleBlur = () => {
     if (shouldIgnoreInlineEditBlur(ignoreBlurUntilRef.current, Date.now())) {
@@ -414,7 +417,7 @@ function InlineAmountCell({
     }
     registerInlineCommit();
     return () => onRegisterCommit?.(null);
-  }, [editing, onRegisterCommit]);
+  }, [editing, onRegisterCommit, registerInlineCommit]);
 
   if (readOnly) {
     return <Text style={textStyle}>{formatCoverageAmountLabel(amount)}</Text>;
@@ -484,10 +487,13 @@ function InlineTitleCell({
   const inputRef = useRef<TextInput>(null);
   const [draft, setDraft] = useState(label);
   const draftRef = useRef(draft);
-  draftRef.current = draft;
   const committedRef = useRef(false);
   const ignoreBlurUntilRef = useRef(0);
   const focusWhenAttached = useFocusTextInputWhenAttached(editing, inputRef);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     if (!editing) {
@@ -499,17 +505,17 @@ function InlineTitleCell({
     ignoreBlurUntilRef.current = inlineEditBlurGuardDeadline(Date.now());
   }, [editing, label]);
 
-  const commitAndClose = () => {
+  const commitAndClose = useCallback(() => {
     if (committedRef.current) return;
     committedRef.current = true;
     onCommit(draftRef.current);
     onCancel();
-  };
+  }, [onCancel, onCommit]);
 
-  const registerInlineCommit = () => {
+  const registerInlineCommit = useCallback(() => {
     if (!editing) return;
     onRegisterCommit?.(() => commitAndClose());
-  };
+  }, [commitAndClose, editing, onRegisterCommit]);
 
   const handleBlur = () => {
     if (shouldIgnoreInlineEditBlur(ignoreBlurUntilRef.current, Date.now())) {
@@ -526,7 +532,7 @@ function InlineTitleCell({
     }
     registerInlineCommit();
     return () => onRegisterCommit?.(null);
-  }, [editing, onRegisterCommit]);
+  }, [editing, onRegisterCommit, registerInlineCommit]);
 
   if (!editing) {
     return (

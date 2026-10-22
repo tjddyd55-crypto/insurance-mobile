@@ -1,6 +1,6 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 function readSource(fileName: string): string {
   return fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8');
@@ -49,7 +49,7 @@ describe('NewsletterDetailPageZoomContent', () => {
 
   it('resets zoom when the selected newsletter changes', () => {
     const source = readSource('useNewsletterDetailPageZoom.ts');
-    expect(source).toMatch(/\[resetKey\]/);
+    expect(source).toMatch(/\[resetKey, scale, startScale, translateX\]/);
     expect(source).toMatch(/scale\.value = NEWS_DETAIL_ZOOM_MIN/);
     expect(source).toMatch(/translateX\.value = 0/);
   });

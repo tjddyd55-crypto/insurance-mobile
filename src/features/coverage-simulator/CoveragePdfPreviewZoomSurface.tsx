@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, {
@@ -79,107 +79,126 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
     viewportWidth,
   ]);
 
-  const syncScrollEnabled = (nextScale: number, min: number) => {
+  const syncScrollEnabled = useCallback((nextScale: number, min: number) => {
     const enabled = nextScale <= min + ZOOM_EPSILON;
     scrollRef.current?.setNativeProps({ scrollEnabled: enabled });
     setScrollEnabled(enabled);
-  };
+  }, []);
 
-  const disableScrollForPinch = () => {
+  const disableScrollForPinch = useCallback(() => {
     scrollRef.current?.setNativeProps({ scrollEnabled: false });
-  };
+  }, []);
 
-  const scrollGesture = Gesture.Native();
+  const scrollGesture = useMemo(() => Gesture.Native(), []);
+  const [surfaceGesture, setSurfaceGesture] = useState(() =>
+    Gesture.Simultaneous(Gesture.Pinch(), Gesture.Pan()),
+  );
 
-  const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
-    'worklet';
-    const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
-    if (!zoomed) {
-      translateX.value = 0;
-      translateY.value = 0;
-      savedTranslateX.value = 0;
-      savedTranslateY.value = 0;
-      return;
-    }
-    const bounds = calculatePanBounds(
-      contentWidth.value,
-      contentHeight.value,
-      scale.value,
-      viewportWidth,
-      viewportHeight,
-    );
-    const clamped = clampTranslation(nextX, nextY, bounds);
-    translateX.value = clamped.x;
-    translateY.value = clamped.y;
-    if (commit) {
-      savedTranslateX.value = clamped.x;
-      savedTranslateY.value = clamped.y;
-    }
-  };
-
-  const pinch = Gesture.Pinch()
-    .manualActivation(true)
-    .blocksExternalGesture(scrollGesture)
-    // eslint-disable-next-line react-hooks/refs -- 핀치가 발화될 때만 scrollRef를 읽는다
-    .onTouchesDown((event, state) => {
-      if (event.numberOfTouches >= 2) {
-        runOnJS(disableScrollForPinch)();
-        state.activate();
-      }
-    })
-    // eslint-disable-next-line react-hooks/refs -- 핀치가 발화될 때만 scrollRef를 읽는다
-    .onTouchesMove((event, state) => {
-      if (event.numberOfTouches >= 2) {
-        runOnJS(disableScrollForPinch)();
-        state.activate();
-        return;
-      }
-      state.fail();
-    })
-    .onUpdate((event) => {
-      const next = savedScale.value * event.scale;
-      const clamped = Math.min(NEWS_DETAIL_ZOOM_MAX, Math.max(fitScale.value, next));
-      scale.value = clamped;
-    })
-    .onEnd(() => {
-      if (scale.value <= fitScale.value + ZOOM_EPSILON) {
-        scale.value = withTiming(fitScale.value);
-        savedScale.value = fitScale.value;
-        translateX.value = withTiming(0);
-        translateY.value = withTiming(0);
+  useEffect(() => {
+    const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
+      'worklet';
+      const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
+      if (!zoomed) {
+        translateX.value = 0;
+        translateY.value = 0;
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
         return;
       }
-      savedScale.value = scale.value;
-      applyClampedTranslation(translateX.value, translateY.value, true);
-    })
-    // eslint-disable-next-line react-hooks/refs -- 핀치가 끝날 때만 scrollRef를 읽는다
-    .onFinalize(() => {
-      runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
-    });
-  scrollGesture.requireExternalGestureToFail(pinch);
-
-  const pan = Gesture.Pan()
-    .maxPointers(1)
-    .manualActivation(true)
-    .onTouchesMove((_event, state) => {
-      if (scale.value > fitScale.value + ZOOM_EPSILON) {
-        state.activate();
-        return;
-      }
-      state.fail();
-    })
-    .onUpdate((event) => {
-      applyClampedTranslation(
-        savedTranslateX.value + event.translationX,
-        savedTranslateY.value + event.translationY,
-        false,
+      const bounds = calculatePanBounds(
+        contentWidth.value,
+        contentHeight.value,
+        scale.value,
+        viewportWidth,
+        viewportHeight,
       );
-    })
-    .onEnd(() => {
-      applyClampedTranslation(translateX.value, translateY.value, true);
-    });
+      const clamped = clampTranslation(nextX, nextY, bounds);
+      translateX.value = clamped.x;
+      translateY.value = clamped.y;
+      if (commit) {
+        savedTranslateX.value = clamped.x;
+        savedTranslateY.value = clamped.y;
+      }
+    };
+
+    const pinch = Gesture.Pinch()
+      .manualActivation(true)
+      .blocksExternalGesture(scrollGesture)
+      .onTouchesDown((event, state) => {
+        if (event.numberOfTouches >= 2) {
+          runOnJS(disableScrollForPinch)();
+          state.activate();
+        }
+      })
+      .onTouchesMove((event, state) => {
+        if (event.numberOfTouches >= 2) {
+          runOnJS(disableScrollForPinch)();
+          state.activate();
+          return;
+        }
+        state.fail();
+      })
+      .onUpdate((event) => {
+        const next = savedScale.value * event.scale;
+        const clamped = Math.min(NEWS_DETAIL_ZOOM_MAX, Math.max(fitScale.value, next));
+        scale.value = clamped;
+      })
+      .onEnd(() => {
+        if (scale.value <= fitScale.value + ZOOM_EPSILON) {
+          scale.value = withTiming(fitScale.value);
+          savedScale.value = fitScale.value;
+          translateX.value = withTiming(0);
+          translateY.value = withTiming(0);
+          savedTranslateX.value = 0;
+          savedTranslateY.value = 0;
+          return;
+        }
+        savedScale.value = scale.value;
+        applyClampedTranslation(translateX.value, translateY.value, true);
+      })
+      .onFinalize(() => {
+        runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
+      });
+    scrollGesture.requireExternalGestureToFail(pinch);
+
+    const pan = Gesture.Pan()
+      .maxPointers(1)
+      .manualActivation(true)
+      .onTouchesMove((_event, state) => {
+        if (scale.value > fitScale.value + ZOOM_EPSILON) {
+          state.activate();
+          return;
+        }
+        state.fail();
+      })
+      .onUpdate((event) => {
+        applyClampedTranslation(
+          savedTranslateX.value + event.translationX,
+          savedTranslateY.value + event.translationY,
+          false,
+        );
+      })
+      .onEnd(() => {
+        applyClampedTranslation(translateX.value, translateY.value, true);
+      });
+
+    setSurfaceGesture(Gesture.Simultaneous(pinch, pan));
+  }, [
+    contentHeight,
+    contentWidth,
+    disableScrollForPinch,
+    fitScale,
+    savedScale,
+    savedTranslateX,
+    savedTranslateY,
+    scale,
+    scrollGesture,
+    syncScrollEnabled,
+    translateX,
+    translateY,
+    viewportHeight,
+    viewportWidth,
+  ]);
 
   const docTransformStyle = useAnimatedStyle(() => ({
     transform: [
@@ -190,7 +209,7 @@ export function CoveragePdfPreviewZoomSurface({ documentKey, children }: Props) 
   }));
 
   return (
-    <GestureDetector gesture={Gesture.Simultaneous(pinch, pan)}>
+    <GestureDetector gesture={surfaceGesture}>
       <View
         style={styles.stage}
         onLayout={(event) => {

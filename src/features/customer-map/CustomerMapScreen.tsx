@@ -84,7 +84,7 @@ export function CustomerMapScreen({
     enabled: Boolean(token),
   });
 
-  const mapCustomers = query.data?.customers ?? [];
+  const mapCustomers = useMemo(() => query.data?.customers ?? [], [query.data?.customers]);
   const markerGroups = useMemo(() => buildCustomerMapMarkerGroups(mapCustomers), [mapCustomers]);
   const selectedGroup = useMemo(
     () => markerGroups.find((group) => group.groupKey === selectedGroupKey) ?? null,

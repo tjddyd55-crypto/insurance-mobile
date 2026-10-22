@@ -1,6 +1,6 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 describe('CoveragePdfPreviewZoomSurface', () => {
   it('uses pinch/pan gestures and resets on documentKey', () => {

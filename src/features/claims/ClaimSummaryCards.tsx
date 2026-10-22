@@ -11,12 +11,12 @@ import type { ClaimStatus } from "./types";
 
 type SummaryKey = "total" | ClaimStatus;
 
-const SUMMARY_ITEMS: Array<{
+const SUMMARY_ITEMS: {
   key: SummaryKey;
   label: string;
   statusFilter: ClaimStatus | "";
   tone: "default" | "warning" | "info" | "success" | "danger";
-}> = [
+}[] = [
   { key: "total", label: "전체", statusFilter: "", tone: "default" },
   { key: "requested", label: "신규 요청", statusFilter: "requested", tone: "warning" },
   { key: "processing", label: "처리중", statusFilter: "processing", tone: "info" },

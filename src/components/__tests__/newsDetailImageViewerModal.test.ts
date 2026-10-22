@@ -1,6 +1,6 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 function readSource(fileName: string): string {
   return fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8');
@@ -18,7 +18,9 @@ describe('NewsDetailImageViewerModal', () => {
   it('resets transform when image url changes', () => {
     const source = readSource('NewsDetailImageViewerModal.tsx');
     expect(source).toMatch(/resetTransform/);
-    expect(source).toMatch(/\[imageUrl\]/);
+    expect(source).toMatch(
+      /\[imageUrl, savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY\]/,
+    );
   });
 
   it('clamps pan using contain rendered size and viewport bounds', () => {

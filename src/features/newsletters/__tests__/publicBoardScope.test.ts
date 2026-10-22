@@ -1,6 +1,6 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 import { resolveNewsletterListGaBadge } from '../newslettersModel';
 
 const read = (f: string) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');

@@ -10,11 +10,11 @@ import { buildSeedScenario, ensureSeedScenarios } from '../scenarioSeed';
 import {
   createSimulationFromScenario,
   createUserScenario,
+  duplicateScenario,
   isScenarioRecord,
   isSimulationRecord,
   renameScenario,
 } from '../scenarioEdits';
-import { duplicateScenario } from '../scenarioEdits';
 
 describe('coverage scenario domain', () => {
   it('treats seed scenarios as normal editable scenario records', () => {

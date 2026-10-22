@@ -1,6 +1,6 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 describe('coverage item delete confirm', () => {
   it('shows the delete confirm over the item edit form', () => {

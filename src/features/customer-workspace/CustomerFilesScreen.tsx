@@ -108,7 +108,7 @@ export function CustomerFilesScreen({ customerId }: { customerId: number }) {
     ]);
   };
 
-  const folders = foldersQuery.data ?? [];
+  const folders = useMemo(() => foldersQuery.data ?? [], [foldersQuery.data]);
   const breadcrumb = useMemo(
     () => buildCustomerFolderBreadcrumb(folders, folderId),
     [folders, folderId],

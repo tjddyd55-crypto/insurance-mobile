@@ -24,6 +24,22 @@ type Props = {
   onClose: () => void;
 };
 
+function resetTransform(values: {
+  scale: { value: number };
+  savedScale: { value: number };
+  translateX: { value: number };
+  translateY: { value: number };
+  savedTranslateX: { value: number };
+  savedTranslateY: { value: number };
+}) {
+  values.scale.value = NEWS_DETAIL_ZOOM_MIN;
+  values.savedScale.value = NEWS_DETAIL_ZOOM_MIN;
+  values.translateX.value = 0;
+  values.translateY.value = 0;
+  values.savedTranslateX.value = 0;
+  values.savedTranslateY.value = 0;
+}
+
 export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -42,15 +58,9 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
   const viewportHeight = useSharedValue(0);
 
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
-
-  const resetTransform = () => {
-    scale.value = NEWS_DETAIL_ZOOM_MIN;
-    savedScale.value = NEWS_DETAIL_ZOOM_MIN;
-    translateX.value = 0;
-    translateY.value = 0;
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
-  };
+  const [composedGesture, setComposedGesture] = useState(() =>
+    Gesture.Simultaneous(Gesture.Pinch(), Gesture.Pan()),
+  );
 
   const uri = String(imageUrl ?? '').trim();
   const imageLayoutWidth = width;
@@ -58,19 +68,34 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
 
   useEffect(() => {
     if (!visible) {
-      resetTransform();
+      resetTransform({
+        scale,
+        savedScale,
+        translateX,
+        translateY,
+        savedTranslateX,
+        savedTranslateY,
+      });
       setNaturalSize({ width: 0, height: 0 });
     }
-  }, [visible]);
+  }, [savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY, visible]);
 
   useEffect(() => {
-    resetTransform();
+    resetTransform({
+      scale,
+      savedScale,
+      translateX,
+      translateY,
+      savedTranslateX,
+      savedTranslateY,
+    });
     setNaturalSize({ width: 0, height: 0 });
-    if (!uri) {
+    const nextUri = String(imageUrl ?? '').trim();
+    if (!nextUri) {
       return;
     }
     void Image.getSize(
-      uri,
+      nextUri,
       (imageWidth, imageHeight) => {
         setNaturalSize({ width: imageWidth, height: imageHeight });
       },
@@ -78,7 +103,7 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
         setNaturalSize({ width: 0, height: 0 });
       },
     );
-  }, [imageUrl]);
+  }, [imageUrl, savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY]);
 
   useEffect(() => {
     const rendered = calculateContainRenderedSize(
@@ -91,84 +116,106 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
     renderedHeight.value = rendered.height;
     viewportWidth.value = imageLayoutWidth;
     viewportHeight.value = imageLayoutHeight;
-  }, [imageLayoutWidth, imageLayoutHeight, naturalSize.width, naturalSize.height]);
+  }, [
+    imageLayoutHeight,
+    imageLayoutWidth,
+    naturalSize.height,
+    naturalSize.width,
+    renderedHeight,
+    renderedWidth,
+    viewportHeight,
+    viewportWidth,
+  ]);
 
-  const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
-    'worklet';
-    const hasValidGeometry =
-      Number.isFinite(renderedWidth.value) &&
-      Number.isFinite(renderedHeight.value) &&
-      Number.isFinite(viewportWidth.value) &&
-      Number.isFinite(viewportHeight.value) &&
-      renderedWidth.value > 0 &&
-      renderedHeight.value > 0 &&
-      viewportWidth.value > 0 &&
-      viewportHeight.value > 0;
-
-    if (scale.value <= NEWS_DETAIL_ZOOM_MIN || !hasValidGeometry) {
-      translateX.value = 0;
-      translateY.value = 0;
-      savedTranslateX.value = 0;
-      savedTranslateY.value = 0;
-      return;
-    }
-
-    const bounds = calculatePanBounds(
-      renderedWidth.value,
-      renderedHeight.value,
-      scale.value,
-      viewportWidth.value,
-      viewportHeight.value,
-    );
-    const clamped = clampTranslation(nextX, nextY, bounds);
-    translateX.value = clamped.x;
-    translateY.value = clamped.y;
-    if (commit) {
-      savedTranslateX.value = clamped.x;
-      savedTranslateY.value = clamped.y;
-    }
-  };
-
-  const pinchGesture = Gesture.Pinch()
-    .onUpdate((event) => {
+  useEffect(() => {
+    const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
       'worklet';
-      scale.value = clampNewsDetailZoomScale(savedScale.value * event.scale);
-      applyClampedTranslation(translateX.value, translateY.value, true);
-    })
-    .onEnd(() => {
-      'worklet';
-      savedScale.value = scale.value;
-      if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
-        scale.value = withTiming(NEWS_DETAIL_ZOOM_MIN);
-        savedScale.value = NEWS_DETAIL_ZOOM_MIN;
-        translateX.value = withTiming(0);
-        translateY.value = withTiming(0);
+      const hasValidGeometry =
+        Number.isFinite(renderedWidth.value) &&
+        Number.isFinite(renderedHeight.value) &&
+        Number.isFinite(viewportWidth.value) &&
+        Number.isFinite(viewportHeight.value) &&
+        renderedWidth.value > 0 &&
+        renderedHeight.value > 0 &&
+        viewportWidth.value > 0 &&
+        viewportHeight.value > 0;
+
+      if (scale.value <= NEWS_DETAIL_ZOOM_MIN || !hasValidGeometry) {
+        translateX.value = 0;
+        translateY.value = 0;
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
         return;
       }
-      applyClampedTranslation(translateX.value, translateY.value, true);
-    });
 
-  const panGesture = Gesture.Pan()
-    .maxPointers(1)
-    .onUpdate((event) => {
-      'worklet';
-      if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
-        return;
-      }
-      applyClampedTranslation(
-        savedTranslateX.value + event.translationX,
-        savedTranslateY.value + event.translationY,
-        false,
+      const bounds = calculatePanBounds(
+        renderedWidth.value,
+        renderedHeight.value,
+        scale.value,
+        viewportWidth.value,
+        viewportHeight.value,
       );
-    })
-    .onEnd(() => {
-      'worklet';
-      applyClampedTranslation(translateX.value, translateY.value, true);
-    });
+      const clamped = clampTranslation(nextX, nextY, bounds);
+      translateX.value = clamped.x;
+      translateY.value = clamped.y;
+      if (commit) {
+        savedTranslateX.value = clamped.x;
+        savedTranslateY.value = clamped.y;
+      }
+    };
 
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+    const pinchGesture = Gesture.Pinch()
+      .onUpdate((event) => {
+        'worklet';
+        scale.value = clampNewsDetailZoomScale(savedScale.value * event.scale);
+        applyClampedTranslation(translateX.value, translateY.value, true);
+      })
+      .onEnd(() => {
+        'worklet';
+        savedScale.value = scale.value;
+        if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
+          scale.value = withTiming(NEWS_DETAIL_ZOOM_MIN);
+          savedScale.value = NEWS_DETAIL_ZOOM_MIN;
+          translateX.value = withTiming(0);
+          translateY.value = withTiming(0);
+          savedTranslateX.value = 0;
+          savedTranslateY.value = 0;
+          return;
+        }
+        applyClampedTranslation(translateX.value, translateY.value, true);
+      });
+
+    const panGesture = Gesture.Pan()
+      .maxPointers(1)
+      .onUpdate((event) => {
+        'worklet';
+        if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
+          return;
+        }
+        applyClampedTranslation(
+          savedTranslateX.value + event.translationX,
+          savedTranslateY.value + event.translationY,
+          false,
+        );
+      })
+      .onEnd(() => {
+        'worklet';
+        applyClampedTranslation(translateX.value, translateY.value, true);
+      });
+
+    setComposedGesture(Gesture.Simultaneous(pinchGesture, panGesture));
+  }, [
+    renderedHeight,
+    renderedWidth,
+    savedScale,
+    savedTranslateX,
+    savedTranslateY,
+    scale,
+    translateX,
+    translateY,
+    viewportHeight,
+    viewportWidth,
+  ]);
 
   const imageStyle = useAnimatedStyle(() => ({
     transform: [

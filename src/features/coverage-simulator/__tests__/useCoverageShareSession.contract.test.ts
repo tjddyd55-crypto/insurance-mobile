@@ -1,11 +1,11 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
-const {
+import {
   COVERAGE_SHARE_COPY,
   coverageShareSnapshotFingerprint,
-} = require('../coverageShareModel');
+} from '../coverageShareModel';
 
 describe('useCoverageShareSession direct copy contract', () => {
   it('exposes copyShareLink without clearing cached url on dialog open', () => {

@@ -1,5 +1,5 @@
 // @ts-nocheck
-const {
+import {
   NEWS_DETAIL_ZOOM_MIN,
   NEWS_DETAIL_ZOOM_MAX,
   clampNewsDetailZoomScale,
@@ -9,7 +9,7 @@ const {
   binderPageOriginInViewport,
   focalPointToPageLocal,
   translationForFocalPinch,
-} = require('../newsDetailZoomMath');
+} from '../newsDetailZoomMath';
 
 describe('newsDetailZoomMath', () => {
   it('defines page and viewer zoom bounds', () => {
