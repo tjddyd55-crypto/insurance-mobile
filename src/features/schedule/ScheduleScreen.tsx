@@ -261,7 +261,7 @@ export function ScheduleScreen() {
     setTaskError(null);
     saveTask.reset();
     setFormState(null);
-    setTaskState({ form: emptyTaskForm(seoulYmd()) });
+    setTaskState({ form: emptyTaskForm(selected) });
   };
   const submitTask = () => {
     if (!taskState) return;
@@ -429,7 +429,7 @@ export function ScheduleScreen() {
           <Stack gap="md">
             <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
             <Inline gap="sm">
-              <ScheduleDateField label="예정일" value={taskState.form.dueDate} onChange={(dueDate) => patchTask({ dueDate })} clearable placeholder="날짜 없음" />
+              <ScheduleDateField label="날짜" value={taskState.form.dueDate} onChange={(dueDate) => patchTask({ dueDate })} clearable placeholder="날짜 없음" />
               <View style={styles.flex}><TextField label="시각" placeholder="HH:mm (선택)" value={taskState.form.dueTime} onChangeText={(dueTime) => patchTask({ dueTime })} /></View>
             </Inline>
             <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
@@ -501,6 +501,11 @@ export function ScheduleScreen() {
   );
 }
 
+function taskDateLine(task: ScheduleTask): string {
+  const when = [task.dueDate, task.dueTime].filter(Boolean).join(' ');
+  return when ? `날짜 ${when}` : '날짜 없음';
+}
+
 function isTask(item: ScheduleEvent | ScheduleTask): item is ScheduleTask {
   return item.source === 'google_task' || item.source === 'onefc_todo';
 }
@@ -527,7 +532,7 @@ function ScheduleDetailModal({
     return (
       <ModalShell open title={item.title} subtitle={taskSourceLabel(item)} presentation="dialog" scroll onRequestClose={onClose}>
         <Stack gap="md">
-          <AppText variant="body">{[item.dueDate, item.dueTime].filter(Boolean).join(' ') || '날짜 없음'}</AppText>
+          <AppText variant="body">{taskDateLine(item)}</AppText>
           {item.customerName ? <AppText variant="body">고객: {item.customerName}</AppText> : null}
           {item.notes ? <AppText variant="body" selectable>{item.notes}</AppText> : null}
           {todo ? <Button label="할 일 열기" variant="primary" fullWidth onPress={() => onOpenRoute(todo)} /> : null}

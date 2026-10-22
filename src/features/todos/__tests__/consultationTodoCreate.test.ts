@@ -82,7 +82,7 @@ describe('consultation todo create', () => {
     expect(tomorrow.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(tomorrow.dueDate).not.toContain('T');
     consultationTodoCreateRoute(tomorrow);
-    const seeded = seedTodoCreateForm('3', '2026-09-01', NOW);
+    const seeded = seedTodoCreateForm('3', undefined, NOW);
     expect(seeded.draft.dueDate).toBe('2026-10-01');
     expect(seeded.draft.dueDate).not.toBe(tomorrow.dueDate);
     expect(seeded.draft.description).toBe('내일 연락');
@@ -117,7 +117,7 @@ describe('consultation todo create', () => {
     expect(form).toContain('seedTodoCreateForm');
     expect(form).toContain('updateTodo');
     expect(form).toContain('ScheduleDateField');
-    expect(form).toContain('label="마감일"');
+    expect(form).toContain('label="날짜"');
     expect(form).toContain('clearable');
     expect(form).not.toContain('<DateField');
     expect(form).not.toContain('suggestTodoDueDate');

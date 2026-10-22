@@ -216,7 +216,7 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
       return;
     }
     if (!isValidOptionalYmd(form.dueDate.trim())) {
-      setFormError('마감일은 YYYY-MM-DD 형식으로 입력해 주세요.');
+      setFormError('날짜는 YYYY-MM-DD 형식으로 입력해 주세요.');
       return;
     }
     setFormError('');
@@ -270,7 +270,7 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
               placeholder="할 일을 입력하세요."
             />
             <ScheduleDateField
-              label="마감일"
+              label="날짜"
               value={form.dueDate}
               clearable
               placeholder="날짜 없음"

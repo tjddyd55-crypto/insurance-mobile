@@ -456,10 +456,10 @@ export function validateTaskForm(form: ScheduleTaskForm, storage: 'google_task' 
   if (title.length > SCHEDULE_TITLE_MAX) return `제목은 ${SCHEDULE_TITLE_MAX}자 이하로 입력해 주세요.`;
   if (form.notes.length > SCHEDULE_NOTES_MAX) return '메모가 너무 깁니다.';
   const due = form.dueDate.trim();
-  if (due && !YMD.test(due)) return '예정일은 YYYY-MM-DD 로 입력해 주세요.';
+  if (due && !YMD.test(due)) return '날짜는 YYYY-MM-DD 로 입력해 주세요.';
   const time = form.dueTime.trim();
   if (storage === 'onefc_todo' && time) {
-    if (!due) return '시각을 지정하려면 예정일을 입력해 주세요.';
+    if (!due) return '시각을 지정하려면 날짜를 입력해 주세요.';
     if (!HM.test(time)) return '시각은 HH:mm 으로 입력해 주세요.';
   }
   return null;

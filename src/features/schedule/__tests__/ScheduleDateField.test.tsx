@@ -37,10 +37,10 @@ describe('일정 날짜 달력', () => {
     expect(onChange).toHaveBeenCalledWith('2026-11-01');
   });
 
-  it('예정일은 날짜 없음으로 비울 수 있다', () => {
+  it('날짜는 날짜 없음으로 비울 수 있다', () => {
     const onChange = jest.fn();
-    const ui = field({ label: '예정일', value: '2026-10-22', onChange, clearable: true });
-    fireEvent.press(ui.getByRole('button', { name: '예정일 달력 열기' }));
+    const ui = field({ label: '날짜', value: '2026-10-22', onChange, clearable: true });
+    fireEvent.press(ui.getByRole('button', { name: '날짜 달력 열기' }));
     fireEvent.press(ui.getByRole('button', { name: '날짜 없음' }));
     expect(onChange).toHaveBeenCalledWith('');
   });

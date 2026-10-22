@@ -58,9 +58,12 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
     expect(screen).not.toContain('createScheduleEvent(');
     expect(screen).toContain('<ScheduleDateField label="시작일"');
     expect(screen).toContain('<ScheduleDateField label="종료일"');
-    expect(screen).toContain('<ScheduleDateField label="예정일"');
-    expect(screen).toContain('emptyTaskForm(seoulYmd())');
-    expect(screen).not.toContain('emptyTaskForm(selected)');
+    expect(screen).toContain('<ScheduleDateField label="날짜"');
+    expect(screen).toContain('emptyTaskForm(selected)');
+    expect(screen).toContain('emptyEventForm(selected)');
+    expect(screen).toContain('emptyEventForm(linkTarget.date)');
+    expect(screen).not.toContain('emptyTaskForm(seoulYmd())');
+    expect(screen).not.toContain('emptyEventForm(seoulYmd())');
     expect(screen).toContain('label="시작 시각"');
     expect(screen).toContain('label="종료 시각"');
     expect(screen).toContain('label="시각"');
@@ -90,7 +93,9 @@ describe('일정 관리 추가 — 할 일 폼', () => {
   it('추가 예정일은 KST 오늘 문자열이고, 비우면 날짜 없음으로 저장', () => {
     expect(seoulYmd(new Date('2026-10-01T14:59:00.000Z'))).toBe('2026-10-01');
     expect(seoulYmd(new Date('2026-10-01T15:00:00.000Z'))).toBe('2026-10-02');
-    const form = { ...emptyTaskForm(seoulYmd(new Date('2026-10-01T15:00:00.000Z'))), title: '  서류 ' };
+    const today = seoulYmd(new Date('2026-10-01T15:00:00.000Z'));
+    expect(emptyEventForm(today)).toMatchObject({ date: '2026-10-02', endDate: '2026-10-02' });
+    const form = { ...emptyTaskForm(today), title: '  서류 ' };
     expect(form.dueDate).toBe('2026-10-02');
     expect(taskFormToTodoPayload(form)).toEqual({ title: '서류', description: null, dueDate: '2026-10-02', dueTime: null });
     expect(taskFormToTodoPayload({ ...form, dueDate: '', dueTime: '09:00' })).toEqual({ title: '서류', description: null, dueDate: null, dueTime: null });
@@ -104,7 +109,7 @@ describe('일정 관리 추가 — 할 일 폼', () => {
     expect(validateTaskForm({ ...base, title: ' ' }, 'onefc_todo')).toContain('제목');
     expect(validateTaskForm({ ...base, dueDate: '10/21' }, 'onefc_todo')).toContain('YYYY-MM-DD');
     expect(validateTaskForm({ ...base, dueTime: '25:00' }, 'onefc_todo')).toContain('HH:mm');
-    expect(validateTaskForm({ ...base, dueDate: '', dueTime: '09:00' }, 'onefc_todo')).toContain('예정일');
+    expect(validateTaskForm({ ...base, dueDate: '', dueTime: '09:00' }, 'onefc_todo')).toContain('날짜');
     expect(validateTaskForm({ ...base, dueTime: '09:30' }, 'onefc_todo')).toBeNull();
   });
 

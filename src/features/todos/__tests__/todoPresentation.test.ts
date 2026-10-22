@@ -43,7 +43,9 @@ describe('todoPresentation', () => {
   test('keeps list hierarchy copy aligned with mobile web', () => {
     expect(todoDisplayContent(sample)).toBe('고객에게 연락');
     expect(formatTodoCreatedDate(sample.createdAt)).toContain('2026-08-31');
-    expect(formatTodoDueLine(sample)).toContain('마감');
+    expect(formatTodoDueLine(sample)).toContain('날짜');
+    expect(formatTodoDueLine(sample)).not.toContain('마감');
+    expect(formatTodoDueLine(sample)).not.toContain('작성일');
     expect(formatTodoDueLine(sample)).toContain('14:00');
     expect(todoRelatedDisplay(sample)).toEqual({ label: '홍길동', customerId: '33' });
     expect(todoSourceLine(sample)).toBe('출처 직접 작성');

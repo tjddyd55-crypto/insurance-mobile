@@ -73,27 +73,33 @@ export function consultationTodoCreateRoute(prefill: ConsultationTodoCreatePrefi
 }
 
 /**
- * 할 일 추가 초안. 마감일은 진입점과 상관없이 KST 오늘(YYYY-MM-DD)이다.
- * 위젯이 넘긴 날짜·상담 본문 제안은 초기값으로 쓰지 않는다. 수정 화면은 이 함수를 쓰지 않는다.
+ * 할 일 추가 초안. 넘긴 날짜(위젯에서 보던 날)가 있으면 그 날, 없으면 KST 오늘.
+ * 상담 본문 제안(내일 등)은 초기값으로 쓰지 않는다. 수정 화면은 이 함수를 쓰지 않는다.
  */
-export function seedTodoCreateForm(consultationId?: string, _dueDate?: string, now = new Date()): {
+export function seedTodoCreateForm(consultationId?: string, dueDate?: string, now = new Date()): {
   draft: TodoFormDraft;
   source: TodoCreateSource;
 } {
-  const dueDate = todayInSeoul(now);
+  const chosen = chosenDueDate(dueDate, now);
   const prefill = peekConsultationTodoCreate(consultationId);
   if (!prefill) {
-    return { draft: { ...cloneTodoFormDraft(), dueDate }, source: MANUAL_SOURCE };
+    return { draft: { ...cloneTodoFormDraft(), dueDate: chosen }, source: MANUAL_SOURCE };
   }
   return {
     draft: {
       description: prefill.description,
-      dueDate,
+      dueDate: chosen,
       relatedCustomerId: prefill.relatedCustomerId,
       relatedCustomerName: prefill.relatedCustomerName,
     },
     source: { sourceType: prefill.sourceType, sourceId: prefill.sourceId },
   };
+}
+
+function chosenDueDate(dueDate: string | undefined, now: Date): string {
+  const tapped = dueDate?.trim() ?? '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(tapped) && isValidOptionalYmd(tapped)) return tapped;
+  return todayInSeoul(now);
 }
 
 function calendarDueDate(value: string | null): string {
