@@ -53,22 +53,19 @@ describe('위젯 부가정보 시트', () => {
     expect(ui.queryByText('반복')).toBeNull();
   });
 
-  it('부가정보는 달력을 바로 보여주고, 날짜 칸을 누르면 달력으로 돌아온다', () => {
+  it('부가정보의 날짜는 시간 설정이 있는 달력으로 고른다', () => {
     const { ui, onSubmit } = sheet();
     fireEvent.press(ui.getByRole('button', { name: '부가정보' }));
+    fireEvent.press(ui.getByRole('button', { name: '날짜 달력 열기' }));
+    expect(ui.getByRole('button', { name: '시간 설정' })).toBeTruthy();
+    expect(ui.queryByText('반복')).toBeNull();
     fireEvent.press(ui.getByRole('button', { name: '10월 23일 (금)' }));
-    fireEvent.press(ui.getByRole('button', { name: '시간' }));
-    expect(ui.queryByRole('button', { name: '다음 달' })).toBeNull();
-    expect(ui.getByRole('button', { name: '시계 다이얼' })).toBeTruthy();
+    fireEvent.press(ui.getByRole('button', { name: '시간 설정' }));
     fireEvent.press(ui.getByRole('button', { name: '시계 다이얼' }));
-    fireEvent.press(ui.getByRole('button', { name: '이 시각' }));
-    fireEvent.press(ui.getByRole('button', { name: '고객 연결' }));
-    expect(ui.queryByRole('button', { name: '시계 다이얼' })).toBeNull();
+    fireEvent.press(ui.getByRole('button', { name: '완료' }));
     fireEvent.changeText(ui.getByPlaceholderText('이름 또는 전화번호 2글자 이상'), '홍길');
     fireEvent.press(ui.getByRole('button', { name: '홍길동' }));
     expect(ui.getByRole('button', { name: '홍길동 해제' })).toBeTruthy();
-    fireEvent.press(ui.getByRole('button', { name: '날짜' }));
-    expect(ui.getByRole('button', { name: '다음 달' })).toBeTruthy();
     fireEvent.changeText(ui.getByPlaceholderText('새 일정'), '미팅');
     fireEvent.press(ui.getByRole('button', { name: 'OK' }));
     expect(onSubmit).toHaveBeenCalledWith({

@@ -1,5 +1,26 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+jest.mock('@react-native-community/datetimepicker', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Pressable, Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ onChange }: { onChange: (event: { type: string }, date?: Date) => void }) =>
+      React.createElement(
+        Pressable,
+        {
+          accessibilityRole: 'button',
+          accessibilityLabel: '시계 다이얼',
+          onPress: () => onChange({ type: 'set' }, new Date(2026, 9, 22, 14, 30, 0, 0)),
+        },
+        React.createElement(Text, null, '시계'),
+      ),
+  };
+});
+
 import { DesignSystemProvider } from '../../../design-system';
 import { ScheduleDateField } from '../ScheduleDateField';
 
@@ -54,10 +75,27 @@ describe('일정 날짜 달력', () => {
     const onChange = jest.fn();
     const ui = field({ label: '날짜', value: '2026-10-22', onChange, clearable: true });
     fireEvent.press(ui.getByRole('button', { name: '날짜 달력 열기' }));
+    expect(ui.getByRole('button', { name: '시간 설정' })).toBeTruthy();
     expect(ui.queryByText('반복')).toBeNull();
     fireEvent.press(ui.getByRole('button', { name: '날짜 없음' }));
     expect(onChange).not.toHaveBeenCalled();
     finish(ui);
     expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  it('시간 설정은 시계로 고르고 완료 때 같이 반영된다', () => {
+    const onComplete = jest.fn();
+    const ui = render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <DesignSystemProvider>
+          <ScheduleDateField label="시작일" value="2026-10-22" time="09:00" onComplete={onComplete} />
+        </DesignSystemProvider>
+      </SafeAreaProvider>,
+    );
+    fireEvent.press(ui.getByRole('button', { name: '시작일 달력 열기' }));
+    fireEvent.press(ui.getByRole('button', { name: '시간 설정' }));
+    fireEvent.press(ui.getByRole('button', { name: '시계 다이얼' }));
+    finish(ui);
+    expect(onComplete).toHaveBeenCalledWith({ date: '2026-10-22', time: '14:30' });
   });
 });

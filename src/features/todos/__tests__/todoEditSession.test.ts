@@ -56,12 +56,14 @@ describe('todo edit session', () => {
       description: '',
       title: '두번째 할 일',
       dueDate: '2026-09-02',
+      dueTime: '14:00',
       relatedEntityType: 'customer',
       relatedEntityId: '9',
       customerName: '김고객',
     })).toEqual({
       description: '두번째 할 일',
       dueDate: '2026-09-02',
+      dueTime: '14:00',
       relatedCustomerId: '9',
       relatedCustomerName: '김고객',
     });

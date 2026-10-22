@@ -105,6 +105,7 @@ describe('consultation todo create', () => {
     const manual = buildTodoCreatePayload({
       description: '직접 작성',
       dueDate: '',
+      dueTime: '',
       relatedCustomerId: '',
       relatedCustomerName: '',
     });
@@ -118,6 +119,8 @@ describe('consultation todo create', () => {
     expect(form).toContain('updateTodo');
     expect(form).toContain('ScheduleDateField');
     expect(form).toContain('label="날짜"');
+    expect(form).toContain('time={form.dueTime}');
+    expect(form).not.toContain('dueTime: null');
     expect(form).toContain('clearable');
     expect(form).not.toContain('<DateField');
     expect(form).not.toContain('suggestTodoDueDate');

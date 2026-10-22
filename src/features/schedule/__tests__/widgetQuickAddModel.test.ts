@@ -1,3 +1,4 @@
+import { applyScheduleDateTime } from '../scheduleModel';
 import { plusOneHour, widgetQuickScheduleForm, widgetQuickTodoPayload } from '../widgetQuickAddModel';
 
 describe('위젯 빠른 추가 저장 값', () => {
@@ -33,6 +34,24 @@ describe('위젯 빠른 추가 저장 값', () => {
       customerId: null,
       customerName: '',
     })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '00:30', endDate: '2026-10-23' });
+  });
+
+  it('일정 수정은 저장된 시각을 유지하고, 종일에서 시각을 고르면 종료가 1시간 뒤다', () => {
+    const timed = { date: '2026-10-22', endDate: '2026-10-22', allDay: false, startTime: '14:00', endTime: '15:30' };
+    expect(applyScheduleDateTime(timed, 'start', { date: '2026-10-23', time: '16:00' })).toMatchObject({
+      date: '2026-10-23',
+      startTime: '16:00',
+      endTime: '15:30',
+      allDay: false,
+    });
+    const allDay = { date: '2026-10-22', endDate: '2026-10-24', allDay: true, startTime: '09:00', endTime: '10:00' };
+    expect(applyScheduleDateTime(allDay, 'start', { date: '2026-10-22', time: '' })).toMatchObject({ allDay: true, endDate: '2026-10-24' });
+    expect(applyScheduleDateTime(allDay, 'start', { date: '2026-10-22', time: '23:30' })).toMatchObject({
+      allDay: false,
+      startTime: '23:30',
+      endTime: '00:30',
+      endDate: '2026-10-23',
+    });
   });
 
   it('할 일만 고객 연결을 저장 본문에 넣는다', () => {

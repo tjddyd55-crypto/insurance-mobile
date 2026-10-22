@@ -48,6 +48,7 @@ import {
   customerRouteOfTask,
   countItemsByDay,
   dayCountLabel,
+  applyScheduleDateTime,
   emptyEventForm,
   eventTimeLabel,
   eventToForm,
@@ -67,7 +68,6 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { ScheduleDateField } from './ScheduleDateField';
-import { ScheduleTimeField } from './ScheduleTimeField';
 import { WidgetQuickAddSheet, type QuickAddCustomer } from './WidgetQuickAddSheet';
 import { widgetQuickScheduleForm, type WidgetQuickDraft } from './widgetQuickAddModel';
 import { scheduleQueryKeys } from './queryKeys';
@@ -298,9 +298,11 @@ export function ScheduleScreen() {
   };
   const submitTask = () => {
     if (!taskState) return;
-    const problem = validateTaskForm(taskState.form, 'onefc_todo');
+    const dueDate = taskState.form.dueDate.trim() || selected || seoulYmd();
+    const form = { ...taskState.form, dueDate, dueTime: dueDate ? taskState.form.dueTime : '' };
+    const problem = validateTaskForm(form, 'onefc_todo');
     setTaskError(problem);
-    if (!problem) saveTask.mutate(taskState);
+    if (!problem) saveTask.mutate({ form });
   };
   const patchTask = (patch: Partial<ScheduleTaskForm>) =>
     setTaskState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
@@ -311,10 +313,13 @@ export function ScheduleScreen() {
   };
   const submitForm = () => {
     if (!formState) return;
+    const date = formState.form.date.trim() || selected || seoulYmd();
+    const endDate = formState.form.endDate.trim() || date;
+    const form = { ...formState.form, date, endDate };
     const calendarRequired = formState.mode === 'edit' && !isOnefcSchedule(formState.event ?? { origin: undefined });
-    const problem = validateEventForm(formState.form, { calendarRequired });
+    const problem = validateEventForm(form, { calendarRequired });
     setFormError(problem);
-    if (!problem) save.mutate(formState);
+    if (!problem) save.mutate({ ...formState, form });
   };
   const patchForm = (patch: Partial<ScheduleEventForm>) =>
     setFormState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
@@ -474,8 +479,14 @@ export function ScheduleScreen() {
           <Stack gap="md">
             <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
             <Inline gap="sm">
-              <ScheduleDateField label="날짜" value={taskState.form.dueDate} onChange={(dueDate) => patchTask({ dueDate })} clearable placeholder="날짜 없음" />
-              <ScheduleTimeField label="시각" value={taskState.form.dueTime} optional onChange={(dueTime) => patchTask({ dueTime })} />
+              <ScheduleDateField
+                label="날짜"
+                value={taskState.form.dueDate}
+                time={taskState.form.dueTime}
+                clearable
+                placeholder="날짜 없음"
+                onComplete={({ date, time }) => patchTask({ dueDate: date, dueTime: time })}
+              />
             </Inline>
             <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
             {taskError || saveTask.isError ? (
@@ -512,19 +523,19 @@ export function ScheduleScreen() {
             <AppText variant="caption" color="textMuted">{scheduleFormPlace(formState)}</AppText>
             <TextField label="제목" required value={formState.form.title} maxLength={300} onChangeText={(title) => patchForm({ title })} />
             <Inline gap="sm">
-              <Button label="시간 지정" variant={formState.form.allDay ? 'secondary' : 'selected'} size="sm" onPress={() => patchForm({ allDay: false })} />
-              <Button label="종일" variant={formState.form.allDay ? 'selected' : 'secondary'} size="sm" onPress={() => patchForm({ allDay: true })} />
+              <ScheduleDateField
+                label="시작일"
+                value={formState.form.date}
+                time={formState.form.allDay ? '' : formState.form.startTime}
+                onComplete={(next) => patchForm(applyScheduleDateTime(formState.form, 'start', next))}
+              />
+              <ScheduleDateField
+                label="종료일"
+                value={formState.form.endDate}
+                time={formState.form.allDay ? '' : formState.form.endTime}
+                onComplete={(next) => patchForm(applyScheduleDateTime(formState.form, 'end', next))}
+              />
             </Inline>
-            <Inline gap="sm">
-              <ScheduleDateField label="시작일" value={formState.form.date} onChange={(date) => patchForm({ date })} />
-              <ScheduleDateField label="종료일" value={formState.form.endDate} onChange={(endDate) => patchForm({ endDate })} />
-            </Inline>
-            {!formState.form.allDay ? (
-              <Inline gap="sm">
-                <ScheduleTimeField label="시작 시각" value={formState.form.startTime} onChange={(startTime) => patchForm({ startTime })} />
-                <ScheduleTimeField label="종료 시각" value={formState.form.endTime} onChange={(endTime) => patchForm({ endTime })} />
-              </Inline>
-            ) : null}
             <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />
             {formError || save.isError ? (
               <AppText variant="caption" color="danger">{formError ?? describeApiError(save.error, '일정을 저장하지 못했습니다.')}</AppText>

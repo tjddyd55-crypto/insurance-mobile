@@ -4,6 +4,8 @@ import type { SaveTodoPayload, TodoRecord, TodoSourceType } from './types';
 export type TodoFormDraft = {
   description: string;
   dueDate: string;
+  /** 비어 있으면 종일(시각 없음). */
+  dueTime: string;
   relatedCustomerId: string;
   relatedCustomerName: string;
 };
@@ -11,6 +13,7 @@ export type TodoFormDraft = {
 export const EMPTY_TODO_FORM_DRAFT: TodoFormDraft = {
   description: '',
   dueDate: '',
+  dueTime: '',
   relatedCustomerId: '',
   relatedCustomerName: '',
 };
@@ -22,12 +25,13 @@ export function cloneTodoFormDraft(draft: TodoFormDraft = EMPTY_TODO_FORM_DRAFT)
 export function todoFormDraftFromRecord(
   todo: Pick<
     TodoRecord,
-    'description' | 'title' | 'dueDate' | 'relatedEntityType' | 'relatedEntityId' | 'customerName'
+    'description' | 'title' | 'dueDate' | 'dueTime' | 'relatedEntityType' | 'relatedEntityId' | 'customerName'
   >,
 ): TodoFormDraft {
   return {
     description: todo.description.trim() || todo.title,
     dueDate: todo.dueDate ?? '',
+    dueTime: todo.dueTime?.trim() ?? '',
     relatedCustomerId: todo.relatedEntityType === 'customer' ? todo.relatedEntityId ?? '' : '',
     relatedCustomerName: todo.customerName ?? '',
   };
@@ -41,6 +45,7 @@ export function isTodoEditDraftChanged(initial: TodoFormDraft, current: TodoForm
   return (
     initial.description.trim() !== current.description.trim() ||
     initial.dueDate.trim() !== current.dueDate.trim() ||
+    initial.dueTime.trim() !== current.dueTime.trim() ||
     initial.relatedCustomerId !== current.relatedCustomerId
   );
 }
@@ -65,11 +70,13 @@ export function buildTodoCreatePayload(
   },
 ): SaveTodoPayload {
   const content = form.description.trim();
+  const dueDate = form.dueDate.trim();
+  const dueTime = form.dueTime.trim();
   const payload: SaveTodoPayload = {
     title: firstLineTodoTitle(content),
     description: content,
-    dueDate: form.dueDate.trim() || null,
-    dueTime: null,
+    dueDate: dueDate || null,
+    dueTime: dueDate && dueTime ? dueTime : null,
     priority: 'normal',
     relatedEntityType: form.relatedCustomerId ? 'customer' : null,
     relatedEntityId: form.relatedCustomerId || null,

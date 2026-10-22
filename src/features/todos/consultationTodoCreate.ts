@@ -89,6 +89,7 @@ export function seedTodoCreateForm(consultationId?: string, dueDate?: string, no
     draft: {
       description: prefill.description,
       dueDate: chosen,
+      dueTime: '',
       relatedCustomerId: prefill.relatedCustomerId,
       relatedCustomerName: prefill.relatedCustomerName,
     },

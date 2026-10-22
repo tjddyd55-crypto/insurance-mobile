@@ -1,45 +1,77 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { AppText, Button, Card, Inline, ModalShell, TextField, useAppTheme, type AppTheme } from '../../design-system';
+import { dateFromHm, hmFromDate } from './ScheduleTimeField';
 import { formatDayTitle, formatMonthTitle, monthGrid, seoulYmd, shiftMonth } from './scheduleModel';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
+const HM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
 type ScheduleDateFieldProps = {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  /** 비어 있으면 종일. 완료 전까지 저장되지 않는다. */
+  time?: string;
+  onChange?: (value: string) => void;
+  onComplete?: (value: { date: string; time: string }) => void;
   /** 할 일 날짜처럼 비워 둘 수 있다. */
   clearable?: boolean;
   placeholder?: string;
 };
 
-/** 일정·할 일 날짜. 칸을 고른 뒤 완료를 눌러야 YYYY-MM-DD 가 반영된다. */
-export function ScheduleDateField({ label, value, onChange, clearable = false, placeholder = '날짜 선택' }: ScheduleDateFieldProps) {
+function shownValue(date: string, time: string): string {
+  if (!date) return '';
+  return HM.test(time) ? `${date} ${time}` : `${date} · 종일`;
+}
+
+/** 일정·할 일 날짜와 시각. 달력과 시간 설정은 완료를 눌러야 반영된다. */
+export function ScheduleDateField({ label, value, time = '', onChange, onComplete, clearable = false, placeholder = '날짜 선택' }: ScheduleDateFieldProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
+  const [draftTime, setDraftTime] = useState('');
   const [pickerKey, setPickerKey] = useState(0);
+  const [clockOpen, setClockOpen] = useState(false);
+  const [clock, setClock] = useState(() => dateFromHm('09:00'));
   const stored = YMD.test(value) ? value : '';
+  const storedTime = HM.test(time) ? time : '';
 
   const openPicker = () => {
     setDraft(stored);
+    setDraftTime(storedTime);
+    setClockOpen(false);
     setPickerKey((key) => key + 1);
     setOpen(true);
   };
   const cancel = () => setOpen(false);
   const commit = () => {
-    onChange(draft);
+    onChange?.(draft);
+    onComplete?.({ date: draft, time: draftTime });
     setOpen(false);
+  };
+  const openClock = () => {
+    setClock(dateFromHm(draftTime || '09:00'));
+    setClockOpen(true);
+  };
+  const onClock = (event: DateTimePickerEvent, selected?: Date) => {
+    if (event.type === 'dismissed' || !selected) {
+      setClockOpen(false);
+      return;
+    }
+    setClock(selected);
+    setDraftTime(hmFromDate(selected));
+    if (Platform.OS === 'android') setClockOpen(false);
   };
 
   return (
     <View style={styles.flex}>
       <Pressable accessibilityRole="button" accessibilityLabel={`${label} 달력 열기`} onPress={openPicker}>
-        <TextField label={label} value={stored} placeholder={placeholder} editable={false} pointerEvents="none" importantForAccessibility="no-hide-descendants" />
+        <TextField label={label} value={shownValue(stored, storedTime)} placeholder={placeholder} editable={false} pointerEvents="none" importantForAccessibility="no-hide-descendants" />
       </Pressable>
       <ModalShell
         open={open}
@@ -55,7 +87,17 @@ export function ScheduleDateField({ label, value, onChange, clearable = false, p
         }
       >
         <ScheduleMonthCalendar key={pickerKey} value={draft} onChoose={setDraft} />
-        {clearable ? <Button label="날짜 없음" variant="ghost" onPress={() => setDraft('')} /> : null}
+        <Pressable accessibilityRole="button" accessibilityLabel="시간 설정" onPress={openClock} style={styles.timeRow}>
+          <AppText variant="bodyStrong">시간 설정</AppText>
+          <AppText variant="body" color="textSecondary">{draftTime || '종일'}</AppText>
+        </Pressable>
+        {clockOpen ? (
+          <View style={styles.clock}>
+            <DateTimePicker mode="time" display={Platform.OS === 'ios' ? 'spinner' : 'default'} is24Hour={false} value={clock} onChange={onClock} />
+          </View>
+        ) : null}
+        {draftTime ? <Button label="종일" variant="ghost" onPress={() => { setDraftTime(''); setClockOpen(false); }} /> : null}
+        {clearable ? <Button label="날짜 없음" variant="ghost" onPress={() => { setDraft(''); setDraftTime(''); }} /> : null}
       </ModalShell>
     </View>
   );
@@ -127,6 +169,16 @@ function StackMonth({
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     flex: { flex: 1 },
+    timeRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surfaceSubtle,
+    },
+    clock: { gap: theme.spacing.sm },
     weekRow: { flexDirection: 'row' },
     cell: { flex: 1 },
     dayCell: { alignItems: 'center', justifyContent: 'center', minHeight: 40, borderRadius: theme.radius.md },

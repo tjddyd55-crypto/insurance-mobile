@@ -364,8 +364,56 @@ export function scheduleDeletePrompt(event: Pick<ScheduleEvent, 'origin'>): { ti
   return { title: '일정을 삭제할까요?', message: 'Google 캘린더에서도 삭제됩니다.' };
 }
 
+/** 새 일정. 날짜는 고른 날이고, 시각을 고르기 전에는 종일이다. 09:00·10:00 은 화면 밖 자리표시자다. */
 export function emptyEventForm(date: string, calendarId = ''): ScheduleEventForm {
-  return { calendarId, title: '', description: '', date, endDate: date, allDay: false, startTime: '09:00', endTime: '10:00' };
+  return { calendarId, title: '', description: '', date, endDate: date, allDay: true, startTime: '09:00', endTime: '10:00' };
+}
+
+const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/** 시각에 1시간을 더한다. 자정을 넘기면 다음 날이다. */
+export function plusOneHour(hm: string): { time: string; dayOffset: 0 | 1 } {
+  const match = CLOCK.exec(hm);
+  if (!match) return { time: hm, dayOffset: 0 };
+  const total = Number(match[1]) * 60 + Number(match[2]) + 60;
+  const dayOffset = total >= 24 * 60 ? 1 : 0;
+  const minutes = total % (24 * 60);
+  return {
+    time: `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`,
+    dayOffset,
+  };
+}
+
+/**
+ * 달력의 완료 결과. 시각이 없으면 종일이다.
+ * 종일이던 일정의 시작 시각을 고르면 종료는 1시간 뒤다. 수정 중인 시각은 그대로 둔다.
+ */
+export function applyScheduleDateTime(
+  form: Pick<ScheduleEventForm, 'date' | 'endDate' | 'allDay' | 'startTime' | 'endTime'>,
+  edge: 'start' | 'end',
+  next: { date: string; time: string },
+): Pick<ScheduleEventForm, 'date' | 'endDate' | 'allDay' | 'startTime' | 'endTime'> {
+  const time = next.time.trim();
+  if (edge === 'start') {
+    if (!time) {
+      return { date: next.date, endDate: form.endDate < next.date ? next.date : form.endDate, allDay: true, startTime: form.startTime, endTime: form.endTime };
+    }
+    if (form.allDay) {
+      const end = plusOneHour(time);
+      return { date: next.date, endDate: end.dayOffset ? addDaysYmd(next.date, 1) : next.date, allDay: false, startTime: time, endTime: end.time };
+    }
+    return { date: next.date, endDate: form.endDate < next.date ? next.date : form.endDate, allDay: false, startTime: time, endTime: form.endTime };
+  }
+  if (!time) {
+    return { date: form.date, endDate: next.date < form.date ? form.date : next.date, allDay: true, startTime: form.startTime, endTime: form.endTime };
+  }
+  return {
+    date: form.date,
+    endDate: next.date < form.date ? form.date : next.date,
+    allDay: false,
+    startTime: form.allDay ? '09:00' : form.startTime,
+    endTime: time,
+  };
 }
 
 export function eventToForm(event: ScheduleEvent): ScheduleEventForm {

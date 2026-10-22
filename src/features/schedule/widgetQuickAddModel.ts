@@ -1,8 +1,8 @@
 import type { SaveTodoPayload } from '../todos/types';
-import { addDaysYmd, emptyEventForm } from './scheduleModel';
+import { addDaysYmd, emptyEventForm, plusOneHour } from './scheduleModel';
 import type { ScheduleEventForm } from './types';
 
-const HM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+export { plusOneHour };
 
 export type WidgetQuickDraft = {
   title: string;
@@ -12,21 +12,6 @@ export type WidgetQuickDraft = {
   customerId: string | null;
   customerName: string;
 };
-
-/** 시각에 1시간을 더한다. 자정을 넘기면 다음 날. */
-export function plusOneHour(hm: string): { time: string; dayOffset: 0 | 1 } {
-  const match = HM.exec(hm);
-  if (!match) return { time: hm, dayOffset: 0 };
-  const total = Number(match[1]) * 60 + Number(match[2]) + 60;
-  const dayOffset = total >= 24 * 60 ? 1 : 0;
-  const minutes = total % (24 * 60);
-  const hour = Math.floor(minutes / 60);
-  const minute = minutes % 60;
-  return {
-    time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
-    dayOffset,
-  };
-}
 
 /** 제목만 저장하면 고객 없음·시각 없음(종일). 시각이 있으면 시작 시각이고 종료는 1시간 뒤. */
 export function widgetQuickScheduleForm(draft: WidgetQuickDraft): ScheduleEventForm {

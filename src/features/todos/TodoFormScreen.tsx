@@ -29,6 +29,7 @@ import {
 import { customerMatchesSearch, formatCustomerPhone } from '../customers/customerModel';
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
+import { todayInSeoul } from '../../utils/dateInput';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
 import { ScheduleDateField } from '../schedule/ScheduleDateField';
 import { WidgetQuickAddSheet } from '../schedule/WidgetQuickAddSheet';
@@ -162,8 +163,10 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      const dueDate = mode === 'create' ? (form.dueDate.trim() || todayInSeoul()) : form.dueDate.trim();
+      const dueTime = dueDate && form.dueTime.trim() ? form.dueTime.trim() : null;
       if (mode === 'create') {
-        return createTodo(token, buildTodoCreatePayload(form, createSource));
+        return createTodo(token, buildTodoCreatePayload({ ...form, dueDate, dueTime: dueTime ?? '' }, createSource));
       }
       if (!isTodoEditDraftChanged(JSON.parse(initialSnapshot) as TodoFormDraft, form)) {
         // 바뀐 값 없음: 수정 요청을 보내지 않아 수정 시각·목록 순서를 그대로 둔다.
@@ -173,8 +176,8 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
       return updateTodo(token, todoId ?? '', {
         title: firstLineTodoTitle(content),
         description: content,
-        dueDate: form.dueDate.trim() || null,
-        dueTime: null,
+        dueDate: dueDate || null,
+        dueTime,
         priority: 'normal',
         relatedEntityType: form.relatedCustomerId ? 'customer' : null,
         relatedEntityId: form.relatedCustomerId || null,
@@ -278,9 +281,10 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
             <ScheduleDateField
               label="날짜"
               value={form.dueDate}
+              time={form.dueTime}
               clearable
               placeholder="날짜 없음"
-              onChange={(dueDate) => setForm((previous) => ({ ...previous, dueDate }))}
+              onComplete={({ date, time }) => setForm((previous) => ({ ...previous, dueDate: date, dueTime: time }))}
             />
           </Stack>
         </Card>
