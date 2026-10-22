@@ -309,7 +309,7 @@ describe('schedule modal flow', () => {
     expect(shouldStartScheduleWidgetFlow({ src: 'widget' }, { itemId: null, create: true })).toBe(true);
     expect(shouldStartScheduleWidgetFlow({ src: 'widget' }, { itemId: null, create: false })).toBe(false);
     expect(shouldStartScheduleWidgetFlow({}, { itemId: 'e1', create: true })).toBe(false);
-    expect(scheduleModalsOpen({ detail: false, choosing: false, form: true, task: false, deleting: false })).toBe(true);
+    expect(scheduleModalsOpen({ detail: false, form: true, task: false, deleting: false })).toBe(true);
   });
 
   it.each([

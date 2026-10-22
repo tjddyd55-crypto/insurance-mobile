@@ -1,14 +1,20 @@
 import { ApiError, apiRequest } from '../../../api/client';
 import {
+  createOnefcSchedule,
   createScheduleEvent,
+  deleteOnefcSchedule,
   deleteScheduleEvent,
   fetchScheduleEvents,
   fetchWritableCalendars,
+  updateOnefcSchedule,
   updateScheduleEvent,
 } from '../scheduleApi';
 import {
   canCreateGoogleEvent,
   canEditEvent,
+  isOnefcSchedule,
+  onefcScheduleRawId,
+  scheduleDeletePrompt,
   customerRouteOfEvent,
   customerRouteOfTask,
   countItemsByDay,
@@ -139,6 +145,7 @@ describe('schedule model (웹 /api/schedule/events SSOT)', () => {
     expect(canEditEvent(events[0]!, writeOff)).toBe(false);
     expect(canEditEvent(events[1]!, writeOn)).toBe(false);
     expect(canEditEvent(events[2]!, writeOn)).toBe(false);
+    expect(isOnefcSchedule(events[0]!)).toBe(false);
     expect(readOnlyMessage(events[2]!, writeOn)).toContain('반복 일정');
     expect(readOnlyMessage(events[1]!, writeOn)).toContain('고객');
     expect(readOnlyMessage(events[0]!, writeOff)).toContain('사용할 수 없습니다');
@@ -159,6 +166,50 @@ describe('schedule model (웹 /api/schedule/events SSOT)', () => {
     expect(validateEventForm({ ...timed, endDate: '2026-10-18' })).toContain('종료일');
     expect(validateEventForm({ ...allDay, startTime: 'x' })).toBeNull();
     expect(newScheduleRequestId()).toMatch(/^[0-9a-f]{32}$/);
+  });
+});
+
+const ONEFC_ID = '11111111-1111-4111-8111-111111111111';
+
+function onefcPayload() {
+  return {
+    events: [{
+      id: `onefc:${ONEFC_ID}`,
+      source: 'google',
+      sourceId: ONEFC_ID,
+      calendarId: null,
+      calendarName: 'ONE FC',
+      type: 'google_event',
+      title: '상담',
+      description: '',
+      startAt: '2026-10-22T10:00:00+09:00',
+      endAt: '2026-10-22T11:00:00+09:00',
+      allDay: false,
+      writable: true,
+      readOnlyReason: '',
+      origin: 'onefc',
+    }],
+    tasks: [{ id: 'onefc_todo:9', source: 'onefc_todo', sourceId: '9', title: '서류', dueDate: '2026-10-22', status: 'open' }],
+    google: writeOff,
+  };
+}
+
+describe('ONE FC schedule (insurance #210)', () => {
+  it('keeps a local schedule as one event and does not turn it into a todo', () => {
+    const result = normalizeScheduleEvents(onefcPayload());
+    const event = result.events[0]!;
+    expect(event).toMatchObject({ id: `onefc:${ONEFC_ID}`, sourceId: ONEFC_ID, origin: 'onefc', source: 'google', calendarName: 'ONE FC', type: 'google_event' });
+    expect(eventsOnDay(result.events, '2026-10-22')).toHaveLength(1);
+    expect(tasksOnDay(result.tasks, '2026-10-22')).toHaveLength(1);
+    expect(countItemsByDay(result).get('2026-10-22')).toBe(2);
+    expect(canEditEvent(event, writeOff)).toBe(true);
+    expect(canEditEvent(event, writeOn)).toBe(true);
+    expect(scheduleDeletePrompt(event).message).toContain('ONE FC');
+    expect(scheduleDeletePrompt({ origin: undefined }).message).toContain('Google');
+    expect(onefcScheduleRawId(`onefc:${ONEFC_ID}`)).toBe(ONEFC_ID);
+    expect(onefcScheduleRawId(ONEFC_ID)).toBe(ONEFC_ID);
+    expect(() => onefcScheduleRawId('onefc:')).toThrow(ApiError);
+    expect(() => onefcScheduleRawId('  ')).toThrow(ApiError);
   });
 });
 
@@ -191,6 +242,43 @@ describe('schedule api (기존 서버 API만 사용)', () => {
     expect(JSON.parse(String(calls[0]![1]!.body))).toMatchObject({ calendarId: 'primary', title: '미팅', requestId: 'a'.repeat(32) });
     expect(JSON.parse(String(calls[1]![1]!.body))).toMatchObject({ eventId: 'abc', startTime: '14:00' });
     expect(JSON.parse(String(calls[2]![1]!.body))).toEqual({ calendarId: 'primary', eventId: 'abc' });
+  });
+
+  it('creates, updates, and deletes ONE FC schedules without the onefc: prefix', async () => {
+    const event = {
+      id: `onefc:${ONEFC_ID}`,
+      source: 'google',
+      sourceId: ONEFC_ID,
+      type: 'google_event',
+      title: '상담',
+      startAt: '2026-10-22T10:00:00+09:00',
+      calendarName: 'ONE FC',
+      origin: 'onefc',
+    };
+    const form = { calendarId: '', title: '상담', description: '', date: '2026-10-22', endDate: '2026-10-22', allDay: true, startTime: '09:00', endTime: '10:00' };
+    mockedRequest.mockResolvedValueOnce({ success: true, data: { event, duplicate: false } });
+    await expect(createOnefcSchedule('tkn', form, 'b'.repeat(32))).resolves.toBe(`onefc:${ONEFC_ID}`);
+    mockedRequest.mockResolvedValueOnce({ data: { event, duplicate: true } });
+    await expect(createOnefcSchedule('tkn', form, 'b'.repeat(32))).resolves.toBe(`onefc:${ONEFC_ID}`);
+    mockedRequest.mockResolvedValue({});
+    await updateOnefcSchedule('tkn', `onefc:${ONEFC_ID}`, form);
+    await updateOnefcSchedule('tkn', ONEFC_ID, form);
+    await deleteOnefcSchedule('tkn', `onefc:${ONEFC_ID}`);
+    const calls = mockedRequest.mock.calls;
+    expect(calls.slice(0, 2).map(([url, init]) => [url, init?.method])).toEqual([
+      ['/api/schedules', 'POST'],
+      ['/api/schedules', 'POST'],
+    ]);
+    expect(JSON.parse(String(calls[0]![1]!.body))).toMatchObject({ title: '상담', allDay: true, requestId: 'b'.repeat(32), calendarId: '' });
+    expect(JSON.parse(String(calls[0]![1]!.body))).not.toHaveProperty('eventId');
+    expect(calls.slice(2).map(([url, init]) => [url, init?.method])).toEqual([
+      [`/api/schedules/${ONEFC_ID}`, 'PATCH'],
+      [`/api/schedules/${ONEFC_ID}`, 'PATCH'],
+      [`/api/schedules/${ONEFC_ID}`, 'DELETE'],
+    ]);
+    expect(calls[4]![1]!.body).toBeUndefined();
+    await expect(deleteOnefcSchedule('tkn', 'onefc:')).rejects.toMatchObject({ status: 404 });
+    expect(mockedRequest).toHaveBeenCalledTimes(5);
   });
 
   it('keeps the screen native and on the shared API (no WebView, no new tables)', () => {

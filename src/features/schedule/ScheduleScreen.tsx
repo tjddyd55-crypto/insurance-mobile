@@ -17,30 +17,28 @@ import {
   Card,
   Inline,
   ModalShell,
-  SelectField,
   Stack,
   TextField,
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
 import {
-  createGoogleTaskFromSchedule,
-  createScheduleEvent,
+  createOnefcSchedule,
+  deleteOnefcSchedule,
   deleteScheduleEvent,
   fetchScheduleEvents,
-  fetchWriteTargets,
+  updateOnefcSchedule,
   updateScheduleEvent,
 } from './scheduleApi';
 import { createTodo } from '../todos/todosApi';
 import { todoQueryKeys } from '../todos/queryKeys';
 import {
-  SCHEDULE_STORAGE_LABEL,
   SCHEDULE_TYPE_LABEL,
-  canCreateGoogleEvent,
-  defaultTaskListId,
   emptyTaskForm,
+  isOnefcSchedule,
+  onefcScheduleRawId,
+  scheduleDeletePrompt,
   scheduleGoogleWarning,
-  storageAvailability,
   taskFormToTodoPayload,
   validateTaskForm,
   canEditEvent,
@@ -78,15 +76,13 @@ import {
   type WidgetDrawerNavigation,
 } from '../home-widgets/widgetReturn';
 import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
-import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleStorage, ScheduleTask, ScheduleTaskForm } from './types';
+import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleTask, ScheduleTaskForm } from './types';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export const SCHEDULE_COPY = {
   title: '일정 관리',
   refreshLimited: '잠시 후 다시 새로고침해 주세요.',
-  deleteTitle: '일정을 삭제할까요?',
-  deleteMessage: 'Google 캘린더에서도 삭제됩니다.',
 } as const;
 
 /** 새로고침(refresh=1)은 서버가 사용자당 10초에 1번만 허용한다(429). */
@@ -96,11 +92,26 @@ export function scheduleRefreshError(error: unknown): string | null {
 }
 
 type FormState = { mode: 'create' | 'edit'; event: ScheduleEvent | null; form: ScheduleEventForm; requestId: string };
-type TaskFormState = { storage: 'google_task' | 'onefc_todo'; form: ScheduleTaskForm; requestId: string };
+type TaskFormState = { form: ScheduleTaskForm };
 
-const STORAGES: ScheduleStorage[] = ['google_event', 'google_task', 'onefc_todo'];
+function saveSchedule(token: string | null, state: FormState): Promise<unknown> {
+  if (state.mode === 'create') return createOnefcSchedule(token, state.form, state.requestId);
+  const event = state.event;
+  if (event && isOnefcSchedule(event)) return updateOnefcSchedule(token, onefcScheduleRawId(event.sourceId || event.id), state.form);
+  return updateScheduleEvent(token, event?.sourceId ?? '', state.form);
+}
 
-/** 일정 관리(Native). 웹 /schedule 과 같은 서버 API 를 쓴다. CRM 일정은 읽기 전용, Google 일정만 서버 권한이 있을 때 쓰기. */
+function scheduleFormTitle(state: FormState | null): string {
+  if (!state || state.mode === 'create') return '일정 추가';
+  return isOnefcSchedule(state.event ?? {}) ? '일정 수정' : 'Google 일정 수정';
+}
+
+function scheduleFormPlace(state: FormState): string {
+  if (state.mode === 'create' || isOnefcSchedule(state.event ?? {})) return 'ONE FC';
+  return state.event?.calendarName || 'Google 캘린더';
+}
+
+/** 일정 관리(Native). 새 일정은 ONE FC(/api/schedules), 할 일은 기존 todos. Google 에서 온 일정만 기존 write/events. */
 export function ScheduleScreen() {
   const { token, user } = useAuth();
   const router = useRouter();
@@ -117,7 +128,6 @@ export function ScheduleScreen() {
   const [deleting, setDeleting] = useState<ScheduleEvent | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [choosing, setChoosing] = useState(false);
   const [taskState, setTaskState] = useState<TaskFormState | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
   const range = monthRange(month);
@@ -129,7 +139,6 @@ export function ScheduleScreen() {
   const { armScheduleWidgetFlow, markScheduleWidgetSaved, endScheduleWidgetFlow } = useScheduleWidgetReturn({
     open: scheduleModalsOpen({
       detail: detail !== null || pendingLinkItem !== null,
-      choosing,
       form: formState !== null,
       task: taskState !== null,
       deleting: deleting !== null,
@@ -155,7 +164,11 @@ export function ScheduleScreen() {
     setSelected(linkTarget.date);
     setDetail(null);
     setPendingLinkItem(linkTarget.itemId);
-    if (linkTarget.create) setChoosing(true);
+    if (linkTarget.create) {
+      setTaskState(null);
+      setFormError(null);
+      setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
+    }
     const arm = widgetArm.current;
     if (arm.start && arm.entryId) armScheduleWidgetFlow(arm.entryId);
   }, [armScheduleWidgetFlow, linkTarget.date, linkTarget.itemId, linkTarget.create, linkTarget.nonce]);
@@ -172,15 +185,6 @@ export function ScheduleScreen() {
     if (item) setDetail(item);
     setPendingLinkItem(null);
   }, [pendingLinkItem, data]);
-  const writeReady = data ? canCreateGoogleEvent(data.google) : false;
-  const tasksWriteReady = data ? storageAvailability(data.google, 'google_task').available : false;
-  const targets = useQuery({
-    queryKey: scheduleQueryKeys.calendars(),
-    queryFn: () => fetchWriteTargets(token),
-    enabled: Boolean(token) && ((writeReady && formState !== null) || (tasksWriteReady && taskState?.storage === 'google_task')),
-  });
-  const calendars = { ...targets, data: targets.data?.calendars };
-
   /** 저장 직후 refresh=1 로 다시 읽는다(서버는 쓰기 성공 시 그 사용자 Google 캐시도 비운다). 새로고침 간격 제한(429)이면 일반 재조회. */
   const reloadAfterWrite = async () => {
     try {
@@ -200,25 +204,21 @@ export function ScheduleScreen() {
     await reloadAfterWrite();
   };
   const save = useMutation({
-    mutationFn: (state: FormState) =>
-      state.mode === 'create'
-        ? createScheduleEvent(token, state.form, state.requestId)
-        : updateScheduleEvent(token, state.event?.sourceId ?? '', state.form),
+    mutationFn: (state: FormState) => saveSchedule(token, state),
     onSuccess: afterWrite,
   });
   const saveTask = useMutation({
     mutationFn: async (state: TaskFormState) => {
-      if (state.storage === 'google_task') {
-        await createGoogleTaskFromSchedule(token, state.form, state.requestId);
-        return;
-      }
       await createTodo(token, taskFormToTodoPayload(state.form));
       await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
     },
     onSuccess: afterWrite,
   });
   const remove = useMutation({
-    mutationFn: (event: ScheduleEvent) => deleteScheduleEvent(token, event.calendarId ?? '', event.sourceId),
+    mutationFn: (event: ScheduleEvent) =>
+      isOnefcSchedule(event)
+        ? deleteOnefcSchedule(token, onefcScheduleRawId(event.sourceId || event.id))
+        : deleteScheduleEvent(token, event.calendarId ?? '', event.sourceId),
     onSuccess: afterWrite,
   });
 
@@ -250,26 +250,23 @@ export function ScheduleScreen() {
     setDetail(null);
     router.push(route);
   };
-  const openCreate = () => {
+  const openScheduleCreate = () => {
     setFormError(null);
+    save.reset();
+    setTaskState(null);
     setFormState({ mode: 'create', event: null, form: emptyEventForm(selected), requestId: newScheduleRequestId() });
   };
-  const chooseStorage = (storage: ScheduleStorage) => {
-    setChoosing(false);
-    if (storage === 'google_event') {
-      openCreate();
-      return;
-    }
+  const openTodoCreate = () => {
     setTaskError(null);
     saveTask.reset();
-    setTaskState({ storage, form: emptyTaskForm(selected), requestId: newScheduleRequestId() });
+    setFormState(null);
+    setTaskState({ form: emptyTaskForm(selected) });
   };
   const submitTask = () => {
     if (!taskState) return;
-    const form = { ...taskState.form, taskListId: taskState.form.taskListId || defaultTaskListId(targets.data) };
-    const problem = validateTaskForm(form, taskState.storage);
+    const problem = validateTaskForm(taskState.form, 'onefc_todo');
     setTaskError(problem);
-    if (!problem) saveTask.mutate({ ...taskState, form });
+    if (!problem) saveTask.mutate(taskState);
   };
   const patchTask = (patch: Partial<ScheduleTaskForm>) =>
     setTaskState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
@@ -280,13 +277,10 @@ export function ScheduleScreen() {
   };
   const submitForm = () => {
     if (!formState) return;
-    const form = {
-      ...formState.form,
-      calendarId: formState.form.calendarId || calendars.data?.find((item) => item.primary)?.id || calendars.data?.[0]?.id || '',
-    };
-    const problem = validateEventForm(form);
+    const calendarRequired = formState.mode === 'edit' && !isOnefcSchedule(formState.event ?? { origin: undefined });
+    const problem = validateEventForm(formState.form, { calendarRequired });
     setFormError(problem);
-    if (!problem) save.mutate({ ...formState, form });
+    if (!problem) save.mutate(formState);
   };
   const patchForm = (patch: Partial<ScheduleEventForm>) =>
     setFormState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
@@ -317,6 +311,7 @@ export function ScheduleScreen() {
   const dayTasks = tasksOnDay(data.tasks, selected);
   // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
   const googleWarning = scheduleGoogleWarning(data.google);
+  const deletePrompt = deleting ? scheduleDeletePrompt(deleting) : scheduleDeletePrompt({});
 
   return (
     <View style={styles.root}>
@@ -381,9 +376,10 @@ export function ScheduleScreen() {
           </Inline>
         ) : null}
         {refreshError ? <AppText variant="caption" color="danger">{refreshError}</AppText> : null}
-        <Inline justify="space-between">
-          <AppText variant="sectionTitle">{formatDayTitle(selected)}</AppText>
-          <Button label="추가" variant="primary" size="sm" accessibilityLabel="일정·할 일 추가" onPress={() => setChoosing(true)} />
+        <AppText variant="sectionTitle">{formatDayTitle(selected)}</AppText>
+        <Inline gap="sm">
+          <View style={styles.flex}><Button label="일정 추가" variant="primary" size="sm" fullWidth accessibilityLabel="일정 추가" onPress={openScheduleCreate} /></View>
+          <View style={styles.flex}><Button label="할 일 추가" variant="secondary" size="sm" fullWidth accessibilityLabel="할 일 추가" onPress={openTodoCreate} /></View>
         </Inline>
         {dayEvents.length === 0 && dayTasks.length === 0 ? (
           <AppText variant="body" color="textMuted">이 날 일정이 없습니다.</AppText>
@@ -415,23 +411,9 @@ export function ScheduleScreen() {
         ))}
       </ScrollView>
 
-      <ModalShell open={choosing} title="저장 위치" subtitle={formatDayTitle(selected)} presentation="dialog" onRequestClose={() => setChoosing(false)}>
-        <Stack gap="md">
-          {STORAGES.map((storage) => {
-            const state = storageAvailability(data.google, storage);
-            return (
-              <Stack key={storage} gap="xs">
-                <Button label={SCHEDULE_STORAGE_LABEL[storage]} variant={storage === 'onefc_todo' ? 'primary' : 'secondary'} fullWidth disabled={!state.available} onPress={() => chooseStorage(storage)} />
-                {state.reason ? <AppText variant="caption" color="textMuted">{state.reason}</AppText> : null}
-              </Stack>
-            );
-          })}
-        </Stack>
-      </ModalShell>
-
       <ModalShell
         open={taskState !== null}
-        title={taskState ? `${SCHEDULE_STORAGE_LABEL[taskState.storage]} 추가` : ''}
+        title="할 일 추가"
         presentation="fullscreen"
         busy={saveTask.isPending}
         onRequestClose={() => setTaskState(null)}
@@ -444,23 +426,10 @@ export function ScheduleScreen() {
       >
         {taskState ? (
           <Stack gap="md">
-            {taskState.storage === 'google_task' ? (
-              <SelectField
-                label="할 일 목록"
-                required
-                value={taskState.form.taskListId || defaultTaskListId(targets.data)}
-                options={(targets.data?.taskLists ?? []).map((item) => ({ value: item.id, label: item.name }))}
-                placeholder={targets.isLoading ? '불러오는 중…' : '목록 선택'}
-                error={targets.isError ? describeApiError(targets.error, '할 일 목록을 불러오지 못했습니다.') : undefined}
-                onChange={(taskListId) => patchTask({ taskListId })}
-              />
-            ) : null}
             <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
             <Inline gap="sm">
               <View style={styles.flex}><TextField label="예정일" placeholder="YYYY-MM-DD (비우면 날짜 없음)" value={taskState.form.dueDate} onChangeText={(dueDate) => patchTask({ dueDate })} /></View>
-              {taskState.storage === 'onefc_todo' ? (
-                <View style={styles.flex}><TextField label="시각" placeholder="HH:mm (선택)" value={taskState.form.dueTime} onChangeText={(dueTime) => patchTask({ dueTime })} /></View>
-              ) : null}
+              <View style={styles.flex}><TextField label="시각" placeholder="HH:mm (선택)" value={taskState.form.dueTime} onChangeText={(dueTime) => patchTask({ dueTime })} /></View>
             </Inline>
             <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
             {taskError || saveTask.isError ? (
@@ -481,7 +450,7 @@ export function ScheduleScreen() {
 
       <ModalShell
         open={formState !== null}
-        title={formState?.mode === 'edit' ? '일정 수정' : '일정 추가'}
+        title={scheduleFormTitle(formState)}
         presentation="fullscreen"
         busy={save.isPending}
         onRequestClose={() => setFormState(null)}
@@ -494,19 +463,7 @@ export function ScheduleScreen() {
       >
         {formState ? (
           <Stack gap="md">
-            {formState.mode === 'create' ? (
-              <SelectField
-                label="캘린더"
-                required
-                value={formState.form.calendarId || calendars.data?.find((item) => item.primary)?.id || calendars.data?.[0]?.id || ''}
-                options={(calendars.data ?? []).map((item) => ({ value: item.id, label: item.name }))}
-                placeholder={calendars.isLoading ? '불러오는 중…' : '캘린더 선택'}
-                error={calendars.isError ? describeApiError(calendars.error, '캘린더를 불러오지 못했습니다.') : undefined}
-                onChange={(calendarId) => patchForm({ calendarId })}
-              />
-            ) : (
-              <AppText variant="caption" color="textMuted">{formState.event?.calendarName || 'Google 캘린더'}</AppText>
-            )}
+            <AppText variant="caption" color="textMuted">{scheduleFormPlace(formState)}</AppText>
             <TextField label="제목" required value={formState.form.title} maxLength={300} onChangeText={(title) => patchForm({ title })} />
             <Inline gap="sm">
               <Button label="시간 지정" variant={formState.form.allDay ? 'secondary' : 'selected'} size="sm" onPress={() => patchForm({ allDay: false })} />
@@ -532,8 +489,8 @@ export function ScheduleScreen() {
 
       <ConfirmDialog
         open={deleting !== null}
-        title={SCHEDULE_COPY.deleteTitle}
-        message={remove.isError ? describeApiError(remove.error, '일정을 삭제하지 못했습니다.') : SCHEDULE_COPY.deleteMessage}
+        title={deletePrompt.title}
+        message={remove.isError ? describeApiError(remove.error, '일정을 삭제하지 못했습니다.') : deletePrompt.message}
         confirmLabel="삭제"
         busy={remove.isPending}
         onCancel={() => setDeleting(null)}

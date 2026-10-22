@@ -1,14 +1,14 @@
 import { ApiError } from '../../api/client';
 import { readAuthSession } from '../../auth/secureStorage';
-import { createScheduleEventWithResult, fetchWriteTargets } from '../schedule/scheduleApi';
+import { createOnefcSchedule } from '../schedule/scheduleApi';
 import { emptyEventForm } from '../schedule/scheduleModel';
 import { widgetBridge } from './widgetBridge';
 import { refreshWidgets } from './engine/widgetRefreshCoordinator';
 
 /**
- * 위젯 날짜 모달 빠른 추가(Google Calendar 식). native ScheduleDayActivity 가 headless 로 부른다.
- * 저장은 앱의 기존 서버 API(POST /api/service-integrations/google/write/events)와 기존 세션만 쓴다.
- * native 는 토큰을 보지 않고 Google 을 직접 부르지 않는다. 제목은 로그에 남기지 않는다.
+ * 위젯 날짜 모달 빠른 추가. native ScheduleDayActivity 가 headless 로 부른다.
+ * 일정은 POST /api/schedules (ONE FC). 앱이 이미 가진 로그인 세션만 쓴다. 위젯 전용 토큰은 없다.
+ * native 는 토큰을 보지 않고 서버를 직접 부르지 않는다. 제목은 로그에 남기지 않는다.
  */
 export const WIDGET_QUICK_ADD_TASK = 'OneFcWidgetQuickAdd' as const;
 export const QUICK_ADD_TITLE_MAX = 200;
@@ -16,7 +16,7 @@ export const QUICK_ADD_TITLE_MAX = 200;
 export type QuickAddPayload = { requestId?: unknown; date?: unknown; title?: unknown };
 export type QuickAddResult =
   | { ok: true; requestId: string; eventId: string; date: string; title: string; refreshed: boolean }
-  | { ok: false; requestId: string; code: 'login' | 'invalid' | 'no_calendar' | 'server' | 'network'; message: string };
+  | { ok: false; requestId: string; code: 'login' | 'invalid' | 'server' | 'network'; message: string };
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const REQUEST_ID = /^[0-9a-f]{32}$/;
@@ -38,7 +38,7 @@ function failure(requestId: string, error: unknown): QuickAddResult {
   return { ok: false, requestId, code: 'network', message: '연결이 불안정해요. 다시 시도해 주세요' };
 }
 
-/** 하루 종일 일정 1건 생성 → 일정 위젯 강제 갱신 → 결과를 native 로. 같은 requestId 재시도는 서버가 한 건으로 묶는다. */
+/** 하루 종일 ONE FC 일정 1건 → 일정 위젯 강제 갱신 → 결과를 native 로. 같은 requestId 재시도는 서버가 한 건으로 묶는다. */
 export async function runWidgetQuickAdd(data: QuickAddPayload | null | undefined): Promise<QuickAddResult> {
   const requestId = typeof data?.requestId === 'string' ? data.requestId : '';
   const input = validateQuickAdd(data);
@@ -57,11 +57,8 @@ async function save(input: { requestId: string; date: string; title: string }): 
   try {
     const session = await readAuthSession();
     if (!session) return { ok: false, requestId, code: 'login', message: '로그인이 필요합니다' };
-    const targets = await fetchWriteTargets(session.token);
-    const calendar = targets.calendars.find((item) => item.primary) ?? targets.calendars[0];
-    if (!calendar) return { ok: false, requestId, code: 'no_calendar', message: '저장할 Google 캘린더가 없어요. 앱에서 연결해 주세요' };
-    const form = { ...emptyEventForm(date, calendar.id), title, allDay: true };
-    const eventId = await createScheduleEventWithResult(session.token, form, requestId);
+    const form = { ...emptyEventForm(date), title, allDay: true };
+    const eventId = await createOnefcSchedule(session.token, form, requestId);
     let refreshed = false;
     try {
       const outcome = await refreshWidgets({ token: session.token, user: session.user }, { reason: 'appMutation', widgetTypes: ['schedule'], force: true });

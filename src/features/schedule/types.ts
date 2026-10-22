@@ -20,6 +20,12 @@ export type ScheduleEvent = {
   location: string;
   writable: boolean;
   readOnlyReason: string;
+  /**
+   * ONE FC calendar_items 일정. 목록 id 는 `onefc:` 접두사.
+   * 수정·삭제는 접두사를 뺀 raw id 로 PATCH/DELETE /api/schedules.
+   * 없으면 Google 에서 온 일정(기존 write/events).
+   */
+  origin?: 'onefc';
 };
 
 export type ScheduleTask = {
@@ -64,9 +70,6 @@ export type GoogleCalendarTarget = { id: string; name: string; primary: boolean 
 export type GoogleTaskListTarget = { id: string; name: string };
 
 export type GoogleWriteTargets = { calendars: GoogleCalendarTarget[]; taskLists: GoogleTaskListTarget[] };
-
-/** 일정 관리 추가 저장 위치(웹 ScheduleGoogleWrite 와 같은 세 저장소). */
-export type ScheduleStorage = 'google_event' | 'google_task' | 'onefc_todo';
 
 export type ScheduleTaskForm = { taskListId: string; title: string; notes: string; dueDate: string; dueTime: string };
 

@@ -10,14 +10,14 @@ jest.mock('../../../api/client', () => {
   return { ApiError, apiRequest: jest.fn() };
 });
 jest.mock('../../../auth/secureStorage', () => ({ readAuthSession: jest.fn() }));
-jest.mock('../../schedule/scheduleApi', () => ({ fetchWriteTargets: jest.fn(), createScheduleEventWithResult: jest.fn() }));
+jest.mock('../../schedule/scheduleApi', () => ({ createOnefcSchedule: jest.fn() }));
 jest.mock('../engine/widgetRefreshCoordinator', () => ({ refreshWidgets: jest.fn(), purgeWidgets: jest.fn() }));
 
 import { AppRegistry } from 'react-native';
 
 import { ApiError } from '../../../api/client';
 import { readAuthSession } from '../../../auth/secureStorage';
-import { createScheduleEventWithResult, fetchWriteTargets } from '../../schedule/scheduleApi';
+import { createOnefcSchedule } from '../../schedule/scheduleApi';
 import { createdEventId } from '../../schedule/scheduleModel';
 import { refreshWidgets } from '../engine/widgetRefreshCoordinator';
 import { setWidgetNativeForTests } from '../widgetBridge';
@@ -37,8 +37,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   setWidgetNativeForTests({ reportQuickAddResult: report } as never);
   (readAuthSession as jest.Mock).mockResolvedValue(session);
-  (fetchWriteTargets as jest.Mock).mockResolvedValue({ calendars: [{ id: 'other', name: 'B', primary: false }, { id: 'primary-cal', name: 'A', primary: true }], taskLists: [] });
-  (createScheduleEventWithResult as jest.Mock).mockResolvedValue('google:primary-cal:ev1');
+  (createOnefcSchedule as jest.Mock).mockResolvedValue('onefc:11111111-1111-4111-8111-111111111111');
   (refreshWidgets as jest.Mock).mockResolvedValue({ schedule: 'written' });
 });
 
@@ -53,49 +52,44 @@ describe('widget quick add', () => {
     expect(validateQuickAdd({ requestId: RID, date: '2026-10-22', title: '가'.repeat(201) })).toBeNull();
   });
 
-  it('creates an all-day event on the primary calendar, refreshes the schedule widget, reports the new id', async () => {
+  it('creates an all-day ONE FC schedule, refreshes the schedule widget, reports the list id', async () => {
     const result = await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '고객 미팅' });
-    expect(createScheduleEventWithResult).toHaveBeenCalledWith('tok', expect.objectContaining({ calendarId: 'primary-cal', title: '고객 미팅', date: '2026-10-22', endDate: '2026-10-22', allDay: true }), RID);
+    expect(createOnefcSchedule).toHaveBeenCalledWith('tok', expect.objectContaining({ calendarId: '', title: '고객 미팅', date: '2026-10-22', endDate: '2026-10-22', allDay: true }), RID);
     expect(refreshWidgets).toHaveBeenCalledWith(session, { reason: 'appMutation', widgetTypes: ['schedule'], force: true });
-    expect(result).toEqual({ ok: true, requestId: RID, eventId: 'google:primary-cal:ev1', date: '2026-10-22', title: '고객 미팅', refreshed: true });
+    expect(result).toEqual({ ok: true, requestId: RID, eventId: 'onefc:11111111-1111-4111-8111-111111111111', date: '2026-10-22', title: '고객 미팅', refreshed: true });
     expect(lastReport()).toEqual({ requestId: RID, body: result });
   });
 
   it('still reports the created id when the widget refresh fails', async () => {
     (refreshWidgets as jest.Mock).mockRejectedValue(new Error('x'));
     const result = await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '미팅' });
-    expect(result).toMatchObject({ ok: true, eventId: 'google:primary-cal:ev1', refreshed: false });
+    expect(result).toMatchObject({ ok: true, eventId: 'onefc:11111111-1111-4111-8111-111111111111', refreshed: false });
   });
 
   it('logged out → login, no server call', async () => {
     (readAuthSession as jest.Mock).mockResolvedValue(null);
     const result = await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '미팅' });
     expect(result).toMatchObject({ ok: false, code: 'login' });
-    expect(createScheduleEventWithResult).not.toHaveBeenCalled();
+    expect(createOnefcSchedule).not.toHaveBeenCalled();
   });
 
   it('maps server and network errors to inline messages', async () => {
-    (createScheduleEventWithResult as jest.Mock).mockRejectedValue(new ApiError('Google 연결이 만료되었습니다.', 409));
-    expect(await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '미팅' })).toMatchObject({ ok: false, code: 'server', message: 'Google 연결이 만료되었습니다.' });
-    (createScheduleEventWithResult as jest.Mock).mockRejectedValue(new ApiError('', 401));
+    (createOnefcSchedule as jest.Mock).mockRejectedValue(new ApiError('입력값을 확인해 주세요.', 400));
+    expect(await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '미팅' })).toMatchObject({ ok: false, code: 'server', message: '입력값을 확인해 주세요.' });
+    (createOnefcSchedule as jest.Mock).mockRejectedValue(new ApiError('', 401));
     expect(await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '미팅' })).toMatchObject({ ok: false, code: 'login' });
-    (createScheduleEventWithResult as jest.Mock).mockRejectedValue(new TypeError('Network request failed'));
+    (createOnefcSchedule as jest.Mock).mockRejectedValue(new TypeError('Network request failed'));
     expect(await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '미팅' })).toMatchObject({ ok: false, code: 'network' });
-  });
-
-  it('no writable calendar → no_calendar', async () => {
-    (fetchWriteTargets as jest.Mock).mockResolvedValue({ calendars: [], taskLists: [] });
-    expect(await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '미팅' })).toMatchObject({ ok: false, code: 'no_calendar' });
   });
 
   it('invalid payload is reported, not saved', async () => {
     expect(await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '' })).toMatchObject({ ok: false, code: 'invalid' });
-    expect(createScheduleEventWithResult).not.toHaveBeenCalled();
+    expect(createOnefcSchedule).not.toHaveBeenCalled();
   });
 
   it('never logs the title', async () => {
     const spies = (['log', 'warn', 'error', 'info'] as const).map((k) => jest.spyOn(console, k).mockImplementation(() => {}));
-    (createScheduleEventWithResult as jest.Mock).mockRejectedValue(new Error('boom'));
+    (createOnefcSchedule as jest.Mock).mockRejectedValue(new Error('boom'));
     await runWidgetQuickAdd({ requestId: RID, date: '2026-10-22', title: '홍길동 010-1234-5678' });
     for (const spy of spies) {
       expect(JSON.stringify(spy.mock.calls)).not.toContain('홍길동');
@@ -110,9 +104,9 @@ describe('widget quick add', () => {
   });
 
   it('reads the created event id with the list normalization', () => {
-    const event = { id: 'google:primary-cal:ev1', startAt: '2026-10-22', title: '미팅', type: 'google_event', source: 'google' };
-    expect(createdEventId({ success: true, data: { event, duplicate: false } })).toBe('google:primary-cal:ev1');
-    expect(createdEventId({ event })).toBe('google:primary-cal:ev1');
+    const event = { id: 'onefc:11111111-1111-4111-8111-111111111111', startAt: '2026-10-22', title: '미팅', type: 'google_event', source: 'google', origin: 'onefc' };
+    expect(createdEventId({ success: true, data: { event, duplicate: true } })).toBe('onefc:11111111-1111-4111-8111-111111111111');
+    expect(createdEventId({ event })).toBe(event.id);
     expect(createdEventId({ data: {} })).toBeNull();
   });
 });

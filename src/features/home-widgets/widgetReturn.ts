@@ -96,14 +96,13 @@ export async function returnToWidget(input: {
 
 export type ScheduleModalFlags = {
   detail: boolean;
-  choosing: boolean;
   form: boolean;
   task: boolean;
   deleting: boolean;
 };
 
 export function scheduleModalsOpen(flags: ScheduleModalFlags): boolean {
-  return flags.detail || flags.choosing || flags.form || flags.task || flags.deleting;
+  return flags.detail || flags.form || flags.task || flags.deleting;
 }
 
 /** 위젯 링크가 상세(event) 또는 추가(create) 모달을 열 때만 복귀 흐름을 시작한다. */
