@@ -5,7 +5,7 @@
  *    ONE FC 할 일은 기존 POST /api/todos(features/todos/todosApi). 서버가 매 요청 권한 확인. Google 직접 호출 없음.
  */
 import { ApiError, apiRequest } from '../../api/client';
-import { formToGoogleInput, normalizeCalendarTargets, normalizeScheduleEvents, normalizeWriteTargets, taskFormToGoogleInput } from './scheduleModel';
+import { createdEventId, formToGoogleInput, normalizeCalendarTargets, normalizeScheduleEvents, normalizeWriteTargets, taskFormToGoogleInput } from './scheduleModel';
 import type { GoogleConnectPurpose, GoogleCalendarTarget, GoogleWriteTargets, ScheduleEventForm, ScheduleEventsResult, ScheduleTaskForm } from './types';
 
 const WRITE_BASE = '/api/service-integrations/google/write';
@@ -50,6 +50,18 @@ export async function createScheduleEvent(token: string | null, form: ScheduleEv
     token: requireToken(token),
     body: JSON.stringify({ ...formToGoogleInput(form), requestId }),
   });
+}
+
+/** 위젯 빠른 추가용: 같은 POST 에서 만든 일정 id 를 돌려준다(모달에서 바로 상세로 열기). */
+export async function createScheduleEventWithResult(token: string | null, form: ScheduleEventForm, requestId: string): Promise<string> {
+  const payload = await apiRequest<unknown>(`${WRITE_BASE}/events`, {
+    method: 'POST',
+    token: requireToken(token),
+    body: JSON.stringify({ ...formToGoogleInput(form), requestId }),
+  });
+  const id = createdEventId(payload);
+  if (!id) throw new ApiError('저장 결과를 확인하지 못했어요. 다시 시도해 주세요', 502);
+  return id;
 }
 
 export async function updateScheduleEvent(token: string | null, eventId: string, form: ScheduleEventForm): Promise<void> {

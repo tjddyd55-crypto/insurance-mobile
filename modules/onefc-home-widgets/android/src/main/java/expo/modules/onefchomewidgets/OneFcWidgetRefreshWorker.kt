@@ -1,20 +1,10 @@
 package expo.modules.onefchomewidgets
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import androidx.work.Data
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.facebook.react.ReactApplication
-import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.ReactContext
-import com.facebook.react.jstasks.HeadlessJsTaskConfig
-import com.facebook.react.jstasks.HeadlessJsTaskContext
-import com.facebook.react.jstasks.HeadlessJsTaskEventListener
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 /**
  * 모든 위젯 공통 단일 Worker. native 는 토큰을 읽거나 서버를 부르지 않는다.
@@ -51,53 +41,13 @@ class OneFcWidgetRefreshWorker(context: Context, params: WorkerParameters) : Wor
     return Result.success()
   }
 
-  private fun runHeadless(context: Context, types: List<OneFcWidgetType>, reason: String, force: Boolean, ids: IntArray): Boolean {
-    val host = (context as? ReactApplication)?.reactHost ?: return false
-    val done = CountDownLatch(1)
-    Handler(Looper.getMainLooper()).post {
-      try {
-        val current = host.currentReactContext
-        if (current != null) {
-          start(current, types, reason, force, ids, done)
-        } else {
-          host.addReactInstanceEventListener(object : ReactInstanceEventListener {
-            override fun onReactContextInitialized(context: ReactContext) {
-              host.removeReactInstanceEventListener(this)
-              start(context, types, reason, force, ids, done)
-            }
-          })
-          host.start()
-        }
-      } catch (error: Throwable) {
-        done.countDown()
-      }
-    }
-    return done.await(TASK_TIMEOUT_MS + 15_000L, TimeUnit.MILLISECONDS)
-  }
-
-  private fun start(reactContext: ReactContext, types: List<OneFcWidgetType>, reason: String, force: Boolean, ids: IntArray, done: CountDownLatch) {
-    try {
-      val tasks = HeadlessJsTaskContext.getInstance(reactContext)
-      var taskId = -1
-      tasks.addTaskEventListener(object : HeadlessJsTaskEventListener {
-        override fun onHeadlessJsTaskStart(id: Int) {}
-        override fun onHeadlessJsTaskFinish(id: Int) {
-          if (id == taskId) {
-            tasks.removeTaskEventListener(this)
-            done.countDown()
-          }
-        }
-      })
-      val data = Arguments.createMap()
+  private fun runHeadless(context: Context, types: List<OneFcWidgetType>, reason: String, force: Boolean, ids: IntArray): Boolean =
+    WidgetHeadless.run(context, TASK_NAME, TASK_TIMEOUT_MS) { data ->
       data.putArray("widgetTypes", Arguments.createArray().apply { types.forEach { pushString(it.id) } })
       data.putString("reason", reason)
       data.putBoolean("force", force)
       data.putArray("appWidgetIds", Arguments.createArray().apply { ids.forEach { pushInt(it) } })
-      taskId = tasks.startTask(HeadlessJsTaskConfig(TASK_NAME, data, TASK_TIMEOUT_MS, true))
-    } catch (error: Throwable) {
-      done.countDown()
     }
-  }
 
   companion object {
     const val KEY_TYPES = "widgetTypes"

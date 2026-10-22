@@ -3,6 +3,7 @@ import { AppRegistry } from 'react-native';
 import { readAuthSession } from '../../auth/secureStorage';
 import { refreshWidgets, purgeWidgets } from './engine/widgetRefreshCoordinator';
 import { isWidgetType, widgetRefreshReason } from './engine/widgetTypes';
+import { runWidgetQuickAdd, WIDGET_QUICK_ADD_TASK } from './widgetQuickAdd';
 
 /** native OneFcWidgetRefreshWorker 가 부르는 단일 headless entry. */
 export const WIDGET_HEADLESS_TASK = 'OneFcWidgetsRefresh' as const;
@@ -36,4 +37,11 @@ export function registerWidgetHeadlessTask(): void {
   if (registered) return;
   registered = true;
   AppRegistry.registerHeadlessTask(WIDGET_HEADLESS_TASK, () => runWidgetHeadlessRefresh);
+  AppRegistry.registerHeadlessTask(WIDGET_QUICK_ADD_TASK, () => async (data: unknown) => {
+    try {
+      await runWidgetQuickAdd(data as Parameters<typeof runWidgetQuickAdd>[0]);
+    } catch {
+      // native 는 시간 초과로 오류를 보여 준다.
+    }
+  });
 }
