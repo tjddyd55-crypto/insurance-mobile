@@ -24,7 +24,9 @@ function result(): ScheduleEventsResult {
 
 describe('일정·위젯 갱신', () => {
   it('완료로 표시하면 일정 배지 대상에서 빠지고, 무효화와 위젯 갱신은 지연 없이 바로 한다', async () => {
-    const client = new QueryClient();
+    const client = new QueryClient({
+      defaultOptions: { queries: { gcTime: Infinity } },
+    });
     client.setQueryData(scheduleQueryKeys.range('2026-10-01', '2026-10-31'), result());
     const invalidate = jest.spyOn(client, 'invalidateQueries');
     markScheduleTodoStatus(client, '7', 'completed');
@@ -34,5 +36,6 @@ describe('일정·위젯 갱신', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['schedule'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['todos'] });
     expect(refreshWidgets).toHaveBeenCalledWith(session, { reason: 'appMutation', widgetTypes: ['schedule', 'todo'], force: true });
+    client.clear();
   });
 });
