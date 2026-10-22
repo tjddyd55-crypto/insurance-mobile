@@ -4,7 +4,7 @@
 
 ## 구조
 
-- `deviceContactsSource` — expo-contacts 57 `Contact.getAllDetails` 로 주소록을 페이지 단위로 읽는다. 쓰기 API는 호출하지 않는다.
+- `deviceContactsSource` — 이 바이너리에서는 주소록을 읽지 않는다. `expo-contacts` 를 import 하지 않고, 권한은 `unsupported`, 주소록은 빈 목록이다. 페이지 매핑은 남겨 두었다. 다시 붙일 때는 `loadAddressBookPage` 만 `Contact.getAllDetails` 조회로 바꾸면 된다. 쓰기 API는 호출하지 않는다.
 - `deviceContactCustomerIndex` — 기존 `GET /api/customers?limit=2000` 한 번. 응답에서 `id` / `name` / `phone` 만 인덱스로 남긴다.
 - `deviceContactMatch` — `Map<normalizedPhone, customer[]>` 대조. 화면과 무관하다. 이후 수신전화 표시나 상담 보조는 이 함수를 재사용하면 되고, 이번 변경에는 그 연결을 넣지 않았다.
 - `deviceContactSession` — 최소 필드 캐시. 토큰은 저장하지 않는다. 로그아웃과 로그인(계정 전환) 때 캐시를 지운다.
@@ -24,13 +24,13 @@ CRM 기준은 숫자만 남기는 것이다.
 
 ## 권한
 
-Android 는 `READ_CONTACTS` 만 추가한다. `expo-contacts` 가 `WRITE_CONTACTS` 를 넣으면 `plugins/withContactsReadOnly.js` 가 `tools:node="remove"` 로 머지에서 뺀다.
+1.0.5 바이너리에는 연락처 권한을 넣지 않는다. `READ_CONTACTS`, `WRITE_CONTACTS`, `NSContactsUsageDescription`, `expo-contacts` 플러그인은 없다.
 
-쓰지 않는 권한: `WRITE_CONTACTS`, `CALL_PHONE`, `SEND_SMS`, `READ_SMS`, `READ_CALL_LOG`.
+쓰지 않는 권한: `READ_CONTACTS`, `WRITE_CONTACTS`, `CALL_PHONE`, `SEND_SMS`, `READ_SMS`, `READ_CALL_LOG`.
+
+메뉴는 `USER_MENU_FEATURE_FLAGS.deviceContacts = false` 로 숨긴다. 로그아웃과 계정 전환 때는 이전에 남은 대조 캐시만 지운다. 그 정리는 파일 캐시라 네이티브 모듈을 불러오지 않는다.
 
 전화는 `tel:`, 문자는 `sms:` 로 시스템 앱만 연다. 자동 발송과 대량 발송은 없다.
-
-iOS 는 빌드하지 않는다. `NSContactsUsageDescription` 은 같은 문구로 설정만 해 두었다.
 
 ## 고객 인덱스 상한
 
@@ -61,4 +61,4 @@ iOS 는 빌드하지 않는다. `NSContactsUsageDescription` 은 같은 문구�
 
 ## 배포
 
-`expo-contacts` 네이티브 모듈과 `READ_CONTACTS` 가 추가되므로 OTA 로 반영할 수 없다. 스토어 빌드가 필요하다. 버전 코드는 이 변경에서 올리지 않는다.
+이 바이너리에서 `expo-contacts` 와 `READ_CONTACTS` 를 뺐다. 이미 그 모듈이 들어 있는 설치본에서 빼는 것도 네이티브 변경이라 OTA 로 반영할 수 없다. 버전 코드는 이 변경에서 올리지 않는다.

@@ -9,39 +9,39 @@ const root = join(__dirname, '..', '..', '..', '..');
 const read = (relative: string) => readFileSync(join(root, relative), 'utf8');
 
 describe('device contact boundaries', () => {
-  it('removes WRITE_CONTACTS and keeps READ_CONTACTS', () => {
-    // CJS config plugin. ESLint import style does not load this file.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const plugin = require('../../../../plugins/withContactsReadOnly') as {
-      removeWriteContacts: (manifest: { manifest: Record<string, unknown> }) => { manifest: { 'uses-permission': { $: Record<string, string> }[] } };
-    };
-    const manifest = plugin.removeWriteContacts({
-      manifest: {
-        $: {},
-        'uses-permission': [
-          { $: { 'android:name': 'android.permission.READ_CONTACTS' } },
-          { $: { 'android:name': 'android.permission.WRITE_CONTACTS' } },
-        ],
-      },
-    });
-    const names = manifest.manifest['uses-permission'].map((item) => item.$['android:name']);
-    const write = manifest.manifest['uses-permission'].find((item) => item.$['android:name'] === 'android.permission.WRITE_CONTACTS');
-    expect(names.filter((name) => name === 'android.permission.READ_CONTACTS')).toEqual(['android.permission.READ_CONTACTS']);
-    expect(write?.$['tools:node']).toBe('remove');
-    expect(names).not.toContain('android.permission.SEND_SMS');
-  });
-
-  it('declares only READ_CONTACTS as the new Android permission', () => {
+  it('does not declare contact permissions or the contacts native module', () => {
     const config = read('app.config.ts');
-    const permissions = config.slice(config.indexOf('permissions: ['), config.indexOf('],', config.indexOf('permissions: [')));
-    expect(permissions).toContain("'READ_CONTACTS'");
+    const packageJson = read('package.json');
+    const permissions = config.slice(
+      config.indexOf('permissions: ['),
+      config.indexOf('],', config.indexOf('permissions: [')),
+    );
+    expect(permissions).toContain("'POST_NOTIFICATIONS'");
+    expect(permissions).toContain("'ACCESS_COARSE_LOCATION'");
+    expect(permissions).toContain("'ACCESS_FINE_LOCATION'");
+    expect(permissions).not.toContain('READ_CONTACTS');
     expect(permissions).not.toContain('WRITE_CONTACTS');
+    expect(config).not.toContain('READ_CONTACTS');
+    expect(config).not.toContain('WRITE_CONTACTS');
+    expect(config).not.toContain('NSContactsUsageDescription');
+    expect(config).not.toContain('expo-contacts');
+    expect(config).not.toContain('withContactsReadOnly');
     expect(config).not.toContain('READ_SMS');
     expect(config).not.toContain('SEND_SMS');
     expect(config).not.toContain('READ_CALL_LOG');
     expect(config).not.toContain('CALL_PHONE');
-    expect(config).toContain('NSContactsUsageDescription');
-    expect(config).toContain('expo-contacts');
+    expect(packageJson).not.toContain('expo-contacts');
+  });
+
+  it('does not import the contacts native module from app code', () => {
+    const source = read('src/features/device-contacts/deviceContactsSource.ts');
+    expect(source).not.toMatch(/from ['"]expo-contacts['"]/);
+    expect(source).not.toMatch(/require\(['"]expo-contacts['"]\)/);
+    expect(source).not.toMatch(/Contact\.getAllDetails/);
+    expect(source).not.toMatch(/\brequestPermissionsAsync\b/);
+    expect(source).not.toMatch(/\bgetPermissionsAsync\b/);
+    expect(source).toContain('loadAddressBookPage');
+    expect(source).toContain("status: 'unsupported'");
   });
 
   it('purges the contact cache on logout and account switch', () => {
@@ -50,6 +50,7 @@ describe('device contact boundaries', () => {
     const loginStart = auth.indexOf('const login = useCallback');
     expect(auth.slice(clearStart, loginStart)).toContain('await purgeDeviceContactCache()');
     expect(auth.slice(loginStart)).toContain('await purgeDeviceContactCache()');
+    expect(read('src/features/device-contacts/deviceContactSession.ts')).not.toContain('expo-contacts');
   });
 
   it('keeps the contacts screen behind one flag so the menu and route stay closed', () => {
@@ -66,20 +67,6 @@ describe('device contact boundaries', () => {
     expect(route).toContain('return null');
     expect(route).toContain('<DeviceContactsScreen />');
     expect(route).not.toContain('requestPermissionsAsync');
-    const screen = read('src/features/device-contacts/DeviceContactsScreen.tsx');
-    expect(screen).toContain('onRequestAccess={() => void requestAccess()}');
-    const hook = read('src/features/device-contacts/useDeviceContacts.ts');
-    expect(hook).toContain('requestContactsPermission');
-    const callers = read('src/features/device-contacts/deviceContactsSource.ts');
-    expect(callers).toContain('requestPermissionsAsync');
-  });
-
-  it('reads contacts in bulk and does not call the write API', () => {
-    const source = read('src/features/device-contacts/deviceContactsSource.ts');
-    expect(source).toContain('Contact.getAllDetails');
-    expect(source).not.toContain('Contact.create');
-    expect(source).not.toContain('.update(');
-    expect(source).not.toContain('.delete(');
-    expect(source).not.toContain('addPhone');
+    expect(route).not.toContain('expo-contacts');
   });
 });
