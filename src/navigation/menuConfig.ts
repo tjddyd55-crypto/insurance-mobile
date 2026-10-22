@@ -48,6 +48,8 @@ export const USER_MENU_FEATURE_FLAGS = {
   topLevelInsuranceClaim: false,
   customerManagementNewsletter: true,
   customerManagementClaim: true,
+  /** 휴대폰 연락처 메뉴. 당분간 숨긴다. 화면·권한 코드는 남긴다. */
+  deviceContacts: false,
 } as const;
 
 const USER_ROLES: UserRole[] = ['USER'];
@@ -126,14 +128,18 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         nativePath: '/customers',
         mode: 'NATIVE',
       }),
-      // 웹 메뉴에는 없다. 고객리스트와 분리된 휴대폰 연락처 화면이다.
-      link({
-        id: 'device-contacts',
-        label: '연락처',
-        legacyWebPath: '/device-contacts',
-        nativePath: '/device-contacts',
-        mode: 'NATIVE',
-      }),
+      // 웹 메뉴에는 없다. 고객리스트와 분리된 휴대폰 연락처 화면이다. 플래그가 꺼지면 메뉴에 없다.
+      ...(USER_MENU_FEATURE_FLAGS.deviceContacts
+        ? [
+            link({
+              id: 'device-contacts',
+              label: '연락처',
+              legacyWebPath: '/device-contacts',
+              nativePath: '/device-contacts',
+              mode: 'NATIVE',
+            }),
+          ]
+        : []),
       link({
         id: 'customer-map',
         label: '고객 지도',

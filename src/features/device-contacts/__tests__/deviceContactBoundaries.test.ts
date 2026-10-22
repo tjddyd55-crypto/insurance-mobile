@@ -52,13 +52,26 @@ describe('device contact boundaries', () => {
     expect(auth.slice(loginStart)).toContain('await purgeDeviceContactCache()');
   });
 
-  it('uses the customer entitlement and does not add a menu count badge', () => {
+  it('keeps the contacts screen behind one flag so the menu and route stay closed', () => {
     expect(resolveFeatureKeyFromPath('/device-contacts')).toBe(FEATURE_KEYS.CUSTOMERS);
     const menu = read('src/navigation/menuConfig.ts');
+    expect(menu).toContain('deviceContacts: false');
+    expect(menu).toContain('USER_MENU_FEATURE_FLAGS.deviceContacts');
     const start = menu.indexOf("id: 'device-contacts'");
     const block = menu.slice(start, start + 280);
     expect(block).toContain("label: '연락처'");
     expect(block).not.toContain('badge:');
+    const route = read('app/(app)/device-contacts/index.tsx');
+    expect(route).toContain('USER_MENU_FEATURE_FLAGS.deviceContacts');
+    expect(route).toContain('return null');
+    expect(route).toContain('<DeviceContactsScreen />');
+    expect(route).not.toContain('requestPermissionsAsync');
+    const screen = read('src/features/device-contacts/DeviceContactsScreen.tsx');
+    expect(screen).toContain('onRequestAccess={() => void requestAccess()}');
+    const hook = read('src/features/device-contacts/useDeviceContacts.ts');
+    expect(hook).toContain('requestContactsPermission');
+    const callers = read('src/features/device-contacts/deviceContactsSource.ts');
+    expect(callers).toContain('requestPermissionsAsync');
   });
 
   it('reads contacts in bulk and does not call the write API', () => {

@@ -1,5 +1,6 @@
 import {
   USER_APP_MENU,
+  USER_MENU_FEATURE_FLAGS,
   filterMenuForRole,
   findMenuLinkByNativePath,
   listPrimaryMenuLabels,
@@ -38,16 +39,15 @@ describe('menuConfig', () => {
     expect(filterMenuForRole(USER_APP_MENU, 'GA_ADMIN')).toEqual([]);
   });
 
-  it('keeps device contacts separate from the customer list and insurer contacts', () => {
-    const deviceContacts = findMenuLinkByNativePath('/device-contacts');
+  it('hides the device contacts menu and keeps insurer contacts', () => {
+    expect(USER_MENU_FEATURE_FLAGS.deviceContacts).toBe(false);
+    expect(findMenuLinkByNativePath('/device-contacts')).toBeUndefined();
     const customers = USER_APP_MENU.find((section) => section.id === 'customers');
-    expect(deviceContacts?.label).toBe('연락처');
-    expect(deviceContacts?.mode).toBe('NATIVE');
-    expect(deviceContacts?.badge).toBeUndefined();
     expect(customers?.children.map((child) => child.id).slice(0, 2)).toEqual([
       'customer-list',
-      'device-contacts',
+      'customer-map',
     ]);
+    expect(customers?.children.some((child) => child.label === '연락처')).toBe(false);
     expect(findMenuLinkByNativePath('/insurance/contacts')?.label).toBe('원수사 연락처');
   });
 
