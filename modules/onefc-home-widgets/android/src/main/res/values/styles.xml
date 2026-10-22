@@ -3,6 +3,9 @@
   <!-- 홈 화면 위에 뜨는 날짜 목록. 프레임워크 다이얼로그 테마라 추가 라이브러리가 없다. -->
   <style name="OneFcWidgetDayDialog" parent="@android:style/Theme.DeviceDefault.Light.Dialog">
     <item name="android:windowNoTitle">true</item>
-    <item name="android:windowBackground">@drawable/onefc_widget_bg</item>
+    <item name="android:windowBackground">@drawable/onefc_day_window_bg</item>
+    <item name="android:windowMinWidthMajor">90%</item>
+    <item name="android:windowMinWidthMinor">90%</item>
+    <item name="android:backgroundDimEnabled">true</item>
   </style>
 </resources>

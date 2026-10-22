@@ -13,6 +13,10 @@ internal object ScheduleDayModel {
     val rows: List<ScheduleListRows.Row>,
     val addLink: String?,
     val openLink: String?,
+    /** 머리글 큰 숫자("23")와 요일("금요일"), 추가 버튼용 "10월 23일". 로그인 모드는 비어 있다. */
+    val dayNumber: String = "",
+    val weekday: String = "",
+    val monthDay: String = "",
   )
 
   private val LOGIN_REASONS = setOf("logged_out", "session_expired", "account_changed")
@@ -22,12 +26,20 @@ internal object ScheduleDayModel {
     return envelope.authState == "signed_out" || envelope.authState == "expired"
   }
 
-  fun content(envelope: WidgetEnvelope?, clearReason: String?, date: String): Content {
+  fun content(envelope: WidgetEnvelope?, clearReason: String?, date: String): Content = withHeader(rawContent(envelope, clearReason, date), date)
+
+  private fun rawContent(envelope: WidgetEnvelope?, clearReason: String?, date: String): Content {
     val title = if (WidgetDates.isYmd(date)) WidgetDates.dayTitle(date) else ""
     if (needsLogin(envelope, clearReason)) return Content(Mode.LOGIN, WidgetCopy.LOGIN_REQUIRED, emptyList(), null, openLink(envelope?.scheme, date))
     val payload = envelope?.let { SchedulePayload.parse(it) }
     if (envelope == null || payload == null) return Content(Mode.PREPARE, title, emptyList(), null, openLink(envelope?.scheme, date))
     return fromPayload(envelope.scheme, payload, date, title)
+  }
+
+  /** 다이얼로그 머리글·추가 버튼 문구를 붙인다. 로그인 모드는 날짜 대신 안내만 보인다. */
+  fun withHeader(content: Content, date: String): Content {
+    if (content.mode == Mode.LOGIN || !WidgetDates.isYmd(date)) return content
+    return content.copy(dayNumber = date.substring(8, 10).toInt().toString(), weekday = WidgetDates.weekdayName(date), monthDay = WidgetDates.monthDay(date))
   }
 
   private fun fromPayload(scheme: String, payload: SchedulePayload, date: String, title: String): Content {

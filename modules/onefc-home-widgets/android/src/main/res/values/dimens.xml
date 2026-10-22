@@ -11,4 +11,5 @@
   <dimen name="onefc_widget_item_text">15sp</dimen>
   <dimen name="onefc_widget_status_text">11sp</dimen>
   <dimen name="onefc_widget_nav_text">22sp</dimen>
+  <dimen name="onefc_day_number_text">28sp</dimen>
 </resources>
