@@ -411,24 +411,15 @@ export function scheduleEventWriteTimes(fields: ScheduleClock): { allDay: boolea
   return { allDay: false, startTime: fixed.startTime, endTime: fixed.endTime };
 }
 
-const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
-
-/** 시각에 1시간을 더한다. 자정을 넘기면 다음 날이다. */
-export function plusOneHour(hm: string): { time: string; dayOffset: 0 | 1 } {
-  const match = CLOCK.exec(hm);
-  if (!match) return { time: hm, dayOffset: 0 };
-  const total = Number(match[1]) * 60 + Number(match[2]) + 60;
-  const dayOffset = total >= 24 * 60 ? 1 : 0;
-  const minutes = total % (24 * 60);
-  return {
-    time: `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`,
-    dayOffset,
-  };
+/** 종료가 시작보다 뒤면 그대로 두고, 아니거나 같으면 같은 날 sensibleEndTime 이다. */
+function endOnOrAfterStart(startTime: string, endTime: string): string {
+  return HM.test(startTime) && HM.test(endTime) && endTime > startTime ? endTime : sensibleEndTime(startTime);
 }
 
 /**
  * 달력의 완료 결과. 시각이 없으면 종일이다.
- * 종일이던 일정의 시작 시각을 고르면 종료는 1시간 뒤다. 수정 중인 시각은 그대로 둔다.
+ * 종일이던 일정에서 시작 시각을 처음 고르면 종료는 sensibleEndTime 이다.
+ * 시작을 바꿔 종료가 시작보다 이르거나 같으면 같은 날로 맞춘다. 종료일을 다음 날로 밀지 않는다.
  */
 export function applyScheduleDateTime(
   form: Pick<ScheduleEventForm, 'date' | 'endDate' | 'allDay' | 'startTime' | 'endTime'>,
@@ -440,21 +431,22 @@ export function applyScheduleDateTime(
     if (!time) {
       return { date: next.date, endDate: form.endDate < next.date ? next.date : form.endDate, allDay: true, startTime: form.startTime, endTime: form.endTime };
     }
+    const endDate = form.endDate < next.date ? next.date : form.endDate;
     if (form.allDay) {
-      const end = plusOneHour(time);
-      return { date: next.date, endDate: end.dayOffset ? addDaysYmd(next.date, 1) : next.date, allDay: false, startTime: time, endTime: end.time };
+      return { date: next.date, endDate, allDay: false, startTime: time, endTime: sensibleEndTime(time) };
     }
-    return { date: next.date, endDate: form.endDate < next.date ? next.date : form.endDate, allDay: false, startTime: time, endTime: form.endTime };
+    return { date: next.date, endDate, allDay: false, startTime: time, endTime: endOnOrAfterStart(time, form.endTime) };
   }
   if (!time) {
     return { date: form.date, endDate: next.date < form.date ? form.date : next.date, allDay: true, startTime: form.startTime, endTime: form.endTime };
   }
+  const startTime = form.allDay || !HM.test(form.startTime) ? DEFAULT_SCHEDULE_START_TIME : form.startTime;
   return {
     date: form.date,
     endDate: next.date < form.date ? form.date : next.date,
     allDay: false,
-    startTime: form.allDay ? '09:00' : form.startTime,
-    endTime: time,
+    startTime,
+    endTime: endOnOrAfterStart(startTime, time),
   };
 }
 

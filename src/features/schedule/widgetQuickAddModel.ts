@@ -2,8 +2,6 @@ import type { SaveTodoPayload } from '../todos/types';
 import { emptyEventForm, setScheduleTimeSpecified } from './scheduleModel';
 import type { ScheduleEventForm } from './types';
 
-export { plusOneHour } from './scheduleModel';
-
 export type WidgetQuickDraft = {
   title: string;
   date: string;
@@ -15,7 +13,7 @@ export type WidgetQuickDraft = {
   customerName: string;
 };
 
-/** 제목만 저장하면 종일(시각 null). 시간을 켜면 같은 날 시작·종료다. 종료가 시작보다 이르면 시작 한 시간 뒤. 일정 API에는 고객 필드가 없다. */
+/** 제목만 저장하면 종일(시각 null). 시간을 켜면 같은 날 시작·종료다. 종료가 시작보다 이르면 sensibleEndTime. 일정 API에는 고객 필드가 없다. */
 export function widgetQuickScheduleForm(draft: WidgetQuickDraft): ScheduleEventForm {
   const title = draft.title.trim();
   const base = emptyEventForm(draft.date);

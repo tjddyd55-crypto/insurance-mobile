@@ -1,5 +1,5 @@
-import { applyScheduleDateTime } from '../scheduleModel';
-import { plusOneHour, widgetQuickScheduleForm, widgetQuickTodoPayload } from '../widgetQuickAddModel';
+import { applyScheduleDateTime, sensibleEndTime } from '../scheduleModel';
+import { widgetQuickScheduleForm, widgetQuickTodoPayload } from '../widgetQuickAddModel';
 
 describe('위젯 빠른 추가 저장 값', () => {
   it('제목만이면 고객 없음, 고른 날짜, 시각 없음(종일)', () => {
@@ -24,9 +24,11 @@ describe('위젯 빠른 추가 저장 값', () => {
     });
   });
 
-  it('시각은 시작이고 종료가 시작보다 이르면 같은 날 한 시간 뒤다', () => {
-    expect(plusOneHour('14:15')).toEqual({ time: '15:15', dayOffset: 0 });
-    expect(plusOneHour('23:30')).toEqual({ time: '00:30', dayOffset: 1 });
+  it('시각은 시작이고 종료가 시작보다 이르면 같은 날 sensibleEndTime 이다', () => {
+    expect(sensibleEndTime('22:30')).toBe('23:30');
+    expect(sensibleEndTime('23:00')).toBe('23:59');
+    expect(sensibleEndTime('23:30')).toBe('23:59');
+    expect(sensibleEndTime('23:59')).toBe('23:59');
     expect(widgetQuickScheduleForm({
       title: '상담',
       date: '2026-10-22',
@@ -52,21 +54,30 @@ describe('위젯 빠른 추가 저장 값', () => {
     })).toMatchObject({ allDay: false, startTime: '23:30', endTime: '23:59', endDate: '2026-10-22' });
   });
 
-  it('일정 수정은 저장된 시각을 유지하고, 종일에서 시각을 고르면 종료가 1시간 뒤다', () => {
+  it('일정 수정은 종료가 시작보다 뒤면 유지하고, 종일에서 시각을 고르면 같은 날 sensibleEndTime 이다', () => {
     const timed = { date: '2026-10-22', endDate: '2026-10-22', allDay: false, startTime: '14:00', endTime: '15:30' };
+    expect(applyScheduleDateTime(timed, 'start', { date: '2026-10-23', time: '14:30' })).toMatchObject({
+      date: '2026-10-23',
+      endDate: '2026-10-23',
+      startTime: '14:30',
+      endTime: '15:30',
+      allDay: false,
+    });
     expect(applyScheduleDateTime(timed, 'start', { date: '2026-10-23', time: '16:00' })).toMatchObject({
       date: '2026-10-23',
+      endDate: '2026-10-23',
       startTime: '16:00',
-      endTime: '15:30',
+      endTime: '17:00',
       allDay: false,
     });
     const allDay = { date: '2026-10-22', endDate: '2026-10-24', allDay: true, startTime: '09:00', endTime: '10:00' };
     expect(applyScheduleDateTime(allDay, 'start', { date: '2026-10-22', time: '' })).toMatchObject({ allDay: true, endDate: '2026-10-24' });
-    expect(applyScheduleDateTime(allDay, 'start', { date: '2026-10-22', time: '23:30' })).toMatchObject({
+    expect(applyScheduleDateTime(allDay, 'start', { date: '2026-10-24', time: '23:30' })).toMatchObject({
+      date: '2026-10-24',
       allDay: false,
       startTime: '23:30',
-      endTime: '00:30',
-      endDate: '2026-10-23',
+      endTime: '23:59',
+      endDate: '2026-10-24',
     });
   });
 

@@ -61,6 +61,20 @@ export function resolveTodoFormSession(
   return boundTodoId === nextTodoId ? 'keep' : 'reset';
 }
 
+/**
+ * 할 일 날짜·시각 저장 규칙.
+ * 새 할 일은 dueTime null. 수정은 날짜가 있을 때만 초안의 dueTime 을 유지한다(날짜를 바꿔도).
+ * 날짜가 없으면 dueTime null. 화면에 시간 칸은 없다.
+ */
+export function todoEditorDateTimePayload(
+  form: TodoFormDraft,
+  mode: 'create' | 'edit',
+): { dueDate: string | null; dueTime: string | null } {
+  const dueDate = form.dueDate.trim() || null;
+  if (mode === 'create' || !dueDate) return { dueDate, dueTime: null };
+  return { dueDate, dueTime: form.dueTime.trim() || null };
+}
+
 /** 할 일 추가 저장 본문. 직접 작성과 상담 출처가 같은 필드 규칙을 쓴다. */
 export function buildTodoCreatePayload(
   form: TodoFormDraft,
@@ -70,12 +84,12 @@ export function buildTodoCreatePayload(
   },
 ): SaveTodoPayload {
   const content = form.description.trim();
-  const dueDate = form.dueDate.trim();
+  const when = todoEditorDateTimePayload(form, 'create');
   const payload: SaveTodoPayload = {
     title: firstLineTodoTitle(content),
     description: content,
-    dueDate: dueDate || null,
-    dueTime: null,
+    dueDate: when.dueDate,
+    dueTime: when.dueTime,
     priority: 'normal',
     relatedEntityType: form.relatedCustomerId ? 'customer' : null,
     relatedEntityId: form.relatedCustomerId || null,

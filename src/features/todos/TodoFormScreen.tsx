@@ -44,6 +44,7 @@ import {
   EMPTY_TODO_FORM_DRAFT,
   isTodoEditDraftChanged,
   resolveTodoFormSession,
+  todoEditorDateTimePayload,
   todoFormDraftFromRecord,
   type TodoFormDraft,
 } from './todoFormSession';
@@ -170,11 +171,12 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
         return Promise.resolve(null);
       }
       const content = form.description.trim();
+      const when = todoEditorDateTimePayload(form, 'edit');
       return updateTodo(token, todoId ?? '', {
         title: firstLineTodoTitle(content),
         description: content,
-        dueDate: dueDate || null,
-        dueTime: null,
+        dueDate: when.dueDate,
+        dueTime: when.dueTime,
         priority: 'normal',
         relatedEntityType: form.relatedCustomerId ? 'customer' : null,
         relatedEntityId: form.relatedCustomerId || null,
@@ -281,7 +283,9 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
               value={form.dueDate}
               clearable
               placeholder="날짜 없음"
-              onComplete={({ date }) => setForm((previous) => ({ ...previous, dueDate: date, dueTime: '' }))}
+              onComplete={({ date }) => setForm((previous) => (
+                mode === 'edit' ? { ...previous, dueDate: date } : { ...previous, dueDate: date, dueTime: '' }
+              ))}
             />
           </Stack>
         </Card>
