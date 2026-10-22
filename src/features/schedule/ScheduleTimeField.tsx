@@ -80,6 +80,7 @@ export function ScheduleTimeField({ label, value, onChange, optional = false }: 
             is24Hour={false}
             value={draft}
             onChange={onPickerChange}
+            style={styles.pickerControl}
           />
           {Platform.OS === 'ios' ? (
             <Inline gap="sm" justify="flex-end">
@@ -96,6 +97,7 @@ export function ScheduleTimeField({ label, value, onChange, optional = false }: 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     flex: { flex: 1 },
-    picker: { gap: theme.spacing.sm },
+    picker: { width: '100%', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm },
+    pickerControl: { alignSelf: 'center', width: 320 },
   });
 }

@@ -124,7 +124,14 @@ export function ScheduleDateField({
         </Pressable>
         {clockOpen ? (
           <View style={styles.clock}>
-            <DateTimePicker mode="time" display={Platform.OS === 'ios' ? 'spinner' : 'default'} is24Hour={false} value={clock} onChange={onClock} />
+            <DateTimePicker
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              is24Hour={false}
+              value={clock}
+              onChange={onClock}
+              style={styles.clockPicker}
+            />
           </View>
         ) : null}
         {draftTime ? <Button label="종일" variant="ghost" onPress={() => { setDraftTime(''); setClockOpen(false); }} /> : null}
@@ -209,7 +216,12 @@ function createStyles(theme: AppTheme) {
       borderRadius: theme.radius.md,
       backgroundColor: theme.colors.surfaceSubtle,
     },
-    clock: { gap: theme.spacing.sm },
+    clock: {
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    clockPicker: { alignSelf: 'center', width: 320 },
     weekRow: { flexDirection: 'row' },
     cell: { flex: 1 },
     dayCell: { alignItems: 'center', justifyContent: 'center', minHeight: 40, borderRadius: theme.radius.md },
