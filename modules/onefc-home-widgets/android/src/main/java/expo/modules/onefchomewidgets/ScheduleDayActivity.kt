@@ -18,7 +18,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 /**
- * 위젯 날짜 칸에서 여는 모달. 목록은 스냅샷이고, 항목·상세 입력·로그인은 기존 src=widget deep link 로 앱에 넘긴다.
+ * 위젯 날짜 칸에서 여는 모달. 목록은 스냅샷이고, 항목·로그인은 기존 src=widget deep link 로 앱에 넘긴다.
  * 빠른 추가는 앱 JS headless(OneFcWidgetQuickAdd)가 기존 세션·서버 API 로 저장한다. 여기서는 토큰도 서버 호출도 없다.
  * 앱 안의 저장·취소·뒤로가기는 moveTaskToBack 규칙을 그대로 쓴다.
  */
@@ -127,7 +127,6 @@ class ScheduleDayActivity : Activity() {
     val canAdd = !content.addLink.isNullOrBlank()
     inputRow.visibility = if (canAdd) View.VISIBLE else View.GONE
     findViewById<EditText>(R.id.day_input).hint = getString(R.string.onefc_widget_day_add, content.monthDay.ifBlank { content.title })
-    findViewById<View>(R.id.day_expand).setOnClickListener { open(content.addLink) }
   }
 
   private fun bindInput() {

@@ -5,8 +5,6 @@
   <string name="onefc_widget_schedule_description">이번 달 달력. 날짜를 누르면 그 날 일정을 봅니다.</string>
   <string name="onefc_widget_day_close">닫기</string>
   <string name="onefc_widget_day_add">%1$s에 추가</string>
-  <string name="onefc_widget_day_expand_label">상세</string>
-  <string name="onefc_widget_day_expand">상세 입력 화면 열기</string>
   <string name="onefc_widget_day_send">일정 저장</string>
   <string name="onefc_widget_day_saving">저장 중…</string>
   <string name="onefc_widget_day_login">로그인</string>
