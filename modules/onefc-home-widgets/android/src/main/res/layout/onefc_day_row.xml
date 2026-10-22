@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 날짜 다이얼로그 항목 카드: 굵은 제목 + 시간/하루 종일/할 일 부제. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:minHeight="64dp"
+  android:layout_marginBottom="8dp"
+  android:orientation="horizontal"
+  android:gravity="center_vertical"
+  android:background="@drawable/onefc_day_item_bg"
+  android:paddingStart="16dp"
+  android:paddingEnd="16dp"
+  android:paddingTop="10dp"
+  android:paddingBottom="10dp">
+  <TextView android:id="@+id/day_row_mark" android:layout_width="24dp" android:layout_height="wrap_content" android:gravity="center" android:textSize="@dimen/onefc_widget_item_text" android:textStyle="bold" android:textColor="@color/onefc_widget_brand" android:maxLines="1" />
+  <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
+    <TextView android:id="@+id/day_row_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="@dimen/onefc_widget_list_title_text" android:textStyle="bold" android:textColor="@color/onefc_widget_text" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/day_row_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:textSize="@dimen/onefc_widget_small_text" android:textColor="@color/onefc_widget_text_secondary" android:maxLines="1" android:ellipsize="end" />
+  </LinearLayout>
+</LinearLayout>

@@ -10,7 +10,7 @@ import {
   View,
   type KeyboardEvent,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -82,6 +82,13 @@ import {
 } from './customerFormSectionOrder';
 import { customerQueryKeys, invalidateCustomerListQueries } from './queryKeys';
 import type { ListCustomersResult } from './types';
+import { noteDeviceContactCustomerRegistered } from '../device-contacts/deviceContactSession';
+import {
+  CONTACT_COMPANY_JOB_HINT,
+  createContactSourcedCustomerForm,
+  isContactRegistrationSource,
+  type ContactRegistrationParamBag,
+} from '../device-contacts/deviceContactRegistration';
 
 type CustomerFormScreenProps =
   | { mode: 'create'; customerId?: never }
@@ -93,7 +100,11 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [form, setForm] = useState<CustomerFormState>(() => cloneCustomerFormState(EMPTY_CUSTOMER_FORM));
+  const contactRoute = useLocalSearchParams<ContactRegistrationParamBag>();
+  const initialCreateForm = mode === 'create' ? createContactSourcedCustomerForm(contactRoute) : null;
+  const createBaseline = initialCreateForm ?? cloneCustomerFormState(EMPTY_CUSTOMER_FORM);
+  const fromDeviceContact = mode === 'create' && isContactRegistrationSource(contactRoute.source);
+  const [form, setForm] = useState<CustomerFormState>(() => createBaseline);
   const [errors, setErrors] = useState<CustomerFormErrors>({});
   const [initialized, setInitialized] = useState(mode === 'create');
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -131,10 +142,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   );
   /** Immutable original snapshot for this edit session (string). */
   const originalSnapshotRef = useRef<string | null>(
-    mode === 'create' ? createCustomerFormSnapshot(EMPTY_CUSTOMER_FORM) : null,
+    mode === 'create' ? createCustomerFormSnapshot(createBaseline) : null,
   );
   const originalFormRef = useRef<CustomerFormState | null>(
-    mode === 'create' ? cloneCustomerFormState(EMPTY_CUSTOMER_FORM) : null,
+    mode === 'create' ? cloneCustomerFormState(createBaseline) : null,
   );
   const hydrateEpochRef = useRef(0);
 
@@ -231,6 +242,13 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       if (savedMode === 'create') {
         // List SSOT = server. Re-fetch lists instead of local append.
         void invalidateCustomerListQueries(queryClient);
+        if (fromDeviceContact) {
+          noteDeviceContactCustomerRegistered({
+            id: saved.id,
+            name: saved.name,
+            phone: saved.phone,
+          });
+        }
       } else {
         queryClient.setQueryData<ListCustomersResult>(customerQueryKeys.all, (previous) => {
           if (!previous) return previous;
@@ -432,6 +450,9 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
               />
             </Inline>
             <TextField label="직업" value={form.job} onChangeText={(value) => updateField('job', value)} />
+            {fromDeviceContact && form.job.trim() ? (
+              <AppText variant="caption" color="textSecondary">{CONTACT_COMPANY_JOB_HINT}</AppText>
+            ) : null}
             <AddressSearchField
               value={form.address}
               onChange={(address) => updateField('address', address)}

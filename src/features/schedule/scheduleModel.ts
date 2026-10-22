@@ -10,7 +10,6 @@ import type {
   ScheduleEventsResult,
   ScheduleEventType,
   ScheduleGoogleBanner,
-  ScheduleStorage,
   ScheduleTask,
   ScheduleTaskForm,
 } from './types';
@@ -100,6 +99,13 @@ export function formatDayTitle(ymd: string): string {
 
 const EVENT_TYPES: ScheduleEventType[] = ['google_event', 'customer_alert', 'car_expiry', 'insurance_age'];
 
+/** 생성 응답({ data: { event } } 또는 { event })의 일정 id. 목록(normalizeScheduleEvents)과 같은 정규화라 id 가 같다. */
+export function createdEventId(payload: unknown): string | null {
+  const body = record(payload);
+  const data = record(body.data);
+  return normalizeEvent(data.event ?? body.event)?.id ?? null;
+}
+
 function normalizeEvent(value: unknown): ScheduleEvent | null {
   const row = record(value);
   const id = text(row.id).trim();
@@ -123,6 +129,7 @@ function normalizeEvent(value: unknown): ScheduleEvent | null {
     location: text(row.location),
     writable: row.writable === true,
     readOnlyReason: text(row.readOnlyReason),
+    ...(row.origin === 'onefc' ? { origin: 'onefc' as const } : {}),
   };
 }
 
@@ -249,6 +256,27 @@ export function daysWithItems(result: Pick<ScheduleEventsResult, 'events' | 'tas
   return days;
 }
 
+/**
+ * 날짜별 항목 수(달력 숫자 배지). 날짜별 목록(eventsOnDay + tasksOnDay)과 같은 집합만 센다.
+ * 예정일 없는 할 일·완료한 할 일(ONE FC·Google)은 세지 않는다. 원본 데이터는 바꾸지 않는다.
+ */
+export function countItemsByDay(result: Pick<ScheduleEventsResult, 'events' | 'tasks'>): Map<string, number> {
+  const counts = new Map<string, number>();
+  const bump = (day: string) => counts.set(day, (counts.get(day) ?? 0) + 1);
+  for (const event of result.events) {
+    const range = eventDayRange(event);
+    for (let day = range.first, guard = 0; day <= range.last && guard < 400; day = addDaysYmd(day, 1), guard += 1) bump(day);
+  }
+  for (const task of result.tasks) if (task.dueDate && task.status !== 'completed') bump(task.dueDate);
+  return counts;
+}
+
+/** 배지 문구: 0 이면 빈 문자열(표시 안 함), 10 이상은 "9+". */
+export function dayCountLabel(count: number): string {
+  if (!Number.isFinite(count) || count <= 0) return '';
+  return count > 9 ? '9+' : String(Math.floor(count));
+}
+
 export function eventTimeLabel(event: Pick<ScheduleEvent, 'allDay' | 'startAt' | 'endAt'>): string {
   if (event.allDay) {
     const range = eventDayRange(event);
@@ -266,6 +294,12 @@ export const SCHEDULE_TYPE_LABEL: Record<ScheduleEventType, string> = {
   car_expiry: '자동차 만기',
   insurance_age: '상령일',
 };
+
+/** 카드·상세 문구만. type·집계·정렬·필터는 바꾸지 않는다. */
+export function scheduleEventSourceLabel(event: Pick<ScheduleEvent, 'type' | 'origin'>): string {
+  if (event.origin === 'onefc') return 'ONE FC 일정';
+  return SCHEDULE_TYPE_LABEL[event.type];
+}
 
 export function taskSourceLabel(task: Pick<ScheduleTask, 'source'>): string {
   return task.source === 'google_task' ? 'Google 할 일' : 'ONE FC 할 일';
@@ -304,8 +338,30 @@ export function canCreateGoogleEvent(google: ScheduleEventsResult['google']): bo
   return google.connected && google.write.enabled && google.write.calendarWritable;
 }
 
-export function canEditEvent(event: Pick<ScheduleEvent, 'source' | 'writable'>, google: ScheduleEventsResult['google']): boolean {
+export function isOnefcSchedule(event: Pick<ScheduleEvent, 'origin'>): boolean {
+  return event.origin === 'onefc';
+}
+
+/**
+ * ONE FC 일정은 Google 쓰기 권한과 무관하게 수정·삭제한다.
+ * Google 에서 태어난 일정만 기존 쓰기 권한·writable 을 본다.
+ */
+export function canEditEvent(event: Pick<ScheduleEvent, 'source' | 'writable' | 'origin'>, google: ScheduleEventsResult['google']): boolean {
+  if (isOnefcSchedule(event)) return true;
   return event.source === 'google' && event.writable && canCreateGoogleEvent(google);
+}
+
+/** 목록 id(`onefc:<uuid>`)에서 PATCH/DELETE 경로에 쓰는 raw id. 이미 raw 이면 그대로. */
+export function onefcScheduleRawId(id: string): string {
+  const trimmed = id.trim();
+  const raw = trimmed.startsWith('onefc:') ? trimmed.slice('onefc:'.length) : trimmed;
+  if (!raw || raw.startsWith('onefc:')) throw new ApiError('일정을 찾을 수 없습니다.', 404);
+  return raw;
+}
+
+export function scheduleDeletePrompt(event: Pick<ScheduleEvent, 'origin'>): { title: string; message: string } {
+  if (isOnefcSchedule(event)) return { title: '일정 삭제', message: '이 ONE FC 일정을 삭제할까요?' };
+  return { title: '일정을 삭제할까요?', message: 'Google 캘린더에서도 삭제됩니다.' };
 }
 
 export function emptyEventForm(date: string, calendarId = ''): ScheduleEventForm {
@@ -331,10 +387,13 @@ export function eventToForm(event: ScheduleEvent): ScheduleEventForm {
   };
 }
 
-/** 서버 googleEventTimes 와 같은 규칙으로 미리 확인한다. 문제 없으면 null. */
-export function validateEventForm(form: ScheduleEventForm): string | null {
+/**
+ * 서버 googleEventTimes 와 같은 규칙으로 미리 확인한다. 문제 없으면 null.
+ * ONE FC 일정은 캘린더를 고르지 않는다(calendarRequired: false). 서버가 Google 사본을 만든다.
+ */
+export function validateEventForm(form: ScheduleEventForm, options?: { calendarRequired?: boolean }): string | null {
   const title = form.title.trim();
-  if (!form.calendarId.trim()) return '캘린더를 선택해 주세요.';
+  if (options?.calendarRequired !== false && !form.calendarId.trim()) return '캘린더를 선택해 주세요.';
   if (!title) return '제목을 입력해 주세요.';
   if (title.length > SCHEDULE_TITLE_MAX) return `제목은 ${SCHEDULE_TITLE_MAX}자 이하로 입력해 주세요.`;
   if (form.description.length > SCHEDULE_NOTES_MAX) return '설명이 너무 깁니다.';
@@ -383,35 +442,6 @@ export function readOnlyMessage(event: Pick<ScheduleEvent, 'source' | 'readOnlyR
   if (!google.write.enabled) return 'Google 일정 수정은 아직 이 계정에서 사용할 수 없습니다.';
   if (!google.write.calendarWritable || google.write.needsWriteConsent) return 'Google 캘린더 쓰기 권한이 필요합니다. PC 일정 관리에서 다시 연결해 주세요.';
   return GOOGLE_READ_ONLY_REASON[event.readOnlyReason] ?? '이 일정은 수정할 수 없습니다.';
-}
-
-// ---------------- 추가 저장 위치(웹 ScheduleGoogleWrite 와 같은 판정) ----------------
-
-export const SCHEDULE_STORAGE_LABEL: Record<ScheduleStorage, string> = {
-  google_event: 'Google 일정',
-  google_task: 'Google 할 일',
-  onefc_todo: 'ONE FC 할 일',
-};
-
-/** 저장 위치별 사용 가능 여부와 불가 사유. ONE FC 할 일은 Google 연결과 무관하게 항상 가능. 최종 판단은 서버가 매 요청 다시 한다. */
-export function storageAvailability(
-  google: ScheduleEventsResult['google'],
-  storage: ScheduleStorage,
-): { available: boolean; reason: string | null } {
-  if (storage === 'onefc_todo') return { available: true, reason: null };
-  if (google.status === 'needs_reauth') return { available: false, reason: 'Google 연결이 만료되었습니다. 위 재연결 버튼으로 다시 연결해 주세요.' };
-  if (!google.connected) return { available: false, reason: 'Google 계정이 연결되어 있지 않습니다. 위 Google 연결 버튼으로 연결해 주세요.' };
-  if (!google.write.enabled) return { available: false, reason: '이 계정에서는 아직 Google 쓰기를 사용할 수 없습니다.' };
-  const writable = storage === 'google_event' ? google.write.calendarWritable : google.write.tasksWritable;
-  if (!writable) {
-    return {
-      available: false,
-      reason: storage === 'google_event'
-        ? 'Google 캘린더 쓰기 권한이 필요합니다. 위 권한 허용 버튼으로 다시 연결해 주세요.'
-        : 'Google 할 일 쓰기 권한이 필요합니다. 위 권한 허용 버튼으로 다시 연결해 주세요.',
-    };
-  }
-  return { available: true, reason: null };
 }
 
 export function emptyTaskForm(date: string, taskListId = ''): ScheduleTaskForm {

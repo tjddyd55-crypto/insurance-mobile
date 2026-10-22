@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 하단 추가 알약 버튼: 브랜드 초록 바탕. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <solid android:color="@color/onefc_widget_brand" />
+  <corners android:radius="26dp" />
+</shape>

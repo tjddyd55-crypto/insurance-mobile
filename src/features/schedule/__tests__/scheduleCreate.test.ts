@@ -1,14 +1,15 @@
 import { apiRequest } from '../../../api/client';
 import { createGoogleTaskFromSchedule, fetchWriteTargets } from '../scheduleApi';
 import {
+  emptyEventForm,
   emptyTaskForm,
   googleTasksNotice,
   normalizeScheduleEvents,
   normalizeWriteTargets,
-  storageAvailability,
   taskFormToGoogleInput,
   taskFormToTodoPayload,
   undatedOpenTasks,
+  validateEventForm,
   validateTaskForm,
 } from '../scheduleModel';
 import type { ScheduleGoogleState } from '../types';
@@ -36,23 +37,26 @@ function google(patch: Partial<Omit<ScheduleGoogleState, 'write'>> & { write?: P
   };
 }
 
-describe('일정 관리 추가 — 저장 위치 판정(웹 ScheduleGoogleWrite 와 같은 서버 상태)', () => {
-  it('ONE FC 할 일은 Google 상태와 무관하게 항상 가능', () => {
-    for (const g of [google({ connected: false, status: 'disconnected' }), google({ status: 'needs_reauth' }), google({ write: { enabled: false } })]) {
-      expect(storageAvailability(g, 'onefc_todo')).toEqual({ available: true, reason: null });
-    }
+describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
+  it('ONE FC 일정은 캘린더 없이 저장하고, Google 에서 온 일정 수정은 캘린더가 있어야 한다', () => {
+    const form = { ...emptyEventForm('2026-10-22'), title: '상담' };
+    expect(validateEventForm(form, { calendarRequired: false })).toBeNull();
+    expect(validateEventForm(form)).toContain('캘린더');
   });
 
-  it('Google 일정/할 일은 연결·쓰기 플래그·각 scope 가 있어야 하고, 아니면 사유를 보여준다', () => {
-    expect(storageAvailability(google(), 'google_event').available).toBe(true);
-    expect(storageAvailability(google(), 'google_task').available).toBe(true);
-    expect(storageAvailability(google({ connected: false, status: 'disconnected' }), 'google_event').reason).toContain('연결되어 있지 않습니다');
-    expect(storageAvailability(google({ status: 'needs_reauth' }), 'google_task').reason).toContain('만료');
-    expect(storageAvailability(google({ write: { enabled: false } }), 'google_event').reason).toContain('아직 Google 쓰기');
-    const calendarOnly = google({ write: { tasksWritable: false } });
-    expect(storageAvailability(calendarOnly, 'google_event').available).toBe(true);
-    expect(storageAvailability(calendarOnly, 'google_task').reason).toContain('할 일 쓰기 권한');
-    expect(storageAvailability(google({ write: { calendarWritable: false } }), 'google_event').reason).toContain('캘린더 쓰기 권한');
+  it('화면은 일정 추가·할 일 추가만 두고 3갈래 저장 위치는 없다', () => {
+    const screen = read('ScheduleScreen.tsx');
+    const model = read('scheduleModel.ts');
+    expect(screen).toContain('일정 추가');
+    expect(screen).toContain('할 일 추가');
+    expect(screen).toContain('createOnefcSchedule');
+    expect(screen).toContain("import { createTodo } from '../todos/todosApi'");
+    expect(screen).not.toContain('저장 위치');
+    expect(screen).not.toContain('SCHEDULE_STORAGE_LABEL');
+    expect(screen).not.toContain('createGoogleTaskFromSchedule');
+    expect(screen).not.toContain('createScheduleEvent(');
+    expect(model).not.toContain('SCHEDULE_STORAGE_LABEL');
+    expect(model).not.toContain('storageAvailability');
   });
 
   it('서버 응답의 tasksWritable·google.tasks 상태를 읽는다', () => {

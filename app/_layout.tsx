@@ -1,10 +1,10 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useGlobalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { createAppQueryClient } from '../src/api/queryClient';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
@@ -13,6 +13,9 @@ import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 import { getEnvironmentConfig } from '../src/config/environment';
 import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { AppUpdateHost } from '../src/features/app-update';
+import { HomeWidgetSyncLifecycle } from '../src/features/home-widgets/useHomeWidgetSync';
+import { consumePendingWidgetHref, stashPendingWidgetHref, widgetReturnHref } from '../src/features/home-widgets/engine/widgetDeepLink';
+import { beginStashedWidgetOpen, observeAppPath } from '../src/features/home-widgets/widgetReturn';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
 
 void SplashScreen.preventAutoHideAsync();
@@ -30,7 +33,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
+  const searchParams = useGlobalSearchParams();
+  // 이동 판단(effect 의존성)은 그대로 두고, 위젯 복귀 href 계산에만 최신 경로를 쓴다.
+  const widgetHrefRef = useRef<string | null>(null);
   usePushNotificationListeners();
+
+  // 아래 이동 effect 보다 먼저 선언해 같은 커밋에서 최신 값을 쓴다.
+  useEffect(() => {
+    widgetHrefRef.current = widgetReturnHref(pathname, searchParams);
+    observeAppPath(pathname, searchParams);
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     if (status === 'booting') {
@@ -41,10 +54,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       getEnvironmentConfig().isDevApp && segments[0] === 'design-system';
 
     if (status === 'anonymous' && !inAuthGroup && !isDevDesignSystem) {
+      // 위젯에서 연 화면이면 로그인 후 그 화면으로 한 번 돌아간다.
+      stashPendingWidgetHref(widgetHrefRef.current);
       router.replace('/(auth)/login');
       return;
     } else if (status === 'authenticated' && inAuthGroup) {
+      const widgetHref = consumePendingWidgetHref();
+      if (widgetHref) beginStashedWidgetOpen();
       router.replace('/(app)');
+      if (widgetHref) router.push(widgetHref as Parameters<typeof router.push>[0]);
       return;
     }
     const timer = setTimeout(() => {
@@ -70,6 +88,7 @@ export default function RootLayout() {
             <AuthProvider>
               <AppErrorBoundary>
                 <ThemedStatusBar />
+                <HomeWidgetSyncLifecycle />
                 <AuthGate>
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="(auth)" />
