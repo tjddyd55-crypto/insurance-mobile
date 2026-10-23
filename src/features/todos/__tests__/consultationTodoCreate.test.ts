@@ -42,7 +42,7 @@ describe('consultation todo create', () => {
       now: NOW,
     });
     const route = consultationTodoCreateRoute(prefill);
-    const seeded = seedTodoCreateForm(route.params.consultationId);
+    const seeded = seedTodoCreateForm(route.params.consultationId, undefined, NOW);
     const payload = buildTodoCreatePayload(seeded.draft, seeded.source);
 
     expect(route).toEqual({ pathname: '/todos/new', params: { consultationId: '9' } });
@@ -56,6 +56,7 @@ describe('consultation todo create', () => {
     expect(payload.sourceId).toBe('9');
     expect(payload.relatedEntityType).toBe('customer');
     expect(payload.relatedEntityId).toBe('42');
+    expect(seeded.draft.dueDate).toBe('2026-10-01');
   });
 
   it('keeps an empty due date unless the existing suggestion returns a calendar day', () => {
@@ -80,6 +81,11 @@ describe('consultation todo create', () => {
     expect(tomorrow.dueDate).toBe(formatDeviceLocalYmd(suggested));
     expect(tomorrow.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(tomorrow.dueDate).not.toContain('T');
+    consultationTodoCreateRoute(tomorrow);
+    const seeded = seedTodoCreateForm('3', undefined, NOW);
+    expect(seeded.draft.dueDate).toBe('2026-10-01');
+    expect(seeded.draft.dueDate).not.toBe(tomorrow.dueDate);
+    expect(seeded.draft.description).toBe('내일 연락');
   });
 
   it('does not turn a consultation instant into a due date with toISOString', () => {
@@ -99,6 +105,7 @@ describe('consultation todo create', () => {
     const manual = buildTodoCreatePayload({
       description: '직접 작성',
       dueDate: '',
+      dueTime: '',
       relatedCustomerId: '',
       relatedCustomerName: '',
     });
@@ -110,6 +117,14 @@ describe('consultation todo create', () => {
     expect(form).toContain('buildTodoCreatePayload');
     expect(form).toContain('seedTodoCreateForm');
     expect(form).toContain('updateTodo');
+    expect(form).toContain('ScheduleDateField');
+    expect(form).toContain('label="날짜"');
+    expect(form).toContain('withTime={false}');
+    expect(form).toContain('todoEditorDateTimePayload');
+    expect(form).not.toContain('dueTime: null');
+    expect(form).not.toContain('time={form.dueTime}');
+    expect(form).toContain('clearable');
+    expect(form).not.toContain('<DateField');
     expect(form).not.toContain('suggestTodoDueDate');
     expect(form).not.toContain('toISOString');
 

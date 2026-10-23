@@ -65,13 +65,13 @@ describe('native session menu policy', () => {
       '내정보',
     ]);
     expect(labels(menu)).toEqual([
-      '오늘의 TA', '할일', '메모', '알림',
+      '오늘의 TA', '할일', '일정 관리', '메모', '알림',
       '고객리스트', '고객 지도', '카드 수납', '고객소식지', '청구관리',
       '내 바인더', '시뮬레이션',
       '원수사소식지', '손해사정사 소식지',
       '신청서 작성', '신청서 작성내역', '렌트(사고대차)',
       '팀원리스트', '팀 게시판', '팀 자료',
-      '원수사 연락처', '계정관리', '설계사이트',
+      '계정관리', '설계사이트',
       '내 저장공간', '내정보관리', '쿠폰 적용', '문의요청',
     ]);
   });
@@ -100,7 +100,7 @@ describe('native session menu policy', () => {
       ...capabilities,
       isTeamOwner: true,
     });
-    expect(labels(ownerMenu).slice(16, 20)).toEqual([
+    expect(labels(ownerMenu).slice(17, 21)).toEqual([
       '팀원리스트',
       '팀 게시판',
       '팀 자료',
@@ -216,7 +216,7 @@ describe('native session menu policy', () => {
     expect(team?.nativePath).toBe('/team/members');
     expect(team?.badge).toBe('유료');
     expect(customers?.badge).toBe('유료');
-    expect(contacts?.badge).toBeUndefined();
+    expect(contacts).toBeUndefined();
     expect(insurerNews?.badge).toBe('GA 전용');
     expect(isPublicAccountGaOnlyPath('/team/files')).toBe(false);
     expect(isPublicAccountGaOnlyPath('/portal/newsletters')).toBe(true);

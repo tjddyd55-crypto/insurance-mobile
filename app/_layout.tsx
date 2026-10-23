@@ -1,10 +1,10 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useGlobalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { createAppQueryClient } from '../src/api/queryClient';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
@@ -13,6 +13,9 @@ import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 import { getEnvironmentConfig } from '../src/config/environment';
 import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { AppUpdateHost } from '../src/features/app-update';
+import { HomeWidgetSyncLifecycle } from '../src/features/home-widgets/useHomeWidgetSync';
+import { consumePendingWidgetHref, stashPendingWidgetHref, widgetReturnHref } from '../src/features/home-widgets/engine/widgetDeepLink';
+import { beginStashedWidgetOpen, observeAppPath } from '../src/features/home-widgets/widgetReturn';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
 
 void SplashScreen.preventAutoHideAsync();
@@ -30,7 +33,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
+  const searchParams = useGlobalSearchParams();
+  const widgetHrefRef = useRef<string | null>(null);
   usePushNotificationListeners();
+
+  useEffect(() => {
+    widgetHrefRef.current = widgetReturnHref(pathname, searchParams);
+    observeAppPath(pathname, searchParams);
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     if (status === 'booting') {
@@ -41,10 +52,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       getEnvironmentConfig().isDevApp && segments[0] === 'design-system';
 
     if (status === 'anonymous' && !inAuthGroup && !isDevDesignSystem) {
+      stashPendingWidgetHref(widgetHrefRef.current);
       router.replace('/(auth)/login');
       return;
     } else if (status === 'authenticated' && inAuthGroup) {
+      const widgetHref = consumePendingWidgetHref();
+      if (widgetHref) beginStashedWidgetOpen();
       router.replace('/(app)');
+      if (widgetHref) router.push(widgetHref as Parameters<typeof router.push>[0]);
       return;
     }
     const timer = setTimeout(() => {
@@ -70,6 +85,7 @@ export default function RootLayout() {
             <AuthProvider>
               <AppErrorBoundary>
                 <ThemedStatusBar />
+                <HomeWidgetSyncLifecycle />
                 <AuthGate>
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="(auth)" />

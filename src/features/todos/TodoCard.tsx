@@ -13,7 +13,6 @@ import {
 import { todoDisplayContent } from './todoModel';
 import { todoEditPath } from './todoNavigation';
 import {
-  formatTodoCreatedDate,
   formatTodoDueLine,
   todoRelatedDisplay,
   todoSourceLine,
@@ -84,9 +83,6 @@ export function TodoCard({
                 연결: {related.label}
               </AppText>
             )}
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-              작성일 {formatTodoCreatedDate(todo.createdAt)}
-            </AppText>
             <AppText variant="caption" color="textSecondary" numberOfLines={1}>
               {formatTodoDueLine(todo)}
             </AppText>

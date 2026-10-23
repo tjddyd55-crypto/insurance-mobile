@@ -17,6 +17,8 @@ type SearchControlRowProps = {
   accessibilityLabel?: string;
   trailing?: ReactNode;
   containerStyle?: ViewStyle;
+  /** false = 입력 즉시 검색 화면 (검색 버튼 숨김). 기본 true. */
+  showSearchButton?: boolean;
 };
 
 /**
@@ -30,6 +32,7 @@ export function SearchControlRow({
   accessibilityLabel,
   trailing,
   containerStyle,
+  showSearchButton = true,
 }: SearchControlRowProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -46,13 +49,15 @@ export function SearchControlRow({
         autoCorrect={false}
         containerStyle={styles.field}
       />
-      <Button
-        label="검색"
-        size="md"
-        variant="secondary"
-        onPress={onSubmit}
-        style={styles.searchButton}
-      />
+      {showSearchButton ? (
+        <Button
+          label="검색"
+          size="md"
+          variant="secondary"
+          onPress={onSubmit}
+          style={styles.searchButton}
+        />
+      ) : null}
       {trailing}
     </Inline>
   );

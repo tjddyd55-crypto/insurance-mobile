@@ -31,6 +31,7 @@ import { formatProfilePhone, validateProfilePhone } from './profileModel';
 import { formatProfileOrganization, formatProfileRole } from './profilePresentation';
 import { profileQueryKeys } from './queryKeys';
 import { AccountDeletionSection } from './AccountDeletionSection';
+import { GOOGLE_INTEGRATION_COPY, GoogleIntegrationSection } from './GoogleIntegrationSection';
 
 export function ProfileScreen() {
   const { token, user, updateUser, logout } = useAuth();
@@ -211,6 +212,9 @@ export function ProfileScreen() {
               />
             </Stack>
           </Card>
+
+          <SectionTitle title={GOOGLE_INTEGRATION_COPY.title} description={GOOGLE_INTEGRATION_COPY.description} />
+          <GoogleIntegrationSection />
 
           <SectionTitle title="알림" description="앱 Push와 알림센터 표시 정책을 관리합니다." />
           <Card variant="outlined">

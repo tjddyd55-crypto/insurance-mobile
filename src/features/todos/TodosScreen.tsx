@@ -20,6 +20,7 @@ import {
 } from '../../design-system';
 import { buildTodoListParams, todoSourceLabel } from './todoModel';
 import { todoListEmptyCopy } from './todoPresentation';
+import { refreshScheduleSurfaces, markScheduleTodoStatus } from '../home-widgets/refreshScheduleSurfaces';
 import { completeTodo, listTodos, reopenTodo } from './todosApi';
 import { TodoCard } from './TodoCard';
 import { todoQueryKeys } from './queryKeys';
@@ -57,7 +58,7 @@ const SOURCE_FILTERS: (TodoSourceType | 'all')[] = [
 ];
 
 export function TodosScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
@@ -72,9 +73,12 @@ export function TodosScreen() {
     enabled: Boolean(token),
   });
   const stateMutation = useMutation({
-    mutationFn: (todo: TodoRecord) =>
-      todo.status === 'completed' ? reopenTodo(token, todo.id) : completeTodo(token, todo.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: todoQueryKeys.all }),
+    mutationFn: async (todo: TodoRecord) => {
+      if (todo.status === 'completed') await reopenTodo(token, todo.id);
+      else await completeTodo(token, todo.id);
+      markScheduleTodoStatus(queryClient, todo.id, todo.status === 'completed' ? 'open' : 'completed');
+      await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
+    },
   });
   const emptyCopy = todoListEmptyCopy(quick !== 'open' || related !== 'any' || source !== 'all');
 
