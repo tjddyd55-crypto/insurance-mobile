@@ -76,51 +76,34 @@ export function todoReturnSource(from: unknown): TodoReturnSource {
   return value === TODO_RETURN_SOURCE_SCHEDULE ? TODO_RETURN_SOURCE_SCHEDULE : 'todos';
 }
 
-type DrawerHistoryState = {
-  routes?: { key?: string; name?: string }[];
-  history?: { type?: string; key?: string }[];
+type ScheduleReturnRouter = TodoListRouter & {
+  push: (href: { pathname: '/schedule'; params: { date: string } }) => void;
 };
 
-type DrawerNavigation = {
-  getState: () => DrawerHistoryState | undefined;
-  goBack: () => void;
-};
+/** 일정 화면이 할 일을 열기 직전에만 켠다. deep link·알림은 켜지 않는다. Drawer history 를 쓰지 않는다. */
+let armedScheduleReturnDate: string | null = null;
 
-/** 일정 화면 Drawer 라우트 이름(`app/(app)/schedule/index.tsx`). */
-function isScheduleDrawerRoute(name: string | undefined): boolean {
-  return name === 'schedule' || name === 'schedule/index';
+export function armScheduleTodoReturn(date: string): void {
+  armedScheduleReturnDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
 
-/**
- * Drawer(backBehavior='history') 기록에서 바로 이전 화면이 일정인지.
- * 일정 화면은 Drawer 에 마운트된 채 남아 있어 goBack 이면 보던 월·선택 날짜가 그대로다.
- */
-export function previousDrawerRouteIsSchedule(state: DrawerHistoryState | undefined): boolean {
-  const history = (state?.history ?? []).filter((entry) => entry.type === undefined || entry.type === 'route');
-  if (history.length < 2) return false;
-  const previousKey = history[history.length - 2]?.key;
-  const previous = state?.routes?.find((route) => route.key === previousKey);
-  return isScheduleDrawerRoute(previous?.name);
+export function resetScheduleTodoReturnForTests(): void {
+  armedScheduleReturnDate = null;
 }
-
-type TodoFormNavigation = TodoStackNavigation & {
-  getParent: () => DrawerNavigation | undefined;
-};
 
 /**
  * 할 일 추가/수정 화면을 떠날 때(저장·삭제·취소·Android back) 한 곳.
- *  - 일정에서 열었고 Drawer 기록의 직전이 일정이면: 할 일 스택을 목록으로 접고 Drawer history 로 일정에 돌아간다.
- *  - 그 밖(할 일 목록, 딥링크·알림, 기록 없음): 기존 returnToTodoList.
+ *  - 일정 화면이 arm 한 뒤에 from=schedule 이면: 할 일 스택을 목록으로 접고 그 날짜로 일정에 push.
+ *  - 그 밖(할 일 목록, 딥링크·알림, arm 없음): 기존 returnToTodoList.
+ * 위젯(src=widget) 복귀는 여기가 아니라 moveTaskToBack 이다.
  */
-export function leaveTodoForm(navigation: TodoFormNavigation, router: TodoListRouter, source: TodoReturnSource): void {
-  if (source === TODO_RETURN_SOURCE_SCHEDULE) {
-    const drawer = navigation.getParent();
-    if (drawer && previousDrawerRouteIsSchedule(drawer.getState())) {
-      // 다음에 할 일 메뉴를 열면 이 수정 화면이 아니라 목록이 보이게 스택을 접는다.
-      if (shouldPopTodoStackToList(navigation.getState())) navigation.dispatch(POP_TODO_STACK_TO_LIST);
-      drawer.goBack();
-      return;
-    }
+export function leaveTodoForm(navigation: TodoStackNavigation, router: ScheduleReturnRouter, source: TodoReturnSource): void {
+  const date = source === TODO_RETURN_SOURCE_SCHEDULE ? armedScheduleReturnDate : null;
+  armedScheduleReturnDate = null;
+  if (date) {
+    if (shouldPopTodoStackToList(navigation.getState())) navigation.dispatch(POP_TODO_STACK_TO_LIST);
+    router.push({ pathname: '/schedule', params: { date } });
+    return;
   }
   returnToTodoList(navigation, router);
 }

@@ -7,7 +7,7 @@ import { Platform, Pressable, Text } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { router, Tabs, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 
-import { leaveTodoForm, todoReturnSource } from '../../todos/todoNavigation';
+import { armScheduleTodoReturn, leaveTodoForm, todoReturnSource } from '../../todos/todoNavigation';
 import {
   applyTodoWidgetExit,
   isEditOnlyTodoStack,
@@ -416,6 +416,7 @@ describe('router: widget vs in-app leave', () => {
   it.each(['CANCEL', 'BACK'])('in-app from schedule: %s returns to schedule and does not move the task back', async (action) => {
     renderRouter(routes(), { initialUrl: '/' });
     go('/schedule');
+    armScheduleTodoReturn('2026-10-21');
     go('/todos/7/edit?from=schedule');
     await press(action);
     expect(pathname()).toBe('/schedule');
@@ -467,7 +468,7 @@ describe('router: widget vs in-app leave', () => {
     expect(moveNative).toHaveBeenCalledTimes(1);
   });
 
-  it('widget warm start: cancel restores the previous screen', async () => {
+  it('widget warm start: cancel moves home without using drawer history', async () => {
     renderRouter(routes(), { initialUrl: '/' });
     go('/schedule');
     observeAppPath('/schedule', {});
@@ -475,15 +476,15 @@ describe('router: widget vs in-app leave', () => {
     await press('CANCEL');
     expect(moveNative).toHaveBeenCalledTimes(1);
     expect(refreshWidgets).not.toHaveBeenCalled();
-    expect(pathname()).toBe('/schedule');
-    go('/todos');
-    expect(screen.getByText('TODO_LIST')).toBeTruthy();
+    expect(pathname()).toBe('/');
+    expect(screen.getByText('HOME')).toBeTruthy();
   });
 
   it('old binary falls back to in-app navigation', async () => {
     moveNative.mockImplementation(async () => false);
     renderRouter(routes(), { initialUrl: '/' });
     go('/schedule');
+    armScheduleTodoReturn('2026-10-21');
     go('/todos/7/edit?src=widget&wt=todo&_w=old&from=schedule');
     await press('CANCEL');
     expect(pathname()).toBe('/schedule');

@@ -87,6 +87,7 @@ import {
   type WidgetDrawerNavigation,
 } from '../home-widgets/widgetReturn';
 import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
+import { armScheduleTodoReturn } from '../todos/todoNavigation';
 import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleTask, ScheduleTaskForm } from './types';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -285,6 +286,7 @@ export function ScheduleScreen() {
     if (!route) return;
     endScheduleWidgetFlow();
     setDetail(null);
+    if (route.pathname === '/todos/[todoId]/edit') armScheduleTodoReturn(selected);
     router.push(route);
   };
   const openScheduleCreate = () => {

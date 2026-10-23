@@ -1,14 +1,14 @@
 /**
- * t402u — 일정 → ONE FC 할 일 열기 → 저장/취소 → 일정(보던 날짜 유지).
- * 실제 Drawer backBehavior, 실제 할 일 Stack _layout, 실제 leaveTodoForm 을 쓰고 화면만 stub.
- * TodoFormScreen 의 저장·취소·삭제·Android back 은 모두 leaveTodoForm 하나를 부른다(아래 정적 가드).
+ * 일정 → ONE FC 할 일 열기 → 저장/취소 → 일정.
+ * Drawer 는 main 과 같이 backBehavior 를 지정하지 않는다(기본 firstRoute).
+ * 복귀는 armScheduleTodoReturn + from=schedule + dismissTo 이고 Drawer history 가 아니다.
  */
 import { useState } from 'react';
 import { Pressable, Text } from 'react-native';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { router, Tabs, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 
-import { leaveTodoForm, todoReturnSource } from '../../features/todos/todoNavigation';
+import { armScheduleTodoReturn, leaveTodoForm, resetScheduleTodoReturnForTests, todoReturnSource } from '../../features/todos/todoNavigation';
 import { todoRouteOfTask } from '../../features/schedule/scheduleModel';
 
 declare const __dirname: string;
@@ -19,15 +19,19 @@ const appDir = path.join(repo, 'app', '(app)');
 
 function DrawerLayout() {
   const source = fs.readFileSync(path.join(appDir, '_layout.tsx'), 'utf8');
-  const match = source.match(/backBehavior="([a-zA-Z]+)"/);
-  return <Tabs backBehavior={(match?.[1] ?? 'firstRoute') as 'history'} screenOptions={{ headerShown: false }} />;
+  if (/backBehavior=/.test(source)) {
+    throw new Error('drawer backBehavior must stay at the main default');
+  }
+  return <Tabs backBehavior="firstRoute" screenOptions={{ headerShown: false }} />;
 }
 
 function ScheduleStub() {
+  const params = useLocalSearchParams<{ date?: string }>();
   const [selected, setSelected] = useState('2026-10-01');
+  const shown = (Array.isArray(params.date) ? params.date.at(-1) : params.date) || selected;
   return (
     <>
-      <Text>SCHEDULE {selected}</Text>
+      <Text>SCHEDULE {shown}</Text>
       <Pressable onPress={() => setSelected('2026-10-20')}><Text>PICK_20</Text></Pressable>
     </>
   );
@@ -67,9 +71,16 @@ const go = (href: unknown) => act(() => router.push(href as never));
 const back = () => act(() => router.back());
 const press = (label: string) => act(() => fireEvent.press(screen.getByText(label)));
 const pathname = () => (screen as unknown as { getPathname: () => string }).getPathname();
-const openFromSchedule = () => go(todoRouteOfTask({ source: 'onefc_todo', sourceId: '7' }));
+const openFromSchedule = () => {
+  armScheduleTodoReturn('2026-10-20');
+  go(todoRouteOfTask({ source: 'onefc_todo', sourceId: '7' }));
+};
 
 describe('schedule -> ONE FC todo edit -> leave', () => {
+  beforeEach(() => {
+    resetScheduleTodoReturnForTests();
+  });
+
   it.each(['CANCEL', 'SAVE'])('%s returns to schedule with the selected date kept', (action) => {
     renderRouter(routes(), { initialUrl: '/' });
     go('/schedule');

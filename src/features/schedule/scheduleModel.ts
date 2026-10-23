@@ -326,7 +326,7 @@ export function customerRouteOfTask(task: Pick<ScheduleTask, 'source' | 'custome
   return { pathname: '/customers/[customerId]/consultations', params: { customerId: String(task.customerId) } };
 }
 
-/** 일정에서 연 할 일은 저장·취소 후 일정으로 돌아온다(from=schedule, todoNavigation.leaveTodoForm). */
+/** 일정에서 연 할 일은 from=schedule. 날짜 복귀는 ScheduleScreen 이 armScheduleTodoReturn 으로 켠다. */
 export function todoRouteOfTask(task: Pick<ScheduleTask, 'source' | 'sourceId'>): ScheduleNativeRoute | null {
   if (task.source !== 'onefc_todo' || !/^\d+$/.test(task.sourceId)) return null;
   return { pathname: '/todos/[todoId]/edit', params: { todoId: task.sourceId, from: TODO_RETURN_SOURCE_SCHEDULE } };

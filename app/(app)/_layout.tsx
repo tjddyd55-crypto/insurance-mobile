@@ -15,8 +15,6 @@ export default function AppLayout() {
           <Drawer
             // expo-router vs @react-navigation/drawer prop type mismatch
             drawerContent={AppDrawerContent as never}
-            // 일정에서 연 할 일을 닫으면 직전 화면으로 돌아간다. firstRoute 는 메뉴 이동을 홈으로 보낸다.
-            backBehavior="history"
             screenOptions={{
               headerShown: false,
               drawerType: 'front',
