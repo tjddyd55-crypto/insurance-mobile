@@ -3,6 +3,8 @@ import { createGoogleTaskFromSchedule, fetchWriteTargets } from '../scheduleApi'
 import {
   emptyEventForm,
   emptyTaskForm,
+  toggleScheduleTime,
+  seoulYmd,
   googleTasksNotice,
   normalizeScheduleEvents,
   normalizeWriteTargets,
@@ -55,6 +57,47 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
     expect(screen).not.toContain('SCHEDULE_STORAGE_LABEL');
     expect(screen).not.toContain('createGoogleTaskFromSchedule');
     expect(screen).not.toContain('createScheduleEvent(');
+    const eventForm = screen.slice(screen.indexOf('title={scheduleFormTitle(formState)}'), screen.indexOf('<ConfirmDialog'));
+    const taskForm = screen.slice(screen.indexOf('title="할 일 추가"'), screen.indexOf('title={scheduleFormTitle(formState)}'));
+    expect(eventForm).toContain('label="시작일"');
+    expect(eventForm).toContain('label="종료일"');
+    expect(eventForm).toContain('withTime={false}');
+    expect(eventForm).toContain('label="시간 지정"');
+    expect(eventForm).toContain('toggleScheduleTime');
+    expect(eventForm).toContain('label="시작 시간"');
+    expect(eventForm).toContain('label="종료 시간"');
+    expect(eventForm).not.toContain('label="날짜"');
+    expect(taskForm).toContain('label="날짜"');
+    expect(taskForm).toContain('withTime={false}');
+    expect(taskForm).not.toContain('time={taskState.form.dueTime}');
+    expect(taskForm).not.toContain('시작일');
+    expect(taskForm).not.toContain('시간 지정');
+    expect(screen).toContain('label="날짜"');
+    expect(screen).toContain('emptyTaskForm(selected)');
+    expect(screen).toContain('emptyEventForm(selected)');
+    expect(screen).toContain('emptyEventForm(linkTarget.date)');
+    expect(screen).not.toContain('emptyTaskForm(seoulYmd())');
+    expect(screen).not.toContain('emptyEventForm(seoulYmd())');
+    expect(screen).toContain('ScheduleTimeField');
+    expect(screen).not.toContain('onChangeText={(startTime)');
+    expect(screen).not.toContain('onChangeText={(endTime)');
+    expect(screen).not.toContain('onChangeText={(dueTime)');
+    const dateField = read('ScheduleDateField.tsx');
+    expect(dateField).toContain('시간 설정');
+    expect(dateField).not.toContain('반복');
+    expect(dateField).toContain("alignSelf: 'center'");
+    expect(dateField).toContain('width: 320');
+    expect(screen).not.toContain('반복');
+    expect(screen).toContain('widgetArm.current.start');
+    expect(screen).toContain('<WidgetQuickAddSheet');
+    expect(screen).toContain('<TextField label="제목"');
+    const todoForm = fs.readFileSync(path.join(__dirname, '..', '..', 'todos', 'TodoFormScreen.tsx'), 'utf8');
+    expect(todoForm).toContain('!consultationId && isWidgetOrigin');
+    expect(todoForm).toContain('<WidgetQuickAddSheet');
+    expect(todoForm).toContain('label="내용"');
+    expect(screen).not.toContain('onChangeText={(date)');
+    expect(screen).not.toContain('onChangeText={(endDate)');
+    expect(screen).not.toContain('onChangeText={(dueDate)');
     expect(model).not.toContain('SCHEDULE_STORAGE_LABEL');
     expect(model).not.toContain('storageAvailability');
   });
@@ -75,11 +118,24 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
 });
 
 describe('일정 관리 추가 — 할 일 폼', () => {
-  it('선택한 날로 예정일을 채우고, 비우면 날짜 없음으로 저장', () => {
-    const form = { ...emptyTaskForm('2026-10-21'), title: '  서류 ' };
-    expect(form.dueDate).toBe('2026-10-21');
-    expect(taskFormToTodoPayload(form)).toEqual({ title: '서류', description: null, dueDate: '2026-10-21', dueTime: null });
+  it('추가 예정일은 KST 오늘 문자열이고, 비우면 날짜 없음으로 저장', () => {
+    expect(seoulYmd(new Date('2026-10-01T14:59:00.000Z'))).toBe('2026-10-01');
+    expect(seoulYmd(new Date('2026-10-01T15:00:00.000Z'))).toBe('2026-10-02');
+    const today = seoulYmd(new Date('2026-10-01T15:00:00.000Z'));
+    expect(emptyEventForm(today)).toMatchObject({ date: '2026-10-02', endDate: '2026-10-02', allDay: true });
+    const timed = toggleScheduleTime(emptyEventForm(today));
+    expect(timed).toMatchObject({ allDay: false, startTime: '09:00', endTime: '10:00' });
+    const kept = toggleScheduleTime({ allDay: false, startTime: '14:00', endTime: '15:30' });
+    expect(kept).toEqual({ allDay: true, startTime: '14:00', endTime: '15:30' });
+    expect(toggleScheduleTime(kept)).toMatchObject({ allDay: false, startTime: '14:00', endTime: '15:30' });
+    expect(toggleScheduleTime({ allDay: true, startTime: 'bad', endTime: '' })).toMatchObject({ allDay: false, startTime: '09:00', endTime: '10:00' });
+    expect(toggleScheduleTime({ allDay: true, startTime: '18:15', endTime: '09:00' })).toMatchObject({ startTime: '18:15', endTime: '19:15' });
+    expect(toggleScheduleTime({ allDay: true, startTime: '23:40', endTime: '23:40' }).endTime).toBe('23:59');
+    const form = { ...emptyTaskForm(today), title: '  서류 ' };
+    expect(form.dueDate).toBe('2026-10-02');
+    expect(taskFormToTodoPayload(form)).toEqual({ title: '서류', description: null, dueDate: '2026-10-02', dueTime: null });
     expect(taskFormToTodoPayload({ ...form, dueDate: '', dueTime: '09:00' })).toEqual({ title: '서류', description: null, dueDate: null, dueTime: null });
+    expect(taskFormToTodoPayload({ ...form, dueTime: '09:30' })).toEqual({ title: '서류', description: null, dueDate: '2026-10-02', dueTime: null });
     expect(taskFormToGoogleInput({ ...form, taskListId: 'L1', dueDate: '' }, 'r'.repeat(32))).toEqual({ taskListId: 'L1', title: '서류', notes: '', dueDate: null, requestId: 'r'.repeat(32) });
   });
 
@@ -89,8 +145,7 @@ describe('일정 관리 추가 — 할 일 폼', () => {
     expect(validateTaskForm({ ...base, taskListId: 'L1' }, 'google_task')).toBeNull();
     expect(validateTaskForm({ ...base, title: ' ' }, 'onefc_todo')).toContain('제목');
     expect(validateTaskForm({ ...base, dueDate: '10/21' }, 'onefc_todo')).toContain('YYYY-MM-DD');
-    expect(validateTaskForm({ ...base, dueTime: '25:00' }, 'onefc_todo')).toContain('HH:mm');
-    expect(validateTaskForm({ ...base, dueDate: '', dueTime: '09:00' }, 'onefc_todo')).toContain('예정일');
+    expect(validateTaskForm({ ...base, dueDate: '', dueTime: '09:00' }, 'onefc_todo')).toBeNull();
     expect(validateTaskForm({ ...base, dueTime: '09:30' }, 'onefc_todo')).toBeNull();
   });
 

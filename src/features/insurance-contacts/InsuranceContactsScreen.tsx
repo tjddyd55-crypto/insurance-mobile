@@ -37,9 +37,7 @@ const TABS: { id: InsuranceCategory; label: string }[] = [
 
 export function InsuranceContactsScreen() {
   const { token, user } = useAuth();
-  if (!isGaMemberUser(user)) {
-    return <LegacyWebScreen title="원수사 연락처" legacyWebPath="/insurance/contacts" />;
-  }
+  const isMember = isGaMemberUser(user);
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [category, setCategory] = useState<InsuranceCategory>('LIFE');
@@ -48,7 +46,7 @@ export function InsuranceContactsScreen() {
   const query = useQuery({
     queryKey: ['insurance-company-directory'],
     queryFn: () => getInsuranceCompanyDirectory(token),
-    enabled: Boolean(token),
+    enabled: isMember && Boolean(token),
     staleTime: 120_000,
   });
   const { isLoading, isError, error, refetch, isRefetching } = query;
@@ -130,6 +128,10 @@ export function InsuranceContactsScreen() {
       </Card>
     );
   }, [isError, isLoading, search]);
+
+  if (!isMember) {
+    return <LegacyWebScreen title="원수사 연락처" legacyWebPath="/insurance/contacts" />;
+  }
 
   return (
     <View style={styles.root}>

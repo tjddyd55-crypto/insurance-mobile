@@ -26,7 +26,7 @@ function weekdayLabel(ymd: string): string | null {
 export function formatTodoDueLine(todo: Pick<TodoRecord, 'dueDate' | 'dueTime' | 'status'>): string {
   const due = formatTodoDate(todo.dueDate);
   const time = todo.dueTime?.trim();
-  return `마감 ${due}${time ? ` ${time}` : ''} · ${todoStatusLabel(todo.status)}`;
+  return `날짜 ${due}${time ? ` ${time}` : ''} · ${todoStatusLabel(todo.status)}`;
 }
 
 export function todoRelatedDisplay(todo: Pick<TodoRecord, 'relatedEntityType' | 'relatedEntityId' | 'customerName'>): {

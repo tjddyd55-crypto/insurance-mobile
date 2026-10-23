@@ -1,9 +1,12 @@
 import {
   USER_APP_MENU,
+  USER_MENU_FEATURE_FLAGS,
   filterMenuForRole,
   findMenuLinkByNativePath,
+  isContactsNavEntryHidden,
   listPrimaryMenuLabels,
   listSecondaryMenuLabels,
+  withoutHiddenContactsMenu,
 } from '../../navigation/menuConfig';
 
 describe('menuConfig', () => {
@@ -38,17 +41,27 @@ describe('menuConfig', () => {
     expect(filterMenuForRole(USER_APP_MENU, 'GA_ADMIN')).toEqual([]);
   });
 
-  it('keeps device contacts separate from the customer list and insurer contacts', () => {
-    const deviceContacts = findMenuLinkByNativePath('/device-contacts');
+  it('hides phone contacts and insurer contacts from navigation, and keeps the insurer entry so it can return', () => {
+    expect(USER_MENU_FEATURE_FLAGS.deviceContacts).toBe(false);
+    expect(findMenuLinkByNativePath('/device-contacts')).toBeUndefined();
     const customers = USER_APP_MENU.find((section) => section.id === 'customers');
-    expect(deviceContacts?.label).toBe('연락처');
-    expect(deviceContacts?.mode).toBe('NATIVE');
-    expect(deviceContacts?.badge).toBeUndefined();
     expect(customers?.children.map((child) => child.id).slice(0, 2)).toEqual([
       'customer-list',
-      'device-contacts',
+      'customer-map',
     ]);
-    expect(findMenuLinkByNativePath('/insurance/contacts')?.label).toBe('원수사 연락처');
+    expect(customers?.children.some((child) => child.label === '연락처')).toBe(false);
+    expect(findMenuLinkByNativePath('/insurance/contacts')?.id).toBe('insurance-contacts');
+    expect(isContactsNavEntryHidden('/insurance/contacts')).toBe(true);
+    expect(isContactsNavEntryHidden('/insurance/contacts/1')).toBe(true);
+    expect(isContactsNavEntryHidden('/contacts')).toBe(true);
+    expect(isContactsNavEntryHidden('/insurance/company-registry')).toBe(true);
+    expect(isContactsNavEntryHidden('/contacts/manage')).toBe(true);
+    expect(isContactsNavEntryHidden('/customers')).toBe(false);
+    const visible = withoutHiddenContactsMenu(USER_APP_MENU);
+    const visibleIds = visible.flatMap((section) => section.children.map((child) => child.id));
+    expect(visibleIds).not.toContain('insurance-contacts');
+    expect(visibleIds).not.toContain('device-contacts');
+    expect(visible.flatMap((section) => section.children.map((child) => child.label))).not.toContain('원수사 연락처');
   });
 
   it('maps native paths and keeps legacyWebPath', () => {

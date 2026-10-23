@@ -11,7 +11,7 @@
     "start:device": "expo start --dev-client --port 8084",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
-    "test": "TZ=Asia/Seoul jest",
+    "test": "TZ=Asia/Seoul jest --forceExit",
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:preflight:release": "node scripts/release-preflight.mjs --release",
     "release:preflight:full": "node scripts/release-preflight.mjs --full",

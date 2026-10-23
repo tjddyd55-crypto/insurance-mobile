@@ -13,7 +13,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
-import { DateField } from '../../components/DateField';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -31,7 +30,10 @@ import { customerMatchesSearch, formatCustomerPhone } from '../customers/custome
 import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
-import { scheduleQueryKeys } from '../schedule/queryKeys';
+import { ScheduleDateField } from '../schedule/ScheduleDateField';
+import { WidgetQuickAddSheet } from '../schedule/WidgetQuickAddSheet';
+import { widgetQuickTodoPayload, type WidgetQuickDraft } from '../schedule/widgetQuickAddModel';
+import { refreshScheduleSurfaces } from '../home-widgets/refreshScheduleSurfaces';
 import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
 import { leaveTodoOpenedFromWidget, type TodoWidgetNavigation } from './todoWidgetReturn';
@@ -42,6 +44,7 @@ import {
   EMPTY_TODO_FORM_DRAFT,
   isTodoEditDraftChanged,
   resolveTodoFormSession,
+  todoEditorDateTimePayload,
   todoFormDraftFromRecord,
   type TodoFormDraft,
 } from './todoFormSession';
@@ -95,9 +98,8 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
   }, [leaveInApp, navigation, params, router, token, user]);
   /** 할 일이 바뀌면 일정 화면의 ONE FC 할 일도 다시 읽는다(일반 재조회, refresh=1 아님 → 429 정책 영향 없음). */
   const invalidateTodoViews = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
-    await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
-  }, [queryClient]);
+    await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
+  }, [queryClient, token, user]);
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
@@ -160,19 +162,21 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      const dueDate = form.dueDate.trim();
       if (mode === 'create') {
-        return createTodo(token, buildTodoCreatePayload(form, createSource));
+        return createTodo(token, buildTodoCreatePayload({ ...form, dueDate, dueTime: '' }, createSource));
       }
       if (!isTodoEditDraftChanged(JSON.parse(initialSnapshot) as TodoFormDraft, form)) {
         // 바뀐 값 없음: 수정 요청을 보내지 않아 수정 시각·목록 순서를 그대로 둔다.
         return Promise.resolve(null);
       }
       const content = form.description.trim();
+      const when = todoEditorDateTimePayload(form, 'edit');
       return updateTodo(token, todoId ?? '', {
         title: firstLineTodoTitle(content),
         description: content,
-        dueDate: form.dueDate.trim() || null,
-        dueTime: null,
+        dueDate: when.dueDate,
+        dueTime: when.dueTime,
         priority: 'normal',
         relatedEntityType: form.relatedCustomerId ? 'customer' : null,
         relatedEntityId: form.relatedCustomerId || null,
@@ -216,12 +220,16 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
       return;
     }
     if (!isValidOptionalYmd(form.dueDate.trim())) {
-      setFormError('마감일은 YYYY-MM-DD 형식으로 입력해 주세요.');
+      setFormError('날짜는 YYYY-MM-DD 형식으로 입력해 주세요.');
       return;
     }
     setFormError('');
     saveMutation.mutate();
   };
+
+  if (mode === 'create' && !consultationId && isWidgetOrigin(params)) {
+    return <TodoWidgetQuickCreate token={token} date={form.dueDate} onLeave={leave} />;
+  }
 
   if (mode === 'edit' && todosQuery.isLoading) {
     return <LoadingState message="할 일을 불러오는 중…" />;
@@ -269,10 +277,15 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
               }}
               placeholder="할 일을 입력하세요."
             />
-            <DateField
-              label="마감일"
+            <ScheduleDateField
+              label="날짜"
+              withTime={false}
               value={form.dueDate}
-              onChange={(dueDate) => setForm((previous) => ({ ...previous, dueDate }))}
+              clearable
+              placeholder="날짜 없음"
+              onComplete={({ date }) => setForm((previous) => (
+                mode === 'edit' ? { ...previous, dueDate: date } : { ...previous, dueDate: date, dueTime: '' }
+              ))}
             />
           </Stack>
         </Card>
@@ -379,6 +392,55 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
         onConfirm={() => deleteMutation.mutate()}
       />
     </KeyboardAvoidingView>
+  );
+}
+
+function TodoWidgetQuickCreate({
+  token,
+  date,
+  onLeave,
+}: {
+  token: string | null;
+  date: string;
+  onLeave: (saved: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [customerLookup, setCustomerLookup] = useState(false);
+  const customersQuery = useQuery({
+    queryKey: customerQueryKeys.all,
+    queryFn: () => listCustomers(token),
+    enabled: Boolean(token) && customerLookup,
+    staleTime: 60_000,
+  });
+  const save = useMutation({
+    mutationFn: (draft: WidgetQuickDraft) => createTodo(token, widgetQuickTodoPayload(draft)),
+    onSuccess: async () => {
+      await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
+      onLeave(true);
+    },
+  });
+  const customers = (customersQuery.data?.customers ?? []).map((customer) => ({
+    id: String(customer.id),
+    name: customer.name,
+    phone: customer.phone,
+  }));
+  const message = save.error instanceof Error ? save.error.message : '할 일을 저장하지 못했습니다.';
+  return (
+    <View style={{ flex: 1 }}>
+      <WidgetQuickAddSheet
+        open
+        kind="todo"
+        date={date}
+        busy={save.isPending}
+        error={save.isError ? message : null}
+        customers={customers}
+        customersLoading={customersQuery.isLoading}
+        onNeedCustomers={() => setCustomerLookup(true)}
+        onClose={() => onLeave(false)}
+        onSubmit={(draft) => save.mutate(draft)}
+      />
+    </View>
   );
 }
 

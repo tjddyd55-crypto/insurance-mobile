@@ -30,6 +30,8 @@ import {
   updateOnefcSchedule,
   updateScheduleEvent,
 } from './scheduleApi';
+import { listCustomers } from '../customers/customersApi';
+import { customerQueryKeys } from '../customers/queryKeys';
 import { createTodo } from '../todos/todosApi';
 import { todoQueryKeys } from '../todos/queryKeys';
 import {
@@ -47,6 +49,10 @@ import {
   countItemsByDay,
   dayCountLabel,
   emptyEventForm,
+  scheduleEventSaveForm,
+  toggleScheduleTime,
+  withScheduleEndTime,
+  withScheduleStartTime,
   eventTimeLabel,
   eventToForm,
   eventsOnDay,
@@ -64,6 +70,11 @@ import {
   validateEventForm,
   type ScheduleNativeRoute,
 } from './scheduleModel';
+import { ScheduleDateField } from './ScheduleDateField';
+import { ScheduleTimeField } from './ScheduleTimeField';
+import { refreshWidgets } from '../home-widgets/engine/widgetRefreshCoordinator';
+import { WidgetQuickAddSheet, type QuickAddCustomer } from './WidgetQuickAddSheet';
+import { widgetQuickScheduleForm, type WidgetQuickDraft } from './widgetQuickAddModel';
 import { scheduleQueryKeys } from './queryKeys';
 import { scheduleLinkTarget } from './scheduleLinkParams';
 import {
@@ -128,8 +139,10 @@ export function ScheduleScreen() {
   const [deleting, setDeleting] = useState<ScheduleEvent | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [customerLookup, setCustomerLookup] = useState(false);
   const [taskState, setTaskState] = useState<TaskFormState | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [widgetQuick, setWidgetQuick] = useState<{ date: string; requestId: string } | null>(null);
   const range = monthRange(month);
   // 홈 화면 위젯 deep link(<scheme>://schedule?date&event&create). 같은 날짜를 다시 눌러도 _w 로 다시 적용된다.
   const linkParams = useLocalSearchParams<{ date?: string; event?: string; create?: string; _w?: string; src?: string | string[]; wt?: string | string[] }>();
@@ -139,7 +152,7 @@ export function ScheduleScreen() {
   const { armScheduleWidgetFlow, markScheduleWidgetSaved, endScheduleWidgetFlow } = useScheduleWidgetReturn({
     open: scheduleModalsOpen({
       detail: detail !== null || pendingLinkItem !== null,
-      form: formState !== null,
+      form: formState !== null || widgetQuick !== null,
       task: taskState !== null,
       deleting: deleting !== null,
     }),
@@ -167,7 +180,14 @@ export function ScheduleScreen() {
     if (linkTarget.create) {
       setTaskState(null);
       setFormError(null);
-      setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
+      if (widgetArm.current.start) {
+        setFormState(null);
+        setCustomerLookup(false);
+        setWidgetQuick({ date: linkTarget.date, requestId: newScheduleRequestId() });
+      } else {
+        setWidgetQuick(null);
+        setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
+      }
     }
     const arm = widgetArm.current;
     if (arm.start && arm.entryId) armScheduleWidgetFlow(arm.entryId);
@@ -178,6 +198,17 @@ export function ScheduleScreen() {
     queryFn: () => fetchScheduleEvents(token, range),
     enabled: Boolean(token),
   });
+  const customersQuery = useQuery({
+    queryKey: customerQueryKeys.all,
+    queryFn: () => listCustomers(token),
+    enabled: Boolean(token) && customerLookup,
+    staleTime: 60_000,
+  });
+  const quickCustomers: QuickAddCustomer[] = (customersQuery.data?.customers ?? []).map((customer) => ({
+    id: String(customer.id),
+    name: customer.name,
+    phone: customer.phone,
+  }));
   const data = query.data;
   useEffect(() => {
     if (!pendingLinkItem || !data) return;
@@ -198,10 +229,16 @@ export function ScheduleScreen() {
   const afterWrite = async () => {
     markScheduleWidgetSaved();
     setFormState(null);
+    setWidgetQuick(null);
+    setCustomerLookup(false);
     setTaskState(null);
     setDeleting(null);
     setDetail(null);
     await reloadAfterWrite();
+    await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+    if (token && user) {
+      await refreshWidgets({ token, user }, { reason: 'appMutation', widgetTypes: ['schedule', 'todo'], force: true });
+    }
   };
   const save = useMutation({
     mutationFn: (state: FormState) => saveSchedule(token, state),
@@ -254,19 +291,29 @@ export function ScheduleScreen() {
     setFormError(null);
     save.reset();
     setTaskState(null);
+    setWidgetQuick(null);
     setFormState({ mode: 'create', event: null, form: emptyEventForm(selected), requestId: newScheduleRequestId() });
+  };
+  const submitWidgetQuick = (draft: WidgetQuickDraft) => {
+    if (!widgetQuick) return;
+    const form = widgetQuickScheduleForm(draft);
+    const problem = validateEventForm(form, { calendarRequired: false });
+    setFormError(problem);
+    if (!problem) save.mutate({ mode: 'create', event: null, form, requestId: widgetQuick.requestId });
   };
   const openTodoCreate = () => {
     setTaskError(null);
     saveTask.reset();
     setFormState(null);
+    setWidgetQuick(null);
     setTaskState({ form: emptyTaskForm(selected) });
   };
   const submitTask = () => {
     if (!taskState) return;
-    const problem = validateTaskForm(taskState.form, 'onefc_todo');
+    const form = { ...taskState.form, dueTime: '' };
+    const problem = validateTaskForm(form, 'onefc_todo');
     setTaskError(problem);
-    if (!problem) saveTask.mutate(taskState);
+    if (!problem) saveTask.mutate({ form });
   };
   const patchTask = (patch: Partial<ScheduleTaskForm>) =>
     setTaskState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
@@ -277,10 +324,11 @@ export function ScheduleScreen() {
   };
   const submitForm = () => {
     if (!formState) return;
+    const form = scheduleEventSaveForm(formState.form, selected || seoulYmd());
     const calendarRequired = formState.mode === 'edit' && !isOnefcSchedule(formState.event ?? { origin: undefined });
-    const problem = validateEventForm(formState.form, { calendarRequired });
+    const problem = validateEventForm(form, { calendarRequired });
     setFormError(problem);
-    if (!problem) save.mutate(formState);
+    if (!problem) save.mutate({ ...formState, form });
   };
   const patchForm = (patch: Partial<ScheduleEventForm>) =>
     setFormState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
@@ -308,7 +356,7 @@ export function ScheduleScreen() {
 
   const dayCounts = countItemsByDay(data);
   const dayEvents = eventsOnDay(data.events, selected);
-  const dayTasks = tasksOnDay(data.tasks, selected);
+  const dayTasks = tasksOnDay(data.tasks, selected).filter((task) => task.status !== 'completed');
   // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
   const googleWarning = scheduleGoogleWarning(data.google);
   const deletePrompt = deleting ? scheduleDeletePrompt(deleting) : scheduleDeletePrompt({});
@@ -411,6 +459,19 @@ export function ScheduleScreen() {
         ))}
       </ScrollView>
 
+      <WidgetQuickAddSheet
+        open={widgetQuick !== null}
+        kind="schedule"
+        date={widgetQuick?.date ?? selected}
+        busy={save.isPending}
+        error={formError ?? (save.isError ? describeApiError(save.error, '일정을 저장하지 못했습니다.') : null)}
+        customers={quickCustomers}
+        customersLoading={customersQuery.isLoading}
+        onClose={() => { setWidgetQuick(null); setCustomerLookup(false); }}
+        onNeedCustomers={() => setCustomerLookup(true)}
+        onSubmit={submitWidgetQuick}
+      />
+
       <ModalShell
         open={taskState !== null}
         title="할 일 추가"
@@ -428,8 +489,14 @@ export function ScheduleScreen() {
           <Stack gap="md">
             <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
             <Inline gap="sm">
-              <View style={styles.flex}><TextField label="예정일" placeholder="YYYY-MM-DD (비우면 날짜 없음)" value={taskState.form.dueDate} onChangeText={(dueDate) => patchTask({ dueDate })} /></View>
-              <View style={styles.flex}><TextField label="시각" placeholder="HH:mm (선택)" value={taskState.form.dueTime} onChangeText={(dueTime) => patchTask({ dueTime })} /></View>
+              <ScheduleDateField
+                label="날짜"
+                withTime={false}
+                value={taskState.form.dueDate}
+                clearable
+                placeholder="날짜 없음"
+                onComplete={({ date }) => patchTask({ dueDate: date, dueTime: '' })}
+              />
             </Inline>
             <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
             {taskError || saveTask.isError ? (
@@ -466,19 +533,31 @@ export function ScheduleScreen() {
             <AppText variant="caption" color="textMuted">{scheduleFormPlace(formState)}</AppText>
             <TextField label="제목" required value={formState.form.title} maxLength={300} onChangeText={(title) => patchForm({ title })} />
             <Inline gap="sm">
-              <Button label="시간 지정" variant={formState.form.allDay ? 'secondary' : 'selected'} size="sm" onPress={() => patchForm({ allDay: false })} />
-              <Button label="종일" variant={formState.form.allDay ? 'selected' : 'secondary'} size="sm" onPress={() => patchForm({ allDay: true })} />
+              <ScheduleDateField
+                label="시작일"
+                withTime={false}
+                value={formState.form.date}
+                onComplete={({ date }) => patchForm({ date, endDate: formState.form.endDate < date ? date : formState.form.endDate })}
+              />
+              <ScheduleDateField
+                label="종료일"
+                withTime={false}
+                value={formState.form.endDate}
+                onComplete={({ date }) => patchForm({ endDate: date < formState.form.date ? formState.form.date : date })}
+              />
             </Inline>
-            <Inline gap="sm">
-              <View style={styles.flex}><TextField label="시작일" placeholder="YYYY-MM-DD" value={formState.form.date} onChangeText={(date) => patchForm({ date })} /></View>
-              <View style={styles.flex}><TextField label="종료일" placeholder="YYYY-MM-DD" value={formState.form.endDate} onChangeText={(endDate) => patchForm({ endDate })} /></View>
-            </Inline>
-            {!formState.form.allDay ? (
+            <Button
+              label="시간 지정"
+              variant={formState.form.allDay ? 'secondary' : 'selected'}
+              accessibilityState={{ selected: !formState.form.allDay }}
+              onPress={() => patchForm(toggleScheduleTime(formState.form))}
+            />
+            {formState.form.allDay ? null : (
               <Inline gap="sm">
-                <View style={styles.flex}><TextField label="시작 시각" placeholder="HH:mm" value={formState.form.startTime} onChangeText={(startTime) => patchForm({ startTime })} /></View>
-                <View style={styles.flex}><TextField label="종료 시각" placeholder="HH:mm" value={formState.form.endTime} onChangeText={(endTime) => patchForm({ endTime })} /></View>
+                <ScheduleTimeField label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm(withScheduleStartTime(formState.form, startTime))} />
+                <ScheduleTimeField label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm(withScheduleEndTime(formState.form, endTime))} />
               </Inline>
-            ) : null}
+            )}
             <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />
             {formError || save.isError ? (
               <AppText variant="caption" color="danger">{formError ?? describeApiError(save.error, '일정을 저장하지 못했습니다.')}</AppText>
@@ -498,6 +577,11 @@ export function ScheduleScreen() {
       />
     </View>
   );
+}
+
+function taskDateLine(task: ScheduleTask): string {
+  const when = [task.dueDate, task.dueTime].filter(Boolean).join(' ');
+  return when ? `날짜 ${when}` : '날짜 없음';
 }
 
 function isTask(item: ScheduleEvent | ScheduleTask): item is ScheduleTask {
@@ -526,7 +610,7 @@ function ScheduleDetailModal({
     return (
       <ModalShell open title={item.title} subtitle={taskSourceLabel(item)} presentation="dialog" scroll onRequestClose={onClose}>
         <Stack gap="md">
-          <AppText variant="body">{[item.dueDate, item.dueTime].filter(Boolean).join(' ') || '날짜 없음'}</AppText>
+          <AppText variant="body">{taskDateLine(item)}</AppText>
           {item.customerName ? <AppText variant="body">고객: {item.customerName}</AppText> : null}
           {item.notes ? <AppText variant="body" selectable>{item.notes}</AppText> : null}
           {todo ? <Button label="할 일 열기" variant="primary" fullWidth onPress={() => onOpenRoute(todo)} /> : null}

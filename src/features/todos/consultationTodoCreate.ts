@@ -1,4 +1,5 @@
 import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
+import { todayInSeoul } from '../../utils/dateInput';
 import { isValidOptionalYmd, suggestTodoDueDate } from './todoModel';
 import { cloneTodoFormDraft, type TodoFormDraft } from './todoFormSession';
 
@@ -71,26 +72,35 @@ export function consultationTodoCreateRoute(prefill: ConsultationTodoCreatePrefi
   };
 }
 
-export function seedTodoCreateForm(consultationId?: string, dueDate?: string): {
+/**
+ * 할 일 추가 초안. 넘긴 날짜(위젯에서 보던 날)가 있으면 그 날, 없으면 KST 오늘.
+ * 상담 본문 제안(내일 등)은 초기값으로 쓰지 않는다. 수정 화면은 이 함수를 쓰지 않는다.
+ */
+export function seedTodoCreateForm(consultationId?: string, dueDate?: string, now = new Date()): {
   draft: TodoFormDraft;
   source: TodoCreateSource;
 } {
+  const chosen = chosenDueDate(dueDate, now);
   const prefill = peekConsultationTodoCreate(consultationId);
   if (!prefill) {
-    // 홈 화면 위젯 '+ 할 일 추가': 위젯에서 보던 날짜를 마감일로 미리 채운다(올바른 날짜만).
-    const draft = cloneTodoFormDraft();
-    const seededDue = dueDate && isValidOptionalYmd(dueDate) ? dueDate : '';
-    return { draft: seededDue ? { ...draft, dueDate: seededDue } : draft, source: MANUAL_SOURCE };
+    return { draft: { ...cloneTodoFormDraft(), dueDate: chosen }, source: MANUAL_SOURCE };
   }
   return {
     draft: {
       description: prefill.description,
-      dueDate: prefill.dueDate,
+      dueDate: chosen,
+      dueTime: '',
       relatedCustomerId: prefill.relatedCustomerId,
       relatedCustomerName: prefill.relatedCustomerName,
     },
     source: { sourceType: prefill.sourceType, sourceId: prefill.sourceId },
   };
+}
+
+function chosenDueDate(dueDate: string | undefined, now: Date): string {
+  const tapped = dueDate?.trim() ?? '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(tapped) && isValidOptionalYmd(tapped)) return tapped;
+  return todayInSeoul(now);
 }
 
 function calendarDueDate(value: string | null): string {

@@ -24,7 +24,7 @@ CRM 기준은 숫자만 남기는 것이다.
 
 ## 권한
 
-Android 는 `READ_CONTACTS` 만 추가한다. `expo-contacts` 가 `WRITE_CONTACTS` 를 넣으면 `plugins/withContactsReadOnly.js` 가 `tools:node="remove"` 로 머지에서 뺀다.
+Android 는 `READ_CONTACTS` 만 추가한다. `expo-contacts` 가 `WRITE_CONTACTS` 를 넣으면 `plugins/withContactsReadOnly.js` 가 `tools:node="remove"` 로 머지에서 뺀다. USER 메뉴 항목은 `USER_MENU_FEATURE_FLAGS.deviceContacts = false` 로 숨긴다. `/device-contacts` 로 직접 들어오면 목록 대신 준비 중 안내와 뒤로 가기만 보여 준다.
 
 쓰지 않는 권한: `WRITE_CONTACTS`, `CALL_PHONE`, `SEND_SMS`, `READ_SMS`, `READ_CALL_LOG`.
 

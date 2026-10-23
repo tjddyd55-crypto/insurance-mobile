@@ -121,9 +121,11 @@ describe('home widget deep links', () => {
     expect(consumePendingWidgetHref()).toBeNull();
   });
 
-  it('todo create is prefilled with the widget date only when valid', () => {
-    expect(seedTodoCreateForm(undefined, '2026-10-23').draft.dueDate).toBe('2026-10-23');
-    expect(seedTodoCreateForm(undefined, 'bad').draft.dueDate).toBe('');
-    expect(seedTodoCreateForm().draft.dueDate).toBe('');
+  it('todo create uses the viewed day, otherwise KST today', () => {
+    const beforeMidnight = new Date('2026-10-01T14:59:00.000Z');
+    const afterMidnight = new Date('2026-10-01T15:00:00.000Z');
+    expect(seedTodoCreateForm(undefined, '2026-10-23', beforeMidnight).draft.dueDate).toBe('2026-10-23');
+    expect(seedTodoCreateForm(undefined, 'bad', afterMidnight).draft.dueDate).toBe('2026-10-02');
+    expect(seedTodoCreateForm(undefined, undefined, afterMidnight).draft.dueDate).toBe('2026-10-02');
   });
 });
