@@ -1,6 +1,6 @@
 // @ts-nocheck
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 
 describe('todoFormContract', () => {
   it('does not expose deadline suggestion UI in native todo form', () => {

@@ -168,7 +168,7 @@ function recordEqualsForm(
 }
 
 export type FireInsuranceLocationSyncPlan = {
-  toUpdate: { id: number; payload: CustomerFireInsuranceLocationInput }[];
+  toUpdate: Array<{ id: number; payload: CustomerFireInsuranceLocationInput }>;
   toCreate: CustomerFireInsuranceLocationInput[];
   toDelete: number[];
 };

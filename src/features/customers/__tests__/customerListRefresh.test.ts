@@ -1,6 +1,4 @@
 // @ts-nocheck
-import fs from 'fs';
-import path from 'path';
 import { QueryClient } from '@tanstack/react-query';
 
 import { customerQueryKeys, invalidateCustomerListQueries } from '../queryKeys';
@@ -30,6 +28,8 @@ describe('customer create/delete → list refresh (server SSOT)', () => {
   });
 
   it('create/delete screens use the list invalidation instead of local append/filter', () => {
+    const fs = require('fs');
+    const path = require('path');
     const form = fs.readFileSync(path.join(__dirname, '../CustomerFormScreen.tsx'), 'utf8');
     const detail = fs.readFileSync(path.join(__dirname, '../CustomerDetailScreen.tsx'), 'utf8');
     expect(form).toMatch(/savedMode === 'create'\) \{\s*\/\/[^\n]*\n\s*void invalidateCustomerListQueries\(queryClient\);/);

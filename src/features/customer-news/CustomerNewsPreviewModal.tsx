@@ -3,8 +3,9 @@ import { Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-
 
 import { AppText, Button, Stack, useAppTheme, type AppTheme } from '../../design-system';
 import { CustomerNewsImageCarousel } from './customerNewsImageCarousel';
-import { buildCustomerNewsGalleryUrls, resolveCustomerNewsBodySegments } from './customerNewsContent';
+import { buildCustomerNewsGalleryUrls } from './customerNewsContent';
 import { isFileAttachment } from './customerNewsModel';
+import { resolveCustomerNewsBodySegments } from './customerNewsContent';
 import type { CustomerNewsPreviewDraft } from './types';
 
 export type { CustomerNewsPreviewDraft } from './types';

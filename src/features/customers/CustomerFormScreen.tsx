@@ -3,6 +3,7 @@ import {
   BackHandler,
   Keyboard,
   KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -20,6 +21,7 @@ import { LoadingState } from '../../components/LoadingState';
 import {
   AppText,
   Button,
+  Card,
   Inline,
   Stack,
   SelectField,
@@ -139,7 +141,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     }, [mode]),
   );
   /** Immutable original snapshot for this edit session (string). */
-  const [originalSnapshot, setOriginalSnapshot] = useState<string | null>(
+  const originalSnapshotRef = useRef<string | null>(
     mode === 'create' ? createCustomerFormSnapshot(createBaseline) : null,
   );
   const originalFormRef = useRef<CustomerFormState | null>(
@@ -163,7 +165,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       if (cancelled || epoch !== hydrateEpochRef.current) return;
       const hydrated: CustomerFormState = cloneCustomerFormState(next);
       originalFormRef.current = cloneCustomerFormState(hydrated);
-      setOriginalSnapshot(createCustomerBasicFormSnapshot(hydrated));
+      originalSnapshotRef.current = createCustomerBasicFormSnapshot(hydrated);
       setForm(cloneCustomerFormState(hydrated));
       setInitialized(true);
     })();
@@ -175,13 +177,11 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const dirty =
     initialized &&
     (mode === 'edit-basic'
-      ? isCustomerBasicFormDirty(form, originalSnapshot)
-      : isCustomerFormDirty(form, originalSnapshot));
+      ? isCustomerBasicFormDirty(form, originalSnapshotRef.current)
+      : isCustomerFormDirty(form, originalSnapshotRef.current));
 
   const formRef = useRef(form);
-  useEffect(() => {
-    formRef.current = form;
-  }, [form]);
+  formRef.current = form;
 
   const persistSecondaryCollections = useCallback(
     async (savedCustomerId: number, draft: CustomerFormState) => {
@@ -234,11 +234,10 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     },
     onSuccess: ({ saved, draft, mode: savedMode }) => {
       originalFormRef.current = cloneCustomerFormState(draft);
-      setOriginalSnapshot(
+      originalSnapshotRef.current =
         savedMode === 'edit-basic'
           ? createCustomerBasicFormSnapshot(draft)
-          : createCustomerFormSnapshot(draft),
-      );
+          : createCustomerFormSnapshot(draft);
       queryClient.setQueryData(customerQueryKeys.detail(saved.id), saved);
       if (savedMode === 'create') {
         // List SSOT = server. Re-fetch lists instead of local append.

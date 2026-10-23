@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { type LayoutChangeEvent } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -28,15 +28,10 @@ export function NewsletterDetailPageZoomContent({
   translateX,
 }: Props) {
   const contentHeight = useSharedValue(0);
-  const [measuredHeight, setMeasuredHeight] = useState(0);
 
   useEffect(() => {
-    setMeasuredHeight(0);
+    contentHeight.value = 0;
   }, [resetKey]);
-
-  useEffect(() => {
-    contentHeight.value = measuredHeight;
-  }, [contentHeight, measuredHeight]);
 
   const zoomStyle = useAnimatedStyle(() => {
     const layout = calculateNewsletterDetailPageZoomLayout(
@@ -56,7 +51,7 @@ export function NewsletterDetailPageZoomContent({
   const handleLayout = (event: LayoutChangeEvent) => {
     const nextHeight = event.nativeEvent.layout.height;
     if (Number.isFinite(nextHeight) && nextHeight > 0) {
-      setMeasuredHeight((current) => (Math.abs(current - nextHeight) < 0.5 ? current : nextHeight));
+      contentHeight.value = nextHeight;
     }
   };
 

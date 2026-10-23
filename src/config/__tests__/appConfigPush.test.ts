@@ -1,6 +1,6 @@
 // @ts-nocheck
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 
 describe('appConfigPush', () => {
   it('keeps ios bundle identifiers and android google services policy', () => {

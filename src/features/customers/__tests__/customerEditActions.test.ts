@@ -1,4 +1,5 @@
-import { EMPTY_CUSTOMER_FORM, validateCustomerForm } from '../customerForm';
+import { validateCustomerForm } from '../customerForm';
+import { EMPTY_CUSTOMER_FORM } from '../customerForm';
 import {
   decideCloseEdit,
   shouldEnableCustomerEditSave,

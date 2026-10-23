@@ -2,7 +2,6 @@
  * Manual production OTA helpers.
  * Runtime must stay 1.0.4 so the update matches the store binary.
  */
-import { Buffer } from 'node:buffer';
 import { pathToFileURL } from 'node:url';
 
 const RUNTIME = '1.0.4';

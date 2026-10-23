@@ -11,7 +11,7 @@ describe('focusTextInputAfterAttach', () => {
   });
 
   it('does not focus in the same turn, then focuses on the second frame', () => {
-    const frames: (() => void)[] = [];
+    const frames: Array<() => void> = [];
     host.requestAnimationFrame = ((callback: FrameRequestCallback) => {
       frames.push(() => callback(0));
       return frames.length;

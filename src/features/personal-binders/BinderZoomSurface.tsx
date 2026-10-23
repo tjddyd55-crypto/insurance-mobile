@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { AppText, useAppTheme } from '../../design-system';
 import {
@@ -60,11 +54,6 @@ export function BinderZoomSurface({
   const focalPageX = useSharedValue(0);
   const focalPageY = useSharedValue(0);
   const scrollY = useSharedValue(0);
-  const onBinderScroll = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
   const contentPaddingTop = useSharedValue(0);
   const viewportWidth = useSharedValue(width);
   const viewportHeight = useSharedValue(height);
@@ -143,164 +132,134 @@ export function BinderZoomSurface({
     setScrollEnabled(false);
   }, []);
 
-  const [pageGesture, setPageGesture] = useState(() =>
-    Gesture.Simultaneous(Gesture.Pinch(), Gesture.Exclusive(Gesture.Pan(), Gesture.Tap())),
-  );
+  const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
+    'worklet';
+    const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
+    if (!zoomed) {
+      translateX.value = 0;
+      translateY.value = 0;
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+      return;
+    }
+    const bounds = calculatePanBounds(
+      renderedWidth.value,
+      renderedHeight.value,
+      scale.value,
+      viewportWidth.value,
+      viewportHeight.value,
+    );
+    const clamped = clampTranslation(nextX, nextY, bounds);
+    translateX.value = clamped.x;
+    translateY.value = clamped.y;
+    if (commit) {
+      savedTranslateX.value = clamped.x;
+      savedTranslateY.value = clamped.y;
+    }
+  };
 
-  useEffect(() => {
-    const applyClampedTranslation = (nextX: number, nextY: number, commit: boolean) => {
-      'worklet';
-      const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
-      if (!zoomed) {
-        translateX.value = 0;
-        translateY.value = 0;
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-        return;
+  const captureFocalPage = (focalX: number, focalY: number) => {
+    'worklet';
+    const origin = binderPageOriginInViewport(
+      viewportWidth.value,
+      renderedWidth.value,
+      contentPaddingTop.value,
+      scrollY.value,
+    );
+    const local = focalPointToPageLocal(
+      focalX,
+      focalY,
+      origin,
+      renderedWidth.value,
+      renderedHeight.value,
+      scale.value,
+      translateX.value,
+      translateY.value,
+    );
+    focalPageX.value = local.x;
+    focalPageY.value = local.y;
+  };
+
+  const pinch = Gesture.Pinch()
+    .onStart((event) => {
+      const scrollComp = scrollY.value;
+      if (scrollComp > 0.5) {
+        translateY.value += scrollComp;
+        savedTranslateY.value += scrollComp;
+        scrollY.value = 0;
+        runOnJS(scrollToTop)();
       }
-      const bounds = calculatePanBounds(
-        renderedWidth.value,
-        renderedHeight.value,
-        scale.value,
-        viewportWidth.value,
-        viewportHeight.value,
+      runOnJS(disableScrollForPinch)();
+      pinchStartScale.value = scale.value;
+      captureFocalPage(event.focalX, event.focalY);
+    })
+    .onUpdate((event) => {
+      const next = Math.min(
+        NEWS_DETAIL_ZOOM_MAX,
+        Math.max(fitScale.value, pinchStartScale.value * event.scale),
       );
-      const clamped = clampTranslation(nextX, nextY, bounds);
-      translateX.value = clamped.x;
-      translateY.value = clamped.y;
-      if (commit) {
-        savedTranslateX.value = clamped.x;
-        savedTranslateY.value = clamped.y;
-      }
-    };
-
-    const captureFocalPage = (focalX: number, focalY: number) => {
-      'worklet';
       const origin = binderPageOriginInViewport(
         viewportWidth.value,
         renderedWidth.value,
         contentPaddingTop.value,
         scrollY.value,
       );
-      const local = focalPointToPageLocal(
-        focalX,
-        focalY,
+      const nextTranslation = translationForFocalPinch(
+        event.focalX,
+        event.focalY,
+        { x: focalPageX.value, y: focalPageY.value },
         origin,
         renderedWidth.value,
         renderedHeight.value,
-        scale.value,
-        translateX.value,
-        translateY.value,
+        next,
       );
-      focalPageX.value = local.x;
-      focalPageY.value = local.y;
-    };
-
-    const pinch = Gesture.Pinch()
-      .onStart((event) => {
-        const scrollComp = scrollY.value;
-        if (scrollComp > 0.5) {
-          translateY.value += scrollComp;
-          savedTranslateY.value += scrollComp;
-          scrollY.value = 0;
-          runOnJS(scrollToTop)();
-        }
-        runOnJS(disableScrollForPinch)();
-        pinchStartScale.value = scale.value;
-        captureFocalPage(event.focalX, event.focalY);
-      })
-      .onUpdate((event) => {
-        const next = Math.min(
-          NEWS_DETAIL_ZOOM_MAX,
-          Math.max(fitScale.value, pinchStartScale.value * event.scale),
-        );
-        const origin = binderPageOriginInViewport(
-          viewportWidth.value,
-          renderedWidth.value,
-          contentPaddingTop.value,
-          scrollY.value,
-        );
-        const nextTranslation = translationForFocalPinch(
-          event.focalX,
-          event.focalY,
-          { x: focalPageX.value, y: focalPageY.value },
-          origin,
-          renderedWidth.value,
-          renderedHeight.value,
-          next,
-        );
-        scale.value = next;
-        applyClampedTranslation(nextTranslation.x, nextTranslation.y, false);
-      })
-      .onEnd(() => {
-        savedScale.value = scale.value;
-        if (scale.value <= fitScale.value + ZOOM_EPSILON) {
-          scale.value = withTiming(fitScale.value);
-          savedScale.value = fitScale.value;
-          translateX.value = withTiming(0);
-          translateY.value = withTiming(0);
-          savedTranslateX.value = 0;
-          savedTranslateY.value = 0;
-          runOnJS(syncScrollEnabled)(fitScale.value, fitScale.value);
-          return;
-        }
-        applyClampedTranslation(translateX.value, translateY.value, true);
-        runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
-      });
-
-    const pan = Gesture.Pan()
-      .maxPointers(1)
-      .minDistance(12)
-      .onUpdate((event) => {
-        const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
-        if (!zoomed) return;
-        applyClampedTranslation(
-          savedTranslateX.value + event.translationX,
-          savedTranslateY.value + event.translationY,
-          false,
-        );
-      })
-      .onEnd((event) => {
-        const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
-        if (zoomed) {
-          applyClampedTranslation(translateX.value, translateY.value, true);
-          return;
-        }
-        const horizontal = Math.abs(event.translationX) >= SWIPE_DISTANCE
-          && Math.abs(event.translationX) > Math.abs(event.translationY) * 1.2;
-        if (horizontal) {
-          runOnJS(onSwipe)(event.translationX < 0 ? 1 : -1);
-        }
-      });
-
-    const tap = Gesture.Tap().maxDistance(12).onEnd(() => {
-      runOnJS(onToggleChrome)();
+      scale.value = next;
+      applyClampedTranslation(nextTranslation.x, nextTranslation.y, false);
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+      if (scale.value <= fitScale.value + ZOOM_EPSILON) {
+        scale.value = withTiming(fitScale.value);
+        savedScale.value = fitScale.value;
+        translateX.value = withTiming(0);
+        translateY.value = withTiming(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+        runOnJS(syncScrollEnabled)(fitScale.value, fitScale.value);
+        return;
+      }
+      applyClampedTranslation(translateX.value, translateY.value, true);
+      runOnJS(syncScrollEnabled)(scale.value, fitScale.value);
     });
 
-    setPageGesture(Gesture.Simultaneous(pinch, Gesture.Exclusive(pan, tap)));
-  }, [
-    contentPaddingTop,
-    disableScrollForPinch,
-    fitScale,
-    focalPageX,
-    focalPageY,
-    onSwipe,
-    onToggleChrome,
-    pinchStartScale,
-    renderedHeight,
-    renderedWidth,
-    savedScale,
-    savedTranslateX,
-    savedTranslateY,
-    scale,
-    scrollToTop,
-    scrollY,
-    syncScrollEnabled,
-    translateX,
-    translateY,
-    viewportHeight,
-    viewportWidth,
-  ]);
+  const pan = Gesture.Pan()
+    .maxPointers(1)
+    .minDistance(12)
+    .onUpdate((event) => {
+      const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
+      if (!zoomed) return;
+      applyClampedTranslation(
+        savedTranslateX.value + event.translationX,
+        savedTranslateY.value + event.translationY,
+        false,
+      );
+    })
+    .onEnd((event) => {
+      const zoomed = scale.value > fitScale.value + ZOOM_EPSILON;
+      if (zoomed) {
+        applyClampedTranslation(translateX.value, translateY.value, true);
+        return;
+      }
+      const horizontal = Math.abs(event.translationX) >= SWIPE_DISTANCE
+        && Math.abs(event.translationX) > Math.abs(event.translationY) * 1.2;
+      if (horizontal) {
+        runOnJS(onSwipe)(event.translationX < 0 ? 1 : -1);
+      }
+    });
+
+  const tap = Gesture.Tap().maxDistance(12).onEnd(() => {
+    runOnJS(onToggleChrome)();
+  });
 
   const pageTransformStyle = useAnimatedStyle(() => ({
     transform: [
@@ -311,16 +270,18 @@ export function BinderZoomSurface({
   }));
 
   return (
-    <GestureDetector gesture={pageGesture}>
+    <GestureDetector gesture={Gesture.Simultaneous(pinch, Gesture.Exclusive(pan, tap))}>
       <View style={[styles.stage, { width, height }]}>
-        <Animated.ScrollView
+        <ScrollView
           ref={scrollRef}
           scrollEnabled={scrollEnabled && pageTallerThanViewport}
           showsVerticalScrollIndicator
           showsHorizontalScrollIndicator={false}
           bounces
           scrollEventThrottle={16}
-          onScroll={onBinderScroll}
+          onScroll={(event) => {
+            scrollY.value = event.nativeEvent.contentOffset.y;
+          }}
           contentContainerStyle={[
             styles.scrollContent,
             {
@@ -379,7 +340,7 @@ export function BinderZoomSurface({
               />
             ) : null}
           </Animated.View>
-        </Animated.ScrollView>
+        </ScrollView>
       </View>
     </GestureDetector>
   );

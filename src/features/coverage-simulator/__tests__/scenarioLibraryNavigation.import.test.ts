@@ -1,6 +1,6 @@
 // @ts-nocheck
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 
 describe('ScenarioLibraryCrudPanel navigation', () => {
   it('opens simulation list on card tap instead of jumping to editor', () => {

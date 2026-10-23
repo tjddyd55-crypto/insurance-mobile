@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { ScrollView } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import {
@@ -36,89 +36,71 @@ export function useNewsletterDetailPageZoom({
   const scrollY = useSharedValue(0);
   const focalContentX = useSharedValue(0);
   const focalContentY = useSharedValue(0);
-  const [pageGesture, setPageGesture] = useState(() =>
-    Gesture.Race(Gesture.Pinch(), Gesture.Pan()),
-  );
 
   useEffect(() => {
     scale.value = NEWS_DETAIL_ZOOM_MIN;
     startScale.value = NEWS_DETAIL_ZOOM_MIN;
     translateX.value = 0;
-  }, [resetKey, scale, startScale, translateX]);
+  }, [resetKey]);
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
   });
 
-  useEffect(() => {
-    const pinchGesture = Gesture.Pinch()
-      .simultaneousWithExternalGesture(scrollGesture)
-      .onStart((event) => {
-        'worklet';
-        startScale.value = scale.value;
-        const localFocalX = event.focalX - contentLeft;
-        focalContentX.value = (localFocalX - translateX.value) / scale.value;
-        focalContentY.value = (scrollY.value + event.focalY - contentTop) / scale.value;
-      })
-      .onUpdate((event) => {
-        'worklet';
-        const nextScale = clampNewsDetailZoomScale(startScale.value * event.scale);
-        const localFocalX = event.focalX - contentLeft;
-        const unclampedTranslateX = localFocalX - focalContentX.value * nextScale;
-        const minTranslateX = availableWidth - availableWidth * nextScale;
-        const nextTranslateX = Math.min(0, Math.max(minTranslateX, unclampedTranslateX));
-        const nextScrollY =
-          contentTop + focalContentY.value * nextScale - event.focalY;
+  const pinchGesture = Gesture.Pinch()
+    .simultaneousWithExternalGesture(scrollGesture)
+    .onStart((event) => {
+      'worklet';
+      startScale.value = scale.value;
+      const localFocalX = event.focalX - contentLeft;
+      focalContentX.value = (localFocalX - translateX.value) / scale.value;
+      focalContentY.value = (scrollY.value + event.focalY - contentTop) / scale.value;
+    })
+    .onUpdate((event) => {
+      'worklet';
+      const nextScale = clampNewsDetailZoomScale(startScale.value * event.scale);
+      const localFocalX = event.focalX - contentLeft;
+      const unclampedTranslateX = localFocalX - focalContentX.value * nextScale;
+      const minTranslateX = availableWidth - availableWidth * nextScale;
+      const nextTranslateX = Math.min(0, Math.max(minTranslateX, unclampedTranslateX));
+      const nextScrollY =
+        contentTop + focalContentY.value * nextScale - event.focalY;
 
-        scale.value = nextScale;
-        translateX.value = nextTranslateX;
-        scrollTo(scrollRef, 0, Math.max(0, nextScrollY), false);
-      })
-      .onEnd((event) => {
-        'worklet';
-        const nextScrollY =
-          contentTop + focalContentY.value * scale.value - event.focalY;
-        scrollTo(scrollRef, 0, Math.max(0, nextScrollY), false);
-      });
+      scale.value = nextScale;
+      translateX.value = nextTranslateX;
+      scrollTo(scrollRef, 0, Math.max(0, nextScrollY), false);
+    })
+    .onEnd((event) => {
+      'worklet';
+      const nextScrollY =
+        contentTop + focalContentY.value * scale.value - event.focalY;
+      scrollTo(scrollRef, 0, Math.max(0, nextScrollY), false);
+    });
 
-    const horizontalPanGesture = Gesture.Pan()
-      .maxPointers(1)
-      .activeOffsetX([-10, 10])
-      .failOffsetY([-10, 10])
-      .simultaneousWithExternalGesture(scrollGesture)
-      .onStart(() => {
-        'worklet';
-        startTranslateX.value = translateX.value;
-      })
-      .onUpdate((event) => {
-        'worklet';
-        if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
-          translateX.value = 0;
-          return;
-        }
+  const horizontalPanGesture = Gesture.Pan()
+    .maxPointers(1)
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-10, 10])
+    .simultaneousWithExternalGesture(scrollGesture)
+    .onStart(() => {
+      'worklet';
+      startTranslateX.value = translateX.value;
+    })
+    .onUpdate((event) => {
+      'worklet';
+      if (scale.value <= NEWS_DETAIL_ZOOM_MIN) {
+        translateX.value = 0;
+        return;
+      }
 
-        const minTranslateX = availableWidth - availableWidth * scale.value;
-        translateX.value = Math.min(
-          0,
-          Math.max(minTranslateX, startTranslateX.value + event.translationX),
-        );
-      });
+      const minTranslateX = availableWidth - availableWidth * scale.value;
+      translateX.value = Math.min(
+        0,
+        Math.max(minTranslateX, startTranslateX.value + event.translationX),
+      );
+    });
 
-    setPageGesture(Gesture.Race(pinchGesture, horizontalPanGesture));
-  }, [
-    availableWidth,
-    contentLeft,
-    contentTop,
-    focalContentX,
-    focalContentY,
-    scale,
-    scrollGesture,
-    scrollRef,
-    scrollY,
-    startScale,
-    startTranslateX,
-    translateX,
-  ]);
+  const pageGesture = Gesture.Race(pinchGesture, horizontalPanGesture);
 
   return {
     pageGesture,

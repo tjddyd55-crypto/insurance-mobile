@@ -1,6 +1,6 @@
 // @ts-nocheck
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 
 function readSource(relativePath: string): string {
   return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');

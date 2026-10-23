@@ -59,7 +59,7 @@ import {
 } from './customerNewsApi';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import { attachmentKind, newsScopeLabel, validateNewsAttachment } from './customerNewsModel';
-import type { CustomerNewsItem, DraftAttachment, LocalAttachment } from './types';
+import type { CustomerNewsItem, DraftAttachment, LocalAttachment, NewsAttachment } from './types';
 
 type FormState = {
   content: string;

@@ -8,7 +8,7 @@ export type CustomerListSortValue =
   | 'lastConsultAsc'
   | 'noConsultFirst';
 
-export const CUSTOMER_LIST_SORT_OPTIONS: { value: CustomerListSortValue; label: string }[] = [
+export const CUSTOMER_LIST_SORT_OPTIONS: Array<{ value: CustomerListSortValue; label: string }> = [
   { value: '', label: '기본(마지막 상담일)' },
   { value: 'createdDesc', label: '최근 등록순' },
   { value: 'nameAsc', label: '이름순' },
@@ -19,10 +19,10 @@ export const CUSTOMER_LIST_SORT_OPTIONS: { value: CustomerListSortValue; label: 
 
 export type CustomerQuickSortType = null | 'age' | 'car' | 'recent';
 
-export const CUSTOMER_QUICK_SORT_OPTIONS: {
+export const CUSTOMER_QUICK_SORT_OPTIONS: Array<{
   value: CustomerQuickSortType;
   label: string;
-}[] = [
+}> = [
   { value: null, label: '빠른 정렬 없음' },
   { value: 'age', label: '보험나이순' },
   { value: 'car', label: '자동차 갱신일순' },
@@ -31,17 +31,17 @@ export const CUSTOMER_QUICK_SORT_OPTIONS: {
 
 export type CustomerConsultationFilterValue = '' | 'none' | 'has' | 'no_since';
 
-export const CUSTOMER_CONSULTATION_FILTER_OPTIONS: {
+export const CUSTOMER_CONSULTATION_FILTER_OPTIONS: Array<{
   value: CustomerConsultationFilterValue;
   label: string;
-}[] = [
+}> = [
   { value: '', label: '전체' },
   { value: 'has', label: '상담 있음' },
   { value: 'none', label: '상담 없음' },
   { value: 'no_since', label: '선택 날짜 이후 상담 없음' },
 ];
 
-export const CUSTOMER_INFLOW_SOURCE_FILTER_OPTIONS: { value: string; label: string }[] = [
+export const CUSTOMER_INFLOW_SOURCE_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: '전체' },
   { value: '미지정', label: '미지정' },
   { value: 'DB수급', label: 'DB수급' },
@@ -53,10 +53,10 @@ export const CUSTOMER_INFLOW_SOURCE_FILTER_OPTIONS: { value: string; label: stri
   { value: '이관고객', label: '이관고객' },
 ];
 
-export const CUSTOMER_GENDER_FILTER_OPTIONS: {
+export const CUSTOMER_GENDER_FILTER_OPTIONS: Array<{
   value: '' | 'male' | 'female';
   label: string;
-}[] = [
+}> = [
   { value: '', label: '전체' },
   { value: 'male', label: '남성' },
   { value: 'female', label: '여성' },
