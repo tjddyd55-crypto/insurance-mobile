@@ -13,6 +13,7 @@ import {
 } from '../features/newsletters/newsletterBoardMenu';
 import {
   USER_APP_MENU,
+  withoutHiddenContactsMenu,
   type NativeMenuLink,
   type NativeMenuSection,
 } from './menuConfig';
@@ -185,5 +186,5 @@ export function buildNativeMenuForSession(
     user.subscription?.effectiveStatus === 'EXPIRED',
   );
   const withEntitlement = applyEntitlementPolicy(withExpiredPolicy, user, capabilities);
-  return normalizeNativeMenuSections(applyPcOnlyMenuPolicy(withEntitlement));
+  return withoutHiddenContactsMenu(normalizeNativeMenuSections(applyPcOnlyMenuPolicy(withEntitlement)));
 }

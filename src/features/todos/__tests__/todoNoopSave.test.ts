@@ -16,6 +16,7 @@ const listABC = (): Row[] => [
 const base: TodoFormDraft = {
   description: '보험 상담',
   dueDate: '2026-10-05',
+  dueTime: '',
   relatedCustomerId: '',
   relatedCustomerName: '',
 };
@@ -35,6 +36,7 @@ describe('todo no-op save', () => {
       description: 'C 오래됨',
       title: 'C 오래됨',
       dueDate: null,
+      dueTime: null,
       relatedEntityType: null,
       relatedEntityId: null,
       customerName: null,

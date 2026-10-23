@@ -1,6 +1,6 @@
 {
   "name": "one-fc-mobile",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "version": "1.0.4",
   "private": true,
   "scripts": {
@@ -23,6 +23,7 @@
     "@tanstack/react-query": "^5.102.8",
     "expo": "~57.0.18",
     "expo-clipboard": "~57.0.1",
+    "expo-contacts": "~57.0.8",
     "expo-constants": "~57.0.16",
     "expo-dev-client": "~57.0.19",
     "expo-device": "~57.0.1",
@@ -43,6 +44,7 @@
     "expo-updates": "~57.0.23",
     "expo-web-browser": "~57.0.2",
     "onefc-android-downloads": "file:./modules/onefc-android-downloads",
+    "onefc-home-widgets": "file:./modules/onefc-home-widgets",
     "onefc-play-app-update": "file:./modules/onefc-play-app-update",
     "react": "19.2.3",
     "react-dom": "19.2.3",

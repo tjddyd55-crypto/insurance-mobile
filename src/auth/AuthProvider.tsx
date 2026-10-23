@@ -19,6 +19,8 @@ import {
   unregisterPushDeviceWithServer,
 } from '../features/push/pushRegistration';
 import { usePushRegistrationLifecycle } from '../features/push/usePushRegistrationLifecycle';
+import { purgeDeviceContactCache } from '../features/device-contacts/deviceContactSession';
+import { purgeWidgets } from '../features/home-widgets/engine/widgetRefreshCoordinator';
 import { ensureNativeUpgradeMigration } from './nativeUpgradeMigration';
 import {
   clearAuthSession,
@@ -60,7 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   const clearLocalSession = useCallback(async () => {
+    await purgeDeviceContactCache();
     await clearAuthSession();
+    await purgeWidgets(handlingUnauthorized.current ? 'session_expired' : 'logged_out');
     queryClient.clear();
     setUser(null);
     setToken(null);
@@ -120,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     const session = await loginRequest(username, password);
+    await purgeDeviceContactCache();
     await saveAuthSession(session);
     setToken(session.token);
     setUser(session.user);

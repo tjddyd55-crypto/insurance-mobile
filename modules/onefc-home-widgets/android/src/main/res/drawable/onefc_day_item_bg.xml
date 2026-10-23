@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 날짜 다이얼로그 항목 카드: 위젯 칩과 같은 brand_soft. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <solid android:color="@color/onefc_widget_brand_soft" />
+  <corners android:radius="14dp" />
+</shape>

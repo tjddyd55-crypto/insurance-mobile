@@ -38,6 +38,9 @@ export function resolveFeatureKeyFromPath(
   if (normalized === '/insurance/insurer-sites' || normalized.startsWith('/insurance/insurer-sites/')) {
     return FEATURE_KEYS.INSURER_SITES;
   }
+  if (normalized === '/device-contacts' || normalized.startsWith('/device-contacts/')) {
+    return FEATURE_KEYS.CUSTOMERS;
+  }
   if (normalized === '/customers' || normalized.startsWith('/customers/')) return FEATURE_KEYS.CUSTOMERS;
   if (normalized === '/team' || normalized.startsWith('/team/')) return FEATURE_KEYS.TEAM;
   if (normalized === '/storage' || normalized.startsWith('/storage/')) return FEATURE_KEYS.STORAGE;

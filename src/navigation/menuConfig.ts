@@ -41,12 +41,43 @@ export type NativeMenuSection = {
 
 export type NativeMenuEntry = NativeMenuSection;
 
+/**
+ * 웹 gaTenantMenu.HIDDEN_CONTACTS_MENU_PATHS 와 같다.
+ * 라우트·화면·API는 유지하고, 메뉴 노출만 끈다.
+ */
+export const HIDDEN_CONTACTS_MENU_PATHS = [
+  '/insurance/contacts',
+  '/contacts',
+  '/insurance/company-registry',
+  '/contacts/manage',
+] as const;
+
+export function isContactsNavEntryHidden(path: string): boolean {
+  const normalized = String(path ?? '').split('?')[0]?.split('#')[0] ?? '';
+  return HIDDEN_CONTACTS_MENU_PATHS.some(
+    (item) => normalized === item || normalized.startsWith(`${item}/`),
+  );
+}
+
+export function withoutHiddenContactsMenu(menu: NativeMenuSection[]): NativeMenuSection[] {
+  return menu
+    .map((section) => ({
+      ...section,
+      children: section.children.filter(
+        (child) => !isContactsNavEntryHidden(child.nativePath) && !isContactsNavEntryHidden(child.legacyWebPath),
+      ),
+    }))
+    .filter((section) => section.children.length > 0);
+}
+
 /** USER feature flags mirrored from gaTenantMenu.USER_MENU_FEATURE_FLAGS */
 export const USER_MENU_FEATURE_FLAGS = {
   topLevelElectronicSignature: false,
   topLevelInsuranceClaim: false,
   customerManagementNewsletter: true,
   customerManagementClaim: true,
+  /** 휴대폰 연락처 메뉴. 화면과 권한 코드는 남기고 메뉴만 숨긴다. */
+  deviceContacts: false,
 } as const;
 
 const USER_ROLES: UserRole[] = ['USER'];
@@ -90,6 +121,13 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         mode: 'NATIVE',
       }),
       link({
+        id: 'schedule',
+        label: '일정 관리',
+        legacyWebPath: '/schedule',
+        nativePath: '/schedule',
+        mode: 'NATIVE',
+      }),
+      link({
         id: 'memo',
         label: '메모',
         legacyWebPath: '/memo',
@@ -118,6 +156,17 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         nativePath: '/customers',
         mode: 'NATIVE',
       }),
+      ...(USER_MENU_FEATURE_FLAGS.deviceContacts
+        ? [
+            link({
+              id: 'device-contacts',
+              label: '연락처',
+              legacyWebPath: '/device-contacts',
+              nativePath: '/device-contacts',
+              mode: 'NATIVE',
+            }),
+          ]
+        : []),
       link({
         id: 'customer-map',
         label: '고객 지도',
