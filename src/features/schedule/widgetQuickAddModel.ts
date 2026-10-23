@@ -1,5 +1,5 @@
 import type { SaveTodoPayload } from '../todos/types';
-import { emptyEventForm, setScheduleTimeSpecified } from './scheduleModel';
+import { emptyEventForm, scheduleEventWriteTimes } from './scheduleModel';
 import type { ScheduleEventForm } from './types';
 
 export type WidgetQuickDraft = {
@@ -19,8 +19,22 @@ export function widgetQuickScheduleForm(draft: WidgetQuickDraft): ScheduleEventF
   const base = emptyEventForm(draft.date);
   const start = draft.time.trim();
   if (!start) return { ...base, title, allDay: true };
-  const clock = setScheduleTimeSpecified({ allDay: true, startTime: start, endTime: draft.endTime?.trim() ?? '' }, true);
-  return { ...base, title, date: draft.date, endDate: draft.date, ...clock };
+  const clock = scheduleEventWriteTimes({
+    allDay: false,
+    date: draft.date,
+    endDate: draft.date,
+    startTime: start,
+    endTime: draft.endTime?.trim() ?? '',
+  });
+  return {
+    ...base,
+    title,
+    date: draft.date,
+    endDate: draft.date,
+    allDay: false,
+    startTime: clock.startTime ?? start,
+    endTime: clock.endTime ?? '',
+  };
 }
 
 /** 할 일. 고객을 고르지 않으면 연결 없음. 시각 칸은 없고 dueTime 은 null. */

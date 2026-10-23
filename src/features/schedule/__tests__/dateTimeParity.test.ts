@@ -1,7 +1,25 @@
-import { applyScheduleDateTime, eventToForm, sensibleEndTime, withScheduleEndTime, withScheduleStartTime } from '../scheduleModel';
+import { apiRequest } from '../../../api/client';
+import { createOnefcSchedule, updateOnefcSchedule } from '../scheduleApi';
+import {
+  applyScheduleDateTime,
+  eventToForm,
+  formToGoogleInput,
+  scheduleEventSaveForm,
+  sensibleEndTime,
+  validateEventForm,
+  withScheduleEndTime,
+  withScheduleStartTime,
+} from '../scheduleModel';
 import { widgetQuickScheduleForm, widgetQuickTodoPayload } from '../widgetQuickAddModel';
 import { todoEditorDateTimePayload, type TodoFormDraft } from '../../todos/todoFormSession';
-import type { ScheduleEvent } from '../types';
+import type { ScheduleEvent, ScheduleEventForm } from '../types';
+
+jest.mock('../../../api/client', () => {
+  const actual = jest.requireActual('../../../api/client');
+  return { ...actual, apiRequest: jest.fn() };
+});
+
+const mockedRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
 /**
  * Web/App parity fixture.
@@ -125,5 +143,152 @@ describe('schedule and todo date-time parity', () => {
       customerId: null,
       customerName: '',
     }).dueTime).toBeNull();
+  });
+});
+
+function crossDayEvent(start: string, end: string, endDay: string): ScheduleEvent {
+  return {
+    id: 'onefc:late',
+    source: 'google',
+    sourceId: 'late',
+    calendarId: null,
+    calendarName: 'ONE FC',
+    type: 'google_event',
+    title: '늦은 상담',
+    description: '원래 설명',
+    startAt: `2026-10-24T${start}:00+09:00`,
+    endAt: `${endDay}T${end}:00+09:00`,
+    allDay: false,
+    customerId: null,
+    customerName: '',
+    location: '',
+    writable: true,
+    readOnlyReason: '',
+    origin: 'onefc',
+  };
+}
+
+function newSameDay(startTime: string, endTime = '10:00'): ScheduleEventForm {
+  return {
+    calendarId: '',
+    title: '새 일정',
+    description: '',
+    date: '2026-10-24',
+    endDate: '2026-10-24',
+    allDay: false,
+    startTime,
+    endTime,
+  };
+}
+
+async function expectSavedPayload(form: ScheduleEventForm, expected: Record<string, unknown>, mode: 'create' | 'edit') {
+  const saved = scheduleEventSaveForm(form, form.date);
+  expect(validateEventForm(saved, { calendarRequired: false })).toBeNull();
+  const payload = formToGoogleInput(saved);
+  expect(payload).toMatchObject(expected);
+  mockedRequest.mockResolvedValueOnce({
+    success: true,
+    data: { event: { id: 'onefc:late', startAt: '2026-10-24T23:30:00+09:00' }, duplicate: false },
+  });
+  if (mode === 'edit') {
+    await updateOnefcSchedule('tkn', 'onefc:late', saved);
+  } else {
+    await createOnefcSchedule('tkn', saved, 'c'.repeat(32));
+  }
+  const body = JSON.parse(String(mockedRequest.mock.calls.at(-1)?.[1]?.body)) as Record<string, unknown>;
+  expect(body).toMatchObject(expected);
+  expect(body).toMatchObject({
+    date: payload.date,
+    endDate: payload.endDate,
+    allDay: payload.allDay,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    title: payload.title,
+    description: payload.description,
+  });
+}
+
+describe('cross-day schedule save payload', () => {
+  beforeEach(() => mockedRequest.mockReset());
+
+  it('A keeps 10/24 23:30 → 10/25 00:30 when only the title changes', async () => {
+    const form = { ...eventToForm(crossDayEvent('23:30', '00:30', '2026-10-25')), title: '제목만 수정' };
+    await expectSavedPayload(form, {
+      title: '제목만 수정',
+      description: '원래 설명',
+      date: '2026-10-24',
+      endDate: '2026-10-25',
+      allDay: false,
+      startTime: '23:30',
+      endTime: '00:30',
+    }, 'edit');
+  });
+
+  it('B keeps the same range when only the description changes', async () => {
+    const form = { ...eventToForm(crossDayEvent('23:30', '00:30', '2026-10-25')), description: '설명만 수정' };
+    await expectSavedPayload(form, {
+      title: '늦은 상담',
+      description: '설명만 수정',
+      date: '2026-10-24',
+      endDate: '2026-10-25',
+      startTime: '23:30',
+      endTime: '00:30',
+    }, 'edit');
+  });
+
+  it('C sets a new same-day 23:30 event to 23:59', async () => {
+    await expectSavedPayload(newSameDay('23:30'), {
+      date: '2026-10-24',
+      endDate: '2026-10-24',
+      startTime: '23:30',
+      endTime: '23:59',
+    }, 'create');
+  });
+
+  it('D sets a new same-day 14:00 event to 15:00', async () => {
+    await expectSavedPayload(newSameDay('14:00'), {
+      date: '2026-10-24',
+      endDate: '2026-10-24',
+      startTime: '14:00',
+      endTime: '15:00',
+    }, 'create');
+  });
+
+  it('E keeps 22:30 → next day 00:30 when only the title changes', async () => {
+    const form = { ...eventToForm(crossDayEvent('22:30', '00:30', '2026-10-25')), title: '다른 제목' };
+    await expectSavedPayload(form, {
+      title: '다른 제목',
+      date: '2026-10-24',
+      endDate: '2026-10-25',
+      startTime: '22:30',
+      endTime: '00:30',
+    }, 'edit');
+  });
+
+  it('F does not change date or time when an opened event is saved as-is', async () => {
+    const opened = eventToForm(crossDayEvent('23:30', '00:30', '2026-10-25'));
+    await expectSavedPayload(opened, {
+      title: '늦은 상담',
+      description: '원래 설명',
+      date: '2026-10-24',
+      endDate: '2026-10-25',
+      startTime: '23:30',
+      endTime: '00:30',
+    }, 'edit');
+  });
+
+  it('corrects a same-day edit and keeps a cross-day clock when the user changes a time', async () => {
+    const cross = eventToForm(crossDayEvent('23:30', '00:30', '2026-10-25'));
+    const movedStart: ScheduleEventForm = { ...cross, ...withScheduleStartTime(cross, '22:00') };
+    expect(movedStart).toMatchObject({ date: '2026-10-24', endDate: '2026-10-25', startTime: '22:00', endTime: '00:30' });
+    await expectSavedPayload(movedStart, { startTime: '22:00', endTime: '00:30', endDate: '2026-10-25' }, 'edit');
+
+    const sameDay = { ...newSameDay('14:00', '15:30'), title: '같은 날' };
+    expect(withScheduleStartTime(sameDay, '23:00')).toMatchObject({ endDate: '2026-10-24', startTime: '23:00', endTime: '23:59' });
+    await expectSavedPayload(
+      { ...sameDay, date: '2026-10-24', endDate: '2026-10-24', startTime: '16:00', endTime: '15:00' },
+      { startTime: '16:00', endTime: '17:00', endDate: '2026-10-24' },
+      'edit',
+    );
   });
 });

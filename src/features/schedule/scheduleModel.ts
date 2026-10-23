@@ -381,45 +381,59 @@ export function sensibleEndTime(startTime: string): string {
   return `${String(hour + 1).padStart(2, '0')}:${match[2]}`;
 }
 
-type ScheduleClock = Pick<ScheduleEventForm, 'allDay' | 'startTime' | 'endTime'>;
+type ScheduleClock = Pick<ScheduleEventForm, 'allDay' | 'startTime' | 'endTime'> & Partial<Pick<ScheduleEventForm, 'date' | 'endDate'>>;
 
-/** 시간 지정을 켜면 종일이 아니고, 종료가 시작보다 이르면 시작 한 시간 뒤다. 끄면 종일이다. */
+/** 같은 날 시간 지정. 종료가 시작보다 뒤가 아니면 sensibleEndTime. 날짜는 보지 않는다. */
 export function setScheduleTimeSpecified(fields: ScheduleClock, specified: boolean): ScheduleClock {
   if (!specified) return { ...fields, allDay: true };
   const startTime = HM.test(fields.startTime) ? fields.startTime : DEFAULT_SCHEDULE_START_TIME;
   const endTime = HM.test(fields.endTime) && fields.endTime > startTime ? fields.endTime : sensibleEndTime(startTime);
-  return { allDay: false, startTime, endTime };
+  return { ...fields, allDay: false, startTime, endTime };
 }
 
-/** 종일 ↔ 시간 지정. 현재 종일이면 시간을 켜고, 시간 일정이면 끈다. */
-export function toggleScheduleTime(form: ScheduleClock): ScheduleClock {
-  return setScheduleTimeSpecified(form, form.allDay);
+/** endDate 가 date 보다 뒤면 자정을 넘긴 일정이다. 시간 문자열만으로 종료를 고치지 않는다. */
+function crossesMidnight(date: string | undefined, endDate: string | undefined): boolean {
+  return Boolean(date && endDate && endDate > date);
 }
 
 export function withScheduleStartTime(fields: ScheduleClock, startTime: string): ScheduleClock {
-  return setScheduleTimeSpecified({ ...fields, allDay: false, startTime }, true);
+  return scheduleClock(scheduleEventWriteTimes({ ...fields, allDay: false, startTime }), { ...fields, allDay: false, startTime });
 }
 
 export function withScheduleEndTime(fields: ScheduleClock, endTime: string): ScheduleClock {
-  return setScheduleTimeSpecified({ ...fields, allDay: false, endTime }, true);
+  return scheduleClock(scheduleEventWriteTimes({ ...fields, allDay: false, endTime }), { ...fields, allDay: false, endTime });
 }
 
-/** 저장 본문. 종일은 시각 null. 시간 일정은 저장 직전에 종료를 맞춘다. */
+/**
+ * 저장 시각의 단일 규칙. 웹 scheduleEventWriteTimes / crossesMidnight 과 같다.
+ * 종일은 시각 null. 종료일이 시작일보다 뒤면 시각을 그대로 둔다.
+ * sensibleEndTime 은 시작일과 종료일이 같은 날에만 적용한다.
+ */
 export function scheduleEventWriteTimes(fields: ScheduleClock): { allDay: boolean; startTime: string | null; endTime: string | null } {
   if (fields.allDay) return { allDay: true, startTime: null, endTime: null };
+  if (crossesMidnight(fields.date, fields.endDate)) {
+    return { allDay: false, startTime: fields.startTime, endTime: fields.endTime };
+  }
   const fixed = setScheduleTimeSpecified(fields, true);
   return { allDay: false, startTime: fixed.startTime, endTime: fixed.endTime };
 }
 
-/** 종료가 시작보다 뒤면 그대로 두고, 아니거나 같으면 같은 날 sensibleEndTime 이다. */
-function endOnOrAfterStart(startTime: string, endTime: string): string {
-  return HM.test(startTime) && HM.test(endTime) && endTime > startTime ? endTime : sensibleEndTime(startTime);
+function scheduleClock(
+  written: { startTime: string | null; endTime: string | null },
+  fields: ScheduleClock,
+): ScheduleClock {
+  return { ...fields, allDay: false, startTime: written.startTime ?? fields.startTime, endTime: written.endTime ?? fields.endTime };
+}
+
+/** 종일 ↔ 시간 지정. 시간을 다시 켤 때도 저장과 같은 시각 규칙을 쓴다. */
+export function toggleScheduleTime(form: ScheduleClock): ScheduleClock {
+  if (!form.allDay) return { ...form, allDay: true };
+  return scheduleClock(scheduleEventWriteTimes({ ...form, allDay: false }), form);
 }
 
 /**
  * 달력의 완료 결과. 시각이 없으면 종일이다.
- * 종일이던 일정에서 시작 시각을 처음 고르면 종료는 sensibleEndTime 이다.
- * 시작을 바꿔 종료가 시작보다 이르거나 같으면 같은 날로 맞춘다. 종료일을 다음 날로 밀지 않는다.
+ * 날짜를 맞춘 뒤 시각은 scheduleEventWriteTimes 한 곳만 거친다. 종료일을 다음 날로 밀지 않는다.
  */
 export function applyScheduleDateTime(
   form: Pick<ScheduleEventForm, 'date' | 'endDate' | 'allDay' | 'startTime' | 'endTime'>,
@@ -432,22 +446,22 @@ export function applyScheduleDateTime(
       return { date: next.date, endDate: form.endDate < next.date ? next.date : form.endDate, allDay: true, startTime: form.startTime, endTime: form.endTime };
     }
     const endDate = form.endDate < next.date ? next.date : form.endDate;
-    if (form.allDay) {
-      return { date: next.date, endDate, allDay: false, startTime: time, endTime: sensibleEndTime(time) };
-    }
-    return { date: next.date, endDate, allDay: false, startTime: time, endTime: endOnOrAfterStart(time, form.endTime) };
+    const clock = scheduleClock(
+      scheduleEventWriteTimes({ allDay: false, date: next.date, endDate, startTime: time, endTime: form.endTime }),
+      { allDay: false, date: next.date, endDate, startTime: time, endTime: form.endTime },
+    );
+    return { date: next.date, endDate, allDay: false, startTime: clock.startTime, endTime: clock.endTime };
   }
   if (!time) {
     return { date: form.date, endDate: next.date < form.date ? form.date : next.date, allDay: true, startTime: form.startTime, endTime: form.endTime };
   }
   const startTime = form.allDay || !HM.test(form.startTime) ? DEFAULT_SCHEDULE_START_TIME : form.startTime;
-  return {
-    date: form.date,
-    endDate: next.date < form.date ? form.date : next.date,
-    allDay: false,
-    startTime,
-    endTime: endOnOrAfterStart(startTime, time),
-  };
+  const endDate = next.date < form.date ? form.date : next.date;
+  const clock = scheduleClock(
+    scheduleEventWriteTimes({ allDay: false, date: form.date, endDate, startTime, endTime: time }),
+    { allDay: false, date: form.date, endDate, startTime, endTime: time },
+  );
+  return { date: form.date, endDate, allDay: false, startTime: clock.startTime, endTime: clock.endTime };
 }
 
 export function eventToForm(event: ScheduleEvent): ScheduleEventForm {
@@ -489,14 +503,30 @@ export function validateEventForm(form: ScheduleEventForm, options?: { calendarR
   return null;
 }
 
-export function formToGoogleInput(form: ScheduleEventForm) {
-  const times = scheduleEventWriteTimes(form);
+/** 화면 저장 직전 폼. 날짜를 확정한 뒤 시각은 scheduleEventWriteTimes 만 거친다. */
+export function scheduleEventSaveForm(form: ScheduleEventForm, fallbackDate = ''): ScheduleEventForm {
+  const date = form.date.trim() || fallbackDate.trim() || seoulYmd();
+  const endDate = form.endDate.trim() || date;
+  const clock = scheduleEventWriteTimes({ ...form, date, endDate });
   return {
-    calendarId: form.calendarId.trim(),
-    title: form.title.trim(),
-    description: form.description,
-    date: form.date,
-    endDate: form.endDate.trim() || form.date,
+    ...form,
+    date,
+    endDate,
+    allDay: clock.allDay,
+    startTime: clock.startTime ?? form.startTime,
+    endTime: clock.endTime ?? form.endTime,
+  };
+}
+
+export function formToGoogleInput(form: ScheduleEventForm) {
+  const saved = scheduleEventSaveForm(form, form.date);
+  const times = scheduleEventWriteTimes(saved);
+  return {
+    calendarId: saved.calendarId.trim(),
+    title: saved.title.trim(),
+    description: saved.description,
+    date: saved.date,
+    endDate: saved.endDate,
     allDay: times.allDay,
     startTime: times.startTime,
     endTime: times.endTime,

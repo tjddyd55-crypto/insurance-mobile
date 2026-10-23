@@ -14,7 +14,7 @@ import { matchesCustomerPickerQuery } from '../customers/customerPickerSearch';
 import { AppText, Button, Inline, TextField, useAppTheme, type AppTheme } from '../../design-system';
 import { ScheduleMonthCalendar } from './ScheduleDateField';
 import { formatKoreanClock, ScheduleTimeField } from './ScheduleTimeField';
-import { setScheduleTimeSpecified, withScheduleEndTime, withScheduleStartTime } from './scheduleModel';
+import { scheduleEventWriteTimes, withScheduleEndTime, withScheduleStartTime } from './scheduleModel';
 import type { WidgetQuickDraft } from './widgetQuickAddModel';
 
 export type QuickAddCustomer = { id: string; name: string; phone: string };
@@ -96,9 +96,9 @@ export function WidgetQuickAddSheet({
       setTimed(false);
       return;
     }
-    const next = setScheduleTimeSpecified({ allDay: true, startTime, endTime }, true);
-    setStartTime(next.startTime);
-    setEndTime(next.endTime);
+    const next = scheduleEventWriteTimes({ allDay: false, date: pickedDate, endDate: pickedDate, startTime, endTime });
+    setStartTime(next.startTime ?? startTime);
+    setEndTime(next.endTime ?? endTime);
     setTimed(true);
   };
   const matches = search.trim().length < 2

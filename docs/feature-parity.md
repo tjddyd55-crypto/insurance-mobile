@@ -29,7 +29,7 @@ Menu labels/order mirror insurance `buildAppMenuForSession` (USER).
 | 팀관리 | 팀 게시판 | /team/posts | /team/posts | TeamPostsScreen | posts/comments/presign/create/update/delete | NATIVE | NEAR_PARITY | 글 삭제 Native 구현; 수정 시 첨부 변경은 API 없음 backlog |
 | 팀관리 | 팀 자료 | /team/files | /team/files | TeamFilesScreen | GET /api/teams/files + shareRemoteFile | NATIVE | PARITY | open/share |
 | 업무편의 | 문자 발송 | /sms/settings | /sms/settings | SmsPcOnlyScreen | — | PC_ONLY | PC_ONLY | Native 메뉴 숨김. 직접 진입 시 PC 안내만. SMS 관리/발송 UI 미제공. |
-| 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | InsuranceContactsScreen | GET /api/company/list | NATIVE | PARITY | category/search/call/copy; selected outline tabs; Web phone format (1588/1577/02). |
+| 업무편의 | 원수사 연락처 | /insurance/contacts | /insurance/contacts | InsuranceContactsScreen | GET /api/company/list | NATIVE | PARITY | 화면·라우트·API는 유지. USER 메뉴 노출만 웹 HIDDEN_CONTACTS_MENU_PATHS 와 같이 숨김. 휴대폰 연락처 메뉴도 숨김. |
 | 업무편의 | 계정관리 | /insurance/account-credentials | /insurance/account-credentials | AccountVaultScreen | CRUD /api/user-insurer-accounts | NATIVE | PARITY | masking/CRUD/ModalShell; memo·share vault는 FUNCTION GAP. |
 | 업무편의 | 설계사이트 | /insurance/insurer-sites | /insurance/insurer-sites | InsurerSitesScreen | GET /api/insurer-sites | NATIVE | PARITY | tabs/logo/http(s) external open. |
 | 내정보 | 모바일 명함 | /profile/mobile-card | /profile/mobile-card | MobileCardWebViewScreen | 웹 화면 그대로(인앱 WebView), 세션은 injectedJavaScriptBeforeContentLoaded 로 웹 SSOT localStorage 키에 주입 | WEBVIEW | WEBVIEW | URL 토큰 없음, 매 로드 storage 초기화·계정별 key, 로그인 화면 감지 시 재시도. Device QA pending |

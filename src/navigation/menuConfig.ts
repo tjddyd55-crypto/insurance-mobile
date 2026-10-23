@@ -42,6 +42,35 @@ export type NativeMenuSection = {
 
 export type NativeMenuEntry = NativeMenuSection;
 
+/**
+ * 웹 gaTenantMenu.HIDDEN_CONTACTS_MENU_PATHS 와 같다.
+ * 라우트·화면·API는 유지하고, 메뉴와 내비게이션 노출만 끈다. 목록을 비우면 다시 켜진다.
+ */
+export const HIDDEN_CONTACTS_MENU_PATHS = [
+  '/insurance/contacts',
+  '/contacts',
+  '/insurance/company-registry',
+  '/contacts/manage',
+] as const;
+
+export function isContactsNavEntryHidden(path: string): boolean {
+  const normalized = String(path ?? '').split('?')[0]?.split('#')[0] ?? '';
+  return HIDDEN_CONTACTS_MENU_PATHS.some(
+    (item) => normalized === item || normalized.startsWith(`${item}/`),
+  );
+}
+
+export function withoutHiddenContactsMenu(menu: NativeMenuSection[]): NativeMenuSection[] {
+  return menu
+    .map((section) => ({
+      ...section,
+      children: section.children.filter(
+        (child) => !isContactsNavEntryHidden(child.nativePath) && !isContactsNavEntryHidden(child.legacyWebPath),
+      ),
+    }))
+    .filter((section) => section.children.length > 0);
+}
+
 /** USER feature flags mirrored from gaTenantMenu.USER_MENU_FEATURE_FLAGS */
 export const USER_MENU_FEATURE_FLAGS = {
   topLevelElectronicSignature: false,
@@ -288,6 +317,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         nativePath: '/sms/settings',
         mode: 'PC_ONLY',
       }),
+      // 웹과 같이 소스에는 남긴다. buildNativeMenuForSession 이 HIDDEN_CONTACTS_MENU_PATHS 로 노출만 뺀다.
       link({
         id: 'insurance-contacts',
         label: '원수사 연락처',

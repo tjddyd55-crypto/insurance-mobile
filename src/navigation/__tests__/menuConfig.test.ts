@@ -3,8 +3,10 @@ import {
   USER_MENU_FEATURE_FLAGS,
   filterMenuForRole,
   findMenuLinkByNativePath,
+  isContactsNavEntryHidden,
   listPrimaryMenuLabels,
   listSecondaryMenuLabels,
+  withoutHiddenContactsMenu,
 } from '../../navigation/menuConfig';
 
 describe('menuConfig', () => {
@@ -39,7 +41,7 @@ describe('menuConfig', () => {
     expect(filterMenuForRole(USER_APP_MENU, 'GA_ADMIN')).toEqual([]);
   });
 
-  it('hides the device contacts menu and keeps insurer contacts', () => {
+  it('hides phone contacts and insurer contacts from navigation, and keeps the insurer entry so it can return', () => {
     expect(USER_MENU_FEATURE_FLAGS.deviceContacts).toBe(false);
     expect(findMenuLinkByNativePath('/device-contacts')).toBeUndefined();
     const customers = USER_APP_MENU.find((section) => section.id === 'customers');
@@ -48,7 +50,18 @@ describe('menuConfig', () => {
       'customer-map',
     ]);
     expect(customers?.children.some((child) => child.label === '연락처')).toBe(false);
-    expect(findMenuLinkByNativePath('/insurance/contacts')?.label).toBe('원수사 연락처');
+    expect(findMenuLinkByNativePath('/insurance/contacts')?.id).toBe('insurance-contacts');
+    expect(isContactsNavEntryHidden('/insurance/contacts')).toBe(true);
+    expect(isContactsNavEntryHidden('/insurance/contacts/1')).toBe(true);
+    expect(isContactsNavEntryHidden('/contacts')).toBe(true);
+    expect(isContactsNavEntryHidden('/insurance/company-registry')).toBe(true);
+    expect(isContactsNavEntryHidden('/contacts/manage')).toBe(true);
+    expect(isContactsNavEntryHidden('/customers')).toBe(false);
+    const visible = withoutHiddenContactsMenu(USER_APP_MENU);
+    const visibleIds = visible.flatMap((section) => section.children.map((child) => child.id));
+    expect(visibleIds).not.toContain('insurance-contacts');
+    expect(visibleIds).not.toContain('device-contacts');
+    expect(visible.flatMap((section) => section.children.map((child) => child.label))).not.toContain('원수사 연락처');
   });
 
   it('maps native paths and keeps legacyWebPath', () => {

@@ -49,7 +49,7 @@ import {
   countItemsByDay,
   dayCountLabel,
   emptyEventForm,
-  scheduleEventWriteTimes,
+  scheduleEventSaveForm,
   toggleScheduleTime,
   withScheduleEndTime,
   withScheduleStartTime,
@@ -324,17 +324,7 @@ export function ScheduleScreen() {
   };
   const submitForm = () => {
     if (!formState) return;
-    const date = formState.form.date.trim() || selected || seoulYmd();
-    const endDate = formState.form.endDate.trim() || date;
-    const clock = scheduleEventWriteTimes(formState.form);
-    const form = {
-      ...formState.form,
-      date,
-      endDate,
-      allDay: clock.allDay,
-      startTime: clock.startTime ?? formState.form.startTime,
-      endTime: clock.endTime ?? formState.form.endTime,
-    };
+    const form = scheduleEventSaveForm(formState.form, selected || seoulYmd());
     const calendarRequired = formState.mode === 'edit' && !isOnefcSchedule(formState.event ?? { origin: undefined });
     const problem = validateEventForm(form, { calendarRequired });
     setFormError(problem);
