@@ -62,7 +62,7 @@ export function TodoCard({
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${todoDisplayContent(todo)} 할 일 수정`}
+          accessibilityLabel={`${todoDisplayContent(todo)} 할 일 열기`}
           style={({ pressed }) => [styles.body, pressed && styles.pressed]}
           onPress={() => router.push(editHref ?? (todoEditPath(todo.id) as Href))}
         >
@@ -75,23 +75,8 @@ export function TodoCard({
                 {customerTodoDateLine(todo)}
               </AppText>
             ) : null}
-            {dateOnly ? null : related.customerId ? (
-              <Pressable
-                accessibilityRole="link"
-                onPress={(event) => {
-                  event.stopPropagation();
-                  router.push({
-                    pathname: '/customers/[customerId]',
-                    params: { customerId: related.customerId ?? '' },
-                  });
-                }}
-              >
-                <AppText variant="caption" color="info" numberOfLines={1}>
-                  연결: {related.label}
-                </AppText>
-              </Pressable>
-            ) : (
-              <AppText variant="caption" color="textMuted" numberOfLines={1}>
+            {dateOnly ? null : (
+              <AppText variant="caption" color={related.customerId ? 'textSecondary' : 'textMuted'} numberOfLines={1}>
                 연결: {related.label}
               </AppText>
             )}

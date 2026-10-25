@@ -3,6 +3,7 @@ import {
   BackHandler,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -36,6 +37,7 @@ import { widgetQuickTodoPayload, type WidgetQuickDraft } from '../schedule/widge
 import { refreshScheduleSurfaces } from '../home-widgets/refreshScheduleSurfaces';
 import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
+import { linkedCustomerLabel, validCustomerId } from './customerTodos';
 import { leaveTodoOpenedFromWidget, type TodoWidgetNavigation } from './todoWidgetReturn';
 import { seedTodoCreateForm } from './consultationTodoCreate';
 import {
@@ -272,6 +274,8 @@ function TodoFormEditor({
   const selectedCustomer = form.relatedCustomerId
     ? form.relatedCustomerName || `고객 #${form.relatedCustomerId}`
     : '';
+  // 할 일 상세(수정)에서만 연결 고객 이름을 눌러 고객 상세로 간다. 목록 카드에는 별도 이동이 없다.
+  const linkedCustomerId = mode === 'edit' ? validCustomerId(form.relatedCustomerId) : undefined;
   const busy = saveMutation.isPending || deleteMutation.isPending;
   const mutationError = saveMutation.error ?? deleteMutation.error;
 
@@ -317,13 +321,28 @@ function TodoFormEditor({
 
         <Card variant="outlined">
           <Stack gap="sm">
-            <AppText variant="heading">연결 고객</AppText>
             {selectedCustomer ? (
               <Inline justify="space-between">
-                <View style={styles.customerName}>
-                  <AppText variant="bodyStrong">{selectedCustomer}</AppText>
-                  <AppText variant="caption">{lockedCustomer ? '이 고객의 할 일' : '선택된 고객'}</AppText>
-                </View>
+                {linkedCustomerId ? (
+                  <Pressable
+                    accessibilityRole="link"
+                    accessibilityLabel={`연결된 고객 ${selectedCustomer} 고객 상세 열기`}
+                    hitSlop={theme.interaction.compactHitSlop}
+                    style={({ pressed }) => [styles.customerName, pressed && styles.customerPressed]}
+                    onPress={() => router.push({
+                      pathname: '/customers/[customerId]',
+                      params: { customerId: linkedCustomerId },
+                    })}
+                  >
+                    <AppText variant="bodyStrong" color="info" numberOfLines={1}>
+                      {linkedCustomerLabel(selectedCustomer)}
+                    </AppText>
+                  </Pressable>
+                ) : (
+                  <View style={styles.customerName}>
+                    <AppText variant="bodyStrong" numberOfLines={1}>{linkedCustomerLabel(selectedCustomer)}</AppText>
+                  </View>
+                )}
                 {lockedCustomer ? null : <Button
                   label="연결 해제"
                   variant="ghost"
@@ -475,6 +494,7 @@ function createStyles(theme: AppTheme) {
     scroll: { flex: 1 },
     content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl, gap: theme.spacing.md },
     customerName: { flex: 1, gap: theme.spacing.xxs },
+    customerPressed: { opacity: theme.opacity.pressed },
     footerSafe: {
       backgroundColor: theme.colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,

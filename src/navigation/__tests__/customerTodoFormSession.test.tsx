@@ -29,6 +29,7 @@ function FormBody() {
       <Pressable onPress={() => setTitle('QA_t529_NATIVE_입력')}><Text>TYPE</Text></Pressable>
       <Pressable onPress={() => { setProcessing(true); leave(); }}><Text>SAVE</Text></Pressable>
       <Pressable onPress={leave}><Text>CANCEL</Text></Pressable>
+      <Pressable onPress={() => appRouter.push({ pathname: '/customers/[customerId]', params: { customerId: '7' } })}><Text>CUSTOMER_NAME</Text></Pressable>
       <Pressable onPress={() => { setProcessing(true); leave(); }}><Text>DELETE</Text></Pressable>
     </>
   );
@@ -42,6 +43,14 @@ function NewForm() {
 function EditForm() {
   const p = useLocalSearchParams<{ todoId?: string }>();
   return <FormBody key={todoEditScreenId(p.todoId)} />;
+}
+function TodoList() {
+  return (
+    <>
+      <Text>TODO_LIST</Text>
+      <Pressable onPress={() => router.push('/todos/t1/edit')}><Text>LIST_CARD</Text></Pressable>
+    </>
+  );
 }
 function CustomerTodos() {
   return (
@@ -64,7 +73,8 @@ const routes = () => ({
   index: leaf('HOME'),
   'customers/[customerId]/todos': CustomerTodos,
   'todos/_layout': { default: todosLayout.default, unstable_settings: todosLayout.unstable_settings },
-  'todos/index': leaf('TODO_LIST'),
+  'todos/index': TodoList,
+  'customers/[customerId]/index': leaf('CUSTOMER_DETAIL'),
   'todos/new': NewForm,
   'todos/[todoId]/edit': EditForm,
 });
@@ -132,5 +142,35 @@ describe('leaveTodoForm 고객 분기', () => {
   it('할 일 스택이 아니면 리셋하지 않는다', () => {
     expect(isTodoStack({ type: 'stack', index: 1, routeNames: ['(auth)', '(app)'] })).toBe(false);
     expect(isTodoStack({ type: 'drawer', index: 0, routeNames: ['index'] })).toBe(false);
+  });
+});
+
+describe('할 일 상세 back 은 진입 출처로', () => {
+  it('전체 목록 → 카드 → 상세 → back = 전체 목록', () => {
+    renderRouter(routes(), { initialUrl: '/' });
+    go('/todos');
+    press('LIST_CARD');
+    expect(pathname()).toBe('/todos/t1/edit');
+    press('CANCEL');
+    expect(pathname()).toBe('/todos');
+    expect(screen.getByText('TODO_LIST')).toBeTruthy();
+  });
+  it('고객 → 고객 할 일 → 카드 → 상세 → back = 그 고객 할 일 목록', () => {
+    renderRouter(routes(), { initialUrl: '/' });
+    go('/customers/7/todos');
+    press('CARD');
+    press('CANCEL');
+    expect(pathname()).toBe('/customers/7/todos');
+    go('/todos');
+    expect(screen.getByText('TODO_LIST')).toBeTruthy();
+  });
+  it('상세의 연결 고객 이름 → 고객 상세, 이후 할 일 메뉴는 목록', () => {
+    renderRouter(routes(), { initialUrl: '/' });
+    go('/todos');
+    press('LIST_CARD');
+    press('CUSTOMER_NAME');
+    expect(pathname()).toBe('/customers/7');
+    go('/todos');
+    expect(screen.getByText('TODO_LIST')).toBeTruthy();
   });
 });

@@ -86,3 +86,8 @@ export function customerTodoEditRoute(todoId: string, customerId: number): {
     params: { todoId, customerId: String(customerId), from: TODO_RETURN_SOURCE_CUSTOMER },
   };
 }
+
+/** 할 일 추가/수정 폼의 연결 고객 한 줄. 제목·보조 문구 없이 이것만 보인다. */
+export function linkedCustomerLabel(name: string): string {
+  return `선택됨 · ${name}`;
+}
