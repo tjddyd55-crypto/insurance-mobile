@@ -67,9 +67,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   // Store release 13 adds the in-app update UX (OTA apply prompt + Play flexible update).
   // eas.json appVersionSource is local, so these literals are the store numbers.
   const isProduction = environment === 'production';
-  const appVersion = isProduction ? '1.0.4' : '1.0.0';
-  const androidVersionCode = isProduction ? 13 : 1;
-  const iosBuildNumber = isProduction ? '13' : '1';
+  const appVersion = isProduction ? '1.0.5' : '1.0.0';
+  const androidVersionCode = isProduction ? 15 : 1;
+  const iosBuildNumber = isProduction ? '15' : '1';
   const projectId =
     process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 
