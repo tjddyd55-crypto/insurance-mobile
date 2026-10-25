@@ -13,7 +13,7 @@ import {
   sortCustomerTodos,
   validCustomerId,
 } from '../customerTodos';
-import { leaveTodoForm, POP_TODO_STACK_TO_LIST, todoReturnSource } from '../todoNavigation';
+import { leaveTodoForm, RESET_TODO_STACK_TO_LIST, todoReturnSource } from '../todoNavigation';
 import { listTodos } from '../todosApi';
 import type { TodoRecord } from '../types';
 
@@ -95,7 +95,10 @@ describe('고객 할 일 목록', () => {
 describe('고객 고정 할 일 추가', () => {
   it('기존 TodoForm 초안에 고객이 고정되고 출처는 manual', () => {
     const route = customerTodoCreateRoute({ customerId: 12, customerName: '홍길동' });
-    expect(route).toEqual({ pathname: '/todos/new', params: { customerId: '12', from: 'customer' } });
+    expect(route).toEqual({
+      pathname: '/todos/new',
+      params: { customerId: '12', from: 'customer', formSession: expect.any(String) },
+    });
     const seed = seedTodoCreateForm(undefined, '2026-10-30', new Date('2026-10-25T00:00:00Z'), '12');
     expect(seed.lockedCustomer).toBe(true);
     expect(seed.draft.relatedCustomerId).toBe('12');
@@ -129,7 +132,7 @@ describe('저장·수정·완료·삭제 후 복귀', () => {
       router,
       source,
     );
-    expect(dispatch).toHaveBeenCalledWith(POP_TODO_STACK_TO_LIST);
+    expect(dispatch).toHaveBeenCalledWith(RESET_TODO_STACK_TO_LIST);
     expect(router.replace).toHaveBeenCalledWith('/customers/12/todos');
     expect(router.push).not.toHaveBeenCalled();
   });

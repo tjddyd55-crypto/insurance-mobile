@@ -53,13 +53,13 @@ import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
 type TodoFormProps =
-  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string; customerId?: string }
+  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string; customerId?: string; formSession?: string }
   | { mode: 'edit'; todoId: string };
 
 export function TodoFormScreen(props: TodoFormProps) {
   if (props.mode === 'create') {
     const sessionKey = props.consultationId?.trim()
-      || (props.customerId ? `customer:${props.customerId}` : `manual:${props.dueDate ?? ''}`);
+      || (props.customerId ? `customer:${props.customerId}:${props.formSession ?? ''}` : `manual:${props.dueDate ?? ''}`);
     return (
       <TodoFormEditor
         key={sessionKey}

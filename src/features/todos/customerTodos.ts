@@ -53,13 +53,21 @@ export type CustomerTodoCreatePrefill = { customerId: string; customerName: stri
 
 const stagedCustomers = new Map<string, string>();
 
+let formSessionSeq = 0;
+
+/** 고객 할 일 '+ 할 일 추가'를 누를 때마다 새 값. 신규 폼 key 에 들어가 이전 입력·저장 상태를 재사용하지 않는다. */
+export function nextCustomerTodoFormSession(now = Date.now()): string {
+  formSessionSeq += 1;
+  return `${now.toString(36)}-${formSessionSeq}`;
+}
+
 export function customerTodoCreateRoute(input: { customerId: number; customerName?: string | null }): {
   pathname: '/todos/new';
-  params: { customerId: string; from: typeof TODO_RETURN_SOURCE_CUSTOMER };
+  params: { customerId: string; from: typeof TODO_RETURN_SOURCE_CUSTOMER; formSession: string };
 } {
   const customerId = String(input.customerId);
   stagedCustomers.set(customerId, input.customerName?.trim() ?? '');
-  return { pathname: '/todos/new', params: { customerId, from: TODO_RETURN_SOURCE_CUSTOMER } };
+  return { pathname: '/todos/new', params: { customerId, from: TODO_RETURN_SOURCE_CUSTOMER, formSession: nextCustomerTodoFormSession() } };
 }
 
 /** 고객이 고정된 추가 초안. 이름을 못 받았으면 `고객 #id`로 보인다. */

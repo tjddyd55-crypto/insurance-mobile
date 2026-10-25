@@ -9,6 +9,12 @@ export const POP_TODO_STACK_TO_LIST = { type: 'POP_TO_TOP' } as const;
 /** 할 일 스택 안의 수정 화면 이름. `app/(app)/todos/[todoId]/edit.tsx` */
 export const TODO_EDIT_STACK_SCREEN = '[todoId]/edit';
 
+/** 할 일 스택을 목록(index) 하나로. 고객 할 일 흐름에서 폼을 떠날 때만 쓴다. */
+export const RESET_TODO_STACK_TO_LIST = {
+  type: 'RESET',
+  payload: { index: 0, routes: [{ name: 'index' }] },
+} as const;
+
 export const TODO_LIST_HREF = '/todos' as const;
 
 const TODO_STACK_SCREENS = new Set(['index', 'new', TODO_EDIT_STACK_SCREEN]);
@@ -36,7 +42,7 @@ type TodoStackState = {
 
 type TodoStackNavigation = {
   getState: () => TodoStackState | undefined;
-  dispatch: (action: { type: string }) => void;
+  dispatch: (action: { type: string; payload?: unknown }) => void;
 };
 
 type TodoListRouter = {
@@ -50,6 +56,13 @@ type TodoListRouter = {
 export function shouldPopTodoStackToList(state: TodoStackState | undefined): boolean {
   if (!state || state.type !== 'stack') return false;
   if ((state.index ?? 0) <= 0) return false;
+  const names = state.routeNames ?? [];
+  return names.includes('index') && names.every((name) => TODO_STACK_SCREENS.has(name));
+}
+
+/** 이 navigation 이 할 일 Stack(index/new/edit 만 가진 stack)인지. */
+export function isTodoStack(state: TodoStackState | undefined): boolean {
+  if (!state || state.type !== 'stack') return false;
   const names = state.routeNames ?? [];
   return names.includes('index') && names.every((name) => TODO_STACK_SCREENS.has(name));
 }
@@ -114,7 +127,9 @@ export function leaveTodoForm(navigation: TodoStackNavigation, router: ScheduleR
   if (typeof source === 'object') {
     // 고객 할 일 화면에서 연 추가/수정: 할 일 스택을 접고 같은 고객의 할 일 화면으로.
     armedScheduleReturnDate = null;
-    if (shouldPopTodoStackToList(navigation.getState())) navigation.dispatch(POP_TODO_STACK_TO_LIST);
+    // 고객 화면에서 바로 연 폼은 할 일 스택의 첫 화면(index 0)이라 POP_TO_TOP 으로 빠지지 않는다.
+    // 할 일 스택을 목록 하나로 리셋해 오래된 추가/수정 폼이 스택에 남지 않게 한다.
+    if (isTodoStack(navigation.getState())) navigation.dispatch(RESET_TODO_STACK_TO_LIST);
     router.replace(customerTodosPath(source.customerId));
     return;
   }
