@@ -8,6 +8,7 @@
  * - timeout + network error
  * - 401 callback (no infinite retry)
  */
+import { getClientContextHeaders } from './clientContext';
 
 import { getEnvironmentConfig, HTTPS_ONLY_API_HOSTS } from '../config/environment';
 import { safeApiResponse } from './safeApiResponse';
@@ -165,6 +166,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       signal: rest.signal ?? controller.signal,
       headers: {
         'Content-Type': 'application/json',
+        // 접속 채널/기기 telemetry (인증·권한과 무관). 로그인·/api/me 포함 모든 요청에 동일하게 붙는다.
+        ...getClientContextHeaders(),
         ...(bearer ? { Authorization: bearer } : {}),
         ...headers,
       },

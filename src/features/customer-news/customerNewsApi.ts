@@ -1,3 +1,4 @@
+import { getClientContextHeaders } from '../../api/clientContext';
 import { ApiError, apiRequest, resolveApiUrl } from '../../api/client';
 import { uploadAllNewsAttachment } from './customerNewsAllAttachmentUpload';
 import type { CustomerNewsItem, LinkedCustomer, LocalAttachment, NewsAttachment, NewsComment } from './types';
@@ -64,6 +65,7 @@ export async function uploadNewsAttachment(
         method: 'PUT',
         headers: {
           'Content-Type': contentType,
+          ...getClientContextHeaders(),
           Authorization: `Bearer ${bearer}`,
           'X-File-Size': String(asset.size ?? blob.size),
         },
