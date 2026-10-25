@@ -5,6 +5,9 @@ import { useRouter, type Href } from 'expo-router';
 import {
   AppText,
   Card,
+  fontWeight,
+  lineHeight,
+  typeScale,
   Inline,
   Stack,
   useAppTheme,
@@ -71,21 +74,21 @@ export function TodoCard({
               {todoDisplayContent(todo)}
             </AppText>
             {dateOnly ? (
-              <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+              <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.meta}>
                 {customerTodoDateLine(todo)}
               </AppText>
             ) : null}
             {dateOnly ? null : (
-              <AppText variant="caption" color={related.customerId ? 'textSecondary' : 'textMuted'} numberOfLines={1}>
+              <AppText variant="caption" color={related.customerId ? 'textSecondary' : 'textMuted'} numberOfLines={1} style={styles.meta}>
                 연결: {related.label}
               </AppText>
             )}
             {dateOnly ? null : (
               <>
-                <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.meta}>
                   {formatTodoDueLine(todo)}
                 </AppText>
-                <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.meta}>
                   {todoSourceLine(todo)}
                 </AppText>
               </>
@@ -124,6 +127,8 @@ function createStyles(theme: AppTheme) {
       opacity: theme.opacity.disabled,
     },
     body: { flex: 1, minWidth: 0 },
+    // 카드 메타(연결·날짜·출처)는 공용 12px caption 대신 14px 보통 굵기
+    meta: { fontSize: typeScale.label, lineHeight: lineHeight.label, fontWeight: fontWeight.regular },
     pressed: { opacity: theme.opacity.pressed },
   });
 }

@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { DesignSystemProvider } from '../../../design-system';
+import { StyleSheet } from 'react-native';
+import { DesignSystemProvider, typeScale } from '../../../design-system';
 import { TodoCard } from '../TodoCard';
 import { linkedCustomerLabel } from '../customerTodos';
 import type { TodoRecord } from '../types';
@@ -44,6 +45,17 @@ describe('TodoCard 터치', () => {
     expect(mockPush).toHaveBeenCalledWith(href);
   });
 
+
+  it('메타 정보는 14px / lineHeight 20 / 보통 굵기', () => {
+    const ui = card();
+    for (const text of ['연결: A고객']) {
+      const style = StyleSheet.flatten(ui.getByText(text).props.style);
+      expect(style.fontSize).toBe(typeScale.label);
+      expect(style.fontSize).toBe(14);
+      expect(style.lineHeight).toBe(20);
+      expect(style.fontWeight).toBe('400');
+    }
+  });
 });
 
 describe('할 일 폼 연결 고객', () => {

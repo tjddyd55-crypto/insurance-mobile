@@ -93,7 +93,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
                     </AppText>
                     {child.badge ? <Badge label={child.badge} tone="default" /> : null}
                     {child.id === 'notifications' && unreadCount > 0 ? (
-                      <Badge label={`${unreadCount}`} tone="warning" />
+                      <Badge label={`${unreadCount}`} tone="warning" style={{ alignSelf: 'center' }} />
                     ) : null}
                   </Pressable>
                 );
