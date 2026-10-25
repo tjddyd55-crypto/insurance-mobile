@@ -53,13 +53,22 @@ import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
 type TodoFormProps =
-  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string }
+  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string; customerId?: string }
   | { mode: 'edit'; todoId: string };
 
 export function TodoFormScreen(props: TodoFormProps) {
   if (props.mode === 'create') {
-    const sessionKey = props.consultationId?.trim() || `manual:${props.dueDate ?? ''}`;
-    return <TodoFormEditor key={sessionKey} mode="create" consultationId={props.consultationId} dueDate={props.dueDate} />;
+    const sessionKey = props.consultationId?.trim()
+      || (props.customerId ? `customer:${props.customerId}` : `manual:${props.dueDate ?? ''}`);
+    return (
+      <TodoFormEditor
+        key={sessionKey}
+        mode="create"
+        consultationId={props.consultationId}
+        dueDate={props.dueDate}
+        customerId={props.customerId}
+      />
+    );
   }
   const screenId = todoEditScreenId(props.todoId);
   if (!screenId) {
@@ -69,13 +78,28 @@ export function TodoFormScreen(props: TodoFormProps) {
   return <TodoFormEditor key={screenId} mode="edit" todoId={screenId} />;
 }
 
-function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps & { consultationId?: string; dueDate?: string }) {
+function TodoFormEditor({
+  mode,
+  todoId,
+  consultationId,
+  dueDate,
+  customerId,
+}: TodoFormProps & { consultationId?: string; dueDate?: string; customerId?: string }) {
   const { token, user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ from?: string | string[]; src?: string | string[]; wt?: string | string[]; _w?: string | string[] }>();
-  const returnSource = todoReturnSource(params.from);
+  const params = useLocalSearchParams<{
+    from?: string | string[];
+    customerId?: string | string[];
+    src?: string | string[];
+    wt?: string | string[];
+    _w?: string | string[];
+  }>();
+  const returnSource = useMemo(
+    () => todoReturnSource(params.from, params.customerId),
+    [params.customerId, params.from],
+  );
   const leaveInApp = useCallback(() => {
     leaveTodoForm(navigation as unknown as Parameters<typeof leaveTodoForm>[0], router, returnSource);
   }, [navigation, returnSource, router]);
@@ -103,7 +127,8 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
-  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId, dueDate) : null;
+  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId, dueDate, new Date(), customerId) : null;
+  const [lockedCustomer] = useState(() => createSeed?.lockedCustomer ?? false);
   const [boundTodoId, setBoundTodoId] = useState<string | null>(activeTodoId);
   const [form, setForm] = useState<TodoFormDraft>(() => createSeed?.draft ?? cloneTodoFormDraft());
   const [initialSnapshot, setInitialSnapshot] = useState(() =>
@@ -227,7 +252,7 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
     saveMutation.mutate();
   };
 
-  if (mode === 'create' && !consultationId && isWidgetOrigin(params)) {
+  if (mode === 'create' && !lockedCustomer && !consultationId && isWidgetOrigin(params)) {
     return <TodoWidgetQuickCreate token={token} date={form.dueDate} onLeave={leave} />;
   }
 
@@ -297,9 +322,9 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
               <Inline justify="space-between">
                 <View style={styles.customerName}>
                   <AppText variant="bodyStrong">{selectedCustomer}</AppText>
-                  <AppText variant="caption">선택된 고객</AppText>
+                  <AppText variant="caption">{lockedCustomer ? '이 고객의 할 일' : '선택된 고객'}</AppText>
                 </View>
-                <Button
+                {lockedCustomer ? null : <Button
                   label="연결 해제"
                   variant="ghost"
                   size="sm"
@@ -310,22 +335,22 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
                       relatedCustomerName: '',
                     }))
                   }
-                />
+                />}
               </Inline>
             ) : (
               <AppText variant="caption">연결하지 않아도 저장할 수 있습니다.</AppText>
             )}
-            <TextField
+            {lockedCustomer ? null : <TextField
               label="고객 검색"
               value={customerSearch}
               onChangeText={setCustomerSearch}
               placeholder="이름 또는 전화번호 2글자 이상"
               returnKeyType="search"
-            />
-            {customerSearch.trim().length >= 2 && customersQuery.isLoading ? (
+            />}
+            {!lockedCustomer && customerSearch.trim().length >= 2 && customersQuery.isLoading ? (
               <AppText variant="caption">검색 중…</AppText>
             ) : null}
-            {customerResults.map((customer) => (
+            {(lockedCustomer ? [] : customerResults).map((customer) => (
               <Button
                 key={customer.id}
                 label={`${customer.name} · ${formatCustomerPhone(customer.phone) || '연락처 없음'}`}

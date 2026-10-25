@@ -11,7 +11,8 @@ export type CustomerWorkspaceActionId =
   | "memos"
   | "copy"
   | "premiumPayments"
-  | "coverageSimulations";
+  | "coverageSimulations"
+  | "todos";
 
 export type CustomerWorkspaceAction = {
   id: CustomerWorkspaceActionId;
@@ -43,6 +44,8 @@ const CUSTOMER_WORKSPACE_ACTION_TEMPLATES: CustomerWorkspaceActionTemplate[] = [
   { id: "copy", label: "복사", accessibilitySuffix: "정보 복사" },
   { id: "premiumPayments", label: "카드 수납", accessibilitySuffix: "카드 수납" },
   { id: "coverageSimulations", label: "시뮬레이션", accessibilitySuffix: "시뮬레이션" },
+  // 시뮬레이션 옆 칸. 모바일 노출 9개(홀수)→10개(짝수)라 시뮬레이션이 2열을 차지하지 않는다.
+  { id: "todos", label: "할 일", accessibilitySuffix: "할 일" },
 ];
 
 function buildAction(
@@ -108,6 +111,8 @@ export function resolveCustomerWorkspaceActionHref(
       };
     case "coverageSimulations":
       return `/customers/${customerId}/coverage-simulations`;
+    case "todos":
+      return `/customers/${customerId}/todos`;
     case "copy":
     case "gaData":
       return null;

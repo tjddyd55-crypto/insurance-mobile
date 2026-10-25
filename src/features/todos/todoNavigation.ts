@@ -2,6 +2,8 @@
  * 할 일 스택의 popToTop.
  * 라우트가 react-navigation 패키지를 직접 import 하면 SDK 56+ export가 실패한다.
  */
+import { customerTodosPath, TODO_RETURN_SOURCE_CUSTOMER, validCustomerId } from './customerTodos';
+
 export const POP_TODO_STACK_TO_LIST = { type: 'POP_TO_TOP' } as const;
 
 /** 할 일 스택 안의 수정 화면 이름. `app/(app)/todos/[todoId]/edit.tsx` */
@@ -68,15 +70,26 @@ export function returnToTodoList(navigation: TodoStackNavigation, router: TodoLi
 /** 일정 관리에서 연 할 일 수정. 라우트 파라미터 `from` 값. */
 export const TODO_RETURN_SOURCE_SCHEDULE = 'schedule' as const;
 
-export type TodoReturnSource = typeof TODO_RETURN_SOURCE_SCHEDULE | 'todos';
+export type TodoReturnSource =
+  | typeof TODO_RETURN_SOURCE_SCHEDULE
+  | 'todos'
+  | { kind: typeof TODO_RETURN_SOURCE_CUSTOMER; customerId: string };
 
-/** 라우트 파라미터 from → 복귀 출처. 모르는 값·없음은 할 일 목록(기존 규칙). */
-export function todoReturnSource(from: unknown): TodoReturnSource {
+/**
+ * 라우트 파라미터 from → 복귀 출처. 모르는 값·없음은 할 일 목록(기존 규칙).
+ * from=customer 는 숫자 customerId 가 함께 있을 때만 고객 할 일 화면으로 돌아간다.
+ */
+export function todoReturnSource(from: unknown, customerId?: unknown): TodoReturnSource {
   const value = Array.isArray(from) ? from.at(-1) : from;
+  if (value === TODO_RETURN_SOURCE_CUSTOMER) {
+    const id = validCustomerId(customerId);
+    if (id) return { kind: TODO_RETURN_SOURCE_CUSTOMER, customerId: id };
+  }
   return value === TODO_RETURN_SOURCE_SCHEDULE ? TODO_RETURN_SOURCE_SCHEDULE : 'todos';
 }
 
-type ScheduleReturnRouter = TodoListRouter & {
+type ScheduleReturnRouter = {
+  replace: (href: typeof TODO_LIST_HREF | `/customers/${string}/todos`) => void;
   push: (href: { pathname: '/schedule'; params: { date: string } }) => void;
 };
 
@@ -98,6 +111,13 @@ export function resetScheduleTodoReturnForTests(): void {
  * 위젯(src=widget) 복귀는 여기가 아니라 moveTaskToBack 이다.
  */
 export function leaveTodoForm(navigation: TodoStackNavigation, router: ScheduleReturnRouter, source: TodoReturnSource): void {
+  if (typeof source === 'object') {
+    // 고객 할 일 화면에서 연 추가/수정: 할 일 스택을 접고 같은 고객의 할 일 화면으로.
+    armedScheduleReturnDate = null;
+    if (shouldPopTodoStackToList(navigation.getState())) navigation.dispatch(POP_TODO_STACK_TO_LIST);
+    router.replace(customerTodosPath(source.customerId));
+    return;
+  }
   const date = source === TODO_RETURN_SOURCE_SCHEDULE ? armedScheduleReturnDate : null;
   armedScheduleReturnDate = null;
   if (date) {

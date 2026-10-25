@@ -54,6 +54,8 @@ export type ListTodosParams = {
   overdue?: string;
   hasRelated?: string;
   sourceType?: string;
+  /** 서버 PR #225(`related_entity_type='customer'` + id) 필터. 숫자 문자열만. */
+  customerId?: string;
 };
 
 export type SaveTodoPayload = {

@@ -12,6 +12,7 @@ import {
 } from '../../design-system';
 import { todoDisplayContent } from './todoModel';
 import { todoEditPath } from './todoNavigation';
+import { customerTodoDateLine } from './customerTodos';
 import {
   formatTodoDueLine,
   todoRelatedDisplay,
@@ -23,10 +24,16 @@ export function TodoCard({
   todo,
   stateBusy,
   onToggleDone,
+  editHref,
+  dateOnly = false,
 }: {
   todo: TodoRecord;
   stateBusy: boolean;
   onToggleDone: (todo: TodoRecord) => void;
+  /** 없으면 기존 할 일 수정 경로. */
+  editHref?: Href;
+  /** 고객 할 일 화면: 연결·출처 줄 없이 `날짜 …`만 보인다. */
+  dateOnly?: boolean;
 }) {
   const router = useRouter();
   const theme = useAppTheme();
@@ -57,13 +64,18 @@ export function TodoCard({
           accessibilityRole="button"
           accessibilityLabel={`${todoDisplayContent(todo)} 할 일 수정`}
           style={({ pressed }) => [styles.body, pressed && styles.pressed]}
-          onPress={() => router.push(todoEditPath(todo.id) as Href)}
+          onPress={() => router.push(editHref ?? (todoEditPath(todo.id) as Href))}
         >
           <Stack gap="xs">
             <AppText variant="bodyStrong" color="info" numberOfLines={3}>
               {todoDisplayContent(todo)}
             </AppText>
-            {related.customerId ? (
+            {dateOnly ? (
+              <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                {customerTodoDateLine(todo)}
+              </AppText>
+            ) : null}
+            {dateOnly ? null : related.customerId ? (
               <Pressable
                 accessibilityRole="link"
                 onPress={(event) => {
@@ -83,12 +95,16 @@ export function TodoCard({
                 연결: {related.label}
               </AppText>
             )}
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-              {formatTodoDueLine(todo)}
-            </AppText>
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-              {todoSourceLine(todo)}
-            </AppText>
+            {dateOnly ? null : (
+              <>
+                <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                  {formatTodoDueLine(todo)}
+                </AppText>
+                <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                  {todoSourceLine(todo)}
+                </AppText>
+              </>
+            )}
           </Stack>
         </Pressable>
       </Inline>

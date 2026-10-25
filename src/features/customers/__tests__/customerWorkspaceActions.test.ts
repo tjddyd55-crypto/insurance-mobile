@@ -18,6 +18,7 @@ describe("customerWorkspaceActions", () => {
       "memos",
       "copy",
       "coverageSimulations",
+      "todos",
     ]);
     expect(CUSTOMER_WORKSPACE_ACTIONS_HIDDEN_ON_MOBILE).toEqual(["map", "premiumPayments"]);
   });
@@ -36,13 +37,14 @@ describe("customerWorkspaceActions", () => {
       "copy",
       "premiumPayments",
       "coverageSimulations",
+      "todos",
     ]);
   });
 
   it("업무 바로가기는 모두 navigation secondary semantic을 사용한다", () => {
     const actions = buildCustomerWorkspaceActions("홍길동");
     expect(CUSTOMER_WORKSPACE_NAVIGATION_VARIANT).toBe("secondary");
-    expect(actions).toHaveLength(9);
+    expect(actions).toHaveLength(10);
   });
 
   it("고객 컨텍스트 route를 유지한다", () => {
