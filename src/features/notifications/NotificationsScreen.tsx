@@ -19,7 +19,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { NotificationCard } from './NotificationCard';
-import { groupNotifications, NOTIFICATION_PANEL_PREVIEW_COUNT } from './notificationModel';
+import { groupNotifications, notificationHasTarget, NOTIFICATION_PANEL_PREVIEW_COUNT } from './notificationModel';
 import { notificationEmptyCopy, notificationSectionTone } from './notificationPresentation';
 import {
   confirmNotification,
@@ -89,6 +89,8 @@ export function NotificationsScreen() {
   });
 
   const openNotification = (notification: NotificationRecord) => {
+    // 갈 곳이 없는 알림(상담 신청·모르는 type)은 탭해도 아무 것도 하지 않는다.
+    if (!notificationHasTarget(notification)) return;
     if (!notification.isRead) readMutation.mutate(notification);
     if (notification.type === 'newsletter_published') {
       const newsletterId = String(notification.referenceId ?? '').trim();

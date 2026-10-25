@@ -4,7 +4,11 @@ export type NotificationType =
   | 'claim_request_received'
   | 'special_date'
   | 'customer_created'
-  | 'newsletter_published';
+  | 'newsletter_published'
+  /** 서버 알림 센터 '상담 신청'(shared/userNotificationCatalog). Native 에는 상담 신청 화면이 없어 탭은 동작하지 않는다. */
+  | 'advisor_consultation_lead'
+  /** 앱이 모르는 type(레거시·신규). 목록을 깨지 않고 '알림'으로 보인다. */
+  | 'other';
 
 export type NotificationView = 'active' | 'confirmed';
 
@@ -14,6 +18,8 @@ export type NotificationRecord = {
   gaId: number | null;
   teamId: string | null;
   type: NotificationType;
+  /** 서버가 보낸 원래 type 문자열. 'other' 일 때 디버깅용. */
+  rawType: string;
   referenceId: string | null;
   message: string;
   isRead: boolean;

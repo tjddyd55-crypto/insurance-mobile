@@ -12,7 +12,9 @@ import {
 } from '../../design-system';
 import {
   notificationDDay,
+  notificationHasTarget,
   notificationReferenceDate,
+  notificationTitle,
   todayInSeoul,
 } from './notificationModel';
 import { notificationSectionDateLabel } from './notificationPresentation';
@@ -34,7 +36,7 @@ export function NotificationCard({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const referenceDate = notificationReferenceDate(notification);
-  const canOpen = notification.customerId != null && notification.customerId > 0;
+  const canOpen = notificationHasTarget(notification);
   const unread = !notification.isRead && view === 'active';
 
   return (
@@ -53,7 +55,7 @@ export function NotificationCard({
               numberOfLines={1}
               style={styles.title}
             >
-              {notification.customerName || '고객 정보 없음'}
+              {notificationTitle(notification)}
             </AppText>
             {unread ? <Badge label="새 알림" tone="warning" /> : null}
           </Inline>
