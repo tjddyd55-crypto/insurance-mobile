@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   Keyboard,
@@ -9,14 +9,22 @@ import {
   ScrollView,
   StyleSheet,
   View,
-} from 'react-native';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-import { useAppTheme } from '../DesignSystemProvider';
-import type { AppTheme } from '../themes';
-import { revealFocusedInput } from '../keyboardScroll';
-import { useBottomSafeInset } from '../useBottomSafeInset';
-import { AppText } from './AppText';
+import { useAppTheme } from "../DesignSystemProvider";
+import type { AppTheme } from "../themes";
+import { revealFocusedInput } from "../keyboardScroll";
+import {
+  consumeBackForKeyboard,
+  resolveModalKeyboardLayout,
+} from "../modalKeyboard";
+import { useBottomSafeInset } from "../useBottomSafeInset";
+import { AppText } from "./AppText";
 
 export type ModalShellProps = {
   open: boolean;
@@ -25,7 +33,7 @@ export type ModalShellProps = {
   children: ReactNode;
   headerAction?: ReactNode;
   footer?: ReactNode;
-  presentation?: 'fullscreen' | 'dialog';
+  presentation?: "fullscreen" | "dialog";
   scroll?: boolean;
   keyboardAvoiding?: boolean;
   busy?: boolean;
@@ -49,15 +57,12 @@ export function ModalShell(props: ModalShellProps) {
   return (
     <Modal
       visible={props.open}
-      animationType={props.presentation === 'dialog' ? 'fade' : 'slide'}
-      transparent={props.presentation === 'dialog'}
-      statusBarTranslucent={props.presentation === 'dialog'}
+      animationType={props.presentation === "dialog" ? "fade" : "slide"}
+      transparent={props.presentation === "dialog"}
+      statusBarTranslucent={props.presentation === "dialog"}
       onRequestClose={() => {
         // 키보드가 열린 상태의 뒤로가기는 키보드만 닫는다(폼 전체를 닫지 않음).
-        if (Keyboard.isVisible()) {
-          Keyboard.dismiss();
-          return;
-        }
+        if (consumeBackForKeyboard()) return;
         if (!props.busy && (props.dismissOnAndroidBack ?? true)) {
           props.onRequestClose();
         }
@@ -78,7 +83,7 @@ function ModalShellContent({
   children,
   headerAction,
   footer,
-  presentation = 'fullscreen',
+  presentation = "fullscreen",
   scroll = true,
   keyboardAvoiding = true,
   busy = false,
@@ -99,28 +104,48 @@ function ModalShellContent({
   const scrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
   const [keyboardInset, setKeyboardInset] = useState(0);
-  const isDialog = presentation === 'dialog';
+  const isDialog = presentation === "dialog";
   const resolvedBodyPadding = dialogBodyPadding ?? theme.layout.modalPadding;
   const keyboardOpen = keyboardInset > 0;
   // Android edge-to-edge: RN <Modal> 창은 키보드에 맞춰 줄지 않으므로, 키보드가 가리는 만큼을 직접 비운다.
   const [keyboardOverlap, setKeyboardOverlap] = useState(0);
   const [closedRootHeight, setClosedRootHeight] = useState(0);
   const [rootHeight, setRootHeight] = useState(0);
-  const resizedBy = keyboardOpen && closedRootHeight > 0 ? Math.max(0, closedRootHeight - rootHeight) : 0;
-  const fullscreenKeyboardPadding =
-    !isDialog && keyboardOpen && Platform.OS === 'android' ? Math.max(0, keyboardOverlap - resizedBy) : 0;
+  const resizedBy =
+    keyboardOpen && closedRootHeight > 0
+      ? Math.max(0, closedRootHeight - rootHeight)
+      : 0;
+  const keyboardLayout = resolveModalKeyboardLayout({
+    isDialog,
+    keyboardOpen,
+    platform: Platform.OS,
+    keyboardOverlap,
+    resizedBy,
+    keyboardInset,
+    safeBottom: insets.bottom,
+    gap: theme.spacing.sm,
+    modalPadding: theme.layout.modalPadding,
+  });
 
   useEffect(() => {
     if (!open) {
       setKeyboardInset(0);
       return;
     }
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const showSub = Keyboard.addListener(showEvent, (event) => {
       setKeyboardInset(event.endCoordinates.height);
-      const screenOverlap = Dimensions.get('screen').height - event.endCoordinates.screenY;
-      setKeyboardOverlap(Math.max(event.endCoordinates.height, screenOverlap > 0 ? screenOverlap : 0));
+      const screenOverlap =
+        Dimensions.get("screen").height - event.endCoordinates.screenY;
+      setKeyboardOverlap(
+        Math.max(
+          event.endCoordinates.height,
+          screenOverlap > 0 ? screenOverlap : 0,
+        ),
+      );
       if (scroll) {
         requestAnimationFrame(() => {
           // 포커스된 입력이 보이도록만 스크롤(맨 끝 스크롤은 상단 필드를 밀어냈음). 포커스 입력이 없을 때만 끝으로.
@@ -148,7 +173,8 @@ function ModalShellContent({
       }}
       onLayout={() => {
         // 키보드 패딩으로 보이는 영역이 줄어든 뒤 다시 포커스 입력을 확인한다.
-        if (keyboardOpen) revealFocusedInput(scrollRef.current, scrollYRef.current);
+        if (keyboardOpen)
+          revealFocusedInput(scrollRef.current, scrollYRef.current);
       }}
       style={isDialog ? styles.dialogScroll : undefined}
       contentContainerStyle={[
@@ -187,7 +213,7 @@ function ModalShellContent({
     <>
       <KeyboardAvoidingView
         enabled={keyboardAvoiding}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         onLayout={(event) => {
           const height = event.nativeEvent.layout.height;
           setRootHeight(height);
@@ -195,12 +221,16 @@ function ModalShellContent({
         }}
         style={[
           styles.modalRoot,
-          fullscreenKeyboardPadding > 0 && { paddingBottom: fullscreenKeyboardPadding },
           isDialog && styles.dialogOverlay,
           isDialog && keyboardOpen && styles.dialogOverlayKeyboardOpen,
           isDialog && {
             paddingVertical: dialogOverlayPaddingVertical ?? theme.spacing.xl,
-            paddingHorizontal: dialogOverlayPaddingHorizontal ?? theme.spacing.xl,
+            paddingHorizontal:
+              dialogOverlayPaddingHorizontal ?? theme.spacing.xl,
+          },
+          // 마지막에 적용: dialog paddingVertical 보다 우선해 키보드 높이만큼 하단을 비운다.
+          keyboardLayout.rootPaddingBottom !== null && {
+            paddingBottom: keyboardLayout.rootPaddingBottom,
           },
         ]}
       >
@@ -217,20 +247,31 @@ function ModalShellContent({
           />
         ) : null}
         <SafeAreaView
-          edges={isDialog ? ['left', 'right'] : ['top', 'left', 'right']}
+          edges={isDialog ? ["left", "right"] : ["top", "left", "right"]}
           style={[
             styles.safe,
             isDialog && styles.dialogPanel,
             isDialog && dialogMaxHeight ? { maxHeight: dialogMaxHeight } : null,
-            isDialog && dialogWidth ? { width: dialogWidth, alignSelf: 'center' } : null,
+            isDialog && dialogWidth
+              ? { width: dialogWidth, alignSelf: "center" }
+              : null,
             isDialog && keyboardOpen && styles.dialogPanelKeyboardOpen,
+            isDialog &&
+              keyboardOpen &&
+              Platform.OS === "android" &&
+              styles.dialogPanelKeyboardOpenAndroid,
           ]}
         >
           <View style={isDialog ? styles.dialogContent : styles.keyboard}>
-            <View style={[styles.header, dialogHeaderCompact && styles.headerCompact]}>
+            <View
+              style={[
+                styles.header,
+                dialogHeaderCompact && styles.headerCompact,
+              ]}
+            >
               <View style={styles.titleBlock}>
                 <AppText
-                  variant={dialogHeaderCompact ? 'bodyStrong' : 'sectionTitle'}
+                  variant={dialogHeaderCompact ? "bodyStrong" : "sectionTitle"}
                   numberOfLines={1}
                 >
                   {title}
@@ -252,14 +293,12 @@ function ModalShellContent({
                     !keyboardOpen && {
                       // Fullscreen: keep footer buttons above the system nav bar. With the
                       // keyboard open the keyboard covers the nav bar, so follow it only.
-                      paddingBottom: theme.layout.modalPadding + bottomSafeInset,
+                      paddingBottom:
+                        theme.layout.modalPadding + bottomSafeInset,
                     },
                   isDialog &&
-                    keyboardOpen && {
-                      paddingBottom: Math.max(
-                        theme.layout.modalPadding,
-                        keyboardInset - insets.bottom + theme.spacing.sm,
-                      ),
+                    keyboardLayout.dialogFooterPaddingBottom !== null && {
+                      paddingBottom: keyboardLayout.dialogFooterPaddingBottom,
                     },
                 ]}
               >
@@ -280,11 +319,11 @@ function createStyles(theme: AppTheme) {
       backgroundColor: theme.colors.background,
     },
     dialogOverlay: {
-      justifyContent: 'center',
+      justifyContent: "center",
       backgroundColor: theme.colors.overlay,
     },
     dialogOverlayKeyboardOpen: {
-      justifyContent: 'flex-end',
+      justifyContent: "flex-end",
       paddingBottom: theme.spacing.sm,
     },
     safe: {
@@ -293,15 +332,19 @@ function createStyles(theme: AppTheme) {
     },
     dialogPanel: {
       flex: 0,
-      width: '100%',
-      maxHeight: '90%',
+      width: "100%",
+      maxHeight: "90%",
       borderRadius: theme.radius.lg,
-      overflow: 'hidden',
+      overflow: "hidden",
       backgroundColor: theme.colors.surfaceElevated,
       zIndex: 1,
     },
     dialogPanelKeyboardOpen: {
-      maxHeight: '82%',
+      maxHeight: "82%",
+    },
+    // Android: overlay 하단을 키보드만큼 비웠으므로 남은 영역 전체를 쓸 수 있다(body 가 스크롤).
+    dialogPanelKeyboardOpenAndroid: {
+      maxHeight: "100%",
     },
     keyboard: {
       flex: 1,
@@ -309,7 +352,7 @@ function createStyles(theme: AppTheme) {
     dialogContent: {
       flexGrow: 0,
       flexShrink: 1,
-      maxHeight: '100%',
+      maxHeight: "100%",
     },
     dialogScroll: {
       flexGrow: 0,
@@ -318,9 +361,9 @@ function createStyles(theme: AppTheme) {
     header: {
       minHeight: theme.layout.modalHeaderHeight,
       paddingHorizontal: theme.layout.modalPadding,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       gap: theme.spacing.md,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
