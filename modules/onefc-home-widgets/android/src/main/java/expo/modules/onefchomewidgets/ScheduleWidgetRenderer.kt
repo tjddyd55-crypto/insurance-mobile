@@ -73,8 +73,9 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     views.setOnClickPendingIntent(R.id.w_prev, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_PREV, widgetId))
     views.setOnClickPendingIntent(R.id.w_next, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_NEXT, widgetId))
     WidgetCommonViews.bindRefresh(context, views, type, widgetId)
-    views.setOnClickPendingIntent(R.id.w_add, WidgetIntents.openApp(context, link(WidgetDeepLink.Action.CREATE, mapOf("date" to state.selected)), nonce))
-    views.setContentDescription(R.id.w_add, "${WidgetDates.dayTitle(state.selected)} 일정 추가")
+    // +: 앱 대신 Native 빠른 입력(오늘 기본, 화면에서 날짜 변경).
+    views.setOnClickPendingIntent(R.id.w_add, WidgetIntents.openDay(context, today, ScheduleDayActivity.MODE_CREATE_EVENT))
+    views.setContentDescription(R.id.w_add, "일정 추가")
 
     val weeks = WidgetDates.monthGrid(state.month)
     val text = context.getColor(R.color.onefc_widget_text)

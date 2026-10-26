@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 위젯 날짜 탭 모달: 날짜 머리글 · 그 날 목록 · 하단 "M월 D일에 추가 +" 알약. -->
+<!-- 위젯 날짜 탭 모달: 머리글 · 목록(0dp/weight=1, 남는 높이만 스크롤) · 입력 영역(옵션+입력, 항상 키보드 위).
+     카드 높이 상한은 ScheduleDayActivity 의 WindowInsets(IME+시스템 바) 리스너가 계산한다. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:id="@+id/day_card"
   android:layout_width="match_parent"
@@ -18,12 +19,25 @@
     <TextView android:id="@+id/day_close" android:layout_width="wrap_content" android:layout_height="40dp" android:gravity="center" android:paddingStart="12dp" android:paddingEnd="4dp" android:text="@string/onefc_widget_day_close" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text_secondary" />
   </LinearLayout>
 
-  <ScrollView android:id="@+id/day_scroll" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:fadeScrollbars="false">
+  <ScrollView android:id="@+id/day_scroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="16dp" android:fadeScrollbars="false">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
       <TextView android:id="@+id/day_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="32dp" android:paddingBottom="32dp" android:gravity="center" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text_secondary" android:maxLines="3" android:ellipsize="end" />
       <LinearLayout android:id="@+id/day_rows" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
     </LinearLayout>
   </ScrollView>
+
+  <!-- + 모드(createEvent/createTodo) 전용: 날짜 칩(DatePicker) · 일정만 종일/시간지정 · 시작/종료(TimePicker). -->
+  <LinearLayout android:id="@+id/day_create_opts" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="vertical" android:visibility="gone">
+    <TextView android:id="@+id/day_date_chip" android:layout_width="match_parent" android:layout_height="44dp" android:gravity="center_vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:background="@drawable/onefc_day_input_bg" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" />
+    <LinearLayout android:id="@+id/day_allday_row" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="8dp" android:orientation="horizontal">
+      <TextView android:id="@+id/day_allday" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:background="@drawable/onefc_day_input_bg" android:text="@string/onefc_widget_day_allday" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" />
+      <TextView android:id="@+id/day_timed" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="8dp" android:gravity="center" android:background="@drawable/onefc_day_input_bg" android:text="@string/onefc_widget_day_timed" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/day_time_row" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="8dp" android:orientation="horizontal" android:visibility="gone">
+      <TextView android:id="@+id/day_start" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:background="@drawable/onefc_day_input_bg" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" />
+      <TextView android:id="@+id/day_end" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="8dp" android:gravity="center" android:background="@drawable/onefc_day_input_bg" android:textSize="@dimen/onefc_widget_item_text" android:textColor="@color/onefc_widget_text" />
+    </LinearLayout>
+  </LinearLayout>
 
   <!-- 빠른 추가 오류(입력은 그대로 둔다). -->
   <TextView android:id="@+id/day_error" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:visibility="gone" android:textSize="@dimen/onefc_widget_small_text" android:textColor="@color/onefc_widget_sunday" android:maxLines="2" android:ellipsize="end" />

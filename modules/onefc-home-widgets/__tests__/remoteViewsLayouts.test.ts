@@ -94,11 +94,25 @@ describe('widget header taps open the app list screens', () => {
   it('schedule month header opens schedule OPEN deep link (not create)', () => {
     const src = fs.readFileSync(path.join(KT, 'ScheduleWidgetRenderer.kt'), 'utf8');
     expect(src).toMatch(/setOnClickPendingIntent\(R\.id\.w_month, WidgetIntents\.openApp\(context, link\(WidgetDeepLink\.Action\.OPEN/);
-    expect(src).toMatch(/setOnClickPendingIntent\(R\.id\.w_add, WidgetIntents\.openApp\(context, link\(WidgetDeepLink\.Action\.CREATE/);
+    // + 는 앱이 아니라 Native 빠른 입력(createEvent, 오늘 기본). 날짜 칸은 day 모드 그대로.
+    expect(src).toContain('setOnClickPendingIntent(R.id.w_add, WidgetIntents.openDay(context, today, ScheduleDayActivity.MODE_CREATE_EVENT))');
+    expect(src).toContain('setOnClickPendingIntent(cellId, WidgetIntents.openDay(context, cell.ymd))');
   });
-  it('todo title header opens todo list link; + stays create', () => {
+  it('todo title header opens todo list link; + opens native createTodo; date label opens day mode', () => {
     const src = fs.readFileSync(path.join(KT, 'TodoWidgetRenderer.kt'), 'utf8');
     expect(src).toContain('setOnClickPendingIntent(R.id.w_title, WidgetIntents.openApp(context, listLink, nonce))');
+    expect(src).toContain('val addIntent = WidgetIntents.openDay(context, today, ScheduleDayActivity.MODE_CREATE_TODO)');
     expect(src).toContain('setOnClickPendingIntent(R.id.w_add, addIntent)');
+    expect(src).toContain('setOnClickPendingIntent(R.id.w_day_label, WidgetIntents.openDay(context, date))');
+  });
+  it('openDay requestCode reflects mode; day dialog list flexes above input', () => {
+    const common = fs.readFileSync(path.join(KT, 'WidgetCommon.kt'), 'utf8');
+    expect(common).toContain('ScheduleDayActivity.requestCode(date, mode)');
+    const activity = fs.readFileSync(path.join(KT, 'ScheduleDayActivity.kt'), 'utf8');
+    expect(activity).not.toContain('capList');
+    expect(activity).toContain('setOnApplyWindowInsetsListener');
+    expect(activity).toContain('WindowInsets.Type.ime()');
+    const xml = fs.readFileSync(path.join(__dirname, '..', 'android', 'src', 'main', 'res', 'layout', 'onefc_day_dialog.xml'), 'utf8');
+    expect(xml).toMatch(/android:id="@\+id\/day_scroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/);
   });
 });

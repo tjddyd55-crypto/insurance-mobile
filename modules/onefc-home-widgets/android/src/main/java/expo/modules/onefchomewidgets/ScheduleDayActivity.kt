@@ -1,6 +1,8 @@
 package expo.modules.onefchomewidgets
 
 import android.app.Activity
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -10,20 +12,32 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
+import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 
 /**
  * 위젯 날짜 칸에서 여는 모달. 목록은 스냅샷이고, 항목·로그인은 기존 src=widget deep link 로 앱에 넘긴다.
  * 빠른 추가는 앱 JS headless(OneFcWidgetQuickAdd)가 기존 세션·서버 API 로 저장한다. 여기서는 토큰도 서버 호출도 없다.
  * 앱 안의 저장·취소·뒤로가기는 moveTaskToBack 규칙을 그대로 쓴다.
+ *
+ * mode: day(날짜 칸) · createEvent(일정 위젯 +) · createTodo(할 일 위젯 +). + 모드는 목록을 숨기고
+ * 날짜(DatePicker)·종일/시간지정(일정만)을 고른 뒤 저장 성공 시 위젯을 즉시 다시 그리고 finish() 로 홈에 돌아간다.
+ *
+ * 키보드: manifest 의 adjustResize 를 유지(시스템이 창을 키보드 위로 올림)하고, 리스너는 카드 높이 상한만 정한다.
+ * 상한 = 화면 높이 − (IME 또는 내비 바 중 큰 하단) − 상태 바 − 여백. 줄어든 창 높이가 아니라 화면 높이에서 빼므로
+ * adjustResize 와 이중 보정되지 않는다. 목록(ScrollView 0dp/weight=1)만 줄고 입력 영역은 항상 보인다.
  */
 class ScheduleDayActivity : Activity() {
   private lateinit var date: String
+  private var mode = MODE_DAY
+  private var allDay = true
+  private var startTime = DEFAULT_START
+  private var endTime = DEFAULT_END
   private val quick = ScheduleQuickAdd.Session()
   private val main = Handler(Looper.getMainLooper())
   private var created: List<ScheduleQuickAdd.Result> = emptyList()
@@ -37,11 +51,21 @@ class ScheduleDayActivity : Activity() {
       return
     }
     date = requested!!
+    mode = normalizeMode(intent.getStringExtra(EXTRA_MODE))
     setContentView(R.layout.onefc_day_dialog)
     bindInput()
+    bindCreateOptions()
     reload()
-    capList()
+    watchInsets()
+    if (creating) {
+      val input = findViewById<EditText>(R.id.day_input)
+      input.requestFocus()
+      window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+    }
   }
+
+  private val creating get() = mode != MODE_DAY
+  private val todoMode get() = mode == MODE_CREATE_TODO
 
   override fun onDestroy() {
     quick.busyId?.let { QuickAddBus.cancel(it) }
@@ -57,19 +81,37 @@ class ScheduleDayActivity : Activity() {
     bind(content)
   }
 
-  /** 항목이 많으면 목록만 스크롤하고 입력칸은 아래에 남긴다. */
-  private fun capList() {
-    val scroll = findViewById<ScrollView>(R.id.day_scroll)
-    val max = (resources.displayMetrics.heightPixels * 0.5f).toInt()
-    scroll.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
-      override fun onGlobalLayout() {
-        if (scroll.height > max) {
-          scroll.layoutParams.height = max
-          scroll.requestLayout()
-        }
-        scroll.viewTreeObserver.removeOnGlobalLayoutListener(this)
+  /** IME·시스템 바 인셋이 바뀔 때마다 카드 높이 상한을 다시 계산(예전 일회성 50% 상한 대체). */
+  private fun watchInsets() {
+    val card = findViewById<View>(R.id.day_card)
+    val margin = resources.getDimensionPixelSize(R.dimen.onefc_day_dialog_margin)
+    window.decorView.setOnApplyWindowInsetsListener { view, insets ->
+      val (top, bottom) = if (android.os.Build.VERSION.SDK_INT >= 30) {
+        val bars = insets.getInsets(WindowInsets.Type.systemBars())
+        val ime = insets.getInsets(WindowInsets.Type.ime())
+        bars.top to maxOf(bars.bottom, ime.bottom)
+      } else {
+        @Suppress("DEPRECATION")
+        insets.systemWindowInsetTop to insets.systemWindowInsetBottom
       }
-    })
+      val screen = resources.displayMetrics.heightPixels
+      val cap = (screen - top - bottom - margin * 2).coerceAtLeast(0)
+      card.post { applyCap(card, cap) }
+      view.onApplyWindowInsets(insets)
+    }
+    window.decorView.requestApplyInsets()
+  }
+
+  /** 자연 높이가 상한보다 크면 카드를 상한으로 고정(목록만 줄어듦), 아니면 wrap_content. */
+  private fun applyCap(card: View, cap: Int) {
+    val params = card.layoutParams ?: return
+    val width = View.MeasureSpec.makeMeasureSpec(card.width.coerceAtLeast(0), if (card.width > 0) View.MeasureSpec.EXACTLY else View.MeasureSpec.UNSPECIFIED)
+    card.measure(width, View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+    val next = if (cap > 0 && card.measuredHeight > cap) cap else ViewGroup.LayoutParams.WRAP_CONTENT
+    if (params.height != next) {
+      params.height = next
+      card.layoutParams = params
+    }
   }
 
   private fun bind(content: ScheduleDayModel.Content) {
@@ -82,6 +124,15 @@ class ScheduleDayActivity : Activity() {
     findViewById<View>(R.id.day_close).setOnClickListener { finish() }
     val message = findViewById<TextView>(R.id.day_message)
     val rows = findViewById<LinearLayout>(R.id.day_rows)
+    if (creating && content.mode != ScheduleDayModel.Mode.LOGIN) {
+      // + 모드: 목록 없이 입력만. 머리글은 고른 날짜 + "일정/할 일 추가".
+      findViewById<TextView>(R.id.day_title).text = getString(if (todoMode) R.string.onefc_widget_day_add_todo else R.string.onefc_widget_day_add_event)
+      findViewById<View>(R.id.day_scroll).visibility = View.GONE
+      rows.removeAllViews()
+      bindBottom(content)
+      return
+    }
+    findViewById<View>(R.id.day_scroll).visibility = View.VISIBLE
     message.visibility = if (content.mode == ScheduleDayModel.Mode.LIST) View.GONE else View.VISIBLE
     message.text = messageFor(content.mode)
     message.setOnClickListener { if (content.mode != ScheduleDayModel.Mode.LIST) open(content.openLink) }
@@ -115,7 +166,9 @@ class ScheduleDayActivity : Activity() {
   private fun bindBottom(content: ScheduleDayModel.Content) {
     val inputRow = findViewById<View>(R.id.day_input_row)
     val login = findViewById<TextView>(R.id.day_login)
+    val opts = findViewById<View>(R.id.day_create_opts)
     if (content.mode == ScheduleDayModel.Mode.LOGIN) {
+      opts.visibility = View.GONE
       inputRow.visibility = View.GONE
       findViewById<View>(R.id.day_error).visibility = View.GONE
       login.visibility = View.VISIBLE
@@ -124,9 +177,57 @@ class ScheduleDayActivity : Activity() {
     }
     login.visibility = View.GONE
     // 준비 전(캐시 없음)에는 서버 상태를 모르므로 입력 대신 앱을 열게 한다.
-    val canAdd = !content.addLink.isNullOrBlank()
+    // + 모드는 위젯 캐시 종류와 무관하게 입력을 연다(로그인 여부는 headless 가 code=login 으로 알려 준다).
+    val canAdd = creating || !content.addLink.isNullOrBlank()
     inputRow.visibility = if (canAdd) View.VISIBLE else View.GONE
-    findViewById<EditText>(R.id.day_input).hint = getString(R.string.onefc_widget_day_add, content.monthDay.ifBlank { content.title })
+    opts.visibility = if (creating) View.VISIBLE else View.GONE
+    findViewById<EditText>(R.id.day_input).hint = when {
+      todoMode -> getString(R.string.onefc_widget_day_todo_hint)
+      creating -> getString(R.string.onefc_widget_day_event_hint)
+      else -> getString(R.string.onefc_widget_day_add, content.monthDay.ifBlank { content.title })
+    }
+    if (creating) refreshCreateOptions()
+  }
+
+  private fun bindCreateOptions() {
+    findViewById<View>(R.id.day_date_chip).setOnClickListener {
+      if (quick.busy) return@setOnClickListener
+      val (y, m, d) = date.split("-").map { it.toInt() }
+      DatePickerDialog(this, { _, year, month, day ->
+        date = "%04d-%02d-%02d".format(year, month + 1, day)
+        showError(null)
+        reload()
+      }, y, m - 1, d).show()
+    }
+    findViewById<View>(R.id.day_allday).setOnClickListener { if (!quick.busy) { allDay = true; refreshCreateOptions() } }
+    findViewById<View>(R.id.day_timed).setOnClickListener { if (!quick.busy) { allDay = false; refreshCreateOptions() } }
+    findViewById<View>(R.id.day_start).setOnClickListener { pickTime(startTime) { picked ->
+      startTime = picked
+      // 기존 일정 정책(setScheduleTimeSpecified): 종료가 시작보다 뒤가 아니면 시작+1시간.
+      if (endTime <= startTime) endTime = ScheduleQuickAdd.sensibleEnd(startTime)
+    } }
+    findViewById<View>(R.id.day_end).setOnClickListener { pickTime(endTime) { picked ->
+      endTime = if (picked > startTime) picked else ScheduleQuickAdd.sensibleEnd(startTime)
+    } }
+  }
+
+  private fun pickTime(current: String, apply: (String) -> Unit) {
+    if (quick.busy) return
+    val (h, m) = current.split(":").map { it.toInt() }
+    TimePickerDialog(this, { _, hour, minute ->
+      apply("%02d:%02d".format(hour, minute))
+      refreshCreateOptions()
+    }, h, m, true).show()
+  }
+
+  private fun refreshCreateOptions() {
+    findViewById<TextView>(R.id.day_date_chip).text = "${WidgetDates.dayTitle(date)} ▾"
+    findViewById<View>(R.id.day_allday_row).visibility = if (todoMode) View.GONE else View.VISIBLE
+    findViewById<View>(R.id.day_time_row).visibility = if (!todoMode && !allDay) View.VISIBLE else View.GONE
+    findViewById<View>(R.id.day_allday).alpha = if (allDay) 1f else 0.45f
+    findViewById<View>(R.id.day_timed).alpha = if (allDay) 0.45f else 1f
+    findViewById<TextView>(R.id.day_start).text = startTime
+    findViewById<TextView>(R.id.day_end).text = endTime
   }
 
   private fun bindInput() {
@@ -164,7 +265,13 @@ class ScheduleDayActivity : Activity() {
     val input = findViewById<EditText>(R.id.day_input)
     if (!ScheduleQuickAdd.canSubmit(input.text, quick.busy)) return
     val title = ScheduleQuickAdd.normalize(input.text)
-    val requestId = quick.begin(date, title) ?: return
+    // 같은 입력(날짜·종류·시간·제목)일 때만 requestId 를 재사용한다.
+    val requestId = quick.begin(requestKey(), title) ?: return
+    val kind = if (todoMode) "todo" else "event"
+    val timed = creating && !todoMode && !allDay
+    val saveDate = date
+    val start = startTime
+    val end = endTime
     showError(null)
     findViewById<TextView>(R.id.day_send).text = "…"
     refreshSend()
@@ -179,8 +286,14 @@ class ScheduleDayActivity : Activity() {
     Thread {
       val finished = WidgetHeadless.run(app, ScheduleQuickAdd.TASK_NAME, ScheduleQuickAdd.TASK_TIMEOUT_MS) { data ->
         data.putString("requestId", requestId)
-        data.putString("date", date)
+        data.putString("date", saveDate)
         data.putString("title", title)
+        data.putString("kind", kind)
+        data.putString("allDay", if (timed) "false" else "true")
+        if (timed) {
+          data.putString("startTime", start)
+          data.putString("endTime", end)
+        }
       }
       // headless 를 못 띄웠으면(앱 JS 없음) 바로 실패로.
       if (!finished) QuickAddBus.report(requestId, "")
@@ -195,7 +308,13 @@ class ScheduleDayActivity : Activity() {
     timeout = null
     findViewById<TextView>(R.id.day_send).text = "+"
     val input = findViewById<EditText>(R.id.day_input)
-    if (ok) {
+    if (ok && creating) {
+      // + 모드: 위젯 스냅샷을 바로 다시 그리고(JS refreshWidgets 가 쓴 캐시) 홈으로.
+      WidgetEngine.render(this, OneFcWidgetType.SCHEDULE)
+      if (todoMode) WidgetEngine.render(this, OneFcWidgetType.TODO)
+      finish()
+      return
+    } else if (ok) {
       created = created + result!!
       input.setText("")
       reload()
@@ -238,13 +357,30 @@ class ScheduleDayActivity : Activity() {
 
   internal fun beginForTest(title: String): String? {
     findViewById<EditText>(R.id.day_input).setText(title)
-    val id = quick.begin(date, ScheduleQuickAdd.normalize(title)) ?: return null
+    val id = quick.begin(requestKey(), ScheduleQuickAdd.normalize(title)) ?: return null
     findViewById<TextView>(R.id.day_send).text = "…"
     refreshSend()
     return id
   }
 
+  private fun requestKey(): String = if (!creating) date else "$date|$mode|${if (todoMode || allDay) "all" else "$startTime-$endTime"}"
+
   companion object {
     const val EXTRA_DATE = "date"
+    const val EXTRA_MODE = "mode"
+    const val MODE_DAY = "day"
+    const val MODE_CREATE_EVENT = "createEvent"
+    const val MODE_CREATE_TODO = "createTodo"
+    // scheduleModel DEFAULT_SCHEDULE_START_TIME / sensibleEndTime 과 같은 값.
+    const val DEFAULT_START = "09:00"
+    const val DEFAULT_END = "10:00"
+
+    fun normalizeMode(raw: String?): String = when (raw) {
+      MODE_CREATE_EVENT, MODE_CREATE_TODO -> raw
+      else -> MODE_DAY
+    }
+
+    /** PendingIntent requestCode: 날짜+mode. */
+    fun requestCode(date: String, mode: String): Int = "$date|${normalizeMode(mode)}".hashCode()
   }
 }

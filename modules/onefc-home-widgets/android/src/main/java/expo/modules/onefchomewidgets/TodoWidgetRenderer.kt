@@ -53,7 +53,8 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
     val muted = context.getColor(R.color.onefc_widget_text_muted)
 
     views.setTextViewText(R.id.w_day_label, WidgetDates.todoDayLabel(date, today))
-    views.setOnClickPendingIntent(R.id.w_day_label, WidgetIntents.openApp(context, listLink, nonce))
+    // 날짜 라벨: 그 날의 Native 날짜 모달(일정 위젯과 같은 day 모드). 헤더는 앱 할 일 그대로.
+    views.setOnClickPendingIntent(R.id.w_day_label, WidgetIntents.openDay(context, date))
     // 헤더 "ONE FC 할 일": 앱 할 일 목록으로 바로 진입.
     views.setOnClickPendingIntent(R.id.w_title, WidgetIntents.openApp(context, listLink, nonce))
     views.setOnClickPendingIntent(R.id.w_prev, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_PREV, widgetId))
@@ -61,9 +62,10 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
     views.setOnClickPendingIntent(R.id.w_to_today, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
     views.setViewVisibility(R.id.w_to_today, if (date == today) View.GONE else View.VISIBLE)
     WidgetCommonViews.bindRefresh(context, views, type, widgetId)
-    val addIntent = WidgetIntents.openApp(context, WidgetDeepLink.build(envelope.scheme, type, WidgetDeepLink.Action.CREATE, mapOf("date" to date)), nonce)
+    // +: Native 빠른 입력(오늘 기본, 날짜만 변경 가능, 시간 없음).
+    val addIntent = WidgetIntents.openDay(context, today, ScheduleDayActivity.MODE_CREATE_TODO)
     views.setOnClickPendingIntent(R.id.w_add, addIntent)
-    views.setContentDescription(R.id.w_add, "${WidgetDates.dayTitle(date)} 할 일 추가")
+    views.setContentDescription(R.id.w_add, "할 일 추가")
     views.setOnClickPendingIntent(R.id.w_empty_add, addIntent)
 
     val items = payload.todos[date].orEmpty()

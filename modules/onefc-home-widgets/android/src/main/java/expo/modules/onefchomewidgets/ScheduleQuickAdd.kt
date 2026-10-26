@@ -15,6 +15,14 @@ internal object ScheduleQuickAdd {
   const val TITLE_MAX = 200
   const val TIMEOUT_MESSAGE = "저장 결과를 확인하지 못했어요. 다시 시도해 주세요"
 
+  /** scheduleModel.sensibleEndTime 과 같은 규칙: 시작+1시간, 23시 이후는 23:59. */
+  fun sensibleEnd(start: String): String {
+    val match = Regex("^([01]\\d|2[0-3]):([0-5]\\d)$").find(start) ?: return "10:00"
+    val hour = match.groupValues[1].toInt()
+    if (hour >= 23) return "23:59"
+    return "%02d:%s".format(hour + 1, match.groupValues[2])
+  }
+
   fun normalize(text: CharSequence?): String = text?.toString()?.trim().orEmpty()
 
   fun canSubmit(text: CharSequence?, busy: Boolean): Boolean {
