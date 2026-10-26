@@ -50,6 +50,17 @@ class OnefcHomeWidgetsModule : Module() {
      * 위젯에서 연 화면을 닫을 때 앱을 종료하지 않고 홈(위젯)이 보이게 작업을 뒤로 보낸다.
      * Activity 가 없으면 false. 호출부(구 바이너리·실패)는 앱 안 이동으로 돌아간다.
      */
+    /** 로그인 후 위젯 Native 화면(day/createEvent/createTodo)을 다시 연다. 위젯이 쓰는 openDay 와 같은 Intent. */
+    AsyncFunction("openQuickEntry") { date: String, mode: String ->
+      if (!WidgetDates.isYmd(date)) return@AsyncFunction false
+      val intent = android.content.Intent(context, ScheduleDayActivity::class.java)
+        .putExtra(ScheduleDayActivity.EXTRA_DATE, date)
+        .putExtra(ScheduleDayActivity.EXTRA_MODE, ScheduleDayActivity.normalizeMode(mode))
+        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_NO_HISTORY)
+      val activity = appContext.currentActivity
+      runCatching { (activity ?: context).startActivity(intent) }.isSuccess
+    }.runOnQueue(Queues.MAIN)
+
     AsyncFunction("moveTaskToBack") {
       val activity = appContext.currentActivity ?: return@AsyncFunction false
       runCatching { activity.moveTaskToBack(true) }.getOrDefault(false)

@@ -16,6 +16,8 @@ type OnefcHomeWidgetsNative = {
   moveTaskToBack?: () => Promise<boolean> | boolean;
   /** 빠른 추가 결과(JSON)를 열려 있는 날짜 모달에 전달. 구 바이너리에는 없다. */
   reportQuickAddResult?: (requestId: string, json: string) => Promise<boolean> | boolean;
+  /** 로그인 후 위젯 Native 날짜 모달 다시 열기. 구 바이너리에는 없다. */
+  openQuickEntry?: (date: string, mode: string) => Promise<boolean> | boolean;
 };
 
 let cached: OnefcHomeWidgetsNative | null | undefined;
@@ -59,6 +61,14 @@ export function moveTaskToBack(): Promise<boolean> {
   });
 }
 
+/** 위젯 Native 날짜 모달(day/createEvent/createTodo)을 연다. 없거나 실패하면 false → 호출부가 앱 안 이동. */
+export function openQuickEntry(date: string, mode: string): Promise<boolean> {
+  return safe(false, async (native) => {
+    if (typeof native.openQuickEntry !== 'function') return false;
+    return Boolean(await native.openQuickEntry(date, mode));
+  });
+}
+
 export const widgetBridge = {
   configure: (scheme: string) => safe(undefined, (native) => native.configure(scheme)),
   writeEnvelope: (envelope: WidgetSnapshotEnvelope) =>
@@ -69,6 +79,7 @@ export const widgetBridge = {
   installedWidgetTypes: () =>
     safe<WidgetType[]>([], async (native) => (await native.installedWidgetTypes()).filter(isWidgetType)),
   moveTaskToBack,
+  openQuickEntry,
   reportQuickAddResult: (requestId: string, json: string) =>
     safe(false, async (native) => {
       if (typeof native.reportQuickAddResult !== 'function') return false;

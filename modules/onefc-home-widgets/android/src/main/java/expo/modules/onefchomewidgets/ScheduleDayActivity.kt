@@ -172,7 +172,9 @@ class ScheduleDayActivity : Activity() {
       inputRow.visibility = View.GONE
       findViewById<View>(R.id.day_error).visibility = View.GONE
       login.visibility = View.VISIBLE
-      login.setOnClickListener { open(content.openLink) }
+      // 로그인 후 같은 Native 화면(mode·date)으로 돌아오도록 quick 링크. scheme 을 모르면 기존 링크.
+      val scheme = WidgetCacheManager.read(this, OneFcWidgetType.SCHEDULE)?.scheme ?: WidgetCacheManager.read(this, OneFcWidgetType.TODO)?.scheme ?: WidgetCacheManager.scheme(this)
+      login.setOnClickListener { open(scheme?.let { WidgetDeepLink.quickEntry(it, mode, date) } ?: content.openLink) }
       return
     }
     login.visibility = View.GONE

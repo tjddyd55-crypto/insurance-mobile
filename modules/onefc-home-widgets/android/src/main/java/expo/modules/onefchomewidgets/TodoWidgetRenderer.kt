@@ -10,7 +10,6 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
   const val MAX_ROWS = 8
 
   const val OUT_OF_RANGE_TEXT = "이 날짜는 앱에서 볼 수 있어요"
-  const val OPEN_APP_TEXT = "앱에서 보기 ›"
 
   enum class EmptyState { NO_TODOS, OUT_OF_RANGE }
 
@@ -97,7 +96,7 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
       if (state == EmptyState.OUT_OF_RANGE) {
         // 위젯 캐시가 조회하지 않은 날짜: 할 일이 없다고 단정하지 않고 앱에서 확인하도록.
         views.setTextViewText(R.id.w_empty_text, OUT_OF_RANGE_TEXT)
-        views.setTextViewText(R.id.w_empty_add, OPEN_APP_TEXT)
+        views.setTextViewText(R.id.w_empty_add, context.getString(R.string.onefc_widget_empty_todo_add))
         views.setOnClickPendingIntent(R.id.w_empty_add, addIntent)
       } else {
         views.setTextViewText(R.id.w_empty_text, context.getString(R.string.onefc_widget_empty_todo))
