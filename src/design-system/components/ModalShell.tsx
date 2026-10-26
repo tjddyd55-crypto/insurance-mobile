@@ -14,6 +14,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 
 import { useAppTheme } from '../DesignSystemProvider';
 import type { AppTheme } from '../themes';
+import { revealFocusedInput } from '../keyboardScroll';
 import { useBottomSafeInset } from '../useBottomSafeInset';
 import { AppText } from './AppText';
 
@@ -96,6 +97,7 @@ function ModalShellContent({
   const bottomSafeInset = useBottomSafeInset();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const scrollRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const isDialog = presentation === 'dialog';
   const resolvedBodyPadding = dialogBodyPadding ?? theme.layout.modalPadding;
@@ -121,7 +123,10 @@ function ModalShellContent({
       setKeyboardOverlap(Math.max(event.endCoordinates.height, screenOverlap > 0 ? screenOverlap : 0));
       if (scroll) {
         requestAnimationFrame(() => {
-          scrollRef.current?.scrollToEnd({ animated: true });
+          // 포커스된 입력이 보이도록만 스크롤(맨 끝 스크롤은 상단 필드를 밀어냈음). 포커스 입력이 없을 때만 끝으로.
+          if (!revealFocusedInput(scrollRef.current, scrollYRef.current)) {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }
         });
       }
     });
@@ -137,6 +142,14 @@ function ModalShellContent({
   const body = scroll ? (
     <ScrollView
       ref={scrollRef}
+      scrollEventThrottle={16}
+      onScroll={(event) => {
+        scrollYRef.current = event.nativeEvent.contentOffset.y;
+      }}
+      onLayout={() => {
+        // 키보드 패딩으로 보이는 영역이 줄어든 뒤 다시 포커스 입력을 확인한다.
+        if (keyboardOpen) revealFocusedInput(scrollRef.current, scrollYRef.current);
+      }}
       style={isDialog ? styles.dialogScroll : undefined}
       contentContainerStyle={[
         styles.scrollContent,

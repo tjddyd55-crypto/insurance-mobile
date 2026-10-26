@@ -27,7 +27,7 @@ import {
   SelectField,
   TextField,
   useAppTheme,
-  useBottomSafeInset,
+  useSafeFooterPadding,
   type AppTheme,
 } from '../../design-system';
 import { AddressSearchField } from '../../components/AddressSearchField';
@@ -102,7 +102,8 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const kbHeightRef = useRef(0);
   const discardOpenRef = useRef(false);
   const initialCreateFocusDoneRef = useRef(false);
-  const bottomInset = useBottomSafeInset();
+  // 키보드가 열리면 하단 시스템 바 여백을 빼서 하단 버튼이 키보드 바로 위에 오게 한다.
+  const bottomInset = useSafeFooterPadding(0);
 
   useEffect(() => {
     discardOpenRef.current = discardOpen;
