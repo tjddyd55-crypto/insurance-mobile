@@ -52,13 +52,12 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
     expect(screen).toContain('일정 추가');
     expect(screen).toContain('할 일 추가');
     expect(screen).toContain('createOnefcSchedule');
-    expect(screen).toContain("import { createTodo } from '../todos/todosApi'");
+    expect(screen).not.toContain('createTodo');
     expect(screen).not.toContain('저장 위치');
     expect(screen).not.toContain('SCHEDULE_STORAGE_LABEL');
     expect(screen).not.toContain('createGoogleTaskFromSchedule');
     expect(screen).not.toContain('createScheduleEvent(');
     const eventForm = screen.slice(screen.indexOf('title={scheduleFormTitle(formState)}'), screen.indexOf('<ConfirmDialog'));
-    const taskForm = screen.slice(screen.indexOf('title="할 일 추가"'), screen.indexOf('title={scheduleFormTitle(formState)}'));
     expect(eventForm).toContain('label="시작일"');
     expect(eventForm).toContain('label="종료일"');
     expect(eventForm).toContain('withTime={false}');
@@ -67,16 +66,15 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
     expect(eventForm).toContain('label="시작 시간"');
     expect(eventForm).toContain('label="종료 시간"');
     expect(eventForm).not.toContain('label="날짜"');
-    expect(taskForm).toContain('label="날짜"');
-    expect(taskForm).toContain('withTime={false}');
-    expect(taskForm).not.toContain('time={taskState.form.dueTime}');
-    expect(taskForm).not.toContain('시작일');
-    expect(taskForm).not.toContain('시간 지정');
-    expect(screen).toContain('label="날짜"');
-    expect(screen).toContain('emptyTaskForm(selected)');
+    // 할 일 추가는 할 일 메뉴와 같은 Todo 생성폼(SSOT)으로 간다. 일정 화면 안의 제목/메모 할 일 폼은 없다.
+    expect(screen).not.toContain('title="할 일 추가"');
+    expect(screen).not.toContain('label="메모"');
+    expect(screen).not.toContain('emptyTaskForm');
+    expect(screen).toContain("pathname: '/todos/new'");
+    expect(screen).toContain('from: TODO_RETURN_SOURCE_SCHEDULE');
+    expect(screen).toContain('armScheduleTodoReturn(selected)');
     expect(screen).toContain('emptyEventForm(selected)');
     expect(screen).toContain('emptyEventForm(linkTarget.date)');
-    expect(screen).not.toContain('emptyTaskForm(seoulYmd())');
     expect(screen).not.toContain('emptyEventForm(seoulYmd())');
     expect(screen).toContain('ScheduleTimeField');
     expect(screen).not.toContain('onChangeText={(startTime)');
@@ -88,13 +86,20 @@ describe('일정 추가 — ONE FC 일정과 할 일 두 버튼', () => {
     expect(dateField).toContain("alignSelf: 'center'");
     expect(dateField).toContain('width: 320');
     expect(screen).not.toContain('반복');
+    // 위젯 + 일정도 같은 일정 추가 폼(ModalShell)을 쓰고, 뒤에 일정 목록을 그리지 않는다.
     expect(screen).toContain('widgetArm.current.start');
-    expect(screen).toContain('<WidgetQuickAddSheet');
+    expect(screen).not.toContain('WidgetQuickAddSheet');
+    expect(screen).toContain('if (widgetCreateEntry)');
     expect(screen).toContain('<TextField label="제목"');
     const todoForm = fs.readFileSync(path.join(__dirname, '..', '..', 'todos', 'TodoFormScreen.tsx'), 'utf8');
-    expect(todoForm).toContain('!consultationId && isWidgetOrigin');
-    expect(todoForm).toContain('<WidgetQuickAddSheet');
+    // 위젯 + 할 일도 할 일 메뉴와 같은 폼: 내용 / 날짜 / 고객 연결, 메모 없음.
+    expect(todoForm).not.toContain('WidgetQuickAddSheet');
+    expect(todoForm).not.toContain('TodoWidgetQuickCreate');
     expect(todoForm).toContain('label="내용"');
+    expect(todoForm).toContain('label="날짜"');
+    expect(todoForm).toContain('고객 연결');
+    expect(todoForm).not.toContain('label="메모"');
+    expect(todoForm).toContain('leaveTodoOpenedFromWidget');
     expect(screen).not.toContain('onChangeText={(date)');
     expect(screen).not.toContain('onChangeText={(endDate)');
     expect(screen).not.toContain('onChangeText={(dueDate)');
@@ -184,7 +189,7 @@ describe('일정 관리 추가 — 기존 서버 API만 사용', () => {
     const screen = read('ScheduleScreen.tsx');
     expect(screen).not.toMatch(/googleapis\.com/);
     expect(read('scheduleApi.ts')).not.toMatch(/googleapis\.com/);
-    expect(screen).toContain("import { createTodo } from '../todos/todosApi'");
+    expect(screen).not.toContain('createTodo');
     expect(screen).toMatch(/fetchScheduleEvents\(token, \{ \.\.\.range, refresh: true \}\)/);
     expect(screen).toContain('날짜 없음');
     expect(screen).not.toMatch(/BackHandler|router\.replace|setTimeout/);

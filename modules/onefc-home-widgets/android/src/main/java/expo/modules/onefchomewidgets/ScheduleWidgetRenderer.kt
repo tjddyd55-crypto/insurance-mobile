@@ -67,8 +67,9 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     fun link(action: WidgetDeepLink.Action, params: Map<String, String?>) = WidgetDeepLink.build(scheme, type, action, params)
 
     views.setTextViewText(R.id.w_month, WidgetDates.monthTitle(state.month))
-    views.setContentDescription(R.id.w_month, "${WidgetDates.monthTitle(state.month)}, 오늘로")
-    views.setOnClickPendingIntent(R.id.w_month, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
+    views.setContentDescription(R.id.w_month, "${WidgetDates.monthTitle(state.month)}, 앱 일정 열기")
+    // 월 헤더: 앱 일정 화면(보던 날짜)으로 바로 진입. + 와 같은 openApp/deep link 경로.
+    views.setOnClickPendingIntent(R.id.w_month, WidgetIntents.openApp(context, link(WidgetDeepLink.Action.OPEN, mapOf("date" to state.selected)), nonce))
     views.setOnClickPendingIntent(R.id.w_prev, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_PREV, widgetId))
     views.setOnClickPendingIntent(R.id.w_next, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_NEXT, widgetId))
     WidgetCommonViews.bindRefresh(context, views, type, widgetId)

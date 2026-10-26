@@ -88,3 +88,17 @@ describe('home widget RemoteViews layouts', () => {
     expect(manifest).toContain('android:exported="false"');
   });
 });
+
+describe('widget header taps open the app list screens', () => {
+  const KT = path.join(__dirname, '..', 'android', 'src', 'main', 'java', 'expo', 'modules', 'onefchomewidgets');
+  it('schedule month header opens schedule OPEN deep link (not create)', () => {
+    const src = fs.readFileSync(path.join(KT, 'ScheduleWidgetRenderer.kt'), 'utf8');
+    expect(src).toMatch(/setOnClickPendingIntent\(R\.id\.w_month, WidgetIntents\.openApp\(context, link\(WidgetDeepLink\.Action\.OPEN/);
+    expect(src).toMatch(/setOnClickPendingIntent\(R\.id\.w_add, WidgetIntents\.openApp\(context, link\(WidgetDeepLink\.Action\.CREATE/);
+  });
+  it('todo title header opens todo list link; + stays create', () => {
+    const src = fs.readFileSync(path.join(KT, 'TodoWidgetRenderer.kt'), 'utf8');
+    expect(src).toContain('setOnClickPendingIntent(R.id.w_title, WidgetIntents.openApp(context, listLink, nonce))');
+    expect(src).toContain('setOnClickPendingIntent(R.id.w_add, addIntent)');
+  });
+});

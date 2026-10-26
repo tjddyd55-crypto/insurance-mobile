@@ -10,7 +10,6 @@ import {
   withScheduleEndTime,
   withScheduleStartTime,
 } from '../scheduleModel';
-import { widgetQuickScheduleForm, widgetQuickTodoPayload } from '../widgetQuickAddModel';
 import { todoEditorDateTimePayload, type TodoFormDraft } from '../../todos/todoFormSession';
 import type { ScheduleEvent, ScheduleEventForm } from '../types';
 
@@ -37,23 +36,10 @@ const END_FIXTURE = [
 const ALL_DAY = { date: '2026-10-24', endDate: '2026-10-24', allDay: true, startTime: '09:00', endTime: '10:00' };
 
 describe('schedule and todo date-time parity', () => {
-  it('uses one same-day end rule for sensibleEndTime, applyScheduleDateTime, and widget quick add', () => {
+  it('uses one same-day end rule for sensibleEndTime, and applyScheduleDateTime (widget uses the same schedule form)', () => {
     for (const [start, end] of END_FIXTURE) {
       expect(sensibleEndTime(start)).toBe(end);
       expect(applyScheduleDateTime(ALL_DAY, 'start', { date: '2026-10-24', time: start })).toMatchObject({
-        date: '2026-10-24',
-        endDate: '2026-10-24',
-        allDay: false,
-        startTime: start,
-        endTime: end,
-      });
-      expect(widgetQuickScheduleForm({
-        title: '상담',
-        date: '2026-10-24',
-        time: start,
-        customerId: null,
-        customerName: '',
-      })).toMatchObject({
         date: '2026-10-24',
         endDate: '2026-10-24',
         allDay: false,
@@ -136,13 +122,6 @@ describe('schedule and todo date-time parity', () => {
       dueDate: '2026-10-25',
       dueTime: null,
     });
-    expect(widgetQuickTodoPayload({
-      title: '서류',
-      date: '2026-10-25',
-      time: '14:00',
-      customerId: null,
-      customerName: '',
-    }).dueTime).toBeNull();
   });
 });
 

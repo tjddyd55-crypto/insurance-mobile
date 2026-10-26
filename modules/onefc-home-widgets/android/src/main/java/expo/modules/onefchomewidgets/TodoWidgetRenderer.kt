@@ -54,6 +54,8 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
 
     views.setTextViewText(R.id.w_day_label, WidgetDates.todoDayLabel(date, today))
     views.setOnClickPendingIntent(R.id.w_day_label, WidgetIntents.openApp(context, listLink, nonce))
+    // 헤더 "ONE FC 할 일": 앱 할 일 목록으로 바로 진입.
+    views.setOnClickPendingIntent(R.id.w_title, WidgetIntents.openApp(context, listLink, nonce))
     views.setOnClickPendingIntent(R.id.w_prev, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_PREV, widgetId))
     views.setOnClickPendingIntent(R.id.w_next, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_NEXT, widgetId))
     views.setOnClickPendingIntent(R.id.w_to_today, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
