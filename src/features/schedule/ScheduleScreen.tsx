@@ -21,6 +21,7 @@ import {
   TextField,
   useAppTheme,
   type AppTheme,
+  Screen,
 } from '../../design-system';
 import {
   createOnefcSchedule,
@@ -380,100 +381,103 @@ export function ScheduleScreen() {
   return (
     <View style={styles.root}>
       {header}
-      <ScrollView contentContainerStyle={styles.body} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
-        <Inline justify="space-between">
-          <Button label="‹" variant="ghost" size="sm" accessibilityLabel="이전 달" onPress={() => goMonth(-1)} />
-          <AppText variant="sectionTitle">{formatMonthTitle(month)}</AppText>
-          <Inline gap="xs">
-            <Button label="오늘" variant="ghost" size="sm" onPress={goToday} />
-            <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
-          </Inline>
-        </Inline>
-        <Card variant="outlined" padding="sm">
-          <View style={styles.weekRow}>
-            {WEEKDAYS.map((label) => (
-              <AppText key={label} variant="caption" color="textMuted" align="center" style={styles.cell}>{label}</AppText>
-            ))}
-          </View>
-          {monthGrid(month).map((week) => (
-            <View key={week[0]!.ymd} style={styles.weekRow}>
-              {week.map((cell) => {
-                const active = cell.ymd === selected;
-                const count = dayCounts.get(cell.ymd) ?? 0;
-                const countLabel = dayCountLabel(count);
-                return (
-                  <Pressable
-                    key={cell.ymd}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${formatDayTitle(cell.ymd)}${count > 0 ? `, 일정 ${count}건` : ''}`}
-                    accessibilityState={{ selected: active }}
-                    style={[styles.cell, styles.dayCell, active && styles.dayActive]}
-                    onPress={() => {
-                      setSelected(cell.ymd);
-                      if (!cell.inMonth) setMonth(`${cell.ymd.slice(0, 7)}-01`);
-                    }}
-                  >
-                    <AppText variant="body" color={active ? 'onPrimary' : cell.inMonth ? (cell.ymd === today ? 'primary' : 'text') : 'textMuted'}>
-                      {cell.day}
-                    </AppText>
-                    <AppText
-                      variant="caption"
-                      align="center"
-                      numberOfLines={1}
-                      allowFontScaling={false}
-                      style={[styles.count, active ? styles.countOnActive : styles.countOn]}
-                      accessibilityElementsHidden
-                      importantForAccessibility="no"
-                    >
-                      {countLabel}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
-        </Card>
-        {googleWarning ? (
+      {/* 하단 내비게이션 바 inset: 다른 목록 화면과 같은 공통 Screen 정책. */}
+      <Screen padded={false}>
+        <ScrollView contentContainerStyle={styles.body} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
           <Inline justify="space-between">
-            <AppText variant="caption" color="warning" style={styles.flex}>{googleWarning.text}</AppText>
-            <Button label="연동 관리" variant="ghost" size="sm" accessibilityLabel="Google 연동 관리" onPress={() => router.push(GOOGLE_INTEGRATION_HREF)} />
+            <Button label="‹" variant="ghost" size="sm" accessibilityLabel="이전 달" onPress={() => goMonth(-1)} />
+            <AppText variant="sectionTitle">{formatMonthTitle(month)}</AppText>
+            <Inline gap="xs">
+              <Button label="오늘" variant="ghost" size="sm" onPress={goToday} />
+              <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
+            </Inline>
           </Inline>
-        ) : null}
-        {refreshError ? <AppText variant="caption" color="danger">{refreshError}</AppText> : null}
-        <AppText variant="sectionTitle">{formatDayTitle(selected)}</AppText>
-        <Inline gap="sm">
-          <View style={styles.flex}><Button label="일정 추가" variant="primary" size="sm" fullWidth accessibilityLabel="일정 추가" onPress={openScheduleCreate} /></View>
-          <View style={styles.flex}><Button label="할 일 추가" variant="secondary" size="sm" fullWidth accessibilityLabel="할 일 추가" onPress={openTodoCreate} /></View>
-        </Inline>
-        {dayEvents.length === 0 && dayTasks.length === 0 ? (
-          <AppText variant="body" color="textMuted">이 날 일정이 없습니다.</AppText>
-        ) : null}
-        {dayEvents.map((event) => (
-          <Pressable key={event.id} accessibilityRole="button" onPress={() => setDetail(event)}>
-            <Card variant="outlined" padding="md">
-              <Stack gap="xs">
+          <Card variant="outlined" padding="sm">
+            <View style={styles.weekRow}>
+              {WEEKDAYS.map((label) => (
+                <AppText key={label} variant="caption" color="textMuted" align="center" style={styles.cell}>{label}</AppText>
+              ))}
+            </View>
+            {monthGrid(month).map((week) => (
+              <View key={week[0]!.ymd} style={styles.weekRow}>
+                {week.map((cell) => {
+                  const active = cell.ymd === selected;
+                  const count = dayCounts.get(cell.ymd) ?? 0;
+                  const countLabel = dayCountLabel(count);
+                  return (
+                    <Pressable
+                      key={cell.ymd}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${formatDayTitle(cell.ymd)}${count > 0 ? `, 일정 ${count}건` : ''}`}
+                      accessibilityState={{ selected: active }}
+                      style={[styles.cell, styles.dayCell, active && styles.dayActive]}
+                      onPress={() => {
+                        setSelected(cell.ymd);
+                        if (!cell.inMonth) setMonth(`${cell.ymd.slice(0, 7)}-01`);
+                      }}
+                    >
+                      <AppText variant="body" color={active ? 'onPrimary' : cell.inMonth ? (cell.ymd === today ? 'primary' : 'text') : 'textMuted'}>
+                        {cell.day}
+                      </AppText>
+                      <AppText
+                        variant="caption"
+                        align="center"
+                        numberOfLines={1}
+                        allowFontScaling={false}
+                        style={[styles.count, active ? styles.countOnActive : styles.countOn]}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no"
+                      >
+                        {countLabel}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
+          </Card>
+          {googleWarning ? (
+            <Inline justify="space-between">
+              <AppText variant="caption" color="warning" style={styles.flex}>{googleWarning.text}</AppText>
+              <Button label="연동 관리" variant="ghost" size="sm" accessibilityLabel="Google 연동 관리" onPress={() => router.push(GOOGLE_INTEGRATION_HREF)} />
+            </Inline>
+          ) : null}
+          {refreshError ? <AppText variant="caption" color="danger">{refreshError}</AppText> : null}
+          <AppText variant="sectionTitle">{formatDayTitle(selected)}</AppText>
+          <Inline gap="sm">
+            <View style={styles.flex}><Button label="일정 추가" variant="primary" size="sm" fullWidth accessibilityLabel="일정 추가" onPress={openScheduleCreate} /></View>
+            <View style={styles.flex}><Button label="할 일 추가" variant="secondary" size="sm" fullWidth accessibilityLabel="할 일 추가" onPress={openTodoCreate} /></View>
+          </Inline>
+          {dayEvents.length === 0 && dayTasks.length === 0 ? (
+            <AppText variant="body" color="textMuted">이 날 일정이 없습니다.</AppText>
+          ) : null}
+          {dayEvents.map((event) => (
+            <Pressable key={event.id} accessibilityRole="button" onPress={() => setDetail(event)}>
+              <Card variant="outlined" padding="md">
+                <Stack gap="xs">
+                  <Inline justify="space-between">
+                    <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{event.title}</AppText>
+                    <Badge label={scheduleEventSourceLabel(event)} tone={event.source === 'google' ? 'info' : 'warning'} />
+                  </Inline>
+                  <AppText variant="caption" color="textSecondary">
+                    {[eventTimeLabel(event), event.customerName, event.calendarName].filter(Boolean).join(' · ')}
+                  </AppText>
+                </Stack>
+              </Card>
+            </Pressable>
+          ))}
+          {dayTasks.map((task) => (
+            <Pressable key={task.id} accessibilityRole="button" onPress={() => setDetail(task)}>
+              <Card variant="outlined" padding="md">
                 <Inline justify="space-between">
-                  <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{event.title}</AppText>
-                  <Badge label={scheduleEventSourceLabel(event)} tone={event.source === 'google' ? 'info' : 'warning'} />
+                  <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{task.title}</AppText>
+                  <Badge label={task.status === 'completed' ? '완료' : taskSourceLabel(task)} tone={task.status === 'completed' ? 'success' : 'default'} />
                 </Inline>
-                <AppText variant="caption" color="textSecondary">
-                  {[eventTimeLabel(event), event.customerName, event.calendarName].filter(Boolean).join(' · ')}
-                </AppText>
-              </Stack>
-            </Card>
-          </Pressable>
-        ))}
-        {dayTasks.map((task) => (
-          <Pressable key={task.id} accessibilityRole="button" onPress={() => setDetail(task)}>
-            <Card variant="outlined" padding="md">
-              <Inline justify="space-between">
-                <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{task.title}</AppText>
-                <Badge label={task.status === 'completed' ? '완료' : taskSourceLabel(task)} tone={task.status === 'completed' ? 'success' : 'default'} />
-              </Inline>
-            </Card>
-          </Pressable>
-        ))}
-      </ScrollView>
+              </Card>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </Screen>
 
       <ScheduleDetailModal
         item={detail}
