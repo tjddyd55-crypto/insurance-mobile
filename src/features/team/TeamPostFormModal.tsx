@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 
 import { useAuth } from '../../auth/AuthProvider';
-import { AppText, Button, Card, Inline, Stack, TextField, useAppTheme, type AppTheme, useSafeFooterPadding } from '../../design-system';
+import { AppText, Button, Card, Inline, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
 import { createTeamPost, updateTeamPost } from './teamApi';
 import { teamQueryKeys } from './queryKeys';
 import type { TeamPost } from './types';
@@ -23,7 +23,6 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const modalBottomPadding = useSafeFooterPadding(0);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isNotice, setIsNotice] = useState(false);
@@ -61,8 +60,10 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
   }
 
   return (
-    <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={() => { if (!mutation.isPending) onClose(); }}>
-      <View style={[styles.root, { paddingBottom: modalBottomPadding }]}>
+    <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={() => { if (!mutation.isPending) onClose(); }}
+      footer={<Button label={post ? '수정 완료' : '등록'} variant="actionEmphasis" fullWidth loading={mutation.isPending} disabled={!valid} onPress={() => mutation.mutate()} />}
+    >
+      <View style={styles.root}>
         <View style={styles.header}>
           <AppText variant="heading">{post ? '게시글 수정' : '새 게시글'}</AppText>
           <Button label="닫기" variant="ghost" size="sm" disabled={mutation.isPending} onPress={onClose} />
@@ -86,7 +87,6 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
                 </Stack>
               ) : <AppText variant="caption">기존 첨부파일은 수정 화면에서 변경되지 않습니다.</AppText>}
               {mutation.error ? <AppText color="danger">{mutation.error instanceof Error ? mutation.error.message : '게시글을 저장하지 못했습니다.'}</AppText> : null}
-              <Button label={post ? '수정 완료' : '등록'} variant="actionEmphasis" fullWidth loading={mutation.isPending} disabled={!valid} onPress={() => mutation.mutate()} />
             </Stack>
           </Card>
         </ScrollView>

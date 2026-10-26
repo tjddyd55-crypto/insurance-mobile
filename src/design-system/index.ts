@@ -2,6 +2,7 @@ export * from './foundations';
 export * from './themes';
 export * from './DesignSystemProvider';
 export * from './useBottomSafeInset';
+export * from './useKeyboardRevealScroll';
 export * from './components/AppText';
 export * from './components/Badge';
 export * from './components/Button';

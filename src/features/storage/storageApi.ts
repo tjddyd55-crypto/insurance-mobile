@@ -3,7 +3,20 @@ import { normalizeStorageFile, normalizeStorageFolder, normalizeStorageQuota, no
 import type { StorageFile, StorageFolder, StorageQuota, StorageUsageBreakdown } from './types';
 function tokenOf(token: string | null) { if (!token?.trim()) throw new ApiError('로그인이 필요합니다.', 401); return token; }
 export async function listStorageFolders(token: string | null): Promise<StorageFolder[]> { const rows = await apiRequest<unknown[]>('/api/storage/folders', { token: tokenOf(token) }); return rows.map(normalizeStorageFolder).filter((row): row is StorageFolder => Boolean(row)); }
-export async function createStorageFolder(token: string | null, name: string, parentId: number | null): Promise<void> { await apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) }); }
+/** 서버 규칙(customerExtraApi POST /storage/folders)과 동일: 1–12자, '전체' 금지. 오류 문구 또는 null. */
+export function validateStorageFolderName(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed || [...trimmed].length > 12) return '폴더 이름은 12자 이내로 입력해 주세요.';
+  if (trimmed === '전체') return '해당 이름은 사용할 수 없습니다.';
+  return null;
+}
+/** 폴더 생성은 짧은 요청이므로 기본 30s 대신 15s 타임아웃 — '처리 중'이 무기한 유지되지 않게 한다. */
+export const STORAGE_FOLDER_CREATE_TIMEOUT_MS = 15_000;
+export async function createStorageFolder(token: string | null, name: string, parentId: number | null): Promise<void> {
+  const invalid = validateStorageFolderName(name);
+  if (invalid) throw new ApiError(invalid, 400);
+  await apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), timeoutMs: STORAGE_FOLDER_CREATE_TIMEOUT_MS, body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) });
+}
 export async function renameStorageFolder(token: string | null, id: number, name: string): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ name: name.trim() }) }); }
 export async function deleteStorageFolder(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
 export async function listStorageFiles(token: string | null, folderId: number | null): Promise<StorageFile[]> { const path = folderId == null ? '/api/storage/files' : `/api/storage/files?folderId=${folderId}`; const rows = await apiRequest<unknown[]>(path, { token: tokenOf(token) }); return rows.map(normalizeStorageFile).filter((row): row is StorageFile => Boolean(row)); }

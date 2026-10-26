@@ -18,7 +18,6 @@ import {
   TextField,
   useAppTheme,
   type AppTheme,
-  useSafeFooterPadding,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
@@ -198,7 +197,6 @@ function PdfFormModal({
   const client = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const modalBottomPadding = useSafeFooterPadding(0);
   const scoped = Boolean(initialCustomerId);
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [customerQuery, setCustomerQuery] = useState('');
@@ -258,8 +256,21 @@ function PdfFormModal({
   });
 
   return (
-    <KeyboardAwareModal visible={Boolean(template)} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
+    <KeyboardAwareModal
+      visible={Boolean(template)}
+      animationType="slide"
+      onRequestClose={onClose}
+      footer={
+        <Button
+          label="PDF 발급 및 공유"
+          variant="action"
+          fullWidth
+          loading={issue.isPending}
+          onPress={() => issue.mutate()}
+        />
+      }
+    >
+      <View style={styles.modal}>
         <View style={styles.modalHeader}>
           <View style={styles.grow}>
             <AppText variant="heading">{template?.title ?? '신청서 작성'}</AppText>
@@ -341,19 +352,10 @@ function PdfFormModal({
           ))}
           {error ? <AppText color="danger">{error}</AppText> : null}
           <Card variant="filled">
-            <Stack gap="sm">
-              <AppText variant="caption">
-                발급하면 서버에 보관 이력이 생성되며 운영체제 공유창에서 저장하거나
-                전달할 수 있습니다.
-              </AppText>
-              <Button
-                label="PDF 발급 및 공유"
-                variant="action"
-                fullWidth
-                loading={issue.isPending}
-                onPress={() => issue.mutate()}
-              />
-            </Stack>
+            <AppText variant="caption">
+              발급하면 서버에 보관 이력이 생성되며 운영체제 공유창에서 저장하거나
+              전달할 수 있습니다.
+            </AppText>
           </Card>
         </ScrollView>
       </View>

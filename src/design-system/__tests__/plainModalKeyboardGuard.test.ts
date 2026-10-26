@@ -69,3 +69,40 @@ describe('customer delete refreshes list cache', () => {
     expect(src).toMatch(/invalidateQueries\(\{ queryKey: \[\.\.\.customerQueryKeys\.all, "list"\] \}\)/);
   });
 });
+
+describe('KeyboardAwareModal footer: primary actions stay above the keyboard', () => {
+  const read = (p: string) => fs.readFileSync(path.join(__dirname, '../../..', p), 'utf8');
+  it('wrapper renders footer outside the scroll content, with keyboard-aware bottom padding', () => {
+    const src = read('src/design-system/components/KeyboardAwareModal.tsx');
+    expect(src).toMatch(/footer\?: ReactNode/);
+    expect(src).toMatch(/keyboard-aware-modal-footer/);
+    expect(src).toMatch(/keyboardOpen \? 0 : bottomSafeInset/);
+  });
+  it.each([
+    ['src/features/customer-news/CustomerNewsScreen.tsx', ['게시하기', '고객 앱 미리보기', '댓글 등록']],
+    ['src/features/team/TeamPostFormModal.tsx', ["'등록'"]],
+    ['src/features/application-documents/ApplicationDocumentsScreen.tsx', ['PDF 발급 및 공유']],
+  ])('%s puts its actions in footer=, not inside ScrollView', (file, labels) => {
+    const src = read(file);
+    expect(src).toMatch(/footer=\{/);
+    expect(src).not.toMatch(/modalBottomPadding/);
+    for (const scroll of src.split('<ScrollView').slice(1).map((s) => s.split('</ScrollView>')[0])) {
+      for (const label of labels) expect(scroll).not.toContain(label);
+    }
+  });
+});
+
+describe('/storage new folder: keyboard reveal + bounded create', () => {
+  const read = (p: string) => fs.readFileSync(path.join(__dirname, '../../..', p), 'utf8');
+  it('StorageScreen uses the shared keyboard reveal hook', () => {
+    const src = read('src/features/storage/StorageScreen.tsx');
+    expect(src).toMatch(/useKeyboardRevealScroll\(scrollRef\)/);
+    expect(src).toMatch(/keyboard\.keyboardInset/);
+    expect(src).not.toMatch(/await qc\.invalidateQueries\(\{ queryKey: \[\.\.\.ROOT, "folders"\]/);
+  });
+  it('createStorageFolder has its own timeout and local validation', () => {
+    const src = read('src/features/storage/storageApi.ts');
+    expect(src).toMatch(/timeoutMs: STORAGE_FOLDER_CREATE_TIMEOUT_MS/);
+    expect(src).toMatch(/validateStorageFolderName/);
+  });
+});

@@ -14,6 +14,7 @@ import {
 } from "react-native-safe-area-context";
 
 import { useAppTheme } from "../DesignSystemProvider";
+import { useBottomSafeInset } from "../useBottomSafeInset";
 import { consumeBackForKeyboard, resolveKeyboardLift } from "../modalKeyboard";
 
 export type KeyboardAwareModalProps = Omit<
@@ -21,6 +22,13 @@ export type KeyboardAwareModalProps = Omit<
   "onRequestClose" | "children"
 > & {
   children: ReactNode;
+  /**
+   * Primary actions (등록/게시하기/PDF 발급 …). Rendered OUTSIDE the content scroll, pinned to the bottom of
+   * the modal so it sits directly above the keyboard when it is open and above the nav bar when closed.
+   * Buttons left inside a ScrollView only scroll as far as the focused input, so they end up under the keyboard.
+   * When `footer` is set, the content should not add its own bottom safe padding.
+   */
+  footer?: ReactNode;
   onRequestClose: () => void;
 };
 
@@ -33,6 +41,7 @@ export type KeyboardAwareModalProps = Omit<
  */
 export function KeyboardAwareModal({
   children,
+  footer,
   onRequestClose,
   transparent,
   visible,
@@ -52,6 +61,7 @@ export function KeyboardAwareModal({
         <KeyboardAwareModalFrame
           open={Boolean(visible)}
           isDialog={Boolean(transparent)}
+          footer={footer}
         >
           {children}
         </KeyboardAwareModalFrame>
@@ -63,14 +73,17 @@ export function KeyboardAwareModal({
 function KeyboardAwareModalFrame({
   open,
   isDialog,
+  footer,
   children,
 }: {
   open: boolean;
   isDialog: boolean;
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const bottomSafeInset = useBottomSafeInset();
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [keyboardOverlap, setKeyboardOverlap] = useState(0);
   const [closedHeight, setClosedHeight] = useState(0);
@@ -128,9 +141,32 @@ function KeyboardAwareModalFrame({
         if (!keyboardOpen) setClosedHeight(h);
       }}
     >
-      {children}
+      <View style={styles.content}>{children}</View>
+      {footer ? (
+        <View
+          testID="keyboard-aware-modal-footer"
+          style={[
+            styles.footer,
+            {
+              borderTopColor: theme.colors.border,
+              backgroundColor: theme.colors.surface,
+              paddingHorizontal: theme.spacing.lg,
+              paddingTop: theme.spacing.sm,
+              // keyboard open: the keyboard covers the nav bar → small gap only; closed: clear the nav bar.
+              paddingBottom: theme.spacing.sm + (keyboardOpen ? 0 : bottomSafeInset),
+              gap: theme.spacing.sm,
+            },
+          ]}
+        >
+          {footer}
+        </View>
+      ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({ frame: { flex: 1 } });
+const styles = StyleSheet.create({
+  frame: { flex: 1 },
+  content: { flex: 1 },
+  footer: { borderTopWidth: StyleSheet.hairlineWidth },
+});

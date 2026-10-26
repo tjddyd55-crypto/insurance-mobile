@@ -47,7 +47,7 @@ describe('bottom safe inset guard', () => {
  * A plain `<View style={root}>` + scroll lets the last item hide behind the 3-button nav bar (/schedule P1).
  * `ModalShell` in the same file does NOT count: it only pads the modal, not the page list.
  */
-const SAFE_CONTAINER = /<Screen\b|<SafeFooter\b|<CoverageSimulatorScreen\b|useSafeFooterPadding|useContentBottomPadding|useBottomSafeInset/;
+const SAFE_CONTAINER = /<Screen\b|<SafeFooter\b|<CoverageSimulatorScreen\b|useSafeFooterPadding|useContentBottomPadding|useBottomSafeInset|<KeyboardAwareModal\b[\s\S]{0,400}?\bfooter=/;
 // Files whose vertical scrolls live only inside ModalShell/centered dialogs, or are wrapped by their route's <Screen>.
 const SCROLL_ALLOWLIST = new Map<string, string>([
   ['src/features/auth/LoginForm.tsx', 'wrapped by <Screen> in app/(auth)/login.tsx'],

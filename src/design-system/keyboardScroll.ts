@@ -29,7 +29,7 @@ type Measurable = { measureInWindow: (cb: (x: number, y: number, w: number, h: n
  * (Replaces "scroll to end", which pushed fields near the top out of view.)
  * Returns false when no focused input is inside this ScrollView.
  */
-export function revealFocusedInput(scroll: ScrollView | null, scrollY: number): boolean {
+export function revealFocusedInput(scroll: ScrollView | null, scrollY: number, keyboardTopY?: number): boolean {
   const focused = TextInput.State.currentlyFocusedInput() as unknown as Measurable | null;
   const native = scroll?.getNativeScrollRef?.() as unknown as Measurable | null;
   if (!scroll || !focused || !native) return false;
@@ -38,7 +38,9 @@ export function revealFocusedInput(scroll: ScrollView | null, scrollY: number): 
       const top = fy - sy;
       // 탭한 입력은 키보드 전에는 화면 안에 있었으므로, 멀리 벗어난 값이면 이 ScrollView 밖의 입력이다.
       if (top < -sh || top > sh * 2) return;
-      const target = scrollOffsetToReveal({ fieldTop: top, fieldHeight: fh, viewportHeight: sh, scrollY });
+      // 창이 리사이즈되지 않는 경우(Android edge-to-edge 화면) 키보드에 덮인 아래쪽은 보이지 않는 영역으로 본다.
+      const viewportHeight = keyboardTopY != null && keyboardTopY > 0 ? Math.min(sh, keyboardTopY - sy) : sh;
+      const target = scrollOffsetToReveal({ fieldTop: top, fieldHeight: fh, viewportHeight, scrollY });
       if (target !== null) scroll.scrollTo({ y: target, animated: true });
     });
   });

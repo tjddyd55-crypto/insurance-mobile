@@ -29,7 +29,6 @@ import {
   TextField,
   useAppTheme,
   type AppTheme,
-  useSafeFooterPadding,
 } from '../../design-system';
 import { CustomerNewsPreviewModal, type CustomerNewsPreviewDraft } from './CustomerNewsPreviewModal';
 import {
@@ -458,13 +457,34 @@ function NewsFormModal({
 }) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const modalBottomPadding = useSafeFooterPadding(0);
   const imageDrafts = value.attachments.filter((row) => row.kind === 'image');
   const fileDrafts = fileDraftsFromDrafts(value.attachments);
 
   return (
-    <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
+    <KeyboardAwareModal
+      visible={open}
+      animationType="slide"
+      onRequestClose={onClose}
+      footer={
+        <>
+            <Button
+              label="고객 앱 미리보기"
+              variant="secondary"
+              fullWidth
+              disabled={!canPublish}
+              onPress={onPreview}
+            />
+            <Button
+              label={editing ? '수정하기' : '게시하기'}
+              fullWidth
+              loading={busy}
+              disabled={!canPublish}
+              onPress={onSubmit}
+            />
+        </>
+      }
+    >
+      <View style={styles.modal}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">{editing ? '소식지 수정' : '소식지 작성'}</AppText>
           <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
@@ -521,20 +541,6 @@ function NewsFormModal({
                   {error instanceof Error ? error.message : '저장하지 못했습니다. 다시 시도해 주세요.'}
                 </AppText>
               ) : null}
-              <Button
-                label="고객 앱 미리보기"
-                variant="secondary"
-                fullWidth
-                disabled={!canPublish}
-                onPress={onPreview}
-              />
-              <Button
-                label={editing ? '수정하기' : '게시하기'}
-                fullWidth
-                loading={busy}
-                disabled={!canPublish}
-                onPress={onSubmit}
-              />
             </Stack>
           </Card>
         </ScrollView>
@@ -558,7 +564,6 @@ function NewsDetailModal({
   const theme = useAppTheme();
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const modalBottomPadding = useSafeFooterPadding(0);
   const [comment, setComment] = useState('');
   const contentWidth = Math.max(windowWidth - theme.spacing.lg * 2, 1);
 
@@ -594,8 +599,30 @@ function NewsDetailModal({
     : [];
 
   return (
-    <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
+    <KeyboardAwareModal
+      visible={open}
+      animationType="slide"
+      onRequestClose={onClose}
+      footer={
+        item ? (
+          <>
+            <TextField label="댓글 작성" value={comment} onChangeText={setComment} multiline />
+            <Button
+              label="댓글 등록"
+              loading={create.isPending}
+              disabled={!comment.trim() || comments.isError}
+              onPress={() => create.mutate()}
+            />
+            {create.isError ? (
+              <AppText color="danger">
+                {create.error instanceof Error ? create.error.message : '댓글 등록에 실패했습니다.'}
+              </AppText>
+            ) : null}
+          </>
+        ) : undefined
+      }
+    >
+      <View style={styles.modal}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">소식지 상세</AppText>
           <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
@@ -651,22 +678,6 @@ function NewsDetailModal({
                   <AppText color="textSecondary" align="center">등록된 댓글이 없습니다.</AppText>
                 </Card>
               ) : null}
-              <Card variant="outlined">
-                <Stack gap="sm">
-                  <TextField label="댓글 작성" value={comment} onChangeText={setComment} multiline />
-                  <Button
-                    label="댓글 등록"
-                    loading={create.isPending}
-                    disabled={!comment.trim() || comments.isError}
-                    onPress={() => create.mutate()}
-                  />
-                  {create.isError ? (
-                    <AppText color="danger">
-                      {create.error instanceof Error ? create.error.message : '댓글 등록에 실패했습니다.'}
-                    </AppText>
-                  ) : null}
-                </Stack>
-              </Card>
             </>
           ) : null}
         </ScrollView>
