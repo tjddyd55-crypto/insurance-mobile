@@ -19,8 +19,6 @@ import { beginStashedWidgetOpen, observeAppPath } from '../src/features/home-wid
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
 
 void SplashScreen.preventAutoHideAsync();
-const splashStartedAt = Date.now();
-const MINIMUM_SPLASH_MS = 2000;
 
 const queryClient = createAppQueryClient();
 
@@ -62,10 +60,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       if (widgetHref) router.push(widgetHref as Parameters<typeof router.push>[0]);
       return;
     }
-    const timer = setTimeout(() => {
-      void SplashScreen.hideAsync();
-    }, Math.max(0, MINIMUM_SPLASH_MS - (Date.now() - splashStartedAt)));
-    return () => clearTimeout(timer);
+    // 세션 복원과 첫 라우팅이 끝나면 즉시 숨김(고정 최소 노출 시간 없음).
+    void SplashScreen.hideAsync();
   }, [status, segments, router]);
 
   if (status === 'booting') {

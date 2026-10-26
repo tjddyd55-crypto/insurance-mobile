@@ -168,6 +168,16 @@ export function buildPushDeviceRegistrationBody(params: {
   };
 }
 
+/** 같은 로그인+같은 기기 토큰 등록: 진행 중이면 공유, 성공 후 이 시간 안의 반복은 생략. 서버 계약·권한 정책은 그대로. */
+export const PUSH_REGISTER_DEDUPE_MS = 60_000;
+const registerInFlight = new Map<string, Promise<boolean>>();
+const registerSucceededAt = new Map<string, number>();
+
+export function resetPushRegistrationDedupe(): void {
+  registerInFlight.clear();
+  registerSucceededAt.clear();
+}
+
 export async function registerPushDeviceWithServer(params: {
   authToken: string;
   deviceToken: string;
@@ -175,6 +185,26 @@ export async function registerPushDeviceWithServer(params: {
   const authToken = String(params.authToken ?? '').trim();
   const deviceToken = String(params.deviceToken ?? '').trim();
   if (!authToken || !deviceToken) return false;
+  const key = `${authToken}\n${deviceToken}`;
+  const inFlight = registerInFlight.get(key);
+  if (inFlight) return inFlight;
+  const succeededAt = registerSucceededAt.get(key);
+  if (succeededAt !== undefined && Date.now() - succeededAt < PUSH_REGISTER_DEDUPE_MS) return true;
+  const request = postPushDeviceRegistration(authToken, deviceToken).then(
+    (ok) => {
+      if (ok) registerSucceededAt.set(key, Date.now());
+      return ok;
+    },
+  );
+  registerInFlight.set(key, request);
+  try {
+    return await request;
+  } finally {
+    registerInFlight.delete(key);
+  }
+}
+
+async function postPushDeviceRegistration(authToken: string, deviceToken: string): Promise<boolean> {
   const env = getEnvironmentConfig();
   try {
     await apiRequest('/api/push/devices/register', {
@@ -198,6 +228,8 @@ export async function registerPushDeviceWithServer(params: {
 }
 
 export async function unregisterPushDeviceWithServer(authToken: string | null): Promise<void> {
+  // 해제 후 같은 토큰으로 다시 로그인하면 반드시 다시 등록되게.
+  resetPushRegistrationDedupe();
   const token = String(authToken ?? '').trim();
   if (!token) return;
   try {
