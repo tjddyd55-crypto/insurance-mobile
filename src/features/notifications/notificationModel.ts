@@ -27,7 +27,20 @@ export const NOTIFICATION_SECTIONS: { type: NotificationType; title: string; dat
   { type: 'insurance_age_date', title: '상령일', dateLabel: '상령일' },
   { type: 'car_expiry', title: '자동차만기', dateLabel: '만기일' },
   { type: 'special_date', title: '알림일', dateLabel: '알림일' },
+  { type: 'advisor_consultation_lead', title: '상담 신청', dateLabel: '신청일' },
+  { type: 'other', title: '알림', dateLabel: '기준일' },
 ];
+
+/** 항목이 있을 때만 섹션을 보인다(빈 섹션을 새로 늘리지 않는다). */
+const SECTIONS_SHOWN_ONLY_WHEN_PRESENT = new Set<NotificationType>(['advisor_consultation_lead', 'other']);
+
+/** created_at 을 기준일로 쓰는 type. */
+const CREATED_AT_REFERENCE_TYPES = new Set<NotificationType>([
+  'claim_request_received',
+  'customer_created',
+  'advisor_consultation_lead',
+  'other',
+]);
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value : value == null ? '' : String(value);
@@ -52,11 +65,13 @@ function notificationType(value: unknown): NotificationType {
     raw === 'claim_request_received' ||
     raw === 'special_date' ||
     raw === 'customer_created' ||
-    raw === 'newsletter_published'
+    raw === 'newsletter_published' ||
+    raw === 'advisor_consultation_lead'
   ) {
     return raw;
   }
-  throw new ApiError('지원하지 않는 알림 유형입니다.', 500);
+  // 모르는 type 하나 때문에 목록 전체가 실패하지 않게 일반 알림으로 보인다.
+  return 'other';
 }
 
 export function normalizeNotification(value: unknown, context = '알림 데이터'): NotificationRecord {
@@ -70,6 +85,7 @@ export function normalizeNotification(value: unknown, context = '알림 데이�
     gaId: nullableNumber(row.gaId ?? row.ga_id),
     teamId: nullableText(row.teamId ?? row.team_id),
     type: notificationType(row.type),
+    rawType: text(row.type),
     referenceId: nullableText(row.referenceId ?? row.reference_id),
     message: text(row.message),
     isRead: row.isRead === true || row.is_read === true,
@@ -126,9 +142,14 @@ export function normalizeNotificationList(value: unknown): NotificationListResul
     throw new ApiError('알림 목록 응답 구조가 올바르지 않습니다.', 500);
   }
   return {
-    notifications: row.notifications.map((item, index) =>
-      normalizeNotification(item, `알림 목록 ${index + 1}번째 항목`),
-    ),
+    // 깨진 항목(객체 아님·id 없음)은 그 항목만 건너뛴다. 목록 실패(재시도 화면)는 API 응답 자체가 잘못됐을 때만.
+    notifications: row.notifications.flatMap((item, index) => {
+      try {
+        return [normalizeNotification(item, `알림 목록 ${index + 1}번째 항목`)];
+      } catch {
+        return [];
+      }
+    }),
     settings: normalizeNotificationSettings(row.settings),
   };
 }
@@ -146,9 +167,7 @@ export function notificationReferenceDate(
 ): string | null {
   return (
     dateOnly(row.targetDate) ??
-    (row.type === 'claim_request_received' || row.type === 'customer_created'
-      ? dateOnly(row.createdAt)
-      : null)
+    (CREATED_AT_REFERENCE_TYPES.has(row.type) ? dateOnly(row.createdAt) : null)
   );
 }
 
@@ -177,7 +196,9 @@ export function todayInSeoul(now = new Date()): string {
 }
 
 export function groupNotifications(rows: NotificationRecord[]) {
-  return NOTIFICATION_SECTIONS.map((section) => ({
+  return NOTIFICATION_SECTIONS.filter(
+    (section) => !SECTIONS_SHOWN_ONLY_WHEN_PRESENT.has(section.type) || rows.some((row) => row.type === section.type),
+  ).map((section) => ({
     ...section,
     data: rows
       .filter((row) => row.type === section.type)
@@ -185,4 +206,20 @@ export function groupNotifications(rows: NotificationRecord[]) {
         (notificationReferenceDate(a) ?? '').localeCompare(notificationReferenceDate(b) ?? ''),
       ),
   }));
+}
+
+/** 이 알림을 눌렀을 때 Native 에서 갈 곳이 있는지. 없으면 탭은 아무 동작도 하지 않는다. */
+export function notificationHasTarget(
+  row: Pick<NotificationRecord, 'type' | 'customerId' | 'referenceId'>,
+): boolean {
+  if (row.type === 'other' || row.type === 'advisor_consultation_lead') return false;
+  if (row.type === 'newsletter_published') return Boolean(String(row.referenceId ?? '').trim());
+  return row.customerId != null && row.customerId > 0;
+}
+
+/** 카드 제목. 고객 기반 알림은 고객 이름, 상담 신청·모르는 type 은 저장된 문구의 종류 이름. */
+export function notificationTitle(row: Pick<NotificationRecord, 'type' | 'customerName'>): string {
+  if (row.type === 'other') return '알림';
+  if (row.type === 'advisor_consultation_lead') return '상담 신청';
+  return row.customerName || '고객 정보 없음';
 }

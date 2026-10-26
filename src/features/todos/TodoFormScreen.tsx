@@ -3,6 +3,7 @@ import {
   BackHandler,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -36,6 +37,7 @@ import { widgetQuickTodoPayload, type WidgetQuickDraft } from '../schedule/widge
 import { refreshScheduleSurfaces } from '../home-widgets/refreshScheduleSurfaces';
 import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
+import { linkedCustomerLabel, validCustomerId } from './customerTodos';
 import { leaveTodoOpenedFromWidget, type TodoWidgetNavigation } from './todoWidgetReturn';
 import { seedTodoCreateForm } from './consultationTodoCreate';
 import {
@@ -53,13 +55,22 @@ import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
 type TodoFormProps =
-  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string }
+  | { mode: 'create'; todoId?: never; consultationId?: string; dueDate?: string; customerId?: string; formSession?: string }
   | { mode: 'edit'; todoId: string };
 
 export function TodoFormScreen(props: TodoFormProps) {
   if (props.mode === 'create') {
-    const sessionKey = props.consultationId?.trim() || `manual:${props.dueDate ?? ''}`;
-    return <TodoFormEditor key={sessionKey} mode="create" consultationId={props.consultationId} dueDate={props.dueDate} />;
+    const sessionKey = props.consultationId?.trim()
+      || (props.customerId ? `customer:${props.customerId}:${props.formSession ?? ''}` : `manual:${props.dueDate ?? ''}`);
+    return (
+      <TodoFormEditor
+        key={sessionKey}
+        mode="create"
+        consultationId={props.consultationId}
+        dueDate={props.dueDate}
+        customerId={props.customerId}
+      />
+    );
   }
   const screenId = todoEditScreenId(props.todoId);
   if (!screenId) {
@@ -69,13 +80,28 @@ export function TodoFormScreen(props: TodoFormProps) {
   return <TodoFormEditor key={screenId} mode="edit" todoId={screenId} />;
 }
 
-function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps & { consultationId?: string; dueDate?: string }) {
+function TodoFormEditor({
+  mode,
+  todoId,
+  consultationId,
+  dueDate,
+  customerId,
+}: TodoFormProps & { consultationId?: string; dueDate?: string; customerId?: string }) {
   const { token, user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ from?: string | string[]; src?: string | string[]; wt?: string | string[]; _w?: string | string[] }>();
-  const returnSource = todoReturnSource(params.from);
+  const params = useLocalSearchParams<{
+    from?: string | string[];
+    customerId?: string | string[];
+    src?: string | string[];
+    wt?: string | string[];
+    _w?: string | string[];
+  }>();
+  const returnSource = useMemo(
+    () => todoReturnSource(params.from, params.customerId),
+    [params.customerId, params.from],
+  );
   const leaveInApp = useCallback(() => {
     leaveTodoForm(navigation as unknown as Parameters<typeof leaveTodoForm>[0], router, returnSource);
   }, [navigation, returnSource, router]);
@@ -103,7 +129,8 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const activeTodoId = mode === 'edit' ? todoId : null;
-  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId, dueDate) : null;
+  const createSeed = mode === 'create' ? seedTodoCreateForm(consultationId, dueDate, new Date(), customerId) : null;
+  const [lockedCustomer] = useState(() => createSeed?.lockedCustomer ?? false);
   const [boundTodoId, setBoundTodoId] = useState<string | null>(activeTodoId);
   const [form, setForm] = useState<TodoFormDraft>(() => createSeed?.draft ?? cloneTodoFormDraft());
   const [initialSnapshot, setInitialSnapshot] = useState(() =>
@@ -227,7 +254,7 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
     saveMutation.mutate();
   };
 
-  if (mode === 'create' && !consultationId && isWidgetOrigin(params)) {
+  if (mode === 'create' && !lockedCustomer && !consultationId && isWidgetOrigin(params)) {
     return <TodoWidgetQuickCreate token={token} date={form.dueDate} onLeave={leave} />;
   }
 
@@ -247,6 +274,8 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
   const selectedCustomer = form.relatedCustomerId
     ? form.relatedCustomerName || `고객 #${form.relatedCustomerId}`
     : '';
+  // 할 일 상세(수정)에서만 연결 고객 이름을 눌러 고객 상세로 간다. 목록 카드에는 별도 이동이 없다.
+  const linkedCustomerId = mode === 'edit' ? validCustomerId(form.relatedCustomerId) : undefined;
   const busy = saveMutation.isPending || deleteMutation.isPending;
   const mutationError = saveMutation.error ?? deleteMutation.error;
 
@@ -292,14 +321,29 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
 
         <Card variant="outlined">
           <Stack gap="sm">
-            <AppText variant="heading">연결 고객</AppText>
             {selectedCustomer ? (
               <Inline justify="space-between">
-                <View style={styles.customerName}>
-                  <AppText variant="bodyStrong">{selectedCustomer}</AppText>
-                  <AppText variant="caption">선택된 고객</AppText>
-                </View>
-                <Button
+                {linkedCustomerId ? (
+                  <Pressable
+                    accessibilityRole="link"
+                    accessibilityLabel={`연결된 고객 ${selectedCustomer} 고객 상세 열기`}
+                    hitSlop={theme.interaction.compactHitSlop}
+                    style={({ pressed }) => [styles.customerName, pressed && styles.customerPressed]}
+                    onPress={() => router.push({
+                      pathname: '/customers/[customerId]',
+                      params: { customerId: linkedCustomerId },
+                    })}
+                  >
+                    <AppText variant="bodyStrong" color="info" numberOfLines={1}>
+                      {linkedCustomerLabel(selectedCustomer)}
+                    </AppText>
+                  </Pressable>
+                ) : (
+                  <View style={styles.customerName}>
+                    <AppText variant="bodyStrong" numberOfLines={1}>{linkedCustomerLabel(selectedCustomer)}</AppText>
+                  </View>
+                )}
+                {lockedCustomer ? null : <Button
                   label="연결 해제"
                   variant="ghost"
                   size="sm"
@@ -310,22 +354,22 @@ function TodoFormEditor({ mode, todoId, consultationId, dueDate }: TodoFormProps
                       relatedCustomerName: '',
                     }))
                   }
-                />
+                />}
               </Inline>
             ) : (
               <AppText variant="caption">연결하지 않아도 저장할 수 있습니다.</AppText>
             )}
-            <TextField
+            {lockedCustomer ? null : <TextField
               label="고객 검색"
               value={customerSearch}
               onChangeText={setCustomerSearch}
               placeholder="이름 또는 전화번호 2글자 이상"
               returnKeyType="search"
-            />
-            {customerSearch.trim().length >= 2 && customersQuery.isLoading ? (
+            />}
+            {!lockedCustomer && customerSearch.trim().length >= 2 && customersQuery.isLoading ? (
               <AppText variant="caption">검색 중…</AppText>
             ) : null}
-            {customerResults.map((customer) => (
+            {(lockedCustomer ? [] : customerResults).map((customer) => (
               <Button
                 key={customer.id}
                 label={`${customer.name} · ${formatCustomerPhone(customer.phone) || '연락처 없음'}`}
@@ -450,6 +494,7 @@ function createStyles(theme: AppTheme) {
     scroll: { flex: 1 },
     content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl, gap: theme.spacing.md },
     customerName: { flex: 1, gap: theme.spacing.xxs },
+    customerPressed: { opacity: theme.opacity.pressed },
     footerSafe: {
       backgroundColor: theme.colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,

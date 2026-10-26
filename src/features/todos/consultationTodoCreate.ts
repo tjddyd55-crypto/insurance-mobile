@@ -2,6 +2,7 @@ import { formatDeviceLocalYmd } from '../../utils/deviceLocalDate';
 import { todayInSeoul } from '../../utils/dateInput';
 import { isValidOptionalYmd, suggestTodoDueDate } from './todoModel';
 import { cloneTodoFormDraft, type TodoFormDraft } from './todoFormSession';
+import { peekCustomerTodoCreate } from './customerTodos';
 
 /** 상담 카드에 보이는 동작. 웹 모바일 카드의 접근 이름과 같다. */
 export const CONSULTATION_ADD_TODO_LABEL = '할 일로 추가';
@@ -76,14 +77,34 @@ export function consultationTodoCreateRoute(prefill: ConsultationTodoCreatePrefi
  * 할 일 추가 초안. 넘긴 날짜(위젯에서 보던 날)가 있으면 그 날, 없으면 KST 오늘.
  * 상담 본문 제안(내일 등)은 초기값으로 쓰지 않는다. 수정 화면은 이 함수를 쓰지 않는다.
  */
-export function seedTodoCreateForm(consultationId?: string, dueDate?: string, now = new Date()): {
+export function seedTodoCreateForm(
+  consultationId?: string,
+  dueDate?: string,
+  now = new Date(),
+  customerId?: string,
+): {
   draft: TodoFormDraft;
   source: TodoCreateSource;
+  /** 고객 할 일 화면에서 연 추가: 연결 고객을 바꿀 수 없다. */
+  lockedCustomer: boolean;
 } {
   const chosen = chosenDueDate(dueDate, now);
   const prefill = peekConsultationTodoCreate(consultationId);
+  const customer = prefill ? null : peekCustomerTodoCreate(customerId);
+  if (customer) {
+    return {
+      draft: {
+        ...cloneTodoFormDraft(),
+        dueDate: chosen,
+        relatedCustomerId: customer.customerId,
+        relatedCustomerName: customer.customerName,
+      },
+      source: MANUAL_SOURCE,
+      lockedCustomer: true,
+    };
+  }
   if (!prefill) {
-    return { draft: { ...cloneTodoFormDraft(), dueDate: chosen }, source: MANUAL_SOURCE };
+    return { draft: { ...cloneTodoFormDraft(), dueDate: chosen }, source: MANUAL_SOURCE, lockedCustomer: false };
   }
   return {
     draft: {
@@ -94,6 +115,7 @@ export function seedTodoCreateForm(consultationId?: string, dueDate?: string, no
       relatedCustomerName: prefill.relatedCustomerName,
     },
     source: { sourceType: prefill.sourceType, sourceId: prefill.sourceId },
+    lockedCustomer: false,
   };
 }
 

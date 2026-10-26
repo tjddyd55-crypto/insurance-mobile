@@ -1,5 +1,5 @@
-export const RELEASE_VERSION_NAME = '1.0.4';
-export const RELEASE_STORE_BUILD_NUMBER = 13;
+export const RELEASE_VERSION_NAME = '1.0.5';
+export const RELEASE_STORE_BUILD_NUMBER = 15;
 
 export const PRODUCTION_APP_IDENTITY = {
   displayName: 'ONE FC',

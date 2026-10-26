@@ -5,6 +5,9 @@ import { useRouter, type Href } from 'expo-router';
 import {
   AppText,
   Card,
+  fontWeight,
+  lineHeight,
+  typeScale,
   Inline,
   Stack,
   useAppTheme,
@@ -12,6 +15,7 @@ import {
 } from '../../design-system';
 import { todoDisplayContent } from './todoModel';
 import { todoEditPath } from './todoNavigation';
+import { customerTodoDateLine } from './customerTodos';
 import {
   formatTodoDueLine,
   todoRelatedDisplay,
@@ -23,10 +27,16 @@ export function TodoCard({
   todo,
   stateBusy,
   onToggleDone,
+  editHref,
+  dateOnly = false,
 }: {
   todo: TodoRecord;
   stateBusy: boolean;
   onToggleDone: (todo: TodoRecord) => void;
+  /** 없으면 기존 할 일 수정 경로. */
+  editHref?: Href;
+  /** 고객 할 일 화면: 연결·출처 줄 없이 `날짜 …`만 보인다. */
+  dateOnly?: boolean;
 }) {
   const router = useRouter();
   const theme = useAppTheme();
@@ -55,40 +65,34 @@ export function TodoCard({
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${todoDisplayContent(todo)} 할 일 수정`}
+          accessibilityLabel={`${todoDisplayContent(todo)} 할 일 열기`}
           style={({ pressed }) => [styles.body, pressed && styles.pressed]}
-          onPress={() => router.push(todoEditPath(todo.id) as Href)}
+          onPress={() => router.push(editHref ?? (todoEditPath(todo.id) as Href))}
         >
           <Stack gap="xs">
             <AppText variant="bodyStrong" color="info" numberOfLines={3}>
               {todoDisplayContent(todo)}
             </AppText>
-            {related.customerId ? (
-              <Pressable
-                accessibilityRole="link"
-                onPress={(event) => {
-                  event.stopPropagation();
-                  router.push({
-                    pathname: '/customers/[customerId]',
-                    params: { customerId: related.customerId ?? '' },
-                  });
-                }}
-              >
-                <AppText variant="caption" color="info" numberOfLines={1}>
-                  연결: {related.label}
-                </AppText>
-              </Pressable>
-            ) : (
-              <AppText variant="caption" color="textMuted" numberOfLines={1}>
+            {dateOnly ? (
+              <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.meta}>
+                {customerTodoDateLine(todo)}
+              </AppText>
+            ) : null}
+            {dateOnly ? null : (
+              <AppText variant="caption" color={related.customerId ? 'textSecondary' : 'textMuted'} numberOfLines={1} style={styles.meta}>
                 연결: {related.label}
               </AppText>
             )}
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-              {formatTodoDueLine(todo)}
-            </AppText>
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-              {todoSourceLine(todo)}
-            </AppText>
+            {dateOnly ? null : (
+              <>
+                <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.meta}>
+                  {formatTodoDueLine(todo)}
+                </AppText>
+                <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.meta}>
+                  {todoSourceLine(todo)}
+                </AppText>
+              </>
+            )}
           </Stack>
         </Pressable>
       </Inline>
@@ -123,6 +127,8 @@ function createStyles(theme: AppTheme) {
       opacity: theme.opacity.disabled,
     },
     body: { flex: 1, minWidth: 0 },
+    // 카드 메타(연결·날짜·출처)는 공용 12px caption 대신 14px 보통 굵기
+    meta: { fontSize: typeScale.label, lineHeight: lineHeight.label, fontWeight: fontWeight.regular },
     pressed: { opacity: theme.opacity.pressed },
   });
 }
