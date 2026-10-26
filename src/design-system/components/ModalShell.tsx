@@ -9,10 +9,11 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '../DesignSystemProvider';
 import type { AppTheme } from '../themes';
+import { useBottomSafeInset } from '../useBottomSafeInset';
 import { AppText } from './AppText';
 
 export type ModalShellProps = {
@@ -42,7 +43,28 @@ export type ModalShellProps = {
  * Shared modal structure only; feature forms continue to own validation and save behavior.
  * ConfirmDialog remains separate because it intentionally consumes Android back by default.
  */
-export function ModalShell({
+export function ModalShell(props: ModalShellProps) {
+  return (
+    <Modal
+      visible={props.open}
+      animationType={props.presentation === 'dialog' ? 'fade' : 'slide'}
+      transparent={props.presentation === 'dialog'}
+      statusBarTranslucent={props.presentation === 'dialog'}
+      onRequestClose={() => {
+        if (!props.busy && (props.dismissOnAndroidBack ?? true)) {
+          props.onRequestClose();
+        }
+      }}
+    >
+      {/* RN <Modal> is a separate Android window: re-measure safe-area insets inside it. */}
+      <SafeAreaProvider>
+        <ModalShellContent {...props} />
+      </SafeAreaProvider>
+    </Modal>
+  );
+}
+
+function ModalShellContent({
   open,
   title,
   subtitle,
@@ -65,6 +87,7 @@ export function ModalShell({
 }: ModalShellProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const bottomSafeInset = useBottomSafeInset();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const scrollRef = useRef<ScrollView>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
@@ -96,11 +119,6 @@ export function ModalShell({
     };
   }, [open, scroll]);
 
-  const requestClose = () => {
-    if (!busy && dismissOnAndroidBack) {
-      onRequestClose();
-    }
-  };
   const body = scroll ? (
     <ScrollView
       ref={scrollRef}
@@ -109,7 +127,10 @@ export function ModalShell({
         styles.scrollContent,
         {
           padding: resolvedBodyPadding,
-          paddingBottom: resolvedBodyPadding + (keyboardOpen ? theme.spacing.lg : 0),
+          paddingBottom:
+            resolvedBodyPadding +
+            (keyboardOpen ? theme.spacing.lg : 0) +
+            (!isDialog && !footer && !keyboardOpen ? bottomSafeInset : 0),
         },
       ]}
       keyboardShouldPersistTaps="handled"
@@ -124,6 +145,9 @@ export function ModalShell({
       style={[
         styles.body,
         { padding: resolvedBodyPadding },
+        !isDialog && !footer && !keyboardOpen
+          ? { paddingBottom: resolvedBodyPadding + bottomSafeInset }
+          : null,
         isDialog ? styles.dialogBody : styles.bodyFill,
       ]}
     >
@@ -132,13 +156,7 @@ export function ModalShell({
   );
 
   return (
-    <Modal
-      visible={open}
-      animationType={isDialog ? 'fade' : 'slide'}
-      transparent={isDialog}
-      statusBarTranslucent={isDialog}
-      onRequestClose={requestClose}
-    >
+    <>
       <KeyboardAvoidingView
         enabled={keyboardAvoiding}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -165,7 +183,7 @@ export function ModalShell({
           />
         ) : null}
         <SafeAreaView
-          edges={isDialog ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}
+          edges={isDialog ? ['left', 'right'] : ['top', 'left', 'right']}
           style={[
             styles.safe,
             isDialog && styles.dialogPanel,
@@ -196,6 +214,12 @@ export function ModalShell({
               <View
                 style={[
                   styles.footer,
+                  !isDialog &&
+                    !keyboardOpen && {
+                      // Fullscreen: keep footer buttons above the system nav bar. With the
+                      // keyboard open the keyboard covers the nav bar, so follow it only.
+                      paddingBottom: theme.layout.modalPadding + bottomSafeInset,
+                    },
                   isDialog &&
                     keyboardOpen && {
                       paddingBottom: Math.max(
@@ -211,7 +235,7 @@ export function ModalShell({
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
-    </Modal>
+    </>
   );
 }
 
