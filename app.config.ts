@@ -164,6 +164,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             '휴대폰 연락처를 ONE FC에서 확인하려면 연락처 접근 권한이 필요합니다.',
         },
       ],
+      // 위젯 콜드 스타트: 이전 task intent 대신 방금 받은 위젯 링크로 이동.
+      './plugins/withLatestLaunchIntent.js',
       './plugins/withApprovedAndroidSplash.js',
       [
         'expo-splash-screen',
