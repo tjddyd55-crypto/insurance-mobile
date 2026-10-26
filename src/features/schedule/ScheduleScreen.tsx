@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -30,19 +30,13 @@ import {
   updateOnefcSchedule,
   updateScheduleEvent,
 } from './scheduleApi';
-import { listCustomers } from '../customers/customersApi';
-import { customerQueryKeys } from '../customers/queryKeys';
-import { createTodo } from '../todos/todosApi';
 import { todoQueryKeys } from '../todos/queryKeys';
 import {
   scheduleEventSourceLabel,
-  emptyTaskForm,
   isOnefcSchedule,
   onefcScheduleRawId,
   scheduleDeletePrompt,
   scheduleGoogleWarning,
-  taskFormToTodoPayload,
-  validateTaskForm,
   canEditEvent,
   customerRouteOfEvent,
   customerRouteOfTask,
@@ -73,8 +67,6 @@ import {
 import { ScheduleDateField } from './ScheduleDateField';
 import { ScheduleTimeField } from './ScheduleTimeField';
 import { refreshWidgets } from '../home-widgets/engine/widgetRefreshCoordinator';
-import { WidgetQuickAddSheet, type QuickAddCustomer } from './WidgetQuickAddSheet';
-import { widgetQuickScheduleForm, type WidgetQuickDraft } from './widgetQuickAddModel';
 import { scheduleQueryKeys } from './queryKeys';
 import { scheduleLinkTarget } from './scheduleLinkParams';
 import {
@@ -87,8 +79,8 @@ import {
   type WidgetDrawerNavigation,
 } from '../home-widgets/widgetReturn';
 import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
-import { armScheduleTodoReturn } from '../todos/todoNavigation';
-import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleTask, ScheduleTaskForm } from './types';
+import { armScheduleTodoReturn, TODO_RETURN_SOURCE_SCHEDULE } from '../todos/todoNavigation';
+import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleTask } from './types';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -104,7 +96,6 @@ export function scheduleRefreshError(error: unknown): string | null {
 }
 
 type FormState = { mode: 'create' | 'edit'; event: ScheduleEvent | null; form: ScheduleEventForm; requestId: string };
-type TaskFormState = { form: ScheduleTaskForm };
 
 function saveSchedule(token: string | null, state: FormState): Promise<unknown> {
   if (state.mode === 'create') return createOnefcSchedule(token, state.form, state.requestId);
@@ -140,10 +131,8 @@ export function ScheduleScreen() {
   const [deleting, setDeleting] = useState<ScheduleEvent | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [customerLookup, setCustomerLookup] = useState(false);
-  const [taskState, setTaskState] = useState<TaskFormState | null>(null);
-  const [taskError, setTaskError] = useState<string | null>(null);
-  const [widgetQuick, setWidgetQuick] = useState<{ date: string; requestId: string } | null>(null);
+  // 위젯 + 일정으로 연 일정 추가 폼. 폼은 앱 내부와 같은 ModalShell 폼이고, 뒤에 일정 목록을 그리지 않는다.
+  const [widgetForm, setWidgetForm] = useState(false);
   const range = monthRange(month);
   // 홈 화면 위젯 deep link(<scheme>://schedule?date&event&create). 같은 날짜를 다시 눌러도 _w 로 다시 적용된다.
   const linkParams = useLocalSearchParams<{ date?: string; event?: string; create?: string; _w?: string; src?: string | string[]; wt?: string | string[] }>();
@@ -153,8 +142,8 @@ export function ScheduleScreen() {
   const { armScheduleWidgetFlow, markScheduleWidgetSaved, endScheduleWidgetFlow } = useScheduleWidgetReturn({
     open: scheduleModalsOpen({
       detail: detail !== null || pendingLinkItem !== null,
-      form: formState !== null || widgetQuick !== null,
-      task: taskState !== null,
+      form: formState !== null,
+      task: false,
       deleting: deleting !== null,
     }),
     widgetType: widgetTypeOf(linkParams) ?? 'schedule',
@@ -179,37 +168,29 @@ export function ScheduleScreen() {
     setDetail(null);
     setPendingLinkItem(linkTarget.itemId);
     if (linkTarget.create) {
-      setTaskState(null);
       setFormError(null);
-      if (widgetArm.current.start) {
-        setFormState(null);
-        setCustomerLookup(false);
-        setWidgetQuick({ date: linkTarget.date, requestId: newScheduleRequestId() });
-      } else {
-        setWidgetQuick(null);
-        setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
-      }
+      // 위젯·앱 모두 같은 일정 추가 폼(SSOT). 위젯이면 폼 뒤의 목록만 숨긴다.
+      setWidgetForm(widgetArm.current.start);
+      setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
     }
     const arm = widgetArm.current;
     if (arm.start && arm.entryId) armScheduleWidgetFlow(arm.entryId);
   }, [armScheduleWidgetFlow, linkTarget.date, linkTarget.itemId, linkTarget.create, linkTarget.nonce]);
+
+  // 위젯 폼이 닫히고 Android 홈으로 돌아가면(moveTaskToBack) 다음 앱 진입을 위해 목록 화면을 되돌린다.
+  useEffect(() => {
+    if (!widgetForm || formState !== null) return;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') setWidgetForm(false);
+    });
+    return () => sub.remove();
+  }, [widgetForm, formState]);
 
   const query = useQuery({
     queryKey: scheduleQueryKeys.range(range.from, range.to),
     queryFn: () => fetchScheduleEvents(token, range),
     enabled: Boolean(token),
   });
-  const customersQuery = useQuery({
-    queryKey: customerQueryKeys.all,
-    queryFn: () => listCustomers(token),
-    enabled: Boolean(token) && customerLookup,
-    staleTime: 60_000,
-  });
-  const quickCustomers: QuickAddCustomer[] = (customersQuery.data?.customers ?? []).map((customer) => ({
-    id: String(customer.id),
-    name: customer.name,
-    phone: customer.phone,
-  }));
   const data = query.data;
   useEffect(() => {
     if (!pendingLinkItem || !data) return;
@@ -230,9 +211,6 @@ export function ScheduleScreen() {
   const afterWrite = async () => {
     markScheduleWidgetSaved();
     setFormState(null);
-    setWidgetQuick(null);
-    setCustomerLookup(false);
-    setTaskState(null);
     setDeleting(null);
     setDetail(null);
     await reloadAfterWrite();
@@ -243,13 +221,6 @@ export function ScheduleScreen() {
   };
   const save = useMutation({
     mutationFn: (state: FormState) => saveSchedule(token, state),
-    onSuccess: afterWrite,
-  });
-  const saveTask = useMutation({
-    mutationFn: async (state: TaskFormState) => {
-      await createTodo(token, taskFormToTodoPayload(state.form));
-      await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
-    },
     onSuccess: afterWrite,
   });
   const remove = useMutation({
@@ -292,36 +263,19 @@ export function ScheduleScreen() {
   const openScheduleCreate = () => {
     setFormError(null);
     save.reset();
-    setTaskState(null);
-    setWidgetQuick(null);
+    setWidgetForm(false);
     setFormState({ mode: 'create', event: null, form: emptyEventForm(selected), requestId: newScheduleRequestId() });
   };
-  const submitWidgetQuick = (draft: WidgetQuickDraft) => {
-    if (!widgetQuick) return;
-    const form = widgetQuickScheduleForm(draft);
-    const problem = validateEventForm(form, { calendarRequired: false });
-    setFormError(problem);
-    if (!problem) save.mutate({ mode: 'create', event: null, form, requestId: widgetQuick.requestId });
-  };
+  /** 할 일 추가는 할 일 메뉴와 같은 Todo 생성폼(SSOT: /todos/new). 저장·취소 후 이 날짜의 일정으로 돌아온다. */
   const openTodoCreate = () => {
-    setTaskError(null);
-    saveTask.reset();
     setFormState(null);
-    setWidgetQuick(null);
-    setTaskState({ form: emptyTaskForm(selected) });
+    armScheduleTodoReturn(selected);
+    router.push({ pathname: '/todos/new', params: { dueDate: selected, from: TODO_RETURN_SOURCE_SCHEDULE } });
   };
-  const submitTask = () => {
-    if (!taskState) return;
-    const form = { ...taskState.form, dueTime: '' };
-    const problem = validateTaskForm(form, 'onefc_todo');
-    setTaskError(problem);
-    if (!problem) saveTask.mutate({ form });
-  };
-  const patchTask = (patch: Partial<ScheduleTaskForm>) =>
-    setTaskState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
   const openEdit = (event: ScheduleEvent) => {
     setFormError(null);
     setDetail(null);
+    setWidgetForm(false);
     setFormState({ mode: 'edit', event, form: eventToForm(event), requestId: newScheduleRequestId() });
   };
   const submitForm = () => {
@@ -334,6 +288,66 @@ export function ScheduleScreen() {
   };
   const patchForm = (patch: Partial<ScheduleEventForm>) =>
     setFormState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
+
+  const closeForm = () => setFormState(null);
+  // 일정 추가/수정 폼(SSOT). 위젯 진입은 로딩·오류 상태에서도 이 폼을 바로 띄운다.
+  const scheduleForm = (
+    <ModalShell
+      open={formState !== null}
+      title={scheduleFormTitle(formState)}
+      presentation="fullscreen"
+      busy={save.isPending}
+      onRequestClose={closeForm}
+      footer={
+        <Inline gap="sm">
+          <View style={styles.flex}><Button label="취소" fullWidth disabled={save.isPending} onPress={closeForm} /></View>
+          <View style={styles.flex}><Button label="저장" variant="primary" fullWidth loading={save.isPending} onPress={submitForm} /></View>
+        </Inline>
+      }
+    >
+      {formState ? (
+        <Stack gap="md">
+          <AppText variant="caption" color="textMuted">{scheduleFormPlace(formState)}</AppText>
+          <TextField label="제목" required value={formState.form.title} maxLength={300} onChangeText={(title) => patchForm({ title })} />
+          <Inline gap="sm">
+            <ScheduleDateField
+              label="시작일"
+              withTime={false}
+              value={formState.form.date}
+              onComplete={({ date }) => patchForm({ date, endDate: formState.form.endDate < date ? date : formState.form.endDate })}
+            />
+            <ScheduleDateField
+              label="종료일"
+              withTime={false}
+              value={formState.form.endDate}
+              onComplete={({ date }) => patchForm({ endDate: date < formState.form.date ? formState.form.date : date })}
+            />
+          </Inline>
+          <Button
+            label="시간 지정"
+            variant={formState.form.allDay ? 'secondary' : 'selected'}
+            accessibilityState={{ selected: !formState.form.allDay }}
+            onPress={() => patchForm(toggleScheduleTime(formState.form))}
+          />
+          {formState.form.allDay ? null : (
+            <Inline gap="sm">
+              <ScheduleTimeField label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm(withScheduleStartTime(formState.form, startTime))} />
+              <ScheduleTimeField label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm(withScheduleEndTime(formState.form, endTime))} />
+            </Inline>
+          )}
+          <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />
+          {formError || save.isError ? (
+            <AppText variant="caption" color="danger">{formError ?? describeApiError(save.error, '일정을 저장하지 못했습니다.')}</AppText>
+          ) : null}
+        </Stack>
+      ) : null}
+    </ModalShell>
+  );
+  // 위젯 + 일정: 첫 렌더(링크 효과 전)부터 폼만 보이게 한다. 일정 목록/로딩 화면을 먼저 보여주지 않는다.
+  const widgetCreateEntry = widgetForm || (linkTarget.create && isPendingWidgetOrigin(linkParams));
+  if (widgetCreateEntry) {
+    return <View style={styles.root}>{scheduleForm}</View>;
+  }
 
   const header = (
     <AppHeader
@@ -461,53 +475,6 @@ export function ScheduleScreen() {
         ))}
       </ScrollView>
 
-      <WidgetQuickAddSheet
-        open={widgetQuick !== null}
-        kind="schedule"
-        date={widgetQuick?.date ?? selected}
-        busy={save.isPending}
-        error={formError ?? (save.isError ? describeApiError(save.error, '일정을 저장하지 못했습니다.') : null)}
-        customers={quickCustomers}
-        customersLoading={customersQuery.isLoading}
-        onClose={() => { setWidgetQuick(null); setCustomerLookup(false); }}
-        onNeedCustomers={() => setCustomerLookup(true)}
-        onSubmit={submitWidgetQuick}
-      />
-
-      <ModalShell
-        open={taskState !== null}
-        title="할 일 추가"
-        presentation="fullscreen"
-        busy={saveTask.isPending}
-        onRequestClose={() => setTaskState(null)}
-        footer={
-          <Inline gap="sm">
-            <View style={styles.flex}><Button label="취소" fullWidth disabled={saveTask.isPending} onPress={() => setTaskState(null)} /></View>
-            <View style={styles.flex}><Button label="저장" variant="primary" fullWidth loading={saveTask.isPending} onPress={submitTask} /></View>
-          </Inline>
-        }
-      >
-        {taskState ? (
-          <Stack gap="md">
-            <TextField label="제목" required value={taskState.form.title} maxLength={300} onChangeText={(title) => patchTask({ title })} />
-            <Inline gap="sm">
-              <ScheduleDateField
-                label="날짜"
-                withTime={false}
-                value={taskState.form.dueDate}
-                clearable
-                placeholder="날짜 없음"
-                onComplete={({ date }) => patchTask({ dueDate: date, dueTime: '' })}
-              />
-            </Inline>
-            <TextField label="메모" multiline value={taskState.form.notes} onChangeText={(notes) => patchTask({ notes })} />
-            {taskError || saveTask.isError ? (
-              <AppText variant="caption" color="danger">{taskError ?? describeApiError(saveTask.error, '할 일을 저장하지 못했습니다.')}</AppText>
-            ) : null}
-          </Stack>
-        ) : null}
-      </ModalShell>
-
       <ScheduleDetailModal
         item={detail}
         data={data}
@@ -517,56 +484,7 @@ export function ScheduleScreen() {
         onDelete={(event) => setDeleting(event)}
       />
 
-      <ModalShell
-        open={formState !== null}
-        title={scheduleFormTitle(formState)}
-        presentation="fullscreen"
-        busy={save.isPending}
-        onRequestClose={() => setFormState(null)}
-        footer={
-          <Inline gap="sm">
-            <View style={styles.flex}><Button label="취소" fullWidth disabled={save.isPending} onPress={() => setFormState(null)} /></View>
-            <View style={styles.flex}><Button label="저장" variant="primary" fullWidth loading={save.isPending} onPress={submitForm} /></View>
-          </Inline>
-        }
-      >
-        {formState ? (
-          <Stack gap="md">
-            <AppText variant="caption" color="textMuted">{scheduleFormPlace(formState)}</AppText>
-            <TextField label="제목" required value={formState.form.title} maxLength={300} onChangeText={(title) => patchForm({ title })} />
-            <Inline gap="sm">
-              <ScheduleDateField
-                label="시작일"
-                withTime={false}
-                value={formState.form.date}
-                onComplete={({ date }) => patchForm({ date, endDate: formState.form.endDate < date ? date : formState.form.endDate })}
-              />
-              <ScheduleDateField
-                label="종료일"
-                withTime={false}
-                value={formState.form.endDate}
-                onComplete={({ date }) => patchForm({ endDate: date < formState.form.date ? formState.form.date : date })}
-              />
-            </Inline>
-            <Button
-              label="시간 지정"
-              variant={formState.form.allDay ? 'secondary' : 'selected'}
-              accessibilityState={{ selected: !formState.form.allDay }}
-              onPress={() => patchForm(toggleScheduleTime(formState.form))}
-            />
-            {formState.form.allDay ? null : (
-              <Inline gap="sm">
-                <ScheduleTimeField label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm(withScheduleStartTime(formState.form, startTime))} />
-                <ScheduleTimeField label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm(withScheduleEndTime(formState.form, endTime))} />
-              </Inline>
-            )}
-            <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />
-            {formError || save.isError ? (
-              <AppText variant="caption" color="danger">{formError ?? describeApiError(save.error, '일정을 저장하지 못했습니다.')}</AppText>
-            ) : null}
-          </Stack>
-        ) : null}
-      </ModalShell>
+      {scheduleForm}
 
       <ConfirmDialog
         open={deleting !== null}

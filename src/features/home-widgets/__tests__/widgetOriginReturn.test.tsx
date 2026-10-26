@@ -519,7 +519,8 @@ describe('static guards', () => {
     expect(after.indexOf('markScheduleWidgetSaved')).toBeGreaterThan(-1);
     expect(after.indexOf('markScheduleWidgetSaved')).toBeLessThan(after.indexOf('setFormState(null)'));
     expect(open.indexOf('endScheduleWidgetFlow')).toBeLessThan(open.indexOf('router.push'));
-    expect(schedule.match(/onSuccess: afterWrite/g)).toHaveLength(3);
+    // 일정 저장·삭제 2곳 (할 일 추가는 공통 Todo 폼 /todos/new 로 이동).
+    expect(schedule.match(/onSuccess: afterWrite/g)).toHaveLength(2);
     expect(schedule).not.toMatch(/BackHandler|router\.replace|setTimeout/);
   });
 

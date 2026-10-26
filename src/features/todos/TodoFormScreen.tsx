@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,8 +33,6 @@ import { listCustomers } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { firstLineTodoTitle, isValidOptionalYmd } from './todoModel';
 import { ScheduleDateField } from '../schedule/ScheduleDateField';
-import { WidgetQuickAddSheet } from '../schedule/WidgetQuickAddSheet';
-import { widgetQuickTodoPayload, type WidgetQuickDraft } from '../schedule/widgetQuickAddModel';
 import { refreshScheduleSurfaces } from '../home-widgets/refreshScheduleSurfaces';
 import { isWidgetOrigin, widgetTypeOf } from '../home-widgets/widgetReturn';
 import { leaveTodoForm, todoEditScreenId, todoReturnSource } from './todoNavigation';
@@ -144,6 +143,24 @@ function TodoFormEditor({
   const [customerSearch, setCustomerSearch] = useState('');
   const [discardOpen, setDiscardOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // 키보드(공통 Todo 폼 한 곳): 열려 있는 동안 스크롤 하단 여백을 키보드만큼 늘리고,
+  // 고객 검색창에 포커스가 있으면 검색창·결과가 보이도록 끝까지 스크롤한다.
+  const scrollRef = useRef<ScrollView>(null);
+  const customerSearchFocused = useRef(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardInset(event.endCoordinates.height);
+      if (customerSearchFocused.current) requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    });
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardInset(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   if (activeTodoId && resolveTodoFormSession(boundTodoId, activeTodoId) === 'reset') {
     setBoundTodoId(activeTodoId);
     setForm(cloneTodoFormDraft());
@@ -185,6 +202,11 @@ function TodoFormEditor({
       .filter((customer) => customerMatchesSearch(customer, customerSearch))
       .slice(0, 10);
   }, [customerSearch, customersQuery.data?.customers]);
+  useEffect(() => {
+    if (customerSearchFocused.current && customerResults.length > 0) {
+      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    }
+  }, [customerResults.length]);
   const dirty = initialized && JSON.stringify(form) !== initialSnapshot;
 
   const saveMutation = useMutation({
@@ -254,10 +276,6 @@ function TodoFormEditor({
     saveMutation.mutate();
   };
 
-  if (mode === 'create' && !lockedCustomer && !consultationId && isWidgetOrigin(params)) {
-    return <TodoWidgetQuickCreate token={token} date={form.dueDate} onLeave={leave} />;
-  }
-
   if (mode === 'edit' && todosQuery.isLoading) {
     return <LoadingState message="할 일을 불러오는 중…" />;
   }
@@ -288,9 +306,11 @@ function TodoFormEditor({
         onBackPress={requestBack}
       />
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, keyboardInset > 0 && { paddingBottom: theme.spacing.xl + theme.spacing.lg }]}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         <Card variant="outlined">
           <Stack gap="md">
@@ -321,6 +341,7 @@ function TodoFormEditor({
 
         <Card variant="outlined">
           <Stack gap="sm">
+            <AppText variant="bodyStrong">고객 연결</AppText>
             {selectedCustomer ? (
               <Inline justify="space-between">
                 {linkedCustomerId ? (
@@ -365,6 +386,13 @@ function TodoFormEditor({
               onChangeText={setCustomerSearch}
               placeholder="이름 또는 전화번호 2글자 이상"
               returnKeyType="search"
+              onFocus={() => {
+                customerSearchFocused.current = true;
+                requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+              }}
+              onBlur={() => {
+                customerSearchFocused.current = false;
+              }}
             />}
             {!lockedCustomer && customerSearch.trim().length >= 2 && customersQuery.isLoading ? (
               <AppText variant="caption">검색 중…</AppText>
@@ -436,55 +464,6 @@ function TodoFormEditor({
         onConfirm={() => deleteMutation.mutate()}
       />
     </KeyboardAvoidingView>
-  );
-}
-
-function TodoWidgetQuickCreate({
-  token,
-  date,
-  onLeave,
-}: {
-  token: string | null;
-  date: string;
-  onLeave: (saved: boolean) => void;
-}) {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const [customerLookup, setCustomerLookup] = useState(false);
-  const customersQuery = useQuery({
-    queryKey: customerQueryKeys.all,
-    queryFn: () => listCustomers(token),
-    enabled: Boolean(token) && customerLookup,
-    staleTime: 60_000,
-  });
-  const save = useMutation({
-    mutationFn: (draft: WidgetQuickDraft) => createTodo(token, widgetQuickTodoPayload(draft)),
-    onSuccess: async () => {
-      await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
-      onLeave(true);
-    },
-  });
-  const customers = (customersQuery.data?.customers ?? []).map((customer) => ({
-    id: String(customer.id),
-    name: customer.name,
-    phone: customer.phone,
-  }));
-  const message = save.error instanceof Error ? save.error.message : '할 일을 저장하지 못했습니다.';
-  return (
-    <View style={{ flex: 1 }}>
-      <WidgetQuickAddSheet
-        open
-        kind="todo"
-        date={date}
-        busy={save.isPending}
-        error={save.isError ? message : null}
-        customers={customers}
-        customersLoading={customersQuery.isLoading}
-        onNeedCustomers={() => setCustomerLookup(true)}
-        onClose={() => onLeave(false)}
-        onSubmit={(draft) => save.mutate(draft)}
-      />
-    </View>
   );
 }
 
