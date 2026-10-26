@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Dimensions,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -71,6 +72,13 @@ export function ModalShell({
   const isDialog = presentation === 'dialog';
   const resolvedBodyPadding = dialogBodyPadding ?? theme.layout.modalPadding;
   const keyboardOpen = keyboardInset > 0;
+  // Android edge-to-edge: RN <Modal> 창은 키보드에 맞춰 줄지 않으므로, 키보드가 가리는 만큼을 직접 비운다.
+  const [keyboardOverlap, setKeyboardOverlap] = useState(0);
+  const [closedRootHeight, setClosedRootHeight] = useState(0);
+  const [rootHeight, setRootHeight] = useState(0);
+  const resizedBy = keyboardOpen && closedRootHeight > 0 ? Math.max(0, closedRootHeight - rootHeight) : 0;
+  const fullscreenKeyboardPadding =
+    !isDialog && keyboardOpen && Platform.OS === 'android' ? Math.max(0, keyboardOverlap - resizedBy) : 0;
 
   useEffect(() => {
     if (!open) {
@@ -81,6 +89,8 @@ export function ModalShell({
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (event) => {
       setKeyboardInset(event.endCoordinates.height);
+      const screenOverlap = Dimensions.get('screen').height - event.endCoordinates.screenY;
+      setKeyboardOverlap(Math.max(event.endCoordinates.height, screenOverlap > 0 ? screenOverlap : 0));
       if (scroll) {
         requestAnimationFrame(() => {
           scrollRef.current?.scrollToEnd({ animated: true });
@@ -97,6 +107,11 @@ export function ModalShell({
   }, [open, scroll]);
 
   const requestClose = () => {
+    // 키보드가 열린 상태의 뒤로가기는 키보드만 닫는다(폼 전체를 닫지 않음).
+    if (keyboardOpen) {
+      Keyboard.dismiss();
+      return;
+    }
     if (!busy && dismissOnAndroidBack) {
       onRequestClose();
     }
@@ -142,8 +157,14 @@ export function ModalShell({
       <KeyboardAvoidingView
         enabled={keyboardAvoiding}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        onLayout={(event) => {
+          const height = event.nativeEvent.layout.height;
+          setRootHeight(height);
+          if (!keyboardOpen) setClosedRootHeight(height);
+        }}
         style={[
           styles.modalRoot,
+          fullscreenKeyboardPadding > 0 && { paddingBottom: fullscreenKeyboardPadding },
           isDialog && styles.dialogOverlay,
           isDialog && keyboardOpen && styles.dialogOverlayKeyboardOpen,
           isDialog && {
@@ -165,7 +186,7 @@ export function ModalShell({
           />
         ) : null}
         <SafeAreaView
-          edges={isDialog ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}
+          edges={isDialog ? ['left', 'right'] : keyboardOpen ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom']}
           style={[
             styles.safe,
             isDialog && styles.dialogPanel,
