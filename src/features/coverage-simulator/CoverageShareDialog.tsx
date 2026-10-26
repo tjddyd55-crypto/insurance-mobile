@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { BackHandler, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareModal } from '../../design-system/components/KeyboardAwareModal';
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { CoverageShareListItem } from './coverageShareApi';
 import { CoverageShareDialogHistory } from './CoverageShareDialogHistory';
@@ -48,7 +49,7 @@ export function CoverageShareDialog({
   }, [loading, onClose, open]);
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={() => { if (!loading) onClose(); }}>
+    <KeyboardAwareModal visible={open} transparent animationType="fade" onRequestClose={() => { if (!loading) onClose(); }}>
       <View style={styles.overlay}>
         <Pressable
           style={StyleSheet.absoluteFill}
@@ -104,7 +105,7 @@ export function CoverageShareDialog({
           </View>
         </View>
       </View>
-    </Modal>
+    </KeyboardAwareModal>
   );
 }
 

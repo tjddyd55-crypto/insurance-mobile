@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Linking,
-  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
+
+import { KeyboardAwareModal } from '../../design-system/components/KeyboardAwareModal';
 import * as DocumentPicker from 'expo-document-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -462,7 +463,7 @@ function NewsFormModal({
   const fileDrafts = fileDraftsFromDrafts(value.attachments);
 
   return (
-    <Modal visible={open} animationType="slide" onRequestClose={onClose}>
+    <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={onClose}>
       <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">{editing ? '소식지 수정' : '소식지 작성'}</AppText>
@@ -538,7 +539,7 @@ function NewsFormModal({
           </Card>
         </ScrollView>
       </View>
-    </Modal>
+    </KeyboardAwareModal>
   );
 }
 
@@ -593,7 +594,7 @@ function NewsDetailModal({
     : [];
 
   return (
-    <Modal visible={open} animationType="slide" onRequestClose={onClose}>
+    <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={onClose}>
       <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">소식지 상세</AppText>
@@ -670,7 +671,7 @@ function NewsDetailModal({
           ) : null}
         </ScrollView>
       </View>
-    </Modal>
+    </KeyboardAwareModal>
   );
 }
 

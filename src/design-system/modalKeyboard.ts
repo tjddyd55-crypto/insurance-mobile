@@ -22,6 +22,16 @@ export type ModalKeyboardLayout = {
   dialogFooterPaddingBottom: number | null;
 };
 
+/** 키보드가 덮는 높이 중 창 resize 로 이미 비워지지 않은 부분(= 직접 비워야 하는 높이). */
+export function resolveKeyboardLift(
+  keyboardOpen: boolean,
+  keyboardOverlap: number,
+  resizedBy: number,
+): number {
+  if (!keyboardOpen) return 0;
+  return Math.max(0, keyboardOverlap - Math.max(0, resizedBy));
+}
+
 /**
  * ModalShell 키보드 레이아웃 SSOT.
  * Android edge-to-edge 에서 RN <Modal> 창은 키보드에 맞춰 resize 되지 않는다.
@@ -48,7 +58,7 @@ export function resolveModalKeyboardLayout(
   } = input;
   if (!keyboardOpen)
     return { rootPaddingBottom: null, dialogFooterPaddingBottom: null };
-  const lift = Math.max(0, keyboardOverlap - Math.max(0, resizedBy));
+  const lift = resolveKeyboardLift(true, keyboardOverlap, resizedBy);
   if (platform === "android") {
     if (isDialog)
       return { rootPaddingBottom: lift + gap, dialogFooterPaddingBottom: null };

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { KeyboardAwareModal } from '../../design-system/components/KeyboardAwareModal';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -60,7 +61,7 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
   }
 
   return (
-    <Modal visible={open} animationType="slide" onRequestClose={() => { if (!mutation.isPending) onClose(); }}>
+    <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={() => { if (!mutation.isPending) onClose(); }}>
       <View style={[styles.root, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.header}>
           <AppText variant="heading">{post ? '게시글 수정' : '새 게시글'}</AppText>
@@ -90,7 +91,7 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
           </Card>
         </ScrollView>
       </View>
-    </Modal>
+    </KeyboardAwareModal>
   );
 }
 

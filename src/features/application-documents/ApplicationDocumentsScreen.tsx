@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAwareModal } from '../../design-system/components/KeyboardAwareModal';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 
@@ -257,7 +258,7 @@ function PdfFormModal({
   });
 
   return (
-    <Modal visible={Boolean(template)} animationType="slide" onRequestClose={onClose}>
+    <KeyboardAwareModal visible={Boolean(template)} animationType="slide" onRequestClose={onClose}>
       <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.modalHeader}>
           <View style={styles.grow}>
@@ -356,7 +357,7 @@ function PdfFormModal({
           </Card>
         </ScrollView>
       </View>
-    </Modal>
+    </KeyboardAwareModal>
   );
 }
 
