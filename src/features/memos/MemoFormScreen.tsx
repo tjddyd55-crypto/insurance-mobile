@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
-import { AppText, Button, TextField, useAppTheme, type AppTheme } from '../../design-system';
+import { AppText, Button, TextField, useAppTheme, type AppTheme, SafeFooter } from '../../design-system';
 import { createMemo, deleteMemo, listMemos, updateMemo } from './memosApi';
 import { memoQueryKeys } from './queryKeys';
 
@@ -103,12 +102,12 @@ export function MemoFormScreen({
           <Button label="메모 삭제" variant="danger" disabled={busy} onPress={() => setDeleteOpen(true)} />
         ) : null}
       </ScrollView>
-      <SafeAreaView style={styles.footerSafe} edges={['bottom']}>
+      <SafeFooter style={styles.footerSafe}>
         <View style={styles.footer}>
           <Button label="취소" variant="secondary" disabled={busy} onPress={requestBack} style={styles.grow} />
           <Button label="저장" loading={saveMutation.isPending} onPress={() => saveMutation.mutate()} style={styles.grow} />
         </View>
-      </SafeAreaView>
+      </SafeFooter>
       <ConfirmDialog
         open={discardOpen}
         title="변경사항 닫기"

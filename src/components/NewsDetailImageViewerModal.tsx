@@ -16,7 +16,7 @@ import {
   clampNewsDetailZoomScale,
   clampTranslation,
 } from './newsDetailZoomMath';
-import { useAppTheme, type AppTheme } from '../design-system';
+import { useAppTheme, useBottomSafeInset, type AppTheme } from '../design-system';
 
 type Props = {
   visible: boolean;
@@ -27,6 +27,7 @@ type Props = {
 export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const bottomSafeInset = useBottomSafeInset();
   const { width, height } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
@@ -187,7 +188,7 @@ export function NewsDetailImageViewerModal({ visible, imageUrl, onClose }: Props
       statusBarTranslucent
     >
       <GestureHandlerRootView style={styles.gestureRoot}>
-        <View style={[styles.backdrop, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={[styles.backdrop, { paddingTop: insets.top, paddingBottom: bottomSafeInset }]}>
           <View style={styles.header}>
             <ModalCloseButton onPress={onClose} />
           </View>

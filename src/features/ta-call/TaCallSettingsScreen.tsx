@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -18,6 +17,7 @@ import {
   TextField,
   useAppTheme,
   type AppTheme,
+  SafeFooter,
 } from '../../design-system';
 import { getTaSettings, saveTaSettings } from './taCallApi';
 import { DEFAULT_TA_SETTINGS } from './taCallModel';
@@ -162,9 +162,9 @@ export function TaCallSettingsScreen() {
         {formError ? <AppText color="danger">{formError}</AppText> : null}
         {saveMutation.isError ? <AppText color="danger">{saveMutation.error instanceof Error ? saveMutation.error.message : '설정을 저장하지 못했습니다.'}</AppText> : null}
       </ScrollView>
-      <SafeAreaView style={styles.footerSafe} edges={['bottom']}>
+      <SafeFooter style={styles.footerSafe}>
         <View style={styles.footer}><Button label="취소" variant="ghost" onPress={requestBack} disabled={saveMutation.isPending} style={styles.grow} /><Button label="저장" variant="actionEmphasis" onPress={submit} loading={saveMutation.isPending} style={styles.grow} /></View>
-      </SafeAreaView>
+      </SafeFooter>
       <ConfirmDialog
         open={discardOpen}
         title="변경사항 닫기"

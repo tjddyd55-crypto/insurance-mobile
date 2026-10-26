@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider';
 import { BillingStatusPill } from '../components/BillingStatusPill';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { AppText, Badge, Button, IconButton, useAppTheme, type AppTheme } from '../design-system';
+import { AppText, Badge, Button, IconButton, useAppTheme, type AppTheme, useSafeFooterPadding } from '../design-system';
 import { getUnreadNotificationCount } from '../features/notifications/notificationsApi';
 import { notificationQueryKeys } from '../features/notifications/queryKeys';
 import { type NativeMenuLink } from './menuConfig';
@@ -23,6 +23,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   const pathname = usePathname();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomPadding = useSafeFooterPadding(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
   const menu = useNativeMenu();
@@ -48,7 +49,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, { paddingBottom: bottomPadding }]} edges={['top']}>
       <View style={styles.topbar}>
         <IconButton
           accessibilityLabel="메뉴 닫기"
