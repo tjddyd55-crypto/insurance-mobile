@@ -12,6 +12,13 @@
   <dimen name="onefc_widget_status_text">11sp</dimen>
   <dimen name="onefc_widget_nav_text">22sp</dimen>
   <dimen name="onefc_day_number_text">28sp</dimen>
+  <!-- 홈 위젯(일정·할 일) 공통 타이포. 날짜 모달/로그인 메시지는 위 토큰을 그대로 쓴다. -->
+  <dimen name="onefc_widget_header_text">18sp</dimen>
+  <dimen name="onefc_widget_weekday_text">13sp</dimen>
+  <dimen name="onefc_widget_event_text">11sp</dimen>
+  <dimen name="onefc_widget_more_text">11sp</dimen>
+  <dimen name="onefc_widget_todo_text">16sp</dimen>
+  <dimen name="onefc_widget_meta_text">13sp</dimen>
   <!-- 날짜 모달 카드 위·아래 최소 여백(키보드 인셋 상한 계산). -->
   <dimen name="onefc_day_dialog_margin">16dp</dimen>
 </resources>
