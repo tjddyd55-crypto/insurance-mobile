@@ -77,14 +77,18 @@ class WidgetLayoutPreviewTest {
     assertEquals("10월 22일에 추가", empty.findViewById<android.widget.EditText>(R.id.day_input).hint.toString())
     captureDialog("schedule-day-dialog-empty", empty, 340)
 
-    // 많은 항목: 목록만 화면 높이 절반으로 잘리고 추가 버튼은 남는다.
+    // 많은 항목: 카드 높이 상한(인셋 리스너가 주는 값, 여기서는 키보드가 화면 절반이라 가정)을 넘으면
+    // 목록(0dp/weight=1)만 줄고 입력칸은 카드 안에 그대로 남는다.
     val many = dayDialog("2026-10-08")
     assertTrue(texts(many).contains("일정10"))
     val scroll = many.findViewById<View>(R.id.day_scroll)
     val half = (many.resources.displayMetrics.heightPixels * 0.5f).toInt()
     captureDialog("schedule-day-dialog-many", many, 340, maxHeightPx = half)
-    assertTrue("scroll ${scroll.height} <= $half", scroll.height <= half)
-    assertTrue(many.findViewById<View>(R.id.day_input_row).height > 0)
+    assertTrue("card ${many.height} <= $half", many.height <= half)
+    val inputRow = many.findViewById<View>(R.id.day_input_row)
+    assertTrue(inputRow.height > 0)
+    assertTrue("input inside card", inputRow.bottom <= many.height)
+    assertTrue("list shrinks", scroll.height < half)
 
     // 빠른 추가: 입력 + 키보드(시뮬레이션), 오류(입력 유지), 저장 직후 새 항목(바로 누를 수 있음).
     val typingActivity = dayActivity("2026-10-21")
@@ -149,7 +153,7 @@ class WidgetLayoutPreviewTest {
 
   private fun dayDialog(date: String): View = dayActivity(date).findViewById(R.id.day_card)
 
-  /** 다이얼로그는 실제 drawable 색·모서리로 그린다. maxHeightPx 가 있으면 목록 높이를 기기 규칙대로 자른다. */
+  /** 다이얼로그는 실제 drawable 색·모서리로 그린다. maxHeightPx 가 있으면 카드 높이를 그 값으로 고정한다(목록만 줄어듦). */
   private fun captureDialog(name: String, view: View, widthDp: Int, maxHeightPx: Int? = null, keyboardDp: Int = 0) {
     val width = dp(view, widthDp)
     fun measure() {
@@ -157,10 +161,10 @@ class WidgetLayoutPreviewTest {
       view.layout(0, 0, view.measuredWidth, view.measuredHeight)
     }
     measure()
-    val scroll = view.findViewById<View>(R.id.day_scroll)
-    if (maxHeightPx != null && scroll.height > maxHeightPx) {
-      scroll.layoutParams.height = maxHeightPx
-      measure()
+    // ScheduleDayActivity.applyCap 과 같은 방식: 자연 높이가 상한보다 크면 카드 높이를 상한으로 고정.
+    if (maxHeightPx != null && view.height > maxHeightPx) {
+      view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(maxHeightPx, View.MeasureSpec.EXACTLY))
+      view.layout(0, 0, view.measuredWidth, view.measuredHeight)
     }
     val nodes = JSONArray()
     collectReal(view, 0, 0, nodes)

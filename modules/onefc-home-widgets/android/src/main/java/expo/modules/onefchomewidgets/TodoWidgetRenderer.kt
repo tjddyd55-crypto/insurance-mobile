@@ -98,7 +98,7 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
         // 위젯 캐시가 조회하지 않은 날짜: 할 일이 없다고 단정하지 않고 앱에서 확인하도록.
         views.setTextViewText(R.id.w_empty_text, OUT_OF_RANGE_TEXT)
         views.setTextViewText(R.id.w_empty_add, OPEN_APP_TEXT)
-        views.setOnClickPendingIntent(R.id.w_empty_add, WidgetIntents.openApp(context, listLink, nonce))
+        views.setOnClickPendingIntent(R.id.w_empty_add, addIntent)
       } else {
         views.setTextViewText(R.id.w_empty_text, context.getString(R.string.onefc_widget_empty_todo))
         views.setTextViewText(R.id.w_empty_add, context.getString(R.string.onefc_widget_empty_todo_add))

@@ -104,6 +104,9 @@ describe('widget header taps open the app list screens', () => {
     expect(src).toContain('val addIntent = WidgetIntents.openDay(context, today, ScheduleDayActivity.MODE_CREATE_TODO)');
     expect(src).toContain('setOnClickPendingIntent(R.id.w_add, addIntent)');
     expect(src).toContain('setOnClickPendingIntent(R.id.w_day_label, WidgetIntents.openDay(context, date))');
+    // 빈 상태(범위 밖 포함) 추가 버튼도 앱으로 가지 않는다.
+    expect(src).toContain('views.setOnClickPendingIntent(R.id.w_empty_add, addIntent)');
+    expect(src).not.toMatch(/R\.id\.w_empty_add, WidgetIntents\.openApp/);
   });
   it('openDay requestCode reflects mode; day dialog list flexes above input', () => {
     const common = fs.readFileSync(path.join(KT, 'WidgetCommon.kt'), 'utf8');
