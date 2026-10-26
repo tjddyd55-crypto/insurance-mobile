@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 
 import { useAuth } from '../../auth/AuthProvider';
-import { AppText, Button, Card, Inline, Stack, TextField, useAppTheme, type AppTheme } from '../../design-system';
+import { AppText, Button, Card, Inline, Stack, TextField, useAppTheme, type AppTheme, useSafeFooterPadding } from '../../design-system';
 import { createTeamPost, updateTeamPost } from './teamApi';
 import { teamQueryKeys } from './queryKeys';
 import type { TeamPost } from './types';
@@ -22,6 +22,7 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const modalBottomPadding = useSafeFooterPadding(0);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isNotice, setIsNotice] = useState(false);
@@ -60,7 +61,7 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={() => { if (!mutation.isPending) onClose(); }}>
-      <View style={styles.root}>
+      <View style={[styles.root, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.header}>
           <AppText variant="heading">{post ? '게시글 수정' : '새 게시글'}</AppText>
           <Button label="닫기" variant="ghost" size="sm" disabled={mutation.isPending} onPress={onClose} />

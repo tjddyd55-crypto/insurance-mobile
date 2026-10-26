@@ -28,6 +28,7 @@ import {
   TextField,
   useAppTheme,
   type AppTheme,
+  useSafeFooterPadding,
 } from '../../design-system';
 import { CustomerNewsPreviewModal, type CustomerNewsPreviewDraft } from './CustomerNewsPreviewModal';
 import {
@@ -456,12 +457,13 @@ function NewsFormModal({
 }) {
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const modalBottomPadding = useSafeFooterPadding(0);
   const imageDrafts = value.attachments.filter((row) => row.kind === 'image');
   const fileDrafts = fileDraftsFromDrafts(value.attachments);
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modal}>
+      <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">{editing ? '소식지 수정' : '소식지 작성'}</AppText>
           <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
@@ -555,6 +557,7 @@ function NewsDetailModal({
   const theme = useAppTheme();
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const modalBottomPadding = useSafeFooterPadding(0);
   const [comment, setComment] = useState('');
   const contentWidth = Math.max(windowWidth - theme.spacing.lg * 2, 1);
 
@@ -591,7 +594,7 @@ function NewsDetailModal({
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modal}>
+      <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.modalHeader}>
           <AppText variant="heading">소식지 상세</AppText>
           <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />

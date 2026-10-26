@@ -17,6 +17,7 @@ import {
   TextField,
   useAppTheme,
   type AppTheme,
+  useSafeFooterPadding,
 } from '../../design-system';
 import { getCustomer } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
@@ -196,6 +197,7 @@ function PdfFormModal({
   const client = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const modalBottomPadding = useSafeFooterPadding(0);
   const scoped = Boolean(initialCustomerId);
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [customerQuery, setCustomerQuery] = useState('');
@@ -256,7 +258,7 @@ function PdfFormModal({
 
   return (
     <Modal visible={Boolean(template)} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modal}>
+      <View style={[styles.modal, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.modalHeader}>
           <View style={styles.grow}>
             <AppText variant="heading">{template?.title ?? '신청서 작성'}</AppText>
