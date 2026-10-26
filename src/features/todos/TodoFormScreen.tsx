@@ -311,6 +311,13 @@ function TodoFormEditor({
         contentContainerStyle={[styles.content, keyboardInset > 0 && { paddingBottom: theme.spacing.xl + theme.spacing.lg }]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        onLayout={() => {
+          // 키보드로 보이는 영역이 줄어든 뒤에도 고객 검색창·결과가 화면 안에 남도록.
+          if (customerSearchFocused.current) scrollRef.current?.scrollToEnd({ animated: false });
+        }}
+        onContentSizeChange={() => {
+          if (customerSearchFocused.current) scrollRef.current?.scrollToEnd({ animated: true });
+        }}
       >
         <Card variant="outlined">
           <Stack gap="md">
@@ -433,7 +440,8 @@ function TodoFormEditor({
         ) : null}
       </ScrollView>
 
-      <SafeAreaView style={styles.footerSafe} edges={['bottom']}>
+      {/* 키보드가 열려 있으면 하단 시스템 바 여백은 키보드 뒤에 있으므로 빼서 취소/저장을 키보드 바로 위에 둔다. */}
+      <SafeAreaView style={styles.footerSafe} edges={keyboardInset > 0 ? [] : ['bottom']}>
         <View style={styles.footer}>
           <Button label="취소" variant="secondary" disabled={busy} onPress={requestBack} style={styles.grow} />
           <Button label="저장" loading={saveMutation.isPending} onPress={submit} style={styles.grow} />
