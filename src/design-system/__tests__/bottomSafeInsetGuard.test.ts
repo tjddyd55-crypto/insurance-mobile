@@ -12,12 +12,8 @@ const { join, relative } = require('path');
 const ROOT = join(__dirname, '..', '..', '..');
 const SRC = join(ROOT, 'src');
 
-// Pending migration (owned by other in-flight branches) or centered dialogs.
-const ALLOWLIST = new Set([
-  'src/features/todos/TodoFormScreen.tsx',
-  'src/features/schedule/WidgetQuickAddSheet.tsx',
-  'src/features/coverage-simulator/CustomerPickerDialog.tsx',
-]);
+// No exceptions: every screen uses the shared SafeFooter / ModalShell / Screen policy.
+const ALLOWLIST = new Set<string>([]);
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

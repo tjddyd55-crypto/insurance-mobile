@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -23,6 +22,7 @@ import {
   Button,
   Card,
   Inline,
+  SafeFooter,
   Stack,
   TextField,
   useAppTheme,
@@ -441,12 +441,12 @@ function TodoFormEditor({
       </ScrollView>
 
       {/* 키보드가 열려 있으면 하단 시스템 바 여백은 키보드 뒤에 있으므로 빼서 취소/저장을 키보드 바로 위에 둔다. */}
-      <SafeAreaView style={styles.footerSafe} edges={keyboardInset > 0 ? [] : ['bottom']}>
+      <SafeFooter style={styles.footerSafe} keyboardOpen={keyboardInset > 0}>
         <View style={styles.footer}>
           <Button label="취소" variant="secondary" disabled={busy} onPress={requestBack} style={styles.grow} />
           <Button label="저장" loading={saveMutation.isPending} onPress={submit} style={styles.grow} />
         </View>
-      </SafeAreaView>
+      </SafeFooter>
 
       <ConfirmDialog
         open={discardOpen}
