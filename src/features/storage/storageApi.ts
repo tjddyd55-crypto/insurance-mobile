@@ -15,7 +15,24 @@ export const STORAGE_FOLDER_CREATE_TIMEOUT_MS = 15_000;
 export async function createStorageFolder(token: string | null, name: string, parentId: number | null): Promise<void> {
   const invalid = validateStorageFolderName(name);
   if (invalid) throw new ApiError(invalid, 400);
-  await apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), timeoutMs: STORAGE_FOLDER_CREATE_TIMEOUT_MS, body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) });
+  // apiRequest의 timeoutMs는 응답 헤더까지만 걸린다(헤더 수신 후 clearTimeout → 본문 읽기는 무제한),
+  // 또 abort가 native 요청 promise를 항상 reject한다는 보장도 없다(expo/fetch cancel). 그래서 본문 파싱까지
+  // 포함한 전체 요청에 독립 deadline을 걸어, 어떤 경우에도 mutation이 끝나 '처리 중'이 풀리게 한다.
+  const controller = new AbortController();
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_, reject) => {
+    deadline = setTimeout(() => {
+      controller.abort();
+      reject(new ApiError('요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.', 0));
+    }, STORAGE_FOLDER_CREATE_TIMEOUT_MS);
+  });
+  const request = apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), timeoutMs: STORAGE_FOLDER_CREATE_TIMEOUT_MS, signal: controller.signal, body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) });
+  request.catch(() => undefined);
+  try {
+    await Promise.race([request, timedOut]);
+  } finally {
+    clearTimeout(deadline);
+  }
 }
 export async function renameStorageFolder(token: string | null, id: number, name: string): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ name: name.trim() }) }); }
 export async function deleteStorageFolder(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
