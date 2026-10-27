@@ -81,10 +81,24 @@ class ScheduleDayActivity : Activity() {
     bind(content)
   }
 
-  /** IME·시스템 바 인셋이 바뀔 때마다 카드 높이 상한을 다시 계산(예전 일회성 50% 상한 대체). */
+  /**
+   * IME·시스템 바 인셋이 바뀔 때마다 카드 높이 상한을 다시 계산(예전 일회성 50% 상한 대체).
+   * 다이얼로그(floating) 창은 WM 이 시스템 바·IME 밖으로 창을 맞추므로 decorView 인셋이 0 으로 오는 기기가 있다
+   * → 화면높이 기준 상한이 실제 보이는 영역보다 커져 일정 9개+ 에서 입력 줄이 키보드/내비 바 뒤로 잘렸다.
+   * 그래서 창의 실제 보이는 영역(getWindowVisibleDisplayFrame: IME·바 제외)과 인셋 계산 중 작은 값을 쓴다(빼기 중복 없음).
+   * 인셋 리스너가 IME 변화에 안 불리는 경우를 위해 전역 레이아웃 변화에도 다시 계산한다.
+   */
   private fun watchInsets() {
     val card = findViewById<View>(R.id.day_card)
     val margin = resources.getDimensionPixelSize(R.dimen.onefc_day_dialog_margin)
+    var insetTop = 0
+    var insetBottom = 0
+    val frame = android.graphics.Rect()
+    fun recap() {
+      window.decorView.getWindowVisibleDisplayFrame(frame)
+      val cap = DayDialogCap.cap(resources.displayMetrics.heightPixels, insetTop, insetBottom, frame.height(), margin)
+      applyCap(card, cap)
+    }
     window.decorView.setOnApplyWindowInsetsListener { view, insets ->
       val (top, bottom) = if (android.os.Build.VERSION.SDK_INT >= 30) {
         val bars = insets.getInsets(WindowInsets.Type.systemBars())
@@ -94,11 +108,12 @@ class ScheduleDayActivity : Activity() {
         @Suppress("DEPRECATION")
         insets.systemWindowInsetTop to insets.systemWindowInsetBottom
       }
-      val screen = resources.displayMetrics.heightPixels
-      val cap = (screen - top - bottom - margin * 2).coerceAtLeast(0)
-      card.post { applyCap(card, cap) }
+      insetTop = top
+      insetBottom = bottom
+      card.post { recap() }
       view.onApplyWindowInsets(insets)
     }
+    window.decorView.viewTreeObserver.addOnGlobalLayoutListener { recap() }
     window.decorView.requestApplyInsets()
   }
 

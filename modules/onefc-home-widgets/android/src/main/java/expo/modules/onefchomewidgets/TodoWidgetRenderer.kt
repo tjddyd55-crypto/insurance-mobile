@@ -76,6 +76,7 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
     // 빈 상태 +: 지금 보고 있는 날짜(예: 11/3)를 기본값으로.
     val emptyAddIntent = WidgetIntents.openDay(context, addDate(AddSlot.EMPTY, date, today), ScheduleDayActivity.MODE_CREATE_TODO)
     views.setOnClickPendingIntent(R.id.w_empty_add, emptyAddIntent)
+    views.setContentDescription(R.id.w_empty_add, context.getString(R.string.onefc_widget_add_todo))
 
     val items = payload.todos[date].orEmpty()
     val maxRows = rows(heightDp)
