@@ -61,7 +61,18 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
 
   return (
     <KeyboardAwareModal visible={open} animationType="slide" onRequestClose={() => { if (!mutation.isPending) onClose(); }}
-      footer={<Button label={post ? '수정 완료' : '등록'} variant="actionEmphasis" fullWidth loading={mutation.isPending} disabled={!valid} onPress={() => mutation.mutate()} />}
+      footer={(
+        <>
+          {/* 파일 선택은 키보드 위 고정 footer(SSOT)에 둔다. 본문 스크롤 안에 두면 내용 입력 중 키보드에 가려진다. */}
+          {!post ? (
+            <Inline justify="space-between">
+              <View style={styles.copy}><AppText variant="label">첨부파일{files.length ? ` ${files.length}개` : ''}</AppText><AppText variant="caption">이미지·PDF, 최대 10개</AppText></View>
+              <Button label="파일 선택" variant="secondary" size="sm" disabled={mutation.isPending} onPress={() => void chooseFiles()} />
+            </Inline>
+          ) : null}
+          <Button label={post ? '수정 완료' : '등록'} variant="actionEmphasis" fullWidth loading={mutation.isPending} disabled={!valid} onPress={() => mutation.mutate()} />
+        </>
+      )}
     >
       <View style={styles.root}>
         <View style={styles.header}>
@@ -79,13 +90,12 @@ export function TeamPostFormModal({ open, post, canSetNotice, onClose }: Props) 
                   <Switch value={isNotice} onValueChange={setIsNotice} trackColor={{ true: theme.colors.primarySoft }} thumbColor={isNotice ? theme.colors.primary : theme.colors.textMuted} />
                 </Inline>
               ) : null}
-              {!post ? (
+              {!post ? (files.length || fileError) ? (
                 <Stack gap="sm">
-                  <Inline justify="space-between"><View style={styles.copy}><AppText variant="label">첨부파일</AppText><AppText variant="caption">이미지·PDF, 최대 10개</AppText></View><Button label="파일 선택" variant="secondary" size="sm" onPress={() => void chooseFiles()} /></Inline>
                   {files.map((file, index) => <Inline key={`${file.uri}-${index}`} justify="space-between"><AppText style={styles.fileName} numberOfLines={1}>📎 {file.name}</AppText><Button label="제거" variant="ghost" size="sm" onPress={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} /></Inline>)}
                   {fileError ? <AppText color="danger">{fileError}</AppText> : null}
                 </Stack>
-              ) : <AppText variant="caption">기존 첨부파일은 수정 화면에서 변경되지 않습니다.</AppText>}
+              ) : null : <AppText variant="caption">기존 첨부파일은 수정 화면에서 변경되지 않습니다.</AppText>}
               {mutation.error ? <AppText color="danger">{mutation.error instanceof Error ? mutation.error.message : '게시글을 저장하지 못했습니다.'}</AppText> : null}
             </Stack>
           </Card>

@@ -51,7 +51,7 @@ describe('P1-C account deletion footer order matches ConfirmDialog', () => {
 });
 
 describe('P1-D save/confirm buttons are primary (13 places)', () => {
-  const TARGETS: Array<[string, string]> = [
+  const TARGETS: [string, string][] = [
     ['features/customer-workspace/CustomerMemosScreen.tsx', "label={editor.note ? '수정 저장' : '메모 추가'}"],
     ['features/customer-workspace/CustomerConsultationsScreen.tsx', 'label="저장"'],
     ['features/personal-binders/BinderPageSelectionModal.tsx', 'label="넣기"'],
