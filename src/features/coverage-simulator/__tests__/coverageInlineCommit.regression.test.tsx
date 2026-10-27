@@ -12,6 +12,8 @@ import type { CoverageScenario } from '../types';
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: jest.fn(), push: jest.fn(), back: jest.fn() }),
   useNavigation: () => ({ setOptions: jest.fn() }),
+  useLocalSearchParams: () => ({}),
+  useFocusEffect: () => undefined,
 }));
 
 jest.mock('../../../auth/AuthProvider', () => ({

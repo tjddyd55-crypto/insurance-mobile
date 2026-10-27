@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -9,7 +10,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -58,7 +59,7 @@ import {
   resetScenarioItems,
   updateCoverageItem,
 } from './scenarioEdits';
-import { resolveCoverageEditorBackPath } from './coverageSimulatorNavigation';
+import { coverageEditorBackPath } from './coverageSimulatorNavigation';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenario, CoverageScenarioItem } from './types';
 import { useCoverageShareSession } from './useCoverageShareSession';
@@ -70,6 +71,7 @@ type FormState =
 
 export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string }) {
   const router = useRouter();
+  const { fromCustomerId } = useLocalSearchParams<{ fromCustomerId?: string | string[] }>();
   const { user, token } = useAuth();
   const customer = useCoverageCustomer();
   const [customerVisit, setCustomerVisit] = useState<CustomerVisitBaseline>(() =>
@@ -240,6 +242,25 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     return task;
   }, [queryClient, scenarioId, userId]);
 
+  const goBackToOrigin = useCallback(() => {
+    router.replace(coverageEditorBackPath(query.data, fromCustomerId) as never);
+  }, [fromCustomerId, query.data, router]);
+
+  // 하드웨어 뒤로가기: 다른 drawer route에서 push된 경우 Drawer firstRoute(홈)로 새지 않도록 헤더와 동일 경로 사용.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (form) {
+          setForm(null);
+          return true;
+        }
+        goBackToOrigin();
+        return true;
+      });
+      return () => sub.remove();
+    }, [form, goBackToOrigin]),
+  );
+
   if (query.isLoading) {
     return (
       <View style={styles.root}>
@@ -365,7 +386,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
         showMenu={false}
         showBillingStatus={false}
         rightAction={headerSave}
-        onBackPress={() => router.replace(resolveCoverageEditorBackPath(scenario) as never)}
+        onBackPress={goBackToOrigin}
       />
       <Screen padded={false}>
         <View style={styles.body}>

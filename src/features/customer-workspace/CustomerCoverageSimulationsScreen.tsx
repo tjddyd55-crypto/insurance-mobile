@@ -64,7 +64,7 @@ export function CustomerCoverageSimulationsScreen({ customerId }: Props) {
 
   const openSimulation = (simulationId: string) => {
     router.push(
-      `/customer-consulting/coverage-simulation/scenarios/${simulationId}` as never,
+      `/customer-consulting/coverage-simulation/scenarios/${simulationId}?fromCustomerId=${customerIdStr}` as never,
     );
   };
 
