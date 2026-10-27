@@ -21,4 +21,11 @@
   <dimen name="onefc_widget_meta_text">13sp</dimen>
   <!-- 날짜 모달 카드 위·아래 최소 여백(키보드 인셋 상한 계산). -->
   <dimen name="onefc_day_dialog_margin">16dp</dimen>
+  <!-- 날짜 모달 목록 스크롤바 영역(카드 오른쪽 패딩 20dp 안). pull = -gutter. -->
+  <dimen name="onefc_day_scroll_gutter">10dp</dimen>
+  <dimen name="onefc_day_scroll_gutter_pull">-10dp</dimen>
+  <dimen name="onefc_day_scrollbar_size">3dp</dimen>
+  <!-- 일정 위젯 머리글 '오늘' 버튼(날짜 숫자). -->
+  <dimen name="onefc_widget_today_button">36dp</dimen>
+  <dimen name="onefc_widget_today_text">12sp</dimen>
 </resources>

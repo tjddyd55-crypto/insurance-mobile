@@ -10,7 +10,9 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.GestureDetector
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -42,6 +44,7 @@ class ScheduleDayActivity : Activity() {
   private val main = Handler(Looper.getMainLooper())
   private var created: List<ScheduleQuickAdd.Result> = emptyList()
   private var timeout: Runnable? = null
+  private var swipe: GestureDetector? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -57,6 +60,7 @@ class ScheduleDayActivity : Activity() {
     bindCreateOptions()
     reload()
     watchInsets()
+    bindSwipe()
     if (creating) {
       val input = findViewById<EditText>(R.id.day_input)
       input.requestFocus()
@@ -73,11 +77,53 @@ class ScheduleDayActivity : Activity() {
     super.onDestroy()
   }
 
+  /**
+   * 좌우 스와이프로 같은 화면의 date 만 바꾼다(새 Activity·스택 없음 → 닫기/뒤로 = 바로 위젯/홈).
+   * 판정은 DaySwipe(수평 임계값). 입력이 비어 있을 때만 허용해 작성 내용을 잃지 않는다.
+   */
+  private fun bindSwipe() {
+    swipe = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+      override fun onDown(e: MotionEvent): Boolean = true
+      override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+        val start = e1 ?: return false
+        if (!DaySwipe.allowed(mode, findViewById<EditText>(R.id.day_input).text, quick.busy)) return false
+        val direction = DaySwipe.direction(e2.rawX - start.rawX, e2.rawY - start.rawY, velocityX, resources.displayMetrics.density)
+        if (direction == 0) return false
+        moveTo(DaySwipe.target(date, direction))
+        return true
+      }
+    })
+  }
+
+  /** 날짜만 교체: 머리글·요일·목록·하단 '○월 ○일에 추가'·빠른 입력 저장 날짜(requestKey/saveDate)가 모두 date 를 따른다. */
+  internal fun moveTo(next: String) {
+    if (!WidgetDates.isYmd(next) || next == date) return
+    date = next
+    showError(null)
+    reload()
+    findViewById<View>(R.id.day_scroll).scrollTo(0, 0)
+  }
+
+  internal val currentDate: String get() = date
+
+  override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+    val detector = swipe
+    if (detector != null && detector.onTouchEvent(ev) && ev.actionMasked == MotionEvent.ACTION_UP) {
+      // 스와이프로 처리한 손가락 떼기는 자식에 탭으로 가지 않게 취소로 바꿔 넘긴다.
+      val cancel = MotionEvent.obtain(ev).apply { action = MotionEvent.ACTION_CANCEL }
+      super.dispatchTouchEvent(cancel)
+      cancel.recycle()
+      return true
+    }
+    return super.dispatchTouchEvent(ev)
+  }
+
   /** 캐시를 다시 읽고, 방금 만든 일정이 아직 없으면 끝에 붙인다. */
   private fun reload() {
     var content = ScheduleDayModel.content(WidgetCacheManager.read(this, OneFcWidgetType.SCHEDULE), WidgetCacheManager.clearReason(this), date)
     val scheme = WidgetCacheManager.read(this, OneFcWidgetType.SCHEDULE)?.scheme
-    for (result in created) content = ScheduleQuickAdd.withCreated(content, result, scheme)
+    // 스와이프로 날짜가 바뀌면 그 날짜에서 만든 것만 붙인다.
+    for (result in created) if (result.date == date) content = ScheduleQuickAdd.withCreated(content, result, scheme)
     bind(content)
   }
 
