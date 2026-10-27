@@ -251,7 +251,7 @@ function FeatureRequestForm({
         <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />
       }
       footer={
-        <Button
+        <Button variant="primary"
           label="등록"
           fullWidth
           loading={mutation.isPending}

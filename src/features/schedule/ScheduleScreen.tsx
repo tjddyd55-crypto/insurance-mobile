@@ -486,6 +486,7 @@ export function ScheduleScreen() {
         onOpenRoute={openRoute}
         onEdit={openEdit}
         onDelete={(event) => setDeleting(event)}
+        deleteBusy={remove.isPending}
       />
 
       {scheduleForm}
@@ -495,6 +496,7 @@ export function ScheduleScreen() {
         title={deletePrompt.title}
         message={remove.isError ? describeApiError(remove.error, '일정을 삭제하지 못했습니다.') : deletePrompt.message}
         confirmLabel="삭제"
+        tone="danger"
         busy={remove.isPending}
         onCancel={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate(deleting)}
@@ -519,6 +521,7 @@ function ScheduleDetailModal({
   onOpenRoute,
   onEdit,
   onDelete,
+  deleteBusy = false,
 }: {
   item: ScheduleEvent | ScheduleTask | null;
   data: ScheduleEventsResult;
@@ -526,6 +529,7 @@ function ScheduleDetailModal({
   onOpenRoute: (route: ScheduleNativeRoute | null) => void;
   onEdit: (event: ScheduleEvent) => void;
   onDelete: (event: ScheduleEvent) => void;
+  deleteBusy?: boolean;
 }) {
   if (!item) return null;
   if (isTask(item)) {
@@ -546,7 +550,21 @@ function ScheduleDetailModal({
   const customer = customerRouteOfEvent(item);
   const editable = canEditEvent(item, data.google);
   return (
-    <ModalShell open title={item.title} subtitle={scheduleEventSourceLabel(item)} presentation="dialog" scroll onRequestClose={onClose}>
+    <ModalShell
+      open
+      title={item.title}
+      subtitle={scheduleEventSourceLabel(item)}
+      presentation="dialog"
+      scroll
+      busy={deleteBusy}
+      onRequestClose={onClose}
+      footer={editable ? (
+        <Inline gap="sm">
+          <View style={detailStyles.flex}><Button label="삭제" variant="danger" fullWidth loading={deleteBusy} disabled={deleteBusy} onPress={() => onDelete(item)} /></View>
+          <View style={detailStyles.flex}><Button label="수정" variant="primary" fullWidth disabled={deleteBusy} onPress={() => onEdit(item)} /></View>
+        </Inline>
+      ) : undefined}
+    >
       <Stack gap="md">
         <AppText variant="body">{`${formatDayTitle(eventDayStart(item))} · ${eventTimeLabel(item)}`}</AppText>
         {item.calendarName ? <AppText variant="caption" color="textMuted">{item.calendarName}</AppText> : null}
@@ -554,12 +572,7 @@ function ScheduleDetailModal({
         {item.location ? <AppText variant="body">장소: {item.location}</AppText> : null}
         {item.description ? <AppText variant="body" selectable>{item.description}</AppText> : null}
         {customer ? <Button label="고객 보기" variant="primary" fullWidth onPress={() => onOpenRoute(customer)} /> : null}
-        {editable ? (
-          <Inline gap="sm">
-            <View style={detailStyles.flex}><Button label="수정" fullWidth onPress={() => onEdit(item)} /></View>
-            <View style={detailStyles.flex}><Button label="삭제" variant="danger" fullWidth onPress={() => onDelete(item)} /></View>
-          </Inline>
-        ) : (
+        {editable ? null : (
           <AppText variant="helper" color="textMuted">{readOnlyMessage(item, data.google)}</AppText>
         )}
       </Stack>

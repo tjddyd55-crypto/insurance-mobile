@@ -198,7 +198,7 @@ export function CustomerMemosScreen({ customerId }: { customerId: number }) {
               onPress={() => closeEditor()}
               style={styles.grow}
             />
-            <Button
+            <Button variant="primary"
               label={editor.note ? '수정 저장' : '메모 추가'}
               loading={save.isPending}
               disabled={!draft.trim()}

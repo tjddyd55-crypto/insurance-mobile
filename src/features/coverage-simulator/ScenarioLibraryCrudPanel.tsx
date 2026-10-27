@@ -154,7 +154,7 @@ export function ScenarioLibraryCrudPanel({
         presentation="dialog"
         busy={busy}
         onRequestClose={() => setRenameRow(null)}
-        footer={<Button label="저장" loading={busy} onPress={() => void submitRename()} />}
+        footer={<Button variant="primary" label="저장" loading={busy} onPress={() => void submitRename()} />}
       >
         <TextField
           accessibilityLabel="시나리오 제목"

@@ -74,7 +74,7 @@ export function BinderPageSelectionModal({
       footer={(
         <Inline gap="sm">
           <Button label="취소" variant="secondary" onPress={onClose} style={styles.grow} />
-          <Button label="넣기" loading={busy} disabled={!selected.length} onPress={() => onConfirm(selected)} style={styles.grow} />
+          <Button variant="primary" label="넣기" loading={busy} disabled={!selected.length} onPress={() => onConfirm(selected)} style={styles.grow} />
         </Inline>
       )}
     >

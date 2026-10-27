@@ -475,6 +475,7 @@ function NewsFormModal({
               onPress={onPreview}
             />
             <Button
+              variant="primary"
               label={editing ? '수정하기' : '게시하기'}
               fullWidth
               loading={busy}
@@ -608,6 +609,7 @@ function NewsDetailModal({
           <>
             <TextField label="댓글 작성" value={comment} onChangeText={setComment} multiline />
             <Button
+              variant="primary"
               label="댓글 등록"
               loading={create.isPending}
               disabled={!comment.trim() || comments.isError}

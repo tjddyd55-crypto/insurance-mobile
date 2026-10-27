@@ -123,7 +123,7 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
         presentation="dialog"
         busy={busy}
         onRequestClose={() => setRenameRow(null)}
-        footer={<Button label="저장" loading={busy} onPress={() => void submitRename()} />}
+        footer={<Button variant="primary" label="저장" loading={busy} onPress={() => void submitRename()} />}
       >
         <TextField accessibilityLabel="시뮬레이션 제목" value={renameTitle} onChangeText={setRenameTitle} error={!renameTitle.trim() ? '제목을 입력해 주세요.' : undefined} />
       </ModalShell>
