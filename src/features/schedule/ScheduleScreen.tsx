@@ -69,7 +69,7 @@ import { ScheduleDateField } from './ScheduleDateField';
 import { ScheduleTimeField } from './ScheduleTimeField';
 import { refreshWidgets } from '../home-widgets/engine/widgetRefreshCoordinator';
 import { scheduleQueryKeys } from './queryKeys';
-import { scheduleLinkTarget } from './scheduleLinkParams';
+import { resolvePendingLinkItem, scheduleLinkTarget } from './scheduleLinkParams';
 import {
   scheduleModalsOpen,
   shouldStartScheduleWidgetFlow,
@@ -193,12 +193,28 @@ export function ScheduleScreen() {
     enabled: Boolean(token),
   });
   const data = query.data;
+  // 위젯 행 → 그 일정 상세. 캐시(이전에 받은 목록)에 없으면 바로 포기하지 않고 한 번 새로 받아 다시 찾는다.
+  // (예전: 캐시에서 못 찾으면 pending 을 비움 → 모달이 열렸다 닫힌 것으로 보여 위젯 복귀=Android 홈.)
+  const linkRefetched = useRef<string | null>(null);
+  const refetchSchedule = query.refetch;
   useEffect(() => {
     if (!pendingLinkItem || !data) return;
-    const item = [...data.events, ...data.tasks].find((entry) => entry.id === pendingLinkItem);
-    if (item) setDetail(item);
+    const step = resolvePendingLinkItem(data, pendingLinkItem, {
+      fetching: query.isFetching,
+      refetched: linkRefetched.current === pendingLinkItem,
+    });
+    if (step.kind === 'wait') return;
+    if (step.kind === 'refetch') {
+      linkRefetched.current = pendingLinkItem;
+      void refetchSchedule();
+      return;
+    }
+    linkRefetched.current = null;
+    if (step.kind === 'open') setDetail(step.item);
+    // 새로 받아도 없으면(삭제됨 등) 위젯 흐름을 끝내고 그 날짜 일정 화면에 남는다.
+    else endScheduleWidgetFlow();
     setPendingLinkItem(null);
-  }, [pendingLinkItem, data]);
+  }, [pendingLinkItem, data, query.isFetching, refetchSchedule, endScheduleWidgetFlow]);
   /** 저장 직후 refresh=1 로 다시 읽는다(서버는 쓰기 성공 시 그 사용자 Google 캐시도 비운다). 새로고침 간격 제한(429)이면 일반 재조회. */
   const reloadAfterWrite = async () => {
     try {
