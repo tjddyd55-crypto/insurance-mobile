@@ -15,7 +15,6 @@ import {
   listConsultationSummaries,
   listScenarioLibrary,
   renameConsultation,
-  saveConsultation,
 } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { formatConsultationListDate } from './coverageAnalysis';
@@ -27,6 +26,7 @@ import {
 import { SavedScenarioCrudPanel } from './SavedScenarioCrudPanel';
 import { simulatorTheme as theme } from './simulatorTheme';
 import { createSimulationFromScenario } from './scenarioEdits';
+import { putCoverageDraft } from './coverageDraftStore';
 import { diseaseTypeTitle, isKnownDiseaseType } from './templates';
 import type { DiseaseType, SavedScenarioSummary } from './types';
 
@@ -156,9 +156,7 @@ function DiseaseList({ diseaseType, onBack }: { diseaseType: DiseaseType; onBack
         id: customer.id,
         name: customer.name,
       });
-      const saved = await saveConsultation(consultationStorage, userId, simulation);
-      await refresh();
-      openScenario(saved.id);
+      openScenario(putCoverageDraft(simulation).id);
     } catch {
       setNotice('시뮬레이션을 만들지 못했습니다.');
     }

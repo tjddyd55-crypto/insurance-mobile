@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { AppHeader } from "../../components/AppHeader";
@@ -18,11 +18,11 @@ import { coverageQueryKey } from "../coverage-simulator/CoverageSimulationListSc
 import {
   listConsultationsByCustomerId,
   listScenarioLibrary,
-  saveConsultation,
 } from "../coverage-simulator/consultationRepository";
 import { consultationStorage } from "../coverage-simulator/consultationStorage";
 import { formatConsultationListDate } from "../coverage-simulator/coverageAnalysis";
 import { createSimulationFromScenario } from "../coverage-simulator/scenarioEdits";
+import { putCoverageDraft } from "../coverage-simulator/coverageDraftStore";
 import { getCustomer } from "../customers/customersApi";
 import { customerQueryKeys } from "../customers/queryKeys";
 import { useCustomerDetailBack } from "../customers/customerWorkspaceNavigation";
@@ -37,7 +37,6 @@ export function CustomerCoverageSimulationsScreen({ customerId }: Props) {
   const customerIdStr = String(customerId);
   const router = useRouter();
   const onBackPress = useCustomerDetailBack(customerId);
-  const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [scenarioPickerOpen, setScenarioPickerOpen] = useState(false);
@@ -81,12 +80,9 @@ export function CustomerCoverageSimulationsScreen({ customerId }: Props) {
         id: customerIdStr,
         name: customerName,
       });
-      const saved = await saveConsultation(consultationStorage, userId, draft);
-      await queryClient.invalidateQueries({
-        queryKey: coverageQueryKey(userId),
-      });
+      putCoverageDraft(draft);
       setScenarioPickerOpen(false);
-      openSimulation(saved.id);
+      openSimulation(draft.id);
     } finally {
       setCreating(false);
     }

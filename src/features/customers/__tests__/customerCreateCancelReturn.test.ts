@@ -1,5 +1,7 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { readFileSync } = require('fs') as { readFileSync(p: string, e: string): string };
+const { join } = require('path') as { join(...p: string[]): string };
+declare const __dirname: string;
 import { customerCreateCancelPath } from '../customerWorkspaceNavigation';
 
 describe('P2-2 customer create cancel returns to origin', () => {

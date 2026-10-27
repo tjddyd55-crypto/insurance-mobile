@@ -60,6 +60,7 @@ import {
   updateCoverageItem,
 } from './scenarioEdits';
 import { coverageEditorBackPath } from './coverageSimulatorNavigation';
+import { discardCoverageDraft, getCoverageDraft, updateCoverageDraft } from './coverageDraftStore';
 import { simulatorTheme as theme } from './simulatorTheme';
 import type { CoverageScenario, CoverageScenarioItem } from './types';
 import { useCoverageShareSession } from './useCoverageShareSession';
@@ -68,6 +69,8 @@ type FormState =
   | { type: 'add'; afterOrder: number }
   | { type: 'edit'; item: CoverageScenarioItem }
   | null;
+
+export const DRAFT_SAVE_FIRST = '먼저 저장해 주세요.';
 
 export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string }) {
   const router = useRouter();
@@ -90,7 +93,8 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: [...coverageQueryKey(userId), scenarioId],
-    queryFn: () => getConsultation(consultationStorage, userId, scenarioId),
+    queryFn: async () =>
+      (await getConsultation(consultationStorage, userId, scenarioId)) ?? getCoverageDraft(scenarioId),
     enabled: Boolean(userId && scenarioId),
   });
   const savedCustomer = query.data?.id === scenarioId ? savedSimulationCustomer(query.data) : null;
@@ -108,6 +112,13 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     enabled: savedCustomerNumericId != null && Boolean(token) && !customerChanged,
     retry: false,
   });
+  // 미저장 초안: 첫 '저장' 전까지 저장소 쓰기 없음(자동저장 off), PDF/공유 차단.
+  const [draftUnsaved, setDraftUnsaved] = useState(() => getCoverageDraft(scenarioId) != null);
+  const draftUnsavedRef = useRef(draftUnsaved);
+  const firstSaveRef = useRef(false);
+  useEffect(() => () => {
+    if (draftUnsavedRef.current) discardCoverageDraft(scenarioId);
+  }, [scenarioId]);
   const [form, setForm] = useState<FormState>(null);
   const [activeInlineEdit, setActiveInlineEdit] = useState<CoverageActiveInlineEdit>(null);
   const inlineEditCommitRef = useRef<(() => void) | null>(null);
@@ -171,7 +182,7 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     token,
     scenario: query.data ?? null,
     dirty: false,
-    persisted: Boolean(query.data),
+    persisted: Boolean(query.data) && !draftUnsaved,
     showToast,
     saveScenario: async (next) => {
       const saved = await saveConsultation(consultationStorage, userId, next);
@@ -226,6 +237,10 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
     const revision = ++persistRevisionRef.current;
     scenarioRef.current = next;
     queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], next);
+    if (draftUnsavedRef.current) {
+      updateCoverageDraft(next);
+      return Promise.resolve();
+    }
     const task = persistChainRef.current.then(async () => {
       setNotice('');
       try {
@@ -243,8 +258,9 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
   }, [queryClient, scenarioId, userId]);
 
   const goBackToOrigin = useCallback(() => {
+    if (draftUnsavedRef.current) discardCoverageDraft(scenarioId);
     router.replace(coverageEditorBackPath(query.data, fromCustomerId) as never);
-  }, [fromCustomerId, query.data, router]);
+  }, [fromCustomerId, query.data, router, scenarioId]);
 
   // 하드웨어 뒤로가기: 다른 drawer route에서 push된 경우 Drawer firstRoute(홈)로 새지 않도록 헤더와 동일 경로 사용.
   useFocusEffect(
@@ -349,6 +365,34 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
 
   const saveFromHeader = async () => {
     const committed = commitActiveInlineEdit() ?? scenario;
+    if (draftUnsavedRef.current) {
+      if (firstSaveRef.current) return;
+      firstSaveRef.current = true;
+      setSavingCustomer(true);
+      setNotice('');
+      try {
+        const linked = resolveHeaderSaveCustomer({
+          explicit: customerChanged,
+          context: { id: customer.id, name: customer.name },
+          scenario: committed,
+        });
+        const next = assignCustomer(committed, linked);
+        updateCoverageDraft(next);
+        const saved = await saveConsultation(consultationStorage, userId, next);
+        draftUnsavedRef.current = false;
+        setDraftUnsaved(false);
+        discardCoverageDraft(scenarioId);
+        scenarioRef.current = saved;
+        queryClient.setQueryData([...coverageQueryKey(userId), scenarioId], saved);
+        await queryClient.invalidateQueries({ queryKey: coverageQueryKey(userId) });
+      } catch {
+        firstSaveRef.current = false;
+        setNotice('보장 분석을 저장하지 못했습니다.');
+      } finally {
+        setSavingCustomer(false);
+      }
+      return;
+    }
     setSavingCustomer(true);
     setNotice('');
     try {
@@ -481,7 +525,10 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               <CoverageSecondaryButton
                 label={share.buttonLabel}
                 disabled={!share.canShare || share.sharing}
-                onPress={() => runWithInlineCommit(() => void share.copyShareLink())}
+                onPress={() => runWithInlineCommit(() => {
+                  if (draftUnsaved) { showToast(DRAFT_SAVE_FIRST); return; }
+                  void share.copyShareLink();
+                })}
                 testID="coverage-share-button"
               />
             </View>
@@ -489,9 +536,10 @@ export function CoverageSimulationScreen({ scenarioId }: { scenarioId: string })
               <CoveragePrimaryButton
                 label="PDF 미리보기"
                 onPress={() =>
-                  runWithInlineCommit(() =>
-                    router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}/pdf` as never),
-                  )
+                  runWithInlineCommit(() => {
+                    if (draftUnsaved) { showToast(DRAFT_SAVE_FIRST); return; }
+                    router.push(`/customer-consulting/coverage-simulation/scenarios/${scenario.id}/pdf` as never);
+                  })
                 }
               />
             </View>
