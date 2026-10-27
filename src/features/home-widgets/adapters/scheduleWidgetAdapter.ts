@@ -1,6 +1,7 @@
 import { ApiError } from '../../../api/client';
 import { fetchScheduleEvents } from '../../schedule/scheduleApi';
 import { addDaysYmd, countItemsByDay, eventDayRange, eventTimeLabel, eventsOnDay, scheduleGoogleWarning, tasksOnDay } from '../../schedule/scheduleModel';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs, type ScheduleViewPrefs } from '../../schedule/scheduleViewPrefs';
 import type { ScheduleEvent, ScheduleEventsResult } from '../../schedule/types';
 import { buildWidgetDeepLink } from '../engine/widgetDeepLink';
 import { clipWidgetTitle, type WidgetAdapter } from './adapterTypes';
@@ -74,7 +75,9 @@ export function buildScheduleDays(result: Pick<ScheduleEventsResult, 'events' | 
   });
 }
 
-export function scheduleWidgetPayload(result: ScheduleEventsResult, scheme: string, today: string): ScheduleWidgetPayload {
+/** prefs = PC/웹 일정 보기 설정(SSOT). null(없음·실패) → 전부 표시. 칸 목록과 배지 수가 같은 걸러진 결과를 쓴다. */
+export function scheduleWidgetPayload(raw: ScheduleEventsResult, scheme: string, today: string, prefs: ScheduleViewPrefs | null = null): ScheduleWidgetPayload {
+  const result = applyScheduleViewPrefs(raw, prefs);
   const range = widgetWindow(today);
   const events = buildScheduleDays(result, scheme, range.from, range.to);
   const calendarCounts: Record<string, number> = {};
@@ -86,6 +89,8 @@ export function scheduleWidgetPayload(result: ScheduleEventsResult, scheme: stri
 export const scheduleWidgetAdapter: WidgetAdapter<ScheduleWidgetPayload> = {
   async load({ token, scheme, today, reason }) {
     const range = widgetWindow(today);
+    // 설정은 일정과 병렬로 매 갱신(수동·포그라운드·동기화)마다 최신을 읽는다. 실패해도 위젯은 오류가 아니다.
+    const prefsPromise = fetchScheduleViewPrefs(token);
     let result: ScheduleEventsResult;
     if (reason === 'manual') {
       try {
@@ -97,6 +102,6 @@ export const scheduleWidgetAdapter: WidgetAdapter<ScheduleWidgetPayload> = {
     } else {
       result = await fetchScheduleEvents(token, range);
     }
-    return scheduleWidgetPayload(result, scheme, today);
+    return scheduleWidgetPayload(result, scheme, today, await prefsPromise);
   },
 };
