@@ -3,10 +3,13 @@ import { normalizeStorageFile, normalizeStorageFolder, normalizeStorageQuota, no
 import type { StorageFile, StorageFolder, StorageQuota, StorageUsageBreakdown } from './types';
 function tokenOf(token: string | null) { if (!token?.trim()) throw new ApiError('로그인이 필요합니다.', 401); return token; }
 export async function listStorageFolders(token: string | null): Promise<StorageFolder[]> { const rows = await apiRequest<unknown[]>('/api/storage/folders', { token: tokenOf(token) }); return rows.map(normalizeStorageFolder).filter((row): row is StorageFolder => Boolean(row)); }
-/** 서버 규칙(customerExtraApi POST /storage/folders)과 동일: 1–12자, '전체' 금지. 오류 문구 또는 null. */
+/** 서버(customerExtraApi STORAGE_FOLDER_NAME_REGEX)와 동일한 허용 문자: 영문·숫자·공백·한글. */
+export const STORAGE_FOLDER_NAME_REGEX = /^[A-Za-z0-9 \u3131-\u318e\uac00-\ud7a3]+$/;
+/** 서버 규칙(customerExtraApi POST /storage/folders)과 동일: 공백 정규화, 1–12자, 허용 문자, '전체' 금지. 오류 문구 또는 null. */
 export function validateStorageFolderName(name: string): string | null {
-  const trimmed = name.trim();
-  if (!trimmed || [...trimmed].length > 12) return '폴더 이름은 12자 이내로 입력해 주세요.';
+  const trimmed = name.replace(/\s+/g, ' ').trim();
+  if (!trimmed || trimmed.length > 12) return '폴더 이름은 12자 이내로 입력해 주세요.';
+  if (!STORAGE_FOLDER_NAME_REGEX.test(trimmed)) return '폴더 이름은 한글, 영문, 숫자, 공백만 사용할 수 있습니다.';
   if (trimmed === '전체') return '해당 이름은 사용할 수 없습니다.';
   return null;
 }

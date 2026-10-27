@@ -57,6 +57,9 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
+      // 항상 label을 넘긴다: RN Android BaseViewManager.updateViewContentDescription은 결과가 비면
+      // setContentDescription을 호출하지 않아, busy=true 때 붙은 '처리 중'이 busy=false 후에도 남는다.
+      accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       hitSlop={hitSlop ?? (size === 'sm' ? theme.interaction.compactHitSlop : undefined)}
