@@ -78,4 +78,17 @@ class DayDialogCapTest {
     assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_YES, add.importantForAccessibility)
     assertTrue(add.isClickable && add.isFocusable)
   }
+
+  /** P2-1: TalkBack '오늘로, 버튼' — RemoteViews 허용 클래스 android.widget.Button, 라벨·크기 유지. */
+  @Test fun todoToTodayIsButtonRole() {
+    val root = LayoutInflater.from(ctx).inflate(R.layout.onefc_widget_todo, FrameLayout(ctx), false)
+    val today = root.findViewById<View>(R.id.w_to_today)
+    assertTrue(today is android.widget.Button)
+    assertEquals("android.widget.Button", today.accessibilityClassName.toString())
+    assertEquals("오늘로", today.contentDescription?.toString())
+    assertEquals("오늘로", (today as TextView).text.toString())
+    assertTrue(today.isClickable && today.isFocusable)
+    assertEquals(0, today.minimumHeight)
+    assertEquals(0, today.minimumWidth)
+  }
 }
