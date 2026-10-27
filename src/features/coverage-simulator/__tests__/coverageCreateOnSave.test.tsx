@@ -4,7 +4,6 @@ import { useState, type ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DesignSystemProvider } from '../../../design-system';
-import { formatCoverageAmountLabel, formatManWonInputDisplay } from '../coverageAnalysis';
 import { CoverageSimulationScreen } from '../CoverageSimulationScreen';
 import { getConsultation, saveConsultation } from '../consultationRepository';
 import type { CoverageScenario } from '../types';
@@ -31,10 +30,6 @@ jest.mock('../consultationRepository', () => {
   };
 });
 
-const TYPED_MAN = 5600;
-const TYPED_AMOUNT = TYPED_MAN * 10_000;
-const typedLabel = formatCoverageAmountLabel(TYPED_AMOUNT);
-const typedInput = formatManWonInputDisplay(TYPED_AMOUNT);
 
 function scenarioFixture(): CoverageScenario {
   return {
