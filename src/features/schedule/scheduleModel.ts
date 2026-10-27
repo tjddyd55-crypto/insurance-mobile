@@ -32,14 +32,20 @@ function positiveInt(value: unknown): number | null {
 
 // ---------------- 날짜(Asia/Seoul) ----------------
 
+// Intl.DateTimeFormat 생성은 Hermes(Android)에서 매우 비싸다. 같은 옵션이므로 한 번만 만들고 재사용(결과 동일).
+let seoulYmdFormat: Intl.DateTimeFormat | null = null;
+let seoulHmFormat: Intl.DateTimeFormat | null = null;
+
 export function seoulYmd(at: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(at);
+  seoulYmdFormat ??= new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const parts = seoulYmdFormat.formatToParts(at);
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
 export function seoulHm(at: Date): string {
-  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at);
+  seoulHmFormat ??= new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  return seoulHmFormat.format(at);
 }
 
 function utc(ymd: string): number {
