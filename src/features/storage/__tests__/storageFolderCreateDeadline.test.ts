@@ -2,10 +2,10 @@ import { MutationObserver, QueryClient } from '@tanstack/react-query';
 import { createStorageFolder, STORAGE_FOLDER_CREATE_TIMEOUT_MS } from '../storageApi';
 
 type FetchMock = jest.Mock<Promise<unknown>, [string, RequestInit]>;
-const originalFetch = global.fetch;
+const originalFetch = globalThis.fetch;
 function setFetch(impl: (url: string, init: RequestInit) => Promise<unknown>): FetchMock {
   const mock = jest.fn(impl) as FetchMock;
-  global.fetch = mock as unknown as typeof fetch;
+  globalThis.fetch = mock as unknown as typeof fetch;
   return mock;
 }
 function response(status: number, json: () => Promise<unknown>) {
@@ -14,7 +14,7 @@ function response(status: number, json: () => Promise<unknown>) {
 const never = () => new Promise<never>(() => undefined);
 
 afterEach(() => {
-  global.fetch = originalFetch;
+  globalThis.fetch = originalFetch;
   jest.useRealTimers();
 });
 
