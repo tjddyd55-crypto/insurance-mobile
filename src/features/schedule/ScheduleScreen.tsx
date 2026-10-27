@@ -576,8 +576,8 @@ function ScheduleDetailModal({
       onRequestClose={onClose}
       footer={editable ? (
         <Inline gap="sm">
-          <View style={detailStyles.flex}><Button label="삭제" variant="danger" fullWidth loading={deleteBusy} disabled={deleteBusy} onPress={() => onDelete(item)} /></View>
           <View style={detailStyles.flex}><Button label="수정" variant="primary" fullWidth disabled={deleteBusy} onPress={() => onEdit(item)} /></View>
+          <View style={detailStyles.flex}><Button label="삭제" variant="danger" fullWidth loading={deleteBusy} disabled={deleteBusy} onPress={() => onDelete(item)} /></View>
         </Inline>
       ) : undefined}
     >

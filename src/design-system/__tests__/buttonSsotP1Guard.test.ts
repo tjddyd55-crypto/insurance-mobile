@@ -29,7 +29,19 @@ describe('P1-B schedule delete', () => {
     expect(del).toContain('loading={deleteBusy}');
     expect(del).toContain('disabled={deleteBusy}');
     expect(edit).toContain('variant="primary"');
+    expect(edit).toContain('disabled={deleteBusy}');
     expect(src).toContain('deleteBusy={remove.isPending}');
+  });
+  it('footer order is [수정 | 삭제] (수정 left, 삭제 right)', () => {
+    const footer = src.match(/footer=\{editable \?[\s\S]*?\) : undefined\}/)?.[0] ?? '';
+    const e = footer.indexOf('label="수정"');
+    const d = footer.indexOf('label="삭제"');
+    expect(e).toBeGreaterThan(-1);
+    expect(d).toBeGreaterThan(e);
+  });
+  it('widget and app entry share one ScheduleDetailModal (single footer)', () => {
+    expect(src.match(/<ScheduleDetailModal\b/g)?.length).toBe(1);
+    expect(src.match(/footer=\{editable \?/g)?.length).toBe(1);
   });
 });
 
