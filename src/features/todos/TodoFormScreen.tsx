@@ -50,6 +50,7 @@ import {
   type TodoFormDraft,
 } from './todoFormSession';
 import { createTodo, deleteTodo, listTodos, updateTodo } from './todosApi';
+import { showTodoLoadError } from './todoLoadError';
 import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
 
@@ -279,7 +280,14 @@ function TodoFormEditor({
   if (mode === 'edit' && todosQuery.isLoading) {
     return <LoadingState message="할 일을 불러오는 중…" />;
   }
-  if (mode === 'edit' && (todosQuery.isError || (!editingTodo && todosQuery.isSuccess))) {
+  // 삭제 성공 후 목록 재조회가 먼저 끝나면 이 할 일이 '없음'으로 보여 '다시 시도'가 잠깐 뜬다.
+  // 삭제 진행/완료 중에는 '못 찾음' 화면을 띄우지 않는다(onSuccess 의 재조회·이동 동안 isPending 유지).
+  if (mode === 'edit' && showTodoLoadError({
+    isError: todosQuery.isError,
+    isSuccess: todosQuery.isSuccess,
+    found: Boolean(editingTodo),
+    deleting: deleteMutation.isPending || deleteMutation.isSuccess,
+  })) {
     return (
       <ErrorState
         title="할 일을 불러오지 못했습니다"
