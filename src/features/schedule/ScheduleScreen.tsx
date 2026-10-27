@@ -501,7 +501,9 @@ export function ScheduleScreen() {
         onClose={() => setDetail(null)}
         onOpenRoute={openRoute}
         onEdit={openEdit}
-        onDelete={(event) => setDeleting(event)}
+        // 상세(Modal)와 확인(Modal)을 겹쳐 띄우지 않는다: Android에서 둘은 별개 Dialog 창이고 z-order는 마지막 show() 순서라,
+        // 상세 창이 재생성되면 확인 창이 그 뒤로 숨는다. 상세를 닫고 확인만 띄우며, 취소하면 상세로 되돌아간다.
+        onDelete={(event) => { setDetail(null); setDeleting(event); }}
         deleteBusy={remove.isPending}
       />
 
@@ -514,7 +516,7 @@ export function ScheduleScreen() {
         confirmLabel="삭제"
         tone="danger"
         busy={remove.isPending}
-        onCancel={() => setDeleting(null)}
+        onCancel={() => { const back = deleting; setDeleting(null); remove.reset(); if (back) setDetail(back); }}
         onConfirm={() => deleting && remove.mutate(deleting)}
       />
     </View>
