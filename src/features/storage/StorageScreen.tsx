@@ -37,6 +37,7 @@ import {
   listStorageFolders,
   renameStorageFile,
   renameStorageFolder,
+  storageFolderCreateMutationOptions,
   uploadStorageFile,
 } from "./storageApi";
 import {
@@ -90,7 +91,9 @@ export function StorageScreen() {
     ]);
   };
   const createFolder = useMutation({
-    mutationFn: () => createStorageFolder(token, folderName, folderId),
+    ...storageFolderCreateMutationOptions(() =>
+      createStorageFolder(token, folderName, folderId),
+    ),
     onSuccess: () => {
       setFolderName("");
       // 목록 갱신을 기다리지 않는다: refetch(30s 타임아웃 + retry 1)가 늦으면 '처리 중'이 60초 넘게 남는다.

@@ -22,8 +22,9 @@ export async function createStorageFolder(token: string | null, name: string, pa
   let deadline: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<never>((_, reject) => {
     deadline = setTimeout(() => {
-      controller.abort();
+      // reject를 먼저: abort 리스너(native cancel)가 throw/지연돼도 deadline 결과는 이미 확정된다.
       reject(new ApiError('요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.', 0));
+      try { controller.abort(); } catch { /* native cancel 실패는 무시 */ }
     }, STORAGE_FOLDER_CREATE_TIMEOUT_MS);
   });
   const request = apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), timeoutMs: STORAGE_FOLDER_CREATE_TIMEOUT_MS, signal: controller.signal, body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) });
@@ -33,6 +34,14 @@ export async function createStorageFolder(token: string | null, name: string, pa
   } finally {
     clearTimeout(deadline);
   }
+}
+/**
+ * 폴더 생성 mutation 옵션(StorageScreen SSOT). networkMode 'always': react-query 기본값 'online'은
+ * onlineManager가 offline이라고 판단하면 mutationFn을 호출하지 않고 paused(isPending=true)로 무기한
+ * 대기시킨다 — 이 경우 API deadline이 시작조차 안 되어 '처리 중'이 풀리지 않고 폴더도 생성되지 않는다.
+ */
+export function storageFolderCreateMutationOptions(run: () => Promise<void>) {
+  return { mutationFn: run, networkMode: 'always' as const, retry: 0 };
 }
 export async function renameStorageFolder(token: string | null, id: number, name: string): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ name: name.trim() }) }); }
 export async function deleteStorageFolder(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
