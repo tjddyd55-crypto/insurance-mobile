@@ -25,6 +25,14 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
   fun date(context: Context, widgetId: Int, today: String): String =
     WidgetCacheManager.instanceValue(context, type, widgetId, "date", today)?.takeIf { WidgetDates.isYmd(it) } ?: today
 
+  enum class AddSlot { HEADER, EMPTY }
+
+  /** + 기본 날짜: 헤더 +는 날짜 context가 없어 오늘, 빈 상태 +는 보고 있던 날짜. */
+  fun addDate(slot: AddSlot, viewed: String, today: String): String = when (slot) {
+    AddSlot.HEADER -> today
+    AddSlot.EMPTY -> viewed.takeIf { WidgetDates.isYmd(it) } ?: today
+  }
+
   fun next(current: String, action: String, today: String): String? = when (action) {
     WidgetIntents.ACTION_PREV -> WidgetDates.addDays(current, -1)
     WidgetIntents.ACTION_NEXT -> WidgetDates.addDays(current, 1)
@@ -61,11 +69,13 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
     views.setOnClickPendingIntent(R.id.w_to_today, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
     views.setViewVisibility(R.id.w_to_today, if (date == today) View.GONE else View.VISIBLE)
     WidgetCommonViews.bindRefresh(context, views, type, widgetId)
-    // +: Native 빠른 입력(오늘 기본, 날짜만 변경 가능, 시간 없음).
-    val addIntent = WidgetIntents.openDay(context, today, ScheduleDayActivity.MODE_CREATE_TODO)
+    // 헤더 +: Native 빠른 입력(날짜 context 없음 → 오늘 기본, 날짜만 변경 가능, 시간 없음).
+    val addIntent = WidgetIntents.openDay(context, addDate(AddSlot.HEADER, date, today), ScheduleDayActivity.MODE_CREATE_TODO)
     views.setOnClickPendingIntent(R.id.w_add, addIntent)
     views.setContentDescription(R.id.w_add, "할 일 추가")
-    views.setOnClickPendingIntent(R.id.w_empty_add, addIntent)
+    // 빈 상태 +: 지금 보고 있는 날짜(예: 11/3)를 기본값으로.
+    val emptyAddIntent = WidgetIntents.openDay(context, addDate(AddSlot.EMPTY, date, today), ScheduleDayActivity.MODE_CREATE_TODO)
+    views.setOnClickPendingIntent(R.id.w_empty_add, emptyAddIntent)
 
     val items = payload.todos[date].orEmpty()
     val maxRows = rows(heightDp)
@@ -97,7 +107,6 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
         // 위젯 캐시가 조회하지 않은 날짜: 할 일이 없다고 단정하지 않고 앱에서 확인하도록.
         views.setTextViewText(R.id.w_empty_text, OUT_OF_RANGE_TEXT)
         views.setTextViewText(R.id.w_empty_add, context.getString(R.string.onefc_widget_empty_todo_add))
-        views.setOnClickPendingIntent(R.id.w_empty_add, addIntent)
       } else {
         views.setTextViewText(R.id.w_empty_text, context.getString(R.string.onefc_widget_empty_todo))
         views.setTextViewText(R.id.w_empty_add, context.getString(R.string.onefc_widget_empty_todo_add))

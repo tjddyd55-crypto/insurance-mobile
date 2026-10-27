@@ -188,6 +188,8 @@ class ScheduleDayActivity : Activity() {
       creating -> getString(R.string.onefc_widget_day_event_hint)
       else -> getString(R.string.onefc_widget_day_add, content.monthDay.ifBlank { content.title })
     }
+    // 접근성: 전송 버튼은 모드별로 '할 일 저장' / '일정 저장'(시각 UI 불변).
+    findViewById<View>(R.id.day_send).contentDescription = getString(sendDescription(mode))
     if (creating) refreshCreateOptions()
   }
 
@@ -381,6 +383,9 @@ class ScheduleDayActivity : Activity() {
       MODE_CREATE_EVENT, MODE_CREATE_TODO -> raw
       else -> MODE_DAY
     }
+
+    /** 전송(+) 버튼 접근성 라벨 리소스. */
+    fun sendDescription(mode: String?): Int = if (normalizeMode(mode) == MODE_CREATE_TODO) R.string.onefc_widget_day_send_todo else R.string.onefc_widget_day_send
 
     /** PendingIntent requestCode: 날짜+mode. */
     fun requestCode(date: String, mode: String): Int = "$date|${normalizeMode(mode)}".hashCode()
