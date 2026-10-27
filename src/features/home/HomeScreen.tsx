@@ -17,6 +17,7 @@ import {
   type AppTheme,
 } from '../../design-system';
 import { useNativeMenu } from '../../navigation/useNativeMenu';
+import { useRootBackExit } from '../../navigation/useRootBackExit';
 import { resolveHomeMenuIcon } from './homeMenuIcons';
 
 export function HomeScreen() {
@@ -26,6 +27,7 @@ export function HomeScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const env = getEnvironmentConfig();
   const menu = useNativeMenu();
+  useRootBackExit();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   return (
