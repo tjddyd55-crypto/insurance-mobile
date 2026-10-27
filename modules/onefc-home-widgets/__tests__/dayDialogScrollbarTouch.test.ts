@@ -18,11 +18,14 @@ function dp(tag: string, attr: string): number {
 }
 
 describe('onefc_day_dialog scrollbar / touch targets', () => {
-  it('day_scroll draws its scrollbar outside the content (outsideInset + paddingEnd)', () => {
+  // t597u: | 여백 | 카드 | 여백 | 스크롤바 | — 스크롤바는 카드 오른쪽 패딩 안(outsideOverlay)에, 값은 dimens 리소스만.
+  it('day_scroll keeps a scrollbar outside the rows with symmetric gutters (dimens only)', () => {
     const scroll = tagOf('day_scroll');
-    expect(scroll).toContain('android:scrollbarStyle="outsideInset"');
-    expect(dp(scroll, 'paddingEnd')).toBeGreaterThanOrEqual(4);
-    expect(dp(scroll, 'scrollbarSize')).toBeLessThanOrEqual(4);
+    expect(scroll).toContain('android:scrollbarStyle="outsideOverlay"');
+    expect(scroll).toContain('android:paddingEnd="@dimen/onefc_day_scroll_gutter"');
+    expect(scroll).toContain('android:layout_marginEnd="@dimen/onefc_day_scroll_gutter_pull"');
+    expect(scroll).toContain('android:scrollbarSize="@dimen/onefc_day_scrollbar_size"');
+    expect(scroll).not.toMatch(/\d+px"/);
     // 키보드/IME 보정 구조(0dp + weight=1) 유지
     expect(scroll).toContain('android:layout_height="0dp"');
     expect(scroll).toContain('android:layout_weight="1"');
