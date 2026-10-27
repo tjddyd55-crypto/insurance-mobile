@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppState, BackHandler, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -18,6 +17,7 @@ import {
   TextField,
   useAppTheme,
   type AppTheme,
+  SafeFooter,
 } from '../../design-system';
 import {
   getOsNotificationPermissionGranted,
@@ -203,12 +203,12 @@ export function NotificationSettingsScreen() {
           </AppText>
         ) : null}
       </ScrollView>
-      <SafeAreaView style={styles.footerSafe} edges={['bottom']}>
+      <SafeFooter style={styles.footerSafe}>
         <View style={styles.footer}>
           <Button label="취소" variant="secondary" onPress={requestBack} disabled={saveMutation.isPending} style={styles.grow} />
           <Button label="저장" onPress={validateAndSave} loading={saveMutation.isPending} style={styles.grow} />
         </View>
-      </SafeAreaView>
+      </SafeFooter>
       <ConfirmDialog
         open={discardOpen}
         title="변경사항 닫기"

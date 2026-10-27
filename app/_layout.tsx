@@ -15,12 +15,11 @@ import { DesignSystemProvider, useDesignSystem } from '../src/design-system';
 import { AppUpdateHost } from '../src/features/app-update';
 import { HomeWidgetSyncLifecycle } from '../src/features/home-widgets/useHomeWidgetSync';
 import { consumePendingWidgetHref, stashPendingWidgetHref, widgetReturnHref } from '../src/features/home-widgets/engine/widgetDeepLink';
+import { resumeWidgetQuickEntry } from '../src/features/home-widgets/widgetQuickEntryReturn';
 import { beginStashedWidgetOpen, observeAppPath } from '../src/features/home-widgets/widgetReturn';
 import { usePushNotificationListeners } from '../src/features/push/usePushNotificationListeners';
 
 void SplashScreen.preventAutoHideAsync();
-const splashStartedAt = Date.now();
-const MINIMUM_SPLASH_MS = 2000;
 
 const queryClient = createAppQueryClient();
 
@@ -57,15 +56,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     } else if (status === 'authenticated' && inAuthGroup) {
       const widgetHref = consumePendingWidgetHref();
-      if (widgetHref) beginStashedWidgetOpen();
       router.replace('/(app)');
-      if (widgetHref) router.push(widgetHref as Parameters<typeof router.push>[0]);
+      // 위젯 Native 모달에서 시작한 로그인: 같은 모달(mode·date)을 다시 열고 앱은 홈 뒤로. 실패하면 기존처럼 앱 화면.
+      if (widgetHref) {
+        void resumeWidgetQuickEntry(widgetHref).then((resumed) => {
+          if (resumed) return;
+          beginStashedWidgetOpen();
+          router.push(widgetHref as Parameters<typeof router.push>[0]);
+        });
+      }
       return;
     }
-    const timer = setTimeout(() => {
-      void SplashScreen.hideAsync();
-    }, Math.max(0, MINIMUM_SPLASH_MS - (Date.now() - splashStartedAt)));
-    return () => clearTimeout(timer);
+    // 세션 복원과 첫 라우팅이 끝나면 즉시 숨김(고정 최소 노출 시간 없음).
+    void SplashScreen.hideAsync();
   }, [status, segments, router]);
 
   if (status === 'booting') {

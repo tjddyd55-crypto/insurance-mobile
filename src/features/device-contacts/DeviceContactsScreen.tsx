@@ -16,6 +16,7 @@ import {
   Stack,
   useAppTheme,
   type AppTheme,
+  Screen,
 } from '../../design-system';
 import { DeviceContactDetailModal } from './DeviceContactDetailModal';
 import { DeviceContactsPermissionPanel } from './DeviceContactsPermissionPanel';
@@ -120,33 +121,35 @@ export function DeviceContactsScreen() {
         title="연락처"
         rightAction={<Button label="새로고침" size="sm" variant="ghost" onPress={() => void refresh('manual')} />}
       />
-      <ContactsBody
-        phase={phase}
-        loading={loading}
-        refreshing={refreshing}
-        errorMessage={errorMessage ?? actionError}
-        contacts={snapshot.contacts}
-        visible={visible}
-        filter={filter}
-        query={query}
-        truncated={snapshot.customerIndexTruncated}
-        cacheFailed={snapshot.cacheWrite === 'failed'}
-        emptyMessage={emptyMessage}
-        onRetry={() => void refresh('manual')}
-        onRequestAccess={() => void requestAccess()}
-        onOpenSettings={() => {
-          void Linking.openSettings().catch(() => {
-            setActionError('설정 화면을 열지 못했습니다.');
-          });
-        }}
-        onQueryChange={setQuery}
-        onFilterChange={setFilter}
-        onRefresh={() => void refresh('manual')}
-        onOpenContact={(contactId) => {
-          setCandidateNotice(null);
-          setSelectedId(contactId);
-        }}
-      />
+      <Screen padded={false}>
+        <ContactsBody
+          phase={phase}
+          loading={loading}
+          refreshing={refreshing}
+          errorMessage={errorMessage ?? actionError}
+          contacts={snapshot.contacts}
+          visible={visible}
+          filter={filter}
+          query={query}
+          truncated={snapshot.customerIndexTruncated}
+          cacheFailed={snapshot.cacheWrite === 'failed'}
+          emptyMessage={emptyMessage}
+          onRetry={() => void refresh('manual')}
+          onRequestAccess={() => void requestAccess()}
+          onOpenSettings={() => {
+            void Linking.openSettings().catch(() => {
+              setActionError('설정 화면을 열지 못했습니다.');
+            });
+          }}
+          onQueryChange={setQuery}
+          onFilterChange={setFilter}
+          onRefresh={() => void refresh('manual')}
+          onOpenContact={(contactId) => {
+            setCandidateNotice(null);
+            setSelectedId(contactId);
+          }}
+        />
+      </Screen>
       <DeviceContactDetailModal
         contact={selected}
         customers={snapshot.customers}

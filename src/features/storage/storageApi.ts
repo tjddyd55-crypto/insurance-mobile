@@ -3,7 +3,49 @@ import { normalizeStorageFile, normalizeStorageFolder, normalizeStorageQuota, no
 import type { StorageFile, StorageFolder, StorageQuota, StorageUsageBreakdown } from './types';
 function tokenOf(token: string | null) { if (!token?.trim()) throw new ApiError('로그인이 필요합니다.', 401); return token; }
 export async function listStorageFolders(token: string | null): Promise<StorageFolder[]> { const rows = await apiRequest<unknown[]>('/api/storage/folders', { token: tokenOf(token) }); return rows.map(normalizeStorageFolder).filter((row): row is StorageFolder => Boolean(row)); }
-export async function createStorageFolder(token: string | null, name: string, parentId: number | null): Promise<void> { await apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) }); }
+/** 서버(customerExtraApi STORAGE_FOLDER_NAME_REGEX)와 동일한 허용 문자: 영문·숫자·공백·한글. */
+export const STORAGE_FOLDER_NAME_REGEX = /^[A-Za-z0-9 \u3131-\u318e\uac00-\ud7a3]+$/;
+/** 서버 규칙(customerExtraApi POST /storage/folders)과 동일: 공백 정규화, 1–12자, 허용 문자, '전체' 금지. 오류 문구 또는 null. */
+export function validateStorageFolderName(name: string): string | null {
+  const trimmed = name.replace(/\s+/g, ' ').trim();
+  if (!trimmed || trimmed.length > 12) return '폴더 이름은 12자 이내로 입력해 주세요.';
+  if (!STORAGE_FOLDER_NAME_REGEX.test(trimmed)) return '폴더 이름은 한글, 영문, 숫자, 공백만 사용할 수 있습니다.';
+  if (trimmed === '전체') return '해당 이름은 사용할 수 없습니다.';
+  return null;
+}
+/** 폴더 생성은 짧은 요청이므로 기본 30s 대신 15s 타임아웃 — '처리 중'이 무기한 유지되지 않게 한다. */
+export const STORAGE_FOLDER_CREATE_TIMEOUT_MS = 15_000;
+export async function createStorageFolder(token: string | null, name: string, parentId: number | null): Promise<void> {
+  const invalid = validateStorageFolderName(name);
+  if (invalid) throw new ApiError(invalid, 400);
+  // apiRequest의 timeoutMs는 응답 헤더까지만 걸린다(헤더 수신 후 clearTimeout → 본문 읽기는 무제한),
+  // 또 abort가 native 요청 promise를 항상 reject한다는 보장도 없다(expo/fetch cancel). 그래서 본문 파싱까지
+  // 포함한 전체 요청에 독립 deadline을 걸어, 어떤 경우에도 mutation이 끝나 '처리 중'이 풀리게 한다.
+  const controller = new AbortController();
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_, reject) => {
+    deadline = setTimeout(() => {
+      // reject를 먼저: abort 리스너(native cancel)가 throw/지연돼도 deadline 결과는 이미 확정된다.
+      reject(new ApiError('요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.', 0));
+      try { controller.abort(); } catch { /* native cancel 실패는 무시 */ }
+    }, STORAGE_FOLDER_CREATE_TIMEOUT_MS);
+  });
+  const request = apiRequest('/api/storage/folders', { method: 'POST', token: tokenOf(token), timeoutMs: STORAGE_FOLDER_CREATE_TIMEOUT_MS, signal: controller.signal, body: JSON.stringify({ name: name.trim(), customerId: null, parentId }) });
+  request.catch(() => undefined);
+  try {
+    await Promise.race([request, timedOut]);
+  } finally {
+    clearTimeout(deadline);
+  }
+}
+/**
+ * 폴더 생성 mutation 옵션(StorageScreen SSOT). networkMode 'always': react-query 기본값 'online'은
+ * onlineManager가 offline이라고 판단하면 mutationFn을 호출하지 않고 paused(isPending=true)로 무기한
+ * 대기시킨다 — 이 경우 API deadline이 시작조차 안 되어 '처리 중'이 풀리지 않고 폴더도 생성되지 않는다.
+ */
+export function storageFolderCreateMutationOptions(run: () => Promise<void>) {
+  return { mutationFn: run, networkMode: 'always' as const, retry: 0 };
+}
 export async function renameStorageFolder(token: string | null, id: number, name: string): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ name: name.trim() }) }); }
 export async function deleteStorageFolder(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/folders/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
 export async function listStorageFiles(token: string | null, folderId: number | null): Promise<StorageFile[]> { const path = folderId == null ? '/api/storage/files' : `/api/storage/files?folderId=${folderId}`; const rows = await apiRequest<unknown[]>(path, { token: tokenOf(token) }); return rows.map(normalizeStorageFile).filter((row): row is StorageFile => Boolean(row)); }

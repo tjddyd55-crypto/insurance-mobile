@@ -68,7 +68,7 @@ export function validWidgetDate(value: unknown): string | undefined {
 }
 
 const RETURN_PATHS = /^\/(schedule|todos)(\/|$)/;
-const RETURN_PARAMS = /^(date|event|create|dueDate|src|wt)$/;
+const RETURN_PARAMS = /^(date|event|create|dueDate|src|wt|quick)$/;
 
 /** 위젯에서 연 화면이면 로그인 후 돌아갈 앱 내부 href. */
 export function widgetReturnHref(pathname: string, params: Record<string, unknown>): string | null {
@@ -92,4 +92,22 @@ export function consumePendingWidgetHref(): string | null {
   const next = pendingWidgetHref;
   pendingWidgetHref = null;
   return next;
+}
+
+export type WidgetQuickEntryMode = 'day' | 'createEvent' | 'createTodo';
+export type WidgetQuickEntry = { date: string; mode: WidgetQuickEntryMode };
+
+const QUICK_MODES: readonly WidgetQuickEntryMode[] = ['day', 'createEvent', 'createTodo'];
+
+/**
+ * 위젯 날짜 모달(로그아웃)의 로그인 링크: `/schedule|/todos?date=..&quick=<mode>&src=widget`.
+ * 로그인 후 앱 화면이 아니라 같은 Native 모달(mode·date)을 다시 연다. 아니면 null(기존 흐름).
+ */
+export function widgetQuickEntry(href: string | null): WidgetQuickEntry | null {
+  if (!href || !RETURN_PATHS.test(href.split('?')[0])) return null;
+  const query = new URLSearchParams(href.includes('?') ? href.slice(href.indexOf('?') + 1) : '');
+  const mode = query.get('quick') as WidgetQuickEntryMode | null;
+  const date = query.get('date') ?? '';
+  if (query.get('src') !== WIDGET_LINK_SOURCE || !mode || !QUICK_MODES.includes(mode) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return { date, mode };
 }

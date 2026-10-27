@@ -48,6 +48,11 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     else -> null
   }
 
+  /** 머리글 오늘 버튼 숫자("27", 1일이면 "1"). */
+  fun todayLabel(today: String): String = today.substring(8, 10).toInt().toString()
+
+  fun todayDescription(today: String): String = "오늘로 이동, ${todayLabel(today)}일"
+
   override fun hasPayload(envelope: WidgetEnvelope) = SchedulePayload.parse(envelope) != null
 
   override fun handleAction(context: Context, envelope: WidgetEnvelope?, widgetId: Int, action: String, date: String?): Boolean {
@@ -67,13 +72,19 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     fun link(action: WidgetDeepLink.Action, params: Map<String, String?>) = WidgetDeepLink.build(scheme, type, action, params)
 
     views.setTextViewText(R.id.w_month, WidgetDates.monthTitle(state.month))
-    views.setContentDescription(R.id.w_month, "${WidgetDates.monthTitle(state.month)}, 오늘로")
-    views.setOnClickPendingIntent(R.id.w_month, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
+    views.setContentDescription(R.id.w_month, "${WidgetDates.monthTitle(state.month)}, 앱 일정 열기")
+    // 월 헤더: 앱 일정 화면(보던 날짜)으로 바로 진입. + 와 같은 openApp/deep link 경로.
+    views.setOnClickPendingIntent(R.id.w_month, WidgetIntents.openApp(context, link(WidgetDeepLink.Action.OPEN, mapOf("date" to state.selected)), nonce))
     views.setOnClickPendingIntent(R.id.w_prev, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_PREV, widgetId))
     views.setOnClickPendingIntent(R.id.w_next, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_NEXT, widgetId))
     WidgetCommonViews.bindRefresh(context, views, type, widgetId)
-    views.setOnClickPendingIntent(R.id.w_add, WidgetIntents.openApp(context, link(WidgetDeepLink.Action.CREATE, mapOf("date" to state.selected)), nonce))
-    views.setContentDescription(R.id.w_add, "${WidgetDates.dayTitle(state.selected)} 일정 추가")
+    // 오늘 버튼: 위젯 안 month/selected 만 오늘로(ACTION_TODAY). 앱은 열지 않는다. 숫자는 매 렌더(자정 알람 포함)마다 갱신.
+    views.setTextViewText(R.id.w_today, todayLabel(today))
+    views.setContentDescription(R.id.w_today, todayDescription(today))
+    views.setOnClickPendingIntent(R.id.w_today, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
+    // +: 앱 대신 Native 빠른 입력(오늘 기본, 화면에서 날짜 변경).
+    views.setOnClickPendingIntent(R.id.w_add, WidgetIntents.openDay(context, today, ScheduleDayActivity.MODE_CREATE_EVENT))
+    views.setContentDescription(R.id.w_add, "일정 추가")
 
     val weeks = WidgetDates.monthGrid(state.month)
     val text = context.getColor(R.color.onefc_widget_text)

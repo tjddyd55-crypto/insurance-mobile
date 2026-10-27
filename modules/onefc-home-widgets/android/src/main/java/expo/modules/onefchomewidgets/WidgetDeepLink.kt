@@ -25,6 +25,19 @@ object WidgetDeepLink {
     return "$scheme://${route.first}?$query"
   }
 
+  /**
+   * 날짜 모달 로그인 버튼용: 로그인 후 같은 Native 화면(mode·date)을 다시 열도록 기존 src=widget 링크에 quick=<mode> 를 붙인다.
+   * 앱(_layout AuthGate)은 이 링크를 기존 pending widget href 로 보관했다가 로그인 후 openQuickEntry 로 모달을 연다.
+   */
+  fun quickEntry(scheme: String, mode: String, date: String): String? {
+    if (scheme.isBlank() || !WidgetDates.isYmd(date)) return null
+    val todo = mode == ScheduleDayActivity.MODE_CREATE_TODO
+    val type = if (todo) OneFcWidgetType.TODO else OneFcWidgetType.SCHEDULE
+    val query = listOf("date" to date, "quick" to ScheduleDayActivity.normalizeMode(mode), "src" to "widget", "wt" to type.id)
+      .joinToString("&") { "${it.first}=${enc(it.second)}" }
+    return "$scheme://${if (todo) "todos" else "schedule"}?$query"
+  }
+
   private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
 
   /** 같은 링크를 다시 눌러도 앱이 다시 적용하도록 렌더 시각(_w)을 붙인다. */

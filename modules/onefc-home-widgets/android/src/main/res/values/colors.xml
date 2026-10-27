@@ -7,6 +7,8 @@
   <color name="onefc_widget_text">#FF1A1F1C</color>
   <color name="onefc_widget_text_secondary">#FF5B655F</color>
   <color name="onefc_widget_text_muted">#FFA3ACA6</color>
+  <!-- 홈 위젯 보조 줄(업데이트 시간·상태): muted 보다 한 단계 진하고 secondary 보다 옅다. -->
+  <color name="onefc_widget_text_meta">#FF737D77</color>
   <color name="onefc_widget_sunday">#FFC0392B</color>
   <color name="onefc_widget_saturday">#FF2D6CB5</color>
   <color name="onefc_widget_warning">#FFB26A00</color>

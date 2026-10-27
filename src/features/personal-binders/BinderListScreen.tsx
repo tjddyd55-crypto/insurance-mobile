@@ -158,7 +158,7 @@ export function BinderListScreen() {
         presentation="dialog"
         busy={busy}
         onRequestClose={() => setRename(null)}
-        footer={<Inline gap="sm"><Button label="취소" variant="secondary" onPress={() => setRename(null)} style={styles.grow} /><Button label="저장" loading={busy} onPress={() => void submitRename(invalidate)} style={styles.grow} /></Inline>}
+        footer={<Inline gap="sm"><Button label="취소" variant="secondary" onPress={() => setRename(null)} style={styles.grow} /><Button variant="primary" label="저장" loading={busy} onPress={() => void submitRename(invalidate)} style={styles.grow} /></Inline>}
       >
         <TextField accessibilityLabel="자료 제목" value={renameTitle} onChangeText={setRenameTitle} />
       </ModalShell>
@@ -379,7 +379,7 @@ function BinderFormModal({
       footer={(
         <Inline gap="sm">
           <Button label="취소" variant="secondary" onPress={onClose} style={styles.grow} />
-          <Button label={form?.mode === 'duplicate' ? '복제' : '만들기'} loading={busy} disabled={!form?.title.trim()} onPress={onSubmit} style={styles.grow} />
+          <Button variant="primary" label={form?.mode === 'duplicate' ? '복제' : '만들기'} loading={busy} disabled={!form?.title.trim()} onPress={onSubmit} style={styles.grow} />
         </Inline>
       )}
     >

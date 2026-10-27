@@ -19,10 +19,10 @@ import {
 import {
   getConsultation,
   listConsultationsByTemplateId,
-  saveConsultation,
 } from './consultationRepository';
 import { consultationStorage } from './consultationStorage';
 import { createSimulationFromScenario } from './scenarioEdits';
+import { putCoverageDraft } from './coverageDraftStore';
 import { SavedScenarioCrudPanel } from './SavedScenarioCrudPanel';
 import { simulatorTheme as theme } from './simulatorTheme';
 
@@ -89,9 +89,8 @@ export function CoverageTemplateSimulationListScreen({ templateId }: Props) {
         id: customer.id,
         name: customer.name,
       });
-      const saved = await saveConsultation(consultationStorage, userId, simulation);
-      await refresh();
-      router.push(coverageScenarioEditorPath(saved.id) as never);
+      const draft = putCoverageDraft(simulation);
+      router.push(coverageScenarioEditorPath(draft.id) as never);
     } catch {
       setNotice('시뮬레이션을 만들지 못했습니다.');
     } finally {

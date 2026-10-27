@@ -95,3 +95,13 @@ export function useGoBackFromCustomerDetail() {
 
   return onBack;
 }
+
+/**
+ * 고객 등록(create) 취소/뒤로의 목적지.
+ * 고객 화면들은 Drawer 형제 라우트이고 Drawer 기본 backBehavior='firstRoute'라 router.back()은 항상 첫 라우트(홈)로 간다.
+ * 실제 진입점은 고객 목록과 기기 연락처(source=contact)뿐이므로 그 출처로 돌아간다.
+ */
+export function customerCreateCancelPath(source: unknown): "/customers" | "/device-contacts" {
+  const value = Array.isArray(source) ? source[0] : source;
+  return value === "contact" ? "/device-contacts" : customersListPath();
+}

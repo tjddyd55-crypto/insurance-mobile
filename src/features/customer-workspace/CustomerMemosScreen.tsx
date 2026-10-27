@@ -22,6 +22,7 @@ import { getCustomer, updateCustomer } from '../customers/customersApi';
 import { customerQueryKeys } from '../customers/queryKeys';
 import { useCustomerDetailBack } from '../customers/customerWorkspaceNavigation';
 import type { CustomerNote } from '../customers/types';
+import { shouldCloseMemoEditor, type MemoEditorCloseReason } from './customerMemoEditor';
 import { newCustomerNoteId } from './customerWorkspaceModel';
 
 type MemoEditorState = {
@@ -66,7 +67,7 @@ export function CustomerMemosScreen({ customerId }: { customerId: number }) {
       });
     },
     onSuccess: async () => {
-      closeEditor();
+      closeEditor('saved');
       await queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -91,8 +92,8 @@ export function CustomerMemosScreen({ customerId }: { customerId: number }) {
     setEditor({ open: true, note });
   }
 
-  function closeEditor() {
-    if (save.isPending) return;
+  function closeEditor(reason: MemoEditorCloseReason = 'user') {
+    if (!shouldCloseMemoEditor(reason, save.isPending)) return;
     setDraft('');
     setEditor(CLOSED_EDITOR);
   }
@@ -184,9 +185,9 @@ export function CustomerMemosScreen({ customerId }: { customerId: number }) {
         title={editor.note ? '메모 수정' : '메모 추가'}
         subtitle={query.data?.name}
         busy={save.isPending}
-        onRequestClose={closeEditor}
+        onRequestClose={() => closeEditor()}
         headerAction={
-          <Button label="닫기" size="sm" variant="ghost" onPress={closeEditor} />
+          <Button label="닫기" size="sm" variant="ghost" onPress={() => closeEditor()} />
         }
         footer={
           <Inline>
@@ -194,10 +195,10 @@ export function CustomerMemosScreen({ customerId }: { customerId: number }) {
               label="취소"
               variant="secondary"
               disabled={save.isPending}
-              onPress={closeEditor}
+              onPress={() => closeEditor()}
               style={styles.grow}
             />
-            <Button
+            <Button variant="primary"
               label={editor.note ? '수정 저장' : '메모 추가'}
               loading={save.isPending}
               disabled={!draft.trim()}

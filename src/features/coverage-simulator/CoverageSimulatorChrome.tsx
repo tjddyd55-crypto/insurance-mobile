@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useSafeFooterPadding } from '../../design-system';
+
 import { simulatorTheme as theme } from './simulatorTheme';
 
 type HeaderProps = {
@@ -13,7 +15,12 @@ type HeaderProps = {
 };
 
 export function CoverageSimulatorScreen({ children }: { children: ReactNode }) {
-  return <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>{children}</SafeAreaView>;
+  const bottomPadding = useSafeFooterPadding(0);
+  return (
+    <SafeAreaView style={[styles.screen, { paddingBottom: bottomPadding }]} edges={['top']}>
+      {children}
+    </SafeAreaView>
+  );
 }
 
 export function CoverageSimulatorHeader({ title, onBack, rightLabel, onRight, rightDisabled }: HeaderProps) {

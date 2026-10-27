@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAwareModal } from '../../design-system/components/KeyboardAwareModal';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 
@@ -255,7 +256,20 @@ function PdfFormModal({
   });
 
   return (
-    <Modal visible={Boolean(template)} animationType="slide" onRequestClose={onClose}>
+    <KeyboardAwareModal
+      visible={Boolean(template)}
+      animationType="slide"
+      onRequestClose={onClose}
+      footer={
+        <Button
+          label="PDF 발급 및 공유"
+          variant="action"
+          fullWidth
+          loading={issue.isPending}
+          onPress={() => issue.mutate()}
+        />
+      }
+    >
       <View style={styles.modal}>
         <View style={styles.modalHeader}>
           <View style={styles.grow}>
@@ -338,23 +352,14 @@ function PdfFormModal({
           ))}
           {error ? <AppText color="danger">{error}</AppText> : null}
           <Card variant="filled">
-            <Stack gap="sm">
-              <AppText variant="caption">
-                발급하면 서버에 보관 이력이 생성되며 운영체제 공유창에서 저장하거나
-                전달할 수 있습니다.
-              </AppText>
-              <Button
-                label="PDF 발급 및 공유"
-                variant="action"
-                fullWidth
-                loading={issue.isPending}
-                onPress={() => issue.mutate()}
-              />
-            </Stack>
+            <AppText variant="caption">
+              발급하면 서버에 보관 이력이 생성되며 운영체제 공유창에서 저장하거나
+              전달할 수 있습니다.
+            </AppText>
           </Card>
         </ScrollView>
       </View>
-    </Modal>
+    </KeyboardAwareModal>
   );
 }
 

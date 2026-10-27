@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { AppText, Button, Stack, useAppTheme, type AppTheme } from '../../design-system';
+import { AppText, Button, Stack, useAppTheme, type AppTheme, useSafeFooterPadding } from '../../design-system';
 import { CustomerNewsImageCarousel } from './customerNewsImageCarousel';
 import { buildCustomerNewsGalleryUrls } from './customerNewsContent';
 import { isFileAttachment } from './customerNewsModel';
@@ -22,6 +22,7 @@ export function CustomerNewsPreviewModal({
   const theme = useAppTheme();
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const modalBottomPadding = useSafeFooterPadding(0);
   const contentWidth = Math.max(windowWidth - theme.spacing.lg * 2, 1);
 
   if (!draft) {
@@ -45,7 +46,7 @@ export function CustomerNewsPreviewModal({
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.root}>
+      <View style={[styles.root, { paddingBottom: modalBottomPadding }]}>
         <View style={styles.header}>
           <AppText variant="heading">고객 앱 미리보기</AppText>
           <Button label="닫기" size="sm" variant="ghost" onPress={onClose} />

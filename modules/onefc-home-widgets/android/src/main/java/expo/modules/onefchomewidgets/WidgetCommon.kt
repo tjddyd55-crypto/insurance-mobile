@@ -31,11 +31,13 @@ object WidgetIntents {
   }
 
   /** 날짜 칸: 스냅샷만 읽는 날짜 다이얼로그. RemoteViews 안에 모달을 띄울 수 없다. */
-  fun openDay(context: Context, date: String): PendingIntent {
+  /** mode: day(그 날 목록) · createEvent/createTodo(+ 빠른 입력). requestCode 에 mode 를 넣어 같은 날짜의 PendingIntent 가 서로 덮지 않게 한다. */
+  fun openDay(context: Context, date: String, mode: String = ScheduleDayActivity.MODE_DAY): PendingIntent {
     val intent = Intent(context, ScheduleDayActivity::class.java)
       .putExtra(ScheduleDayActivity.EXTRA_DATE, date)
+      .putExtra(ScheduleDayActivity.EXTRA_MODE, mode)
       .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY)
-    return PendingIntent.getActivity(context, date.hashCode(), intent, FLAGS)
+    return PendingIntent.getActivity(context, ScheduleDayActivity.requestCode(date, mode), intent, FLAGS)
   }
 
   /** 앱 화면 열기: 같은 패키지의 deep link 만. 링크가 없으면 앱 첫 화면. */

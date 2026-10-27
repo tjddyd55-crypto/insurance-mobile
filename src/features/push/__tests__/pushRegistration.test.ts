@@ -27,13 +27,59 @@ import * as Notifications from 'expo-notifications';
 import {
   buildPushDeviceRegistrationBody,
   resolvePushAppPackage,
+  registerPushDeviceWithServer,
+  resetPushRegistrationDedupe,
   resolvePushPlatform,
   syncPushRegistrationIfPermitted,
+  unregisterPushDeviceWithServer,
+  PUSH_REGISTER_DEDUPE_MS,
 } from '../pushRegistration';
 import { getEnvironmentConfig } from '../../../config/environment';
 import { apiRequest } from '../../../api/client';
 
 describe('pushRegistration', () => {
+  beforeEach(() => {
+    resetPushRegistrationDedupe();
+    (apiRequest as jest.Mock).mockReset();
+  });
+
+  const registerCalls = () =>
+    (apiRequest as jest.Mock).mock.calls.filter((c) => c[0] === '/api/push/devices/register').length;
+
+  it('같은 로그인+같은 기기 토큰 동시 요청은 POST 1회를 공유', async () => {
+    let resolve!: (v: unknown) => void;
+    (apiRequest as jest.Mock).mockReturnValue(new Promise((r) => (resolve = r)));
+    const a = registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' });
+    const b = registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' });
+    resolve({ ok: true });
+    await expect(Promise.all([a, b])).resolves.toEqual([true, true]);
+    expect(registerCalls()).toBe(1);
+  });
+
+  it('성공 후 60초 안 반복은 생략, 지나거나 토큰/로그인이 다르면 다시 등록', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    (apiRequest as jest.Mock).mockResolvedValue({ ok: true });
+    await registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' });
+    await registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' });
+    expect(registerCalls()).toBe(1);
+    await registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd2' });
+    await registerPushDeviceWithServer({ authToken: 'a2', deviceToken: 'd1' });
+    expect(registerCalls()).toBe(3);
+    now.mockReturnValue(1_000_000 + PUSH_REGISTER_DEDUPE_MS);
+    await registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' });
+    expect(registerCalls()).toBe(4);
+    now.mockRestore();
+  });
+
+  it('실패는 기억하지 않고, 해제 후에는 다시 등록', async () => {
+    (apiRequest as jest.Mock).mockRejectedValueOnce(new Error('net')).mockResolvedValue({ ok: true });
+    await expect(registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' })).resolves.toBe(false);
+    await expect(registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' })).resolves.toBe(true);
+    await unregisterPushDeviceWithServer('a1');
+    await registerPushDeviceWithServer({ authToken: 'a1', deviceToken: 'd1' });
+    expect(registerCalls()).toBe(3);
+  });
+
   it('maps ios and android platform values', () => {
     expect(resolvePushPlatform('ios')).toBe('IOS');
     expect(resolvePushPlatform('android')).toBe('ANDROID');

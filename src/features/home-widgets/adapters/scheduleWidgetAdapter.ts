@@ -1,7 +1,8 @@
 import { ApiError } from '../../../api/client';
 import { fetchScheduleEvents } from '../../schedule/scheduleApi';
 import { addDaysYmd, countItemsByDay, eventDayRange, eventTimeLabel, eventsOnDay, scheduleGoogleWarning, tasksOnDay } from '../../schedule/scheduleModel';
-import type { ScheduleEventsResult } from '../../schedule/types';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs, type ScheduleViewPrefs } from '../../schedule/scheduleViewPrefs';
+import type { ScheduleEvent, ScheduleEventsResult } from '../../schedule/types';
 import { buildWidgetDeepLink } from '../engine/widgetDeepLink';
 import { clipWidgetTitle, type WidgetAdapter } from './adapterTypes';
 import { widgetWindow } from './widgetWindow';
@@ -41,16 +42,23 @@ export function widgetGoogleNotice(google: ScheduleEventsResult['google']): stri
 /** 앱 일정 화면 선택자(eventsOnDay → tasksOnDay) 그대로. 날짜 없는 할 일은 tasksOnDay 가 고르지 않는다. */
 export function buildScheduleDays(result: Pick<ScheduleEventsResult, 'events' | 'tasks'>, scheme: string, from: string, to: string): WidgetScheduleDay[] {
   const dates = new Set<string>();
+  // 날짜별 일정을 한 번에 모은다(날짜마다 전체 일정을 다시 훑으며 범위를 계산하던 O(날짜×일정) 제거). 원래 순서 유지 → eventsOnDay 와 같은 결과.
+  const eventsByDay = new Map<string, ScheduleEvent[]>();
   for (const event of result.events) {
     const range = eventDayRange(event);
-    for (let day = range.first < from ? from : range.first, guard = 0; day <= range.last && day <= to && guard < 400; day = addDaysYmd(day, 1), guard += 1) dates.add(day);
+    for (let day = range.first < from ? from : range.first, guard = 0; day <= range.last && day <= to && guard < 400; day = addDaysYmd(day, 1), guard += 1) {
+      dates.add(day);
+      const list = eventsByDay.get(day);
+      if (list) list.push(event);
+      else eventsByDay.set(day, [event]);
+    }
   }
   for (const task of result.tasks) if (task.dueDate && task.dueDate >= from && task.dueDate <= to) dates.add(task.dueDate);
   const link = (action: 'open' | 'edit', params: Record<string, string>) =>
     (action === 'edit' ? buildWidgetDeepLink(scheme, 'todo', 'edit', params) : buildWidgetDeepLink(scheme, 'schedule', 'open', params)) ?? '';
   return [...dates].sort().flatMap((date) => {
     const items: WidgetScheduleItem[] = [
-      ...eventsOnDay(result.events, date).map((event) => {
+      ...eventsOnDay(eventsByDay.get(date) ?? [], date).map((event) => {
         const time = eventTimeLabel(event);
         return { id: event.id, title: clipWidgetTitle(event.title), time: time.startsWith('종일') ? '종일' : time, kind: 'event' as const, done: false, link: link('open', { date, event: event.id }) };
       }),
@@ -67,7 +75,9 @@ export function buildScheduleDays(result: Pick<ScheduleEventsResult, 'events' | 
   });
 }
 
-export function scheduleWidgetPayload(result: ScheduleEventsResult, scheme: string, today: string): ScheduleWidgetPayload {
+/** prefs = PC/웹 일정 보기 설정(SSOT). null(없음·실패) → 전부 표시. 칸 목록과 배지 수가 같은 걸러진 결과를 쓴다. */
+export function scheduleWidgetPayload(raw: ScheduleEventsResult, scheme: string, today: string, prefs: ScheduleViewPrefs | null = null): ScheduleWidgetPayload {
+  const result = applyScheduleViewPrefs(raw, prefs);
   const range = widgetWindow(today);
   const events = buildScheduleDays(result, scheme, range.from, range.to);
   const calendarCounts: Record<string, number> = {};
@@ -79,6 +89,8 @@ export function scheduleWidgetPayload(result: ScheduleEventsResult, scheme: stri
 export const scheduleWidgetAdapter: WidgetAdapter<ScheduleWidgetPayload> = {
   async load({ token, scheme, today, reason }) {
     const range = widgetWindow(today);
+    // 설정은 일정과 병렬로 매 갱신(수동·포그라운드·동기화)마다 최신을 읽는다. 실패해도 위젯은 오류가 아니다.
+    const prefsPromise = fetchScheduleViewPrefs(token);
     let result: ScheduleEventsResult;
     if (reason === 'manual') {
       try {
@@ -90,6 +102,6 @@ export const scheduleWidgetAdapter: WidgetAdapter<ScheduleWidgetPayload> = {
     } else {
       result = await fetchScheduleEvents(token, range);
     }
-    return scheduleWidgetPayload(result, scheme, today);
+    return scheduleWidgetPayload(result, scheme, today, await prefsPromise);
   },
 };

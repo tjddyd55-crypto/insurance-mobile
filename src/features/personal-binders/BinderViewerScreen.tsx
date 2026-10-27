@@ -13,6 +13,7 @@ import {
   Button,
   Inline,
   ModalShell,
+  SafeFooter,
   Stack,
   useAppTheme,
   type AppTheme,
@@ -156,7 +157,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
         </View>
       </View>
       {immersive ? null : (
-        <View style={styles.controls}>
+        <SafeFooter style={styles.controls} basePadding={theme.spacing.lg}>
           <BinderThumbnailStrip
             token={token}
             binderId={binderId}
@@ -181,7 +182,7 @@ export function BinderViewerScreen({ binderId }: { binderId: string }) {
                 .finally(() => setExporting(false));
             }}
           />
-        </View>
+        </SafeFooter>
       )}
       <ModalShell open={tocOpen} title="목차" presentation="dialog" onRequestClose={() => setTocOpen(false)} scroll>
         <Stack gap="sm">
@@ -231,7 +232,6 @@ function createStyles(theme: AppTheme) {
     notice: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.sm },
     controls: {
       paddingHorizontal: theme.layout.screenPaddingHorizontal,
-      paddingBottom: theme.spacing.lg,
       gap: theme.spacing.sm,
     },
   });

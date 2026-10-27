@@ -96,7 +96,7 @@ export function CoverageScenarioSelectScreen() {
         closeOnBackdrop={false}
         onRequestClose={() => setAddOpen(false)}
         footer={
-          <Button
+          <Button variant="primary"
             label="만들기"
             loading={busy}
             disabled={!newTitle.trim()}

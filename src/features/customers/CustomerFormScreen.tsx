@@ -10,7 +10,7 @@ import {
   View,
   type KeyboardEvent,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -27,7 +27,7 @@ import {
   SelectField,
   TextField,
   useAppTheme,
-  useBottomSafeInset,
+  useSafeFooterPadding,
   type AppTheme,
 } from '../../design-system';
 import { AddressSearchField } from '../../components/AddressSearchField';
@@ -69,7 +69,7 @@ import { saveCustomerCustomFieldsForCustomer } from './customerCustomFieldsApi';
 import { getCustomerCustomFieldsValidationError } from './customerCustomFieldFormUtils';
 import { CustomerCustomFieldsEditor } from './CustomerCustomFieldsEditor';
 import { createCustomer, getCustomer, updateCustomer } from './customersApi';
-import { navigateToCustomerDetail } from './customerWorkspaceNavigation';
+import { customerCreateCancelPath, navigateToCustomerDetail } from './customerWorkspaceNavigation';
 import {
   CUSTOMER_GENDER_FORM_OPTIONS,
   resolveSegmentSelectedVariant,
@@ -90,6 +90,7 @@ type CustomerFormScreenProps =
 export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps) {
   const { token } = useAuth();
   const router = useRouter();
+  const { source: entrySource } = useLocalSearchParams<{ source?: string | string[] }>();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -102,7 +103,8 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   const kbHeightRef = useRef(0);
   const discardOpenRef = useRef(false);
   const initialCreateFocusDoneRef = useRef(false);
-  const bottomInset = useBottomSafeInset();
+  // 키보드가 열리면 하단 시스템 바 여백을 빼서 하단 버튼이 키보드 바로 위에 오게 한다.
+  const bottomInset = useSafeFooterPadding(0);
 
   useEffect(() => {
     discardOpenRef.current = discardOpen;
@@ -250,8 +252,9 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
       navigateToCustomerDetail(router, customerId);
       return;
     }
-    router.back();
-  }, [customerId, mode, queryClient, router]);
+    // router.back()은 Drawer firstRoute 정책으로 홈으로 간다 → 등록을 시작한 화면으로.
+    router.replace(customerCreateCancelPath(entrySource) as Href);
+  }, [customerId, entrySource, mode, queryClient, router]);
 
   const discardDraftAndLeave = useCallback(() => {
     if (originalFormRef.current) {

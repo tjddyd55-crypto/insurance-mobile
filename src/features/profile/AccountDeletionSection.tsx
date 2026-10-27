@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { AppText, Button, Card, ModalShell, Stack, TextField } from '../../design-system';
+import { AppText, Button, Card, Inline, ModalShell, Stack, TextField } from '../../design-system';
 import { requestAccountDeletion } from './profileApi';
 
 type Props = { token: string | null; onDeleted: (message: string) => Promise<void> };
@@ -44,10 +44,10 @@ export function AccountDeletionSection({ token, onDeleted }: Props) {
     </Stack></Card>
     <ModalShell open={open} title="회원탈퇴" presentation="dialog" busy={busy}
       closeOnBackdrop={false} dismissOnAndroidBack={false} onRequestClose={requestClose}
-      footer={<Stack gap="sm">
-        <Button label="계정 삭제 요청" accessibilityLabel="계정 삭제 요청" variant="danger" disabled={!valid || busy} loading={busy} onPress={() => void submit()} />
-        <Button label="취소" disabled={busy} onPress={requestClose} />
-      </Stack>}>
+      footer={<Inline>
+        <Button label="취소" variant="secondary" disabled={busy} onPress={requestClose} style={{ flex: 1 }} />
+        <Button label="계정 삭제 요청" accessibilityLabel="계정 삭제 요청" variant="danger" disabled={!valid || busy} loading={busy} onPress={() => void submit()} style={{ flex: 1 }} />
+      </Inline>}>
       <Stack gap="md">
         <AppText>계정과 저장된 고객·상담·파일 등 데이터가 삭제되며, 이 계정으로 더 이상 로그인할 수 없습니다. 정말 탈퇴하시겠습니까?</AppText>
         <TextField label="확인 문구" value={phrase} editable={!busy} placeholder="삭제 또는 계정삭제"

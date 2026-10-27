@@ -50,6 +50,8 @@ class WidgetLayoutPreviewTest {
     assertTrue(wideText.contains("미팅"))
     assertTrue(wideText.contains("+2"))
     capture("schedule-4x4", wide, 360, 400)
+    // 타이포 상향 후에도 칸 내용(날짜·제목·+N)이 칸 높이 안에 들어간다(잘림·겹침 없음).
+    assertCellsFit(wide)
 
     val small = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 210, false)!!)
     val smallText = texts(small)
@@ -58,6 +60,7 @@ class WidgetLayoutPreviewTest {
     assertTrue(smallText.contains("3"))
     assertTrue(smallText.contains("9+"))
     capture("schedule-small", small, 250, 210)
+    assertCellsFit(small)
 
     assertTrue(WidgetCacheManager.write(context, OneFcWidgetType.SCHEDULE, scheduleRaw))
     val threeItems = dayDialog("2026-10-21")
@@ -77,14 +80,18 @@ class WidgetLayoutPreviewTest {
     assertEquals("10월 22일에 추가", empty.findViewById<android.widget.EditText>(R.id.day_input).hint.toString())
     captureDialog("schedule-day-dialog-empty", empty, 340)
 
-    // 많은 항목: 목록만 화면 높이 절반으로 잘리고 추가 버튼은 남는다.
+    // 많은 항목: 카드 높이 상한(인셋 리스너가 주는 값, 여기서는 키보드가 화면 절반이라 가정)을 넘으면
+    // 목록(0dp/weight=1)만 줄고 입력칸은 카드 안에 그대로 남는다.
     val many = dayDialog("2026-10-08")
     assertTrue(texts(many).contains("일정10"))
     val scroll = many.findViewById<View>(R.id.day_scroll)
     val half = (many.resources.displayMetrics.heightPixels * 0.5f).toInt()
     captureDialog("schedule-day-dialog-many", many, 340, maxHeightPx = half)
-    assertTrue("scroll ${scroll.height} <= $half", scroll.height <= half)
-    assertTrue(many.findViewById<View>(R.id.day_input_row).height > 0)
+    assertTrue("card ${many.height} <= $half", many.height <= half)
+    val inputRow = many.findViewById<View>(R.id.day_input_row)
+    assertTrue(inputRow.height > 0)
+    assertTrue("input inside card", inputRow.bottom <= many.height)
+    assertTrue("list shrinks", scroll.height < half)
 
     // 빠른 추가: 입력 + 키보드(시뮬레이션), 오류(입력 유지), 저장 직후 새 항목(바로 누를 수 있음).
     val typingActivity = dayActivity("2026-10-21")
@@ -123,6 +130,13 @@ class WidgetLayoutPreviewTest {
     assertTrue("after $afterTitle before $beforeTitle", afterTitle > beforeTitle + 1f)
     capture("todo-before-font", before, 320, 280)
     capture("todo-after-font", after, 320, 280)
+    for (index in 0 until TodoWidgetRenderer.MAX_ROWS) {
+      val title = after.findViewById<TextView>(WidgetIds.TODO_TITLES[index])
+      val row = title.parent as View
+      if (title.visibility != View.VISIBLE || row.visibility != View.VISIBLE) continue
+      assertTrue("todo row $index ${title.height} <= ${row.height}", title.height in 1..row.height)
+      assertEquals(1, title.lineCount)
+    }
 
     val model = File(outDir, "scenes.json")
     model.writeText(JSONObject().put("scenes", scenes).toString())
@@ -149,7 +163,7 @@ class WidgetLayoutPreviewTest {
 
   private fun dayDialog(date: String): View = dayActivity(date).findViewById(R.id.day_card)
 
-  /** 다이얼로그는 실제 drawable 색·모서리로 그린다. maxHeightPx 가 있으면 목록 높이를 기기 규칙대로 자른다. */
+  /** 다이얼로그는 실제 drawable 색·모서리로 그린다. maxHeightPx 가 있으면 카드 높이를 그 값으로 고정한다(목록만 줄어듦). */
   private fun captureDialog(name: String, view: View, widthDp: Int, maxHeightPx: Int? = null, keyboardDp: Int = 0) {
     val width = dp(view, widthDp)
     fun measure() {
@@ -157,10 +171,10 @@ class WidgetLayoutPreviewTest {
       view.layout(0, 0, view.measuredWidth, view.measuredHeight)
     }
     measure()
-    val scroll = view.findViewById<View>(R.id.day_scroll)
-    if (maxHeightPx != null && scroll.height > maxHeightPx) {
-      scroll.layoutParams.height = maxHeightPx
-      measure()
+    // ScheduleDayActivity.applyCap 과 같은 방식: 자연 높이가 상한보다 크면 카드 높이를 상한으로 고정.
+    if (maxHeightPx != null && view.height > maxHeightPx) {
+      view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(maxHeightPx, View.MeasureSpec.EXACTLY))
+      view.layout(0, 0, view.measuredWidth, view.measuredHeight)
     }
     val nodes = JSONArray()
     collectReal(view, 0, 0, nodes)
@@ -260,6 +274,20 @@ class WidgetLayoutPreviewTest {
     view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
     view.layout(0, 0, view.measuredWidth, view.measuredHeight)
     scenes.put(scene(name, view))
+  }
+
+  private fun assertCellsFit(root: View) {
+    for (row in 0 until 6) for (col in 0 until 7) {
+      val cell = root.findViewById<ViewGroup>(WidgetIds.CELLS[row][col])
+      if (cell.visibility != View.VISIBLE || cell.height == 0) continue
+      for (i in 0 until cell.childCount) {
+        val child = cell.getChildAt(i)
+        // 소형 위젯 개수 배지(w_cnt)는 이번 타이포 범위 밖(기존 배치 그대로)이라 제외한다.
+        if (child.visibility != View.VISIBLE || child.id == WidgetIds.COUNTS[row][col]) continue
+        assertTrue("cell $row/$col child $i bottom ${child.bottom} <= ${cell.height}", child.bottom <= cell.height)
+        if (child is TextView && child.text.isNotEmpty()) assertEquals("cell $row/$col child $i one line", 1, child.lineCount)
+      }
+    }
   }
 
   private fun captureWrap(name: String, view: View, widthDp: Int) {

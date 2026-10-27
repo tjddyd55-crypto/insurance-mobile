@@ -161,6 +161,8 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps) 
             }
           : previous,
       );
+      // 목록 캐시 키는 ['customers','list',options] 이므로 위 setQueryData(['customers'])로는 갱신되지 않는다.
+      void queryClient.invalidateQueries({ queryKey: [...customerQueryKeys.all, "list"] });
       router.replace("/customers");
     },
   });

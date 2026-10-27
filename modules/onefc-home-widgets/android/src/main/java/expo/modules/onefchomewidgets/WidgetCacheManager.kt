@@ -86,6 +86,8 @@ object WidgetCacheManager {
 
   fun clearReason(context: Context): String? = prefs(context).getString(KEY_CLEAR_REASON, null)
 
+  fun scheme(context: Context): String? = prefs(context).getString(KEY_SCHEME, null)
+
   fun setScheme(context: Context, scheme: String) {
     prefs(context).edit().putString(KEY_SCHEME, scheme).apply()
   }

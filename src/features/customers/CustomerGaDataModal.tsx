@@ -13,6 +13,7 @@ import {
   Stack,
   useAppTheme,
   type AppTheme,
+  useSafeFooterPadding,
 } from "../../design-system";
 import { getCustomerGaExcelData } from "./customerGaDataApi";
 import { getGaDataEmptyState } from "./customerGaDataPresentation";
@@ -31,6 +32,7 @@ export function CustomerGaDataModal({
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const modalBottomPadding = useSafeFooterPadding(0);
   const query = useQuery({
     queryKey: ["customer-ga-excel", customerId],
     queryFn: () => getCustomerGaExcelData(token, customerId),
@@ -41,7 +43,7 @@ export function CustomerGaDataModal({
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.root}>
+      <View style={[styles.root, { paddingBottom: modalBottomPadding }]}>
         <AppHeader
           title="GA 데이터"
           subtitle={customerName}

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { ModalShell, TextField } from '../../design-system';
@@ -22,7 +21,6 @@ type Props = {
 export function CustomerPickerDialog({ open, onClose }: Props) {
   const { token } = useAuth();
   const customer = useCoverageCustomer();
-  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const query = useQuery({
     queryKey: ['coverage-simulator', 'customers'],
@@ -45,7 +43,8 @@ export function CustomerPickerDialog({ open, onClose }: Props) {
       onRequestClose={onClose}
       headerAction={<Text accessibilityRole="button" onPress={onClose} style={styles.close}>닫기</Text>}
     >
-      <View style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
+      {/* 가운데 다이얼로그는 시스템 내비 위에 떠 있으므로 하단 inset 불필요. */}
+      <View style={{ paddingBottom: 8 }}>
       <TextField
         accessibilityLabel="고객 검색"
         placeholder="이름 · 생년월일 · 연락처"

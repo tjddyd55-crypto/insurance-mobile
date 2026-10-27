@@ -11,6 +11,13 @@ import type { WidgetRefreshReason, WidgetType } from './engine/widgetTypes';
 
 /** 쓰기 직후 연속 이벤트를 한 번으로 묶는다. */
 export const WIDGET_CHANGE_DEBOUNCE_MS = 1_500;
+/** 앱 복귀 invalidate 알림(비동기 배치)이 도착할 때까지 2차 갱신을 막는 창. 뮤테이션·manual 새로고침은 영향 없음. */
+export const FOREGROUND_INVALIDATE_SUPPRESS_MS = 1_000;
+
+/** 복귀 직후의 'invalidate' 이벤트만 무시한다(이미 force refresh 함). */
+export function isSuppressedForegroundInvalidate(actionType: string, now: number, suppressUntil: number): boolean {
+  return actionType === 'invalidate' && now < suppressUntil;
+}
 
 /**
  * 앱 쪽 트리거: 로그인/계정 변경, 앱 복귀, 앱 쓰기(뮤테이션), 일정 새로고침·Google 재연결(setQueryData).
@@ -24,6 +31,8 @@ export function useHomeWidgetSync(): void {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountKey = user ? `${user.id}|${user.gaId}` : '';
   const previousAccount = useRef<string>('');
+  // 앱 복귀 시 직접 force refresh 하므로, 같은 복귀가 만든 schedule/todos invalidate 이벤트로 한 번 더 갱신하지 않는다.
+  const suppressInvalidateUntil = useRef(0);
 
   useEffect(() => {
     sessionRef.current = status === 'authenticated' && token && user ? { token, user } : null;
@@ -46,6 +55,7 @@ export function useHomeWidgetSync(): void {
   useEffect(() => {
     const appState = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
+      suppressInvalidateUntil.current = Date.now() + FOREGROUND_INVALIDATE_SUPPRESS_MS;
       void queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
       void queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
       const session = sessionRef.current;
@@ -84,6 +94,7 @@ export function useHomeWidgetSync(): void {
       if (event.type !== 'updated') return;
       const change = widgetChangeForQueryAction(event.action.type, 'manual' in event.action ? Boolean(event.action.manual) : false);
       if (!change) return;
+      if (isSuppressedForegroundInvalidate(event.action.type, Date.now(), suppressInvalidateUntil.current)) return;
       const types = widgetTypesWatching(event.query.queryKey[0]);
       if (types.length) schedule(change, types);
     });

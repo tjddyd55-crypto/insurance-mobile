@@ -73,4 +73,20 @@ class ScheduleQuickAddTest {
     assertEquals("하루 종일", rows.single().time)
     assertEquals("e", rows.single().id)
   }
+
+  @Test fun sensibleEndMatchesSchedulePolicy() {
+    assertEquals("10:00", ScheduleQuickAdd.sensibleEnd("09:00"))
+    assertEquals("15:30", ScheduleQuickAdd.sensibleEnd("14:30"))
+    assertEquals("23:59", ScheduleQuickAdd.sensibleEnd("23:10"))
+    assertEquals("10:00", ScheduleQuickAdd.sensibleEnd("bad"))
+  }
+
+  @Test fun dayModeAndRequestCodeIncludeMode() {
+    assertEquals(ScheduleDayActivity.MODE_DAY, ScheduleDayActivity.normalizeMode(null))
+    assertEquals(ScheduleDayActivity.MODE_DAY, ScheduleDayActivity.normalizeMode("x"))
+    assertEquals(ScheduleDayActivity.MODE_CREATE_TODO, ScheduleDayActivity.normalizeMode("createTodo"))
+    val day = ScheduleDayActivity.requestCode("2026-10-27", ScheduleDayActivity.MODE_DAY)
+    assertNotEquals(day, ScheduleDayActivity.requestCode("2026-10-27", ScheduleDayActivity.MODE_CREATE_EVENT))
+    assertNotEquals(ScheduleDayActivity.requestCode("2026-10-27", ScheduleDayActivity.MODE_CREATE_EVENT), ScheduleDayActivity.requestCode("2026-10-27", ScheduleDayActivity.MODE_CREATE_TODO))
+  }
 }

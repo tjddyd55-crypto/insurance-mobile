@@ -519,7 +519,8 @@ describe('static guards', () => {
     expect(after.indexOf('markScheduleWidgetSaved')).toBeGreaterThan(-1);
     expect(after.indexOf('markScheduleWidgetSaved')).toBeLessThan(after.indexOf('setFormState(null)'));
     expect(open.indexOf('endScheduleWidgetFlow')).toBeLessThan(open.indexOf('router.push'));
-    expect(schedule.match(/onSuccess: afterWrite/g)).toHaveLength(3);
+    // 일정 저장·삭제 2곳 (할 일 추가는 공통 Todo 폼 /todos/new 로 이동).
+    expect(schedule.match(/onSuccess: afterWrite/g)).toHaveLength(2);
     expect(schedule).not.toMatch(/BackHandler|router\.replace|setTimeout/);
   });
 
@@ -535,13 +536,22 @@ describe('static guards', () => {
   });
 
   it('the app never calls exit or kill', () => {
-    const forbidden = [/exitApp/, /killProcess/, /System\.exit/, /finishAndRemoveTask/];
+    // 유일한 예외(t595u): 홈 루트 '뒤로 2회 종료' 훅의 BackHandler.exitApp() 1회. 나머지 kill/exit 는 전부 금지.
+    const ROOT_BACK_EXIT_HOOK = 'src/navigation/useRootBackExit.ts';
+    const forbidden = [/exitApp/, /killProcess/, /System\.exit/, /finishAndRemoveTask/, /finishAffinity/];
     const files = collectSources(repo);
     const hits = files.filter((file) => {
       const source = read(file);
+      if (file.replace(/\\/g, '/').endsWith(ROOT_BACK_EXIT_HOOK)) {
+        const stripped = source.replace('leaveApp: () => BackHandler.exitApp(),', '');
+        return forbidden.some((pattern) => pattern.test(stripped));
+      }
       return forbidden.some((pattern) => pattern.test(source));
     });
     expect(hits).toEqual([]);
+    const hook = files.find((file) => file.replace(/\\/g, '/').endsWith(ROOT_BACK_EXIT_HOOK));
+    expect(hook).toBeDefined();
+    expect(read(hook as string).match(/exitApp\(\)/g)).toHaveLength(1);
   });
 });
 

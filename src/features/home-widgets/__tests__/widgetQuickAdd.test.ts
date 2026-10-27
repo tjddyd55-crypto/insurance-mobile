@@ -45,7 +45,7 @@ afterAll(() => setWidgetNativeForTests(undefined));
 
 describe('widget quick add', () => {
   it('validates input', () => {
-    expect(validateQuickAdd({ requestId: RID, date: '2026-10-22', title: ' 미팅 ' })).toEqual({ requestId: RID, date: '2026-10-22', title: '미팅' });
+    expect(validateQuickAdd({ requestId: RID, date: '2026-10-22', title: ' 미팅 ' })).toEqual({ requestId: RID, date: '2026-10-22', title: '미팅', kind: 'event', allDay: true, startTime: '', endTime: '' });
     expect(validateQuickAdd({ requestId: RID, date: '2026-10-22', title: '   ' })).toBeNull();
     expect(validateQuickAdd({ requestId: 'x', date: '2026-10-22', title: '미팅' })).toBeNull();
     expect(validateQuickAdd({ requestId: RID, date: '20261022', title: '미팅' })).toBeNull();

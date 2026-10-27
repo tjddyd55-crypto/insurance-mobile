@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Linking,
   RefreshControl,
@@ -19,6 +19,7 @@ import {
   Card,
   Inline,
   ModalShell,
+  useKeyboardRevealScroll,
   Screen,
   Stack,
   TextField,
@@ -36,6 +37,7 @@ import {
   listStorageFolders,
   renameStorageFile,
   renameStorageFolder,
+  storageFolderCreateMutationOptions,
   uploadStorageFile,
 } from "./storageApi";
 import {
@@ -89,10 +91,13 @@ export function StorageScreen() {
     ]);
   };
   const createFolder = useMutation({
-    mutationFn: () => createStorageFolder(token, folderName, folderId),
-    onSuccess: async () => {
+    ...storageFolderCreateMutationOptions(() =>
+      createStorageFolder(token, folderName, folderId),
+    ),
+    onSuccess: () => {
       setFolderName("");
-      await qc.invalidateQueries({ queryKey: [...ROOT, "folders"] });
+      // 목록 갱신을 기다리지 않는다: refetch(30s 타임아웃 + retry 1)가 늦으면 '처리 중'이 60초 넘게 남는다.
+      void qc.invalidateQueries({ queryKey: [...ROOT, "folders"] });
     },
   });
   const renameMutation = useMutation({
@@ -139,6 +144,8 @@ export function StorageScreen() {
   async function openFile(file: StorageFile) {
     await Linking.openURL(await createStorageOpenUrl(token, file.id));
   }
+  const scrollRef = useRef<ScrollView>(null);
+  const keyboard = useKeyboardRevealScroll(scrollRef);
   const rootFolders = (folders.data ?? []).filter(
     (folder) => folder.parentId === folderId,
   );
@@ -151,7 +158,16 @@ export function StorageScreen() {
       <AppHeader title="내 저장공간" />
       <Screen padded={false}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          ref={scrollRef}
+          onScroll={keyboard.onScroll}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.content,
+            keyboard.keyboardInset > 0 && {
+              paddingBottom: keyboard.keyboardInset + theme.spacing.lg,
+            },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={folders.isRefetching || files.isRefetching}

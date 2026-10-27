@@ -10,7 +10,6 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
   const val MAX_ROWS = 8
 
   const val OUT_OF_RANGE_TEXT = "이 날짜는 앱에서 볼 수 있어요"
-  const val OPEN_APP_TEXT = "앱에서 보기 ›"
 
   enum class EmptyState { NO_TODOS, OUT_OF_RANGE }
 
@@ -25,6 +24,14 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
 
   fun date(context: Context, widgetId: Int, today: String): String =
     WidgetCacheManager.instanceValue(context, type, widgetId, "date", today)?.takeIf { WidgetDates.isYmd(it) } ?: today
+
+  enum class AddSlot { HEADER, EMPTY }
+
+  /** + 기본 날짜: 헤더 +는 날짜 context가 없어 오늘, 빈 상태 +는 보고 있던 날짜. */
+  fun addDate(slot: AddSlot, viewed: String, today: String): String = when (slot) {
+    AddSlot.HEADER -> today
+    AddSlot.EMPTY -> viewed.takeIf { WidgetDates.isYmd(it) } ?: today
+  }
 
   fun next(current: String, action: String, today: String): String? = when (action) {
     WidgetIntents.ACTION_PREV -> WidgetDates.addDays(current, -1)
@@ -53,16 +60,23 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
     val muted = context.getColor(R.color.onefc_widget_text_muted)
 
     views.setTextViewText(R.id.w_day_label, WidgetDates.todoDayLabel(date, today))
-    views.setOnClickPendingIntent(R.id.w_day_label, WidgetIntents.openApp(context, listLink, nonce))
+    // 날짜 라벨: 그 날의 Native 날짜 모달(일정 위젯과 같은 day 모드). 헤더는 앱 할 일 그대로.
+    views.setOnClickPendingIntent(R.id.w_day_label, WidgetIntents.openDay(context, date))
+    // 헤더 "ONE FC 할 일": 앱 할 일 목록으로 바로 진입.
+    views.setOnClickPendingIntent(R.id.w_title, WidgetIntents.openApp(context, listLink, nonce))
     views.setOnClickPendingIntent(R.id.w_prev, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_PREV, widgetId))
     views.setOnClickPendingIntent(R.id.w_next, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_NEXT, widgetId))
     views.setOnClickPendingIntent(R.id.w_to_today, WidgetIntents.broadcast(context, type, WidgetIntents.ACTION_TODAY, widgetId))
     views.setViewVisibility(R.id.w_to_today, if (date == today) View.GONE else View.VISIBLE)
     WidgetCommonViews.bindRefresh(context, views, type, widgetId)
-    val addIntent = WidgetIntents.openApp(context, WidgetDeepLink.build(envelope.scheme, type, WidgetDeepLink.Action.CREATE, mapOf("date" to date)), nonce)
+    // 헤더 +: Native 빠른 입력(날짜 context 없음 → 오늘 기본, 날짜만 변경 가능, 시간 없음).
+    val addIntent = WidgetIntents.openDay(context, addDate(AddSlot.HEADER, date, today), ScheduleDayActivity.MODE_CREATE_TODO)
     views.setOnClickPendingIntent(R.id.w_add, addIntent)
-    views.setContentDescription(R.id.w_add, "${WidgetDates.dayTitle(date)} 할 일 추가")
-    views.setOnClickPendingIntent(R.id.w_empty_add, addIntent)
+    views.setContentDescription(R.id.w_add, "할 일 추가")
+    // 빈 상태 +: 지금 보고 있는 날짜(예: 11/3)를 기본값으로.
+    val emptyAddIntent = WidgetIntents.openDay(context, addDate(AddSlot.EMPTY, date, today), ScheduleDayActivity.MODE_CREATE_TODO)
+    views.setOnClickPendingIntent(R.id.w_empty_add, emptyAddIntent)
+    views.setContentDescription(R.id.w_empty_add, context.getString(R.string.onefc_widget_add_todo))
 
     val items = payload.todos[date].orEmpty()
     val maxRows = rows(heightDp)
@@ -93,8 +107,7 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
       if (state == EmptyState.OUT_OF_RANGE) {
         // 위젯 캐시가 조회하지 않은 날짜: 할 일이 없다고 단정하지 않고 앱에서 확인하도록.
         views.setTextViewText(R.id.w_empty_text, OUT_OF_RANGE_TEXT)
-        views.setTextViewText(R.id.w_empty_add, OPEN_APP_TEXT)
-        views.setOnClickPendingIntent(R.id.w_empty_add, WidgetIntents.openApp(context, listLink, nonce))
+        views.setTextViewText(R.id.w_empty_add, context.getString(R.string.onefc_widget_empty_todo_add))
       } else {
         views.setTextViewText(R.id.w_empty_text, context.getString(R.string.onefc_widget_empty_todo))
         views.setTextViewText(R.id.w_empty_add, context.getString(R.string.onefc_widget_empty_todo_add))

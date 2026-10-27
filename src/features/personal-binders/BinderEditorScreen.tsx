@@ -400,7 +400,7 @@ function SectionNameModal({
       presentation="dialog"
       busy={busy}
       onRequestClose={() => onChange(null)}
-      footer={<Button label="저장" loading={busy} disabled={!form?.title.trim()} onPress={onSubmit} />}
+      footer={<Button variant="primary" label="저장" loading={busy} disabled={!form?.title.trim()} onPress={onSubmit} />}
     >
       <TextField accessibilityLabel="섹션 이름" placeholder="섹션 이름" value={form?.title ?? ''} onChangeText={(value) => onChange(form ? { ...form, title: value } : form)} />
     </ModalShell>

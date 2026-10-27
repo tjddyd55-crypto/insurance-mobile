@@ -17,6 +17,7 @@ import {
   resolveAddressSearchEmbedHeight,
   resolveAddressSearchPanelWidth,
 } from "./addressSearchUi";
+import { consumeBackForKeyboard } from "../../design-system/modalKeyboard";
 import {
   ADDRESS_SEARCH_POSTCODE_HTML,
   parseAddressSearchWebViewMessage,
@@ -65,7 +66,11 @@ export function AddressSearchModal({
       transparent
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        // ModalShell 과 동일: 키보드가 열린 상태의 첫 Back 은 키보드만 닫는다.
+        if (consumeBackForKeyboard()) return;
+        onClose();
+      }}
     >
       <View style={styles.overlay} pointerEvents="box-none">
         <Pressable

@@ -11,11 +11,13 @@ export const unstable_settings = {
 export default function TodosLayout() {
   return (
     <Stack
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         // 스와이프 pop은 변경사항 확인을 건너뛴다. 헤더·취소·Android back이 목록으로 보낸다.
         gestureEnabled: false,
-      }}
+        // 위젯 + 할 일: 목록이 밀려나는 전환 없이 할 일 추가 폼을 바로 보인다.
+        animation: (route.params as { src?: string } | undefined)?.src === 'widget' ? 'none' : 'default',
+      })}
     />
   );
 }

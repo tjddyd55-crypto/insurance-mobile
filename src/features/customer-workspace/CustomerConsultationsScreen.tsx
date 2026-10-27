@@ -279,7 +279,7 @@ function ConsultationEditor({
             onPress={onClose}
             style={styles.grow}
           />
-          <Button
+          <Button variant="primary"
             label="저장"
             loading={save.isPending}
             disabled={!body.trim()}
