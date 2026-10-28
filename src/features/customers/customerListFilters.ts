@@ -4,7 +4,7 @@ import type {
   CustomerQuickSortType,
 } from './customerListFilterConfig';
 import type { CustomerRecord } from './types';
-import { customerMatchesSearch } from './customerModel';
+import { customerMatchesNamePhoneKeyword } from './customerKeywordMatch';
 
 export type CustomerListFilters = {
   favoritesOnly: boolean;
@@ -89,7 +89,7 @@ export function filterCustomerList(
   filters: CustomerListFilters,
 ): CustomerRecord[] {
   return customers
-    .filter((customer) => customerMatchesSearch(customer, search))
+    .filter((customer) => customerMatchesNamePhoneKeyword(customer, search.trim()))
     .filter((customer) => customerMatchesListFilters(customer, filters));
 }
 
