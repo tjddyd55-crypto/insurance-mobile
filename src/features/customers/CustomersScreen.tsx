@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { SearchControlRow } from '../../components/SearchControlRow';
+import { useDebouncedSearch } from './customerKeywordMatch';
 import {
   AppText,
   Button,
@@ -52,7 +53,8 @@ export function CustomersScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
   const [searchDraft, setSearchDraft] = useState('');
-  const [search, setSearch] = useState('');
+  // PC 와 같이 입력 즉시(180ms debounce, 비우면 즉시) 로컬 목록에서 이름+전화번호로 거른다. 서버 요청 없음.
+  const search = useDebouncedSearch(searchDraft.trim());
   const [appliedFilters, setAppliedFilters] = useState<CustomerListFilters>(
     DEFAULT_CUSTOMER_LIST_FILTERS,
   );
@@ -114,10 +116,6 @@ export function CustomersScreen() {
   const filtersActive = hasActiveCustomerListFilters(appliedFilters);
   const activeFilterCount = countActiveCustomerListFilters(appliedFilters);
 
-  const applySearch = () => {
-    setSearch(searchDraft.trim());
-  };
-
   return (
     <View style={styles.root}>
       <AppHeader title="고객리스트" />
@@ -163,7 +161,8 @@ export function CustomersScreen() {
                 placeholder="이름 / 전화번호 검색"
                 value={searchDraft}
                 onChangeText={setSearchDraft}
-                onSubmit={applySearch}
+                onSubmit={() => undefined}
+                showSearchButton={false}
                 accessibilityLabel="고객 검색"
                 trailing={
                   <Button
