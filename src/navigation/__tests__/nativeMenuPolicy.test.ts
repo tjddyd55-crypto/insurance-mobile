@@ -169,7 +169,7 @@ describe('native session menu policy', () => {
         },
       }), capabilities);
       expect(menu).toHaveLength(8);
-      expect(labels(menu)).toHaveLength(26);
+      expect(labels(menu)).toHaveLength(27);
     },
   );
 
@@ -216,7 +216,8 @@ describe('native session menu policy', () => {
     expect(team?.nativePath).toBe('/team/members');
     expect(team?.badge).toBe('유료');
     expect(customers?.badge).toBe('유료');
-    expect(contacts).toBeUndefined();
+    expect(contacts?.nativePath).toBe('/insurance/contacts');
+    expect(contacts?.badge).toBeUndefined();
     expect(insurerNews?.badge).toBe('GA 전용');
     expect(isPublicAccountGaOnlyPath('/team/files')).toBe(false);
     expect(isPublicAccountGaOnlyPath('/portal/newsletters')).toBe(true);
