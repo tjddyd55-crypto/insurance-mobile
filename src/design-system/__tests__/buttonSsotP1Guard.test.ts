@@ -16,7 +16,7 @@ function buttonWithLabel(source: string, label: string): string[] {
 describe('P1-B schedule delete', () => {
   const src = read('features/schedule/ScheduleScreen.tsx');
   it('delete ConfirmDialog uses tone="danger" with busy', () => {
-    const dialog = src.match(/<ConfirmDialog[\s\S]*?\/>/)?.[0] ?? '';
+    const dialog = (src.match(/<ConfirmDialog[\s\S]*?\/>/g) ?? []).find((d) => d.includes('confirmLabel="삭제"')) ?? '';
     expect(dialog).toContain('confirmLabel="삭제"');
     expect(dialog).toContain('tone="danger"');
     expect(dialog).toContain('busy={remove.isPending}');
