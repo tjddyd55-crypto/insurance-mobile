@@ -402,8 +402,17 @@ function crossesMidnight(date: string | undefined, endDate: string | undefined):
   return Boolean(date && endDate && endDate > date);
 }
 
+/**
+ * 시작 시각 변경. 같은 날 일정에서 종료가 이전 시작의 자동값(sensibleEndTime)이었다면
+ * 새 시작 기준 자동값으로 다시 잡는다. 23:59 같은 중간값이 남지 않게 한다.
+ * 사용자가 직접 고른 종료와 자정을 넘는 일정은 그대로 둔다.
+ */
 export function withScheduleStartTime(fields: ScheduleClock, startTime: string): ScheduleClock {
-  return scheduleClock(scheduleEventWriteTimes({ ...fields, allDay: false, startTime }), { ...fields, allDay: false, startTime });
+  const sameDay = !crossesMidnight(fields.date, fields.endDate);
+  const autoEnd = !fields.allDay && HM.test(fields.startTime) && fields.endTime === sensibleEndTime(fields.startTime);
+  const endTime = sameDay && autoEnd && HM.test(startTime) ? sensibleEndTime(startTime) : fields.endTime;
+  const next = { ...fields, allDay: false, startTime, endTime };
+  return scheduleClock(scheduleEventWriteTimes(next), next);
 }
 
 export function withScheduleEndTime(fields: ScheduleClock, endTime: string): ScheduleClock {

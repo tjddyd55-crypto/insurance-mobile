@@ -140,6 +140,22 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
   );
   const hydrateEpochRef = useRef(0);
 
+  // 같은 화면 인스턴스에 다른 customerId 가 오면 이전 고객 상태를 버리고 다시 채운다.
+  const hydratedCustomerIdRef = useRef<number | undefined>(customerId);
+  useEffect(() => {
+    if (mode !== 'edit-basic' || hydratedCustomerIdRef.current === customerId) return;
+    hydratedCustomerIdRef.current = customerId;
+    hydrateEpochRef.current += 1;
+    originalFormRef.current = null;
+    originalSnapshotRef.current = null;
+    setForm(cloneCustomerFormState(EMPTY_CUSTOMER_FORM));
+    setErrors({});
+    setValidationMessage(null);
+    setDiscardOpen(false);
+    setInitialized(false);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [customerId, mode]);
+
   const customerQuery = useQuery({
     queryKey: customerQueryKeys.detail(customerId ?? 0),
     queryFn: () => getCustomer(token, customerId ?? 0),
@@ -148,6 +164,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
 
   useEffect(() => {
     if (mode !== 'edit-basic' || !customerQuery.data || initialized) return;
+    if (customerQuery.data.id !== customerId) return;
     const epoch = ++hydrateEpochRef.current;
     let cancelled = false;
     const customer = customerQuery.data;
@@ -163,7 +180,7 @@ export function CustomerFormScreen({ mode, customerId }: CustomerFormScreenProps
     return () => {
       cancelled = true;
     };
-  }, [customerQuery.data, initialized, mode, token]);
+  }, [customerId, customerQuery.data, initialized, mode, token]);
 
   const dirty =
     initialized &&
