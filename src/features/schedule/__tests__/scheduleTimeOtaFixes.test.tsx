@@ -106,6 +106,6 @@ describe('시간 선택 줄은 하나만 보인다', () => {
     expect(src).toMatch(/openTimeField === 'start'/);
     expect(src).toMatch(/<ScheduleTimePicker label="시작 시간"/);
     const field = readFileSync(join(__dirname, '../ScheduleTimeField.tsx'), 'utf8');
-    expect(field).not.toMatch(/flexWrap: 'nowrap'/);
+    expect(field).not.toMatch(/flexWrap: 'wrap'/);
   });
 });

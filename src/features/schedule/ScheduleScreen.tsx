@@ -66,6 +66,7 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { ScheduleDateField } from './ScheduleDateField';
+import { decideScheduleFormClose, SCHEDULE_LEAVE_CONFIRM_COPY, scheduleFormSnapshot } from './scheduleFormGuard';
 import { ScheduleTimeField, ScheduleTimePicker } from './ScheduleTimeField';
 import { refreshWidgets } from '../home-widgets/engine/widgetRefreshCoordinator';
 import { scheduleQueryKeys } from './queryKeys';
@@ -96,7 +97,11 @@ export function scheduleRefreshError(error: unknown): string | null {
   return error ? describeApiError(error, '일정을 새로고침하지 못했습니다.') : null;
 }
 
-type FormState = { mode: 'create' | 'edit'; event: ScheduleEvent | null; form: ScheduleEventForm; requestId: string };
+type FormState = { mode: 'create' | 'edit'; event: ScheduleEvent | null; form: ScheduleEventForm; requestId: string; initialSnapshot: string };
+
+function openFormState(mode: FormState['mode'], event: ScheduleEvent | null, form: ScheduleEventForm): FormState {
+  return { mode, event, form, requestId: newScheduleRequestId(), initialSnapshot: scheduleFormSnapshot(form) };
+}
 
 function saveSchedule(token: string | null, state: FormState): Promise<unknown> {
   if (state.mode === 'create') return createOnefcSchedule(token, state.form, state.requestId);
@@ -130,6 +135,8 @@ export function ScheduleScreen() {
   const [formState, setFormState] = useState<FormState | null>(null);
   // 시작/종료 시간 선택 줄은 한 번에 하나만 연다.
   const [openTimeField, setOpenTimeField] = useState<'start' | 'end' | null>(null);
+  // 작성 중 나가기 확인. Android Back·취소 모두 ModalShell onRequestClose → requestCloseForm 한 경로만 탄다.
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ScheduleEvent | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -174,7 +181,7 @@ export function ScheduleScreen() {
       setFormError(null);
       // 위젯·앱 모두 같은 일정 추가 폼(SSOT). 위젯이면 폼 뒤의 목록만 숨긴다.
       setWidgetForm(widgetArm.current.start);
-      setFormState({ mode: 'create', event: null, form: emptyEventForm(linkTarget.date), requestId: newScheduleRequestId() });
+      setFormState(openFormState('create', null, emptyEventForm(linkTarget.date)));
     }
     const arm = widgetArm.current;
     if (arm.start && arm.entryId) armScheduleWidgetFlow(arm.entryId);
@@ -229,6 +236,7 @@ export function ScheduleScreen() {
   };
   const afterWrite = async () => {
     markScheduleWidgetSaved();
+    setLeaveConfirm(false);
     setFormState(null);
     setDeleting(null);
     setDetail(null);
@@ -283,7 +291,7 @@ export function ScheduleScreen() {
     setFormError(null);
     save.reset();
     setWidgetForm(false);
-    setFormState({ mode: 'create', event: null, form: emptyEventForm(selected), requestId: newScheduleRequestId() });
+    setFormState(openFormState('create', null, emptyEventForm(selected)));
   };
   /** 할 일 추가는 할 일 메뉴와 같은 Todo 생성폼(SSOT: /todos/new). 저장·취소 후 이 날짜의 일정으로 돌아온다. */
   const openTodoCreate = () => {
@@ -295,7 +303,7 @@ export function ScheduleScreen() {
     setFormError(null);
     setDetail(null);
     setWidgetForm(false);
-    setFormState({ mode: 'edit', event, form: eventToForm(event), requestId: newScheduleRequestId() });
+    setFormState(openFormState('edit', event, eventToForm(event)));
   };
   const submitForm = () => {
     if (!formState) return;
@@ -310,7 +318,14 @@ export function ScheduleScreen() {
 
   const closeForm = () => {
     setOpenTimeField(null);
+    setLeaveConfirm(false);
     setFormState(null);
+  };
+  const requestCloseForm = () => {
+    if (!formState) return;
+    const decision = decideScheduleFormClose({ busy: save.isPending, initialSnapshot: formState.initialSnapshot, current: formState.form });
+    if (decision === 'close') closeForm();
+    else if (decision === 'confirm') setLeaveConfirm(true);
   };
   // 일정 추가/수정 폼(SSOT). 위젯 진입은 로딩·오류 상태에서도 이 폼을 바로 띄운다.
   const scheduleForm = (
@@ -319,10 +334,10 @@ export function ScheduleScreen() {
       title={scheduleFormTitle(formState)}
       presentation="fullscreen"
       busy={save.isPending}
-      onRequestClose={closeForm}
+      onRequestClose={requestCloseForm}
       footer={
         <Inline gap="sm">
-          <View style={styles.flex}><Button label="취소" fullWidth disabled={save.isPending} onPress={closeForm} /></View>
+          <View style={styles.flex}><Button label="취소" fullWidth disabled={save.isPending} onPress={requestCloseForm} /></View>
           <View style={styles.flex}><Button label="저장" variant="primary" fullWidth loading={save.isPending} onPress={submitForm} /></View>
         </Inline>
       }
@@ -383,6 +398,16 @@ export function ScheduleScreen() {
           ) : null}
         </Stack>
       ) : null}
+      <ConfirmDialog
+        open={leaveConfirm && formState !== null}
+        title={SCHEDULE_LEAVE_CONFIRM_COPY.title}
+        message={SCHEDULE_LEAVE_CONFIRM_COPY.message}
+        cancelLabel={SCHEDULE_LEAVE_CONFIRM_COPY.cancelLabel}
+        confirmLabel={SCHEDULE_LEAVE_CONFIRM_COPY.confirmLabel}
+        tone="danger"
+        onCancel={() => setLeaveConfirm(false)}
+        onConfirm={closeForm}
+      />
     </ModalShell>
   );
   // 위젯 + 일정: 첫 렌더(링크 효과 전)부터 폼만 보이게 한다. 일정 목록/로딩 화면을 먼저 보여주지 않는다.
