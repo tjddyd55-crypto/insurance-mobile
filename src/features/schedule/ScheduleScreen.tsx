@@ -66,7 +66,7 @@ import {
   type ScheduleNativeRoute,
 } from './scheduleModel';
 import { ScheduleDateField } from './ScheduleDateField';
-import { ScheduleTimeField } from './ScheduleTimeField';
+import { ScheduleTimeField, ScheduleTimePicker } from './ScheduleTimeField';
 import { refreshWidgets } from '../home-widgets/engine/widgetRefreshCoordinator';
 import { scheduleQueryKeys } from './queryKeys';
 import { resolvePendingLinkItem, scheduleLinkTarget } from './scheduleLinkParams';
@@ -128,6 +128,8 @@ export function ScheduleScreen() {
   const [selected, setSelected] = useState(today);
   const [detail, setDetail] = useState<ScheduleEvent | ScheduleTask | null>(null);
   const [formState, setFormState] = useState<FormState | null>(null);
+  // 시작/종료 시간 선택 줄은 한 번에 하나만 연다.
+  const [openTimeField, setOpenTimeField] = useState<'start' | 'end' | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ScheduleEvent | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -306,7 +308,10 @@ export function ScheduleScreen() {
   const patchForm = (patch: Partial<ScheduleEventForm>) =>
     setFormState((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
 
-  const closeForm = () => setFormState(null);
+  const closeForm = () => {
+    setOpenTimeField(null);
+    setFormState(null);
+  };
   // 일정 추가/수정 폼(SSOT). 위젯 진입은 로딩·오류 상태에서도 이 폼을 바로 띄운다.
   const scheduleForm = (
     <ModalShell
@@ -347,10 +352,30 @@ export function ScheduleScreen() {
             onPress={() => patchForm(toggleScheduleTime(formState.form))}
           />
           {formState.form.allDay ? null : (
-            <Inline gap="sm">
-              <ScheduleTimeField label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm(withScheduleStartTime(formState.form, startTime))} />
-              <ScheduleTimeField label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm(withScheduleEndTime(formState.form, endTime))} />
-            </Inline>
+            <Stack gap="xs">
+              <Inline gap="sm">
+                <ScheduleTimeField
+                  label="시작 시간"
+                  value={formState.form.startTime}
+                  open={openTimeField === 'start'}
+                  onOpenChange={(next) => setOpenTimeField(next ? 'start' : null)}
+                  onChange={(startTime) => patchForm(withScheduleStartTime(formState.form, startTime))}
+                />
+                <ScheduleTimeField
+                  label="종료 시간"
+                  value={formState.form.endTime}
+                  open={openTimeField === 'end'}
+                  onOpenChange={(next) => setOpenTimeField(next ? 'end' : null)}
+                  onChange={(endTime) => patchForm(withScheduleEndTime(formState.form, endTime))}
+                />
+              </Inline>
+              {openTimeField === 'start' ? (
+                <ScheduleTimePicker label="시작 시간" value={formState.form.startTime} onChange={(startTime) => patchForm(withScheduleStartTime(formState.form, startTime))} />
+              ) : null}
+              {openTimeField === 'end' ? (
+                <ScheduleTimePicker label="종료 시간" value={formState.form.endTime} onChange={(endTime) => patchForm(withScheduleEndTime(formState.form, endTime))} />
+              ) : null}
+            </Stack>
           )}
           <TextField label="설명" multiline value={formState.form.description} onChangeText={(description) => patchForm({ description })} />
           {formError || save.isError ? (

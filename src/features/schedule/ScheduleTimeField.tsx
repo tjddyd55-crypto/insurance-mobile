@@ -12,6 +12,9 @@ type ScheduleTimeFieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** 화면이 시작/종료 중 하나만 열도록 제어할 때 쓴다. 제어 모드에서는 선택 줄을 이 필드 안에 그리지 않는다. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const FALLBACK: ClockParts = { hour12: 9, minute: 0, meridiem: 'am' };
@@ -70,16 +73,71 @@ function shiftMinute(parts: ClockParts, delta: number): ClockParts {
  * 시·분·오전/오후를 한 줄에 고른다. HH:mm 직접 입력은 없다.
  * 고른 값은 24시간 HH:mm 으로 올린다.
  */
-export function ScheduleTimeField({ label, value, onChange }: ScheduleTimeFieldProps) {
+type ScheduleTimePickerProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+};
+
+/** 시·분·오전/오후 선택 줄. 부모가 전체 폭으로 한 번만 그린다. */
+export function ScheduleTimePicker({ label, value, onChange }: ScheduleTimePickerProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [open, setOpen] = useState(false);
   const parts = parseClock(value) ?? FALLBACK;
   const commit = (next: ClockParts) => onChange(clockToHm(next));
+  return (
+    <View style={styles.line} accessibilityRole="adjustable" accessibilityLabel={`${label} 시간 선택`}>
+      <AppText variant="caption" color="textSecondary">시</AppText>
+      <Button label="−" size="sm" accessibilityLabel="시 내리기" onPress={() => commit(shiftHour(parts, -1))} />
+      <AppText variant="bodyStrong" align="center" style={styles.digit}>{parts.hour12}</AppText>
+      <Button label="+" size="sm" accessibilityLabel="시 올리기" onPress={() => commit(shiftHour(parts, 1))} />
+      <AppText variant="bodyStrong">:</AppText>
+      <AppText variant="caption" color="textSecondary">분</AppText>
+      <Button label="−" size="sm" accessibilityLabel="분 내리기" onPress={() => commit(shiftMinute(parts, -1))} />
+      <AppText variant="bodyStrong" align="center" style={styles.digit}>{pad2(parts.minute)}</AppText>
+      <Button label="+" size="sm" accessibilityLabel="분 올리기" onPress={() => commit(shiftMinute(parts, 1))} />
+      <Button
+        label="오전"
+        size="sm"
+        variant={parts.meridiem === 'am' ? 'selected' : 'secondary'}
+        accessibilityState={{ selected: parts.meridiem === 'am' }}
+        onPress={() => commit({ ...parts, meridiem: 'am' })}
+      />
+      <Button
+        label="오후"
+        size="sm"
+        variant={parts.meridiem === 'pm' ? 'selected' : 'secondary'}
+        accessibilityState={{ selected: parts.meridiem === 'pm' }}
+        onPress={() => commit({ ...parts, meridiem: 'pm' })}
+      />
+    </View>
+  );
+}
+
+/**
+ * 시간 표시 필드. 누르면 선택 줄을 연다.
+ * open/onOpenChange 를 주면 제어 모드: 선택 줄은 부모가 ScheduleTimePicker 로 그린다.
+ * 고른 값은 24시간 HH:mm 으로 올린다.
+ */
+export function ScheduleTimeField({ label, value, onChange, open: controlledOpen, onOpenChange }: ScheduleTimeFieldProps) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const [localOpen, setLocalOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : localOpen;
+  const toggle = () => {
+    if (controlled) onOpenChange?.(!open);
+    else setLocalOpen((current) => !current);
+  };
 
   return (
     <View style={styles.flex}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 시간 열기`} onPress={() => setOpen((current) => !current)}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label} 시간 열기`}
+        accessibilityState={{ expanded: open }}
+        onPress={toggle}
+      >
         <TextField
           label={label}
           value={formatKoreanClock(value)}
@@ -89,33 +147,7 @@ export function ScheduleTimeField({ label, value, onChange }: ScheduleTimeFieldP
           importantForAccessibility="no-hide-descendants"
         />
       </Pressable>
-      {open ? (
-        <View style={styles.line} accessibilityRole="adjustable" accessibilityLabel={`${label} 시간 선택`}>
-          <AppText variant="caption" color="textSecondary">시</AppText>
-          <Button label="−" size="sm" accessibilityLabel="시 내리기" onPress={() => commit(shiftHour(parts, -1))} />
-          <AppText variant="bodyStrong" align="center" style={styles.digit}>{parts.hour12}</AppText>
-          <Button label="+" size="sm" accessibilityLabel="시 올리기" onPress={() => commit(shiftHour(parts, 1))} />
-          <AppText variant="bodyStrong">:</AppText>
-          <AppText variant="caption" color="textSecondary">분</AppText>
-          <Button label="−" size="sm" accessibilityLabel="분 내리기" onPress={() => commit(shiftMinute(parts, -1))} />
-          <AppText variant="bodyStrong" align="center" style={styles.digit}>{pad2(parts.minute)}</AppText>
-          <Button label="+" size="sm" accessibilityLabel="분 올리기" onPress={() => commit(shiftMinute(parts, 1))} />
-          <Button
-            label="오전"
-            size="sm"
-            variant={parts.meridiem === 'am' ? 'selected' : 'secondary'}
-            accessibilityState={{ selected: parts.meridiem === 'am' }}
-            onPress={() => commit({ ...parts, meridiem: 'am' })}
-          />
-          <Button
-            label="오후"
-            size="sm"
-            variant={parts.meridiem === 'pm' ? 'selected' : 'secondary'}
-            accessibilityState={{ selected: parts.meridiem === 'pm' }}
-            onPress={() => commit({ ...parts, meridiem: 'pm' })}
-          />
-        </View>
-      ) : null}
+      {!controlled && open ? <ScheduleTimePicker label={label} value={value} onChange={onChange} /> : null}
     </View>
   );
 }
@@ -127,7 +159,7 @@ function createStyles(theme: AppTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      flexWrap: 'nowrap',
+      flexWrap: 'wrap',
       gap: theme.spacing.xs,
       paddingVertical: theme.spacing.sm,
     },
