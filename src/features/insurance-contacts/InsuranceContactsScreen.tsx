@@ -36,10 +36,16 @@ const TABS: { id: InsuranceCategory; label: string }[] = [
 ];
 
 export function InsuranceContactsScreen() {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   if (!isGaMemberUser(user)) {
     return <LegacyWebScreen title="원수사 연락처" legacyWebPath="/insurance/contacts" />;
   }
+  return <GaInsuranceContactsScreen />;
+}
+
+/** hook 은 항상 같은 순서로 호출되도록 GA 화면을 별도 컴포넌트로 둔다. */
+function GaInsuranceContactsScreen() {
+  const { token } = useAuth();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [category, setCategory] = useState<InsuranceCategory>('LIFE');
