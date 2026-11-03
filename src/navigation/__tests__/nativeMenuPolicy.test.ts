@@ -71,7 +71,7 @@ describe('native session menu policy', () => {
       '원수사소식지', '손해사정사 소식지',
       '신청서 작성', '신청서 작성내역', '렌트(사고대차)',
       '팀원리스트', '팀 게시판', '팀 자료',
-      '계정관리', '설계사이트',
+      '원수사 연락처', '계정관리', '설계사이트',
       '내 저장공간', '내정보관리', '쿠폰 적용', '문의요청',
     ]);
   });
@@ -169,7 +169,7 @@ describe('native session menu policy', () => {
         },
       }), capabilities);
       expect(menu).toHaveLength(8);
-      expect(labels(menu)).toHaveLength(26);
+      expect(labels(menu)).toHaveLength(27);
     },
   );
 
@@ -216,7 +216,8 @@ describe('native session menu policy', () => {
     expect(team?.nativePath).toBe('/team/members');
     expect(team?.badge).toBe('유료');
     expect(customers?.badge).toBe('유료');
-    expect(contacts).toBeUndefined();
+    expect(contacts?.nativePath).toBe('/insurance/contacts');
+    expect(contacts?.badge).toBeUndefined();
     expect(insurerNews?.badge).toBe('GA 전용');
     expect(isPublicAccountGaOnlyPath('/team/files')).toBe(false);
     expect(isPublicAccountGaOnlyPath('/portal/newsletters')).toBe(true);

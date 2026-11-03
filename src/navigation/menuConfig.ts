@@ -46,7 +46,6 @@ export type NativeMenuEntry = NativeMenuSection;
  * 라우트·화면·API는 유지하고, 메뉴 노출만 끈다.
  */
 export const HIDDEN_CONTACTS_MENU_PATHS = [
-  '/insurance/contacts',
   '/contacts',
   '/insurance/company-registry',
   '/contacts/manage',
