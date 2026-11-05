@@ -4,6 +4,7 @@ import { useRouter, type Href } from 'expo-router';
 
 import {
   AppText,
+  Button,
   Card,
   fontWeight,
   lineHeight,
@@ -29,6 +30,7 @@ export function TodoCard({
   onToggleDone,
   editHref,
   dateOnly = false,
+  weeklyAction,
 }: {
   todo: TodoRecord;
   stateBusy: boolean;
@@ -37,6 +39,8 @@ export function TodoCard({
   editHref?: Href;
   /** 고객 할 일 화면: 연결·출처 줄 없이 `날짜 …`만 보인다. */
   dateOnly?: boolean;
+  /** 주간 할 일: 이번 주로 / 주간에서 빼기 (서버 PATCH 전용). */
+  weeklyAction?: { label: string; busy?: boolean; onPress: () => void };
 }) {
   const router = useRouter();
   const theme = useAppTheme();
@@ -93,6 +97,16 @@ export function TodoCard({
                 </AppText>
               </>
             )}
+            {weeklyAction ? (
+              <Button
+                label={weeklyAction.label}
+                size="sm"
+                variant="ghost"
+                disabled={stateBusy || Boolean(weeklyAction.busy)}
+                loading={Boolean(weeklyAction.busy)}
+                onPress={weeklyAction.onPress}
+              />
+            ) : null}
           </Stack>
         </Pressable>
       </Inline>

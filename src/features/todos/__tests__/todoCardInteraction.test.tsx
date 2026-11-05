@@ -16,6 +16,7 @@ const todo: TodoRecord = {
   dueDate: '2026-10-30', dueTime: null, status: 'pending', priority: 'normal', sourceType: 'manual', sourceId: null,
   relatedEntityType: 'customer', relatedEntityId: '12', metadata: null, createdAt: null, updatedAt: null,
   completedAt: null, canceledAt: null, customerName: 'A고객',
+  weeklyFocusWeekStart: null,
 };
 const card = (props: Partial<Parameters<typeof TodoCard>[0]> = {}) =>
   render(<DesignSystemProvider><TodoCard todo={todo} stateBusy={false} onToggleDone={jest.fn()} {...props} /></DesignSystemProvider>);

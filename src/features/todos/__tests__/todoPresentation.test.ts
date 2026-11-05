@@ -31,6 +31,7 @@ const sample: TodoRecord = {
   completedAt: null,
   canceledAt: null,
   customerName: '홍길동',
+  weeklyFocusWeekStart: null,
 };
 
 describe('todoPresentation', () => {

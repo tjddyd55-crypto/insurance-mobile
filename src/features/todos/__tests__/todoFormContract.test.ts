@@ -23,4 +23,23 @@ describe('todoFormContract', () => {
     expect(guard).toBeGreaterThan(-1);
     expect(update).toBeGreaterThan(guard);
   });
+
+  it('edit mode exposes complete/reopen separate from delete', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'TodoFormScreen.tsx'),
+      'utf8',
+    );
+    expect(source).toMatch(/완료 처리/);
+    expect(source).toMatch(/완료 취소/);
+    expect(source).toMatch(/할 일 삭제/);
+    expect(source).toMatch(/statusMutation/);
+    expect(source).toMatch(/completeTodo/);
+    expect(source).toMatch(/reopenTodo/);
+    const completeBtn = source.indexOf(
+      "label={editingTodo.status === 'completed' ? '완료 취소' : '완료 처리'}",
+    );
+    const deleteBtn = source.indexOf('label="할 일 삭제"');
+    expect(completeBtn).toBeGreaterThan(-1);
+    expect(deleteBtn).toBeGreaterThan(completeBtn);
+  });
 });

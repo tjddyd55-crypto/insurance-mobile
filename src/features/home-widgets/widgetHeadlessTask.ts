@@ -4,6 +4,7 @@ import { readAuthSession } from '../../auth/secureStorage';
 import { refreshWidgets, purgeWidgets } from './engine/widgetRefreshCoordinator';
 import { isWidgetType, widgetRefreshReason } from './engine/widgetTypes';
 import { runWidgetQuickAdd, WIDGET_QUICK_ADD_TASK } from './widgetQuickAdd';
+import { runWidgetTodoComplete, WIDGET_TODO_COMPLETE_TASK } from './widgetTodoComplete';
 
 /** native OneFcWidgetRefreshWorker 가 부르는 단일 headless entry. */
 export const WIDGET_HEADLESS_TASK = 'OneFcWidgetsRefresh' as const;
@@ -42,6 +43,13 @@ export function registerWidgetHeadlessTask(): void {
       await runWidgetQuickAdd(data as Parameters<typeof runWidgetQuickAdd>[0]);
     } catch {
       // native 는 시간 초과로 오류를 보여 준다.
+    }
+  });
+  AppRegistry.registerHeadlessTask(WIDGET_TODO_COMPLETE_TASK, () => async (data: unknown) => {
+    try {
+      await runWidgetTodoComplete(data as Parameters<typeof runWidgetTodoComplete>[0]);
+    } catch {
+      // native 는 시간 초과·Toast 로 오류를 보여 준다(실패 시 완료 표시 금지).
     }
   });
 }

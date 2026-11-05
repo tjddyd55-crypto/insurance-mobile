@@ -41,8 +41,8 @@ import {
   canEditEvent,
   customerRouteOfEvent,
   customerRouteOfTask,
-  countItemsByDay,
-  dayCountLabel,
+  titlesByDay,
+  dayChipContent,
   emptyEventForm,
   scheduleEventSaveForm,
   toggleScheduleTime,
@@ -437,7 +437,7 @@ export function ScheduleScreen() {
     );
   }
 
-  const dayCounts = countItemsByDay(data);
+  const dayTitles = titlesByDay(data);
   const dayEvents = eventsOnDay(data.events, selected);
   const dayTasks = tasksOnDay(data.tasks, selected).filter((task) => task.status !== 'completed');
   // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
@@ -468,8 +468,9 @@ export function ScheduleScreen() {
               <View key={week[0]!.ymd} style={styles.weekRow}>
                 {week.map((cell) => {
                   const active = cell.ymd === selected;
-                  const count = dayCounts.get(cell.ymd) ?? 0;
-                  const countLabel = dayCountLabel(count);
+                  const titles = dayTitles.get(cell.ymd) ?? [];
+                  const chips = dayChipContent(titles);
+                  const count = titles.length;
                   return (
                     <Pressable
                       key={cell.ymd}
@@ -482,20 +483,35 @@ export function ScheduleScreen() {
                         if (!cell.inMonth) setMonth(`${cell.ymd.slice(0, 7)}-01`);
                       }}
                     >
-                      <AppText variant="body" color={active ? 'onPrimary' : cell.inMonth ? (cell.ymd === today ? 'primary' : 'text') : 'textMuted'}>
-                        {cell.day}
-                      </AppText>
                       <AppText
                         variant="caption"
-                        align="center"
-                        numberOfLines={1}
-                        allowFontScaling={false}
-                        style={[styles.count, active ? styles.countOnActive : styles.countOn]}
-                        accessibilityElementsHidden
-                        importantForAccessibility="no"
+                        color={active ? 'onPrimary' : cell.inMonth ? (cell.ymd === today ? 'primary' : 'text') : 'textMuted'}
+                        style={styles.dayNumber}
                       >
-                        {countLabel}
+                        {cell.day}
                       </AppText>
+                      <View style={styles.chipStack} accessibilityElementsHidden importantForAccessibility="no">
+                        {chips.titles.map((title, index) => (
+                          <AppText
+                            key={`${cell.ymd}-${index}`}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            allowFontScaling={false}
+                            style={[styles.chip, active ? styles.chipOnActive : styles.chipOn]}
+                          >
+                            {title}
+                          </AppText>
+                        ))}
+                        {chips.more > 0 ? (
+                          <AppText
+                            numberOfLines={1}
+                            allowFontScaling={false}
+                            style={[styles.chipMore, active ? styles.chipOnActive : styles.chipMoreOn]}
+                          >
+                            {`+${chips.more}`}
+                          </AppText>
+                        ) : null}
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -661,11 +677,28 @@ function createStyles(theme: AppTheme) {
     flex: { flex: 1 },
     weekRow: { flexDirection: 'row' },
     cell: { flex: 1 },
-    dayCell: { alignItems: 'center', paddingVertical: theme.spacing.xs, borderRadius: theme.radius.md, minHeight: 44 },
+    dayCell: {
+      alignItems: 'stretch',
+      paddingHorizontal: 2,
+      paddingTop: 2,
+      paddingBottom: 2,
+      borderRadius: theme.radius.md,
+      minHeight: 72,
+    },
     dayActive: { backgroundColor: theme.colors.primary },
-    // 고정 높이: 숫자가 없어도 칸 높이가 같아 레이아웃이 흔들리지 않는다.
-    count: { height: 14, lineHeight: 14, fontSize: 11, fontWeight: '700', marginTop: 1 },
-    countOn: { color: theme.colors.primary },
-    countOnActive: { color: theme.colors.onPrimary },
+    dayNumber: { fontSize: 12, lineHeight: 14, fontWeight: '700', textAlign: 'center' },
+    chipStack: { marginTop: 1, gap: 1, minHeight: 42 },
+    chip: {
+      fontSize: 10,
+      lineHeight: 12,
+      fontWeight: '600',
+      paddingHorizontal: 2,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    chipOn: { color: theme.colors.text, backgroundColor: theme.colors.surfaceSubtle },
+    chipOnActive: { color: theme.colors.onPrimary },
+    chipMore: { fontSize: 10, lineHeight: 12, fontWeight: '700', textAlign: 'center' },
+    chipMoreOn: { color: theme.colors.primary },
   });
 }

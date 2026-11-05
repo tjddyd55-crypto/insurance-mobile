@@ -42,6 +42,15 @@ class WidgetLayoutPreviewTest {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val scheduleRaw = scheduleRaw()
     val schedule = WidgetEnvelope.parse(scheduleRaw, OneFcWidgetType.SCHEDULE)!!
+    // 미리보기 샘플은 2026-10 고정. 시스템 날짜가 바뀌어도 같은 달을 연다.
+    val todayUtc = WidgetDates.today("UTC")
+    WidgetCacheManager.saveInstance(
+      context,
+      OneFcWidgetType.SCHEDULE,
+      1,
+      todayUtc,
+      mapOf("month" to "2026-10-01", "selected" to "2026-10-21"),
+    )
 
     val wide = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 400, false)!!)
     val wideText = texts(wide)

@@ -17,10 +17,11 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
   fun emptyState(payload: TodoPayload, date: String): EmptyState = if (payload.covers(date)) EmptyState.NO_TODOS else EmptyState.OUT_OF_RANGE
 
   /**
-   * 보이는 행 수. 헤더 32 + 날짜 32 + 패딩 20 + 상태 24 = 108, 더보기 22, 행 32(15sp).
+   * 보이는 행 수. 헤더 32 + 날짜 32 + 패딩 20 + 상태 24 = 108, 더보기 22, 행 44(○ 터치 ≥44dp).
    * 집계와 무관하고, 작은 위젯에서 글자가 겹치지 않게 행을 줄인다.
    */
-  fun rows(heightDp: Int): Int = ((heightDp - 108 - 22) / 32).coerceIn(1, MAX_ROWS)
+  const val ROW_DP = 44
+  fun rows(heightDp: Int): Int = ((heightDp - 108 - 22) / ROW_DP).coerceIn(1, MAX_ROWS)
 
   fun date(context: Context, widgetId: Int, today: String): String =
     WidgetCacheManager.instanceValue(context, type, widgetId, "date", today)?.takeIf { WidgetDates.isYmd(it) } ?: today
@@ -83,17 +84,29 @@ object TodoWidgetRenderer : OneFcWidgetRenderer {
     val shown = (if (items.size > maxRows) maxRows - 1 else items.size).coerceAtLeast(0)
     for (index in 0 until MAX_ROWS) {
       val rowId = WidgetIds.TODOS[index]
+      val checkId = WidgetIds.TODO_CHECKS[index]
+      val titleId = WidgetIds.TODO_TITLES[index]
       if (index >= shown) {
         views.setViewVisibility(rowId, View.GONE)
         continue
       }
       val item = items[index]
       views.setViewVisibility(rowId, View.VISIBLE)
-      views.setTextViewText(WidgetIds.TODO_CHECKS[index], if (item.completed) "✓" else "○")
-      views.setTextViewText(WidgetIds.TODO_TITLES[index], item.title)
-      views.setTextColor(WidgetIds.TODO_TITLES[index], if (item.completed) muted else text)
-      views.setContentDescription(rowId, "${item.title}, ${if (item.completed) "완료" else "미완료"}, 열기")
-      views.setOnClickPendingIntent(rowId, WidgetIntents.openApp(context, item.link.ifBlank { listLink }, nonce))
+      views.setTextViewText(checkId, if (item.completed) "✓" else "○")
+      views.setTextViewText(titleId, item.title)
+      views.setTextColor(titleId, if (item.completed) muted else text)
+      // ○=완료, 제목=할 일 수정(행 전체 클릭 없음).
+      val edit = WidgetIntents.openApp(context, item.link.ifBlank { listLink }, nonce)
+      views.setOnClickPendingIntent(titleId, edit)
+      views.setContentDescription(titleId, "${item.title}, ${if (item.completed) "완료" else "미완료"}, 수정 열기")
+      if (item.completed) {
+        // 완료 항목 ○ 는 다시 열기만(완료 취소는 상세에서). 위젯에서 reopen 하지 않는다.
+        views.setOnClickPendingIntent(checkId, edit)
+        views.setContentDescription(checkId, "${item.title}, 완료됨, 수정 열기")
+      } else {
+        views.setOnClickPendingIntent(checkId, WidgetIntents.completeTodo(context, widgetId, item.id))
+        views.setContentDescription(checkId, "${item.title}, 미완료, 완료 처리")
+      }
     }
     val more = items.size - shown
     views.setViewVisibility(R.id.w_more, if (more > 0) View.VISIBLE else View.GONE)

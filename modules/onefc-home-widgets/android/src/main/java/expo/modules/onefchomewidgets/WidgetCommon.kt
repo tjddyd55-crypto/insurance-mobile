@@ -15,7 +15,9 @@ object WidgetIntents {
   const val ACTION_TODAY = ACTION_PREFIX + "TODAY"
   const val ACTION_SELECT = ACTION_PREFIX + "SELECT"
   const val ACTION_REFRESH = ACTION_PREFIX + "REFRESH"
+  const val ACTION_COMPLETE_TODO = ACTION_PREFIX + "COMPLETE_TODO"
   const val EXTRA_DATE = "date"
+  const val EXTRA_TODO_ID = "todoId"
 
   private const val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
@@ -28,6 +30,18 @@ object WidgetIntents {
       .setData(Uri.parse("onefc-widget://${type.id}/$widgetId/$action/${date ?: ""}"))
     if (date != null) intent.putExtra(EXTRA_DATE, date)
     return PendingIntent.getBroadcast(context, widgetId, intent, FLAGS)
+  }
+
+  /** 할 일 ○ 완료: todoId 별로 PendingIntent 가 덮이지 않게 URI·requestCode 분리. */
+  fun completeTodo(context: Context, widgetId: Int, todoId: String): PendingIntent {
+    val provider = requireNotNull(OneFcWidgetType.TODO.providerClass)
+    val intent = Intent(context, provider)
+      .setAction(ACTION_COMPLETE_TODO)
+      .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+      .putExtra(EXTRA_TODO_ID, todoId)
+      .setData(Uri.parse("onefc-widget://todo/$widgetId/complete/$todoId"))
+    val code = ((widgetId * 31) + todoId.hashCode()) and 0x7fffffff
+    return PendingIntent.getBroadcast(context, code, intent, FLAGS)
   }
 
   /** 날짜 칸: 스냅샷만 읽는 날짜 다이얼로그. RemoteViews 안에 모달을 띄울 수 없다. */

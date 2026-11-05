@@ -41,7 +41,14 @@ abstract class BaseOneFcWidgetProvider(private val type: OneFcWidgetType) : AppW
     safely {
       val widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
       if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-        WidgetEngine.handleAction(context, type, widgetId, action, intent.getStringExtra(WidgetIntents.EXTRA_DATE))
+        WidgetEngine.handleAction(
+          context,
+          type,
+          widgetId,
+          action,
+          intent.getStringExtra(WidgetIntents.EXTRA_DATE),
+          intent.getStringExtra(WidgetIntents.EXTRA_TODO_ID),
+        )
       }
     }
   }

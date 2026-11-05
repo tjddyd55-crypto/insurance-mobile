@@ -2,9 +2,13 @@ import {
   buildTodoListParams,
   firstLineTodoTitle,
   formatTodoDate,
+  formatWeekRangeLabel,
+  isManualWeeklyFocus,
+  isTodoInWeeklyList,
   isValidOptionalYmd,
   normalizeTodo,
   normalizeTodoList,
+  seoulWeekRangeYmd,
   suggestTodoDueDate,
   todoDisplayContent,
 } from '../todoModel';
@@ -112,5 +116,44 @@ describe('todoModel', () => {
     expect(isValidOptionalYmd('2026-09-01')).toBe(true);
     expect(isValidOptionalYmd('2026-02-30')).toBe(false);
     expect(formatTodoDate('2026-09-01')).toContain('9월 1일');
+  });
+});
+
+describe('weekly focus week helpers', () => {
+  test('seoul week starts Monday and ends Sunday', () => {
+    // 2026-11-05 is Thursday KST → week 11.02 ~ 11.08
+    const range = seoulWeekRangeYmd(new Date('2026-11-05T03:00:00+09:00'));
+    expect(range).toEqual({ start: '2026-11-02', end: '2026-11-08' });
+    expect(formatWeekRangeLabel(range.start, range.end)).toBe('11.02 ~ 11.08');
+  });
+
+  test('Sunday belongs to the week that started the prior Monday', () => {
+    const range = seoulWeekRangeYmd(new Date('2026-11-08T12:00:00+09:00'));
+    expect(range.start).toBe('2026-11-02');
+    expect(range.end).toBe('2026-11-08');
+  });
+
+  test('normalizes weeklyFocusWeekStart from camel or snake', () => {
+    expect(normalizeTodo({ id: '1', title: 'a', weeklyFocusWeekStart: '2026-11-02' }).weeklyFocusWeekStart).toBe(
+      '2026-11-02',
+    );
+    expect(normalizeTodo({ id: '2', title: 'b', weekly_focus_week_start: '2026-11-02' }).weeklyFocusWeekStart).toBe(
+      '2026-11-02',
+    );
+    expect(normalizeTodo({ id: '3', title: 'c' }).weeklyFocusWeekStart).toBeNull();
+  });
+
+  test('weekly list membership is due-in-range OR manual focus', () => {
+    expect(
+      isTodoInWeeklyList({ dueDate: '2026-11-05', weeklyFocusWeekStart: null }, '2026-11-02', '2026-11-08'),
+    ).toBe(true);
+    expect(
+      isTodoInWeeklyList({ dueDate: null, weeklyFocusWeekStart: '2026-11-02' }, '2026-11-02', '2026-11-08'),
+    ).toBe(true);
+    expect(
+      isTodoInWeeklyList({ dueDate: '2026-11-20', weeklyFocusWeekStart: null }, '2026-11-02', '2026-11-08'),
+    ).toBe(false);
+    expect(isManualWeeklyFocus({ weeklyFocusWeekStart: '2026-11-02' }, '2026-11-02')).toBe(true);
+    expect(isManualWeeklyFocus({ weeklyFocusWeekStart: null }, '2026-11-02')).toBe(false);
   });
 });

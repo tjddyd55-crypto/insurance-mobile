@@ -20,7 +20,7 @@ class WidgetTypographyTest {
     assertEquals(18f, sp(R.dimen.onefc_widget_header_text))
     assertEquals(13f, sp(R.dimen.onefc_widget_weekday_text))
     assertEquals(14f, sp(R.dimen.onefc_widget_day_text))
-    assertEquals(11f, sp(R.dimen.onefc_widget_event_text))
+    assertEquals(12f, sp(R.dimen.onefc_widget_event_text))
     assertEquals(11f, sp(R.dimen.onefc_widget_more_text))
     assertEquals(16f, sp(R.dimen.onefc_widget_todo_text))
     assertEquals(13f, sp(R.dimen.onefc_widget_meta_text))
