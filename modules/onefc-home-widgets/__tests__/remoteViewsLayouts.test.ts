@@ -85,7 +85,7 @@ describe('home widget RemoteViews layouts', () => {
     expect(sp('onefc_widget_header_text')).toBe(18);
     expect(sp('onefc_widget_weekday_text')).toBe(13);
     expect(sp('onefc_widget_day_text')).toBe(14);
-    expect(sp('onefc_widget_event_text')).toBe(11);
+    expect(sp('onefc_widget_event_text')).toBe(12);
     expect(sp('onefc_widget_more_text')).toBe(11);
     expect(sp('onefc_widget_todo_text')).toBe(16);
     expect(sp('onefc_widget_meta_text')).toBe(13);
@@ -101,7 +101,7 @@ describe('home widget RemoteViews layouts', () => {
       expect(xml).not.toContain('@dimen/onefc_widget_month_text');
       expect(xml).toMatch(/w_status"[^>]*@color\/onefc_widget_text_meta/);
     }
-    // 일정 칸: 제목·+N 은 medium + includeFontPadding=false(칸 높이 예산 15dp/13dp 유지), 날짜·요일 medium.
+    // 일정 칸: 제목·+N 은 medium + includeFontPadding=false(칸 높이 예산 16dp/13dp(가독성)), 날짜·요일 medium.
     const tags = (re: RegExp) => schedule.split('<TextView').filter((t) => re.test(t));
     const chips = tags(/id="@\+id\/w_chip_/);
     expect(chips).toHaveLength(84);
@@ -118,6 +118,9 @@ describe('home widget RemoteViews layouts', () => {
     expect(titles).toHaveLength(8);
     for (const t of titles) expect(t).toMatch(/onefc_widget_todo_text" android:fontFamily="sans-serif-medium"/);
     for (const t of todo.split('<TextView').filter((x) => /id="@\+id\/w_todo_check_/.test(x))) expect(t).toContain('onefc_widget_todo_text');
+    // ○ 터치 ≥44dp: 행·체크 폭.
+    expect(todo.split('<LinearLayout').filter((x) => /id="@\+id\/w_todo_\d+"/.test(x)).every((x) => x.includes('layout_height="44dp"'))).toBe(true);
+    for (const t of todo.split('<TextView').filter((x) => /id="@\+id\/w_todo_check_/.test(x))) expect(t).toContain('layout_width="44dp"');
   });
 
   it('manifest keeps two providers, a day dialog, and no list service or extra permission', () => {

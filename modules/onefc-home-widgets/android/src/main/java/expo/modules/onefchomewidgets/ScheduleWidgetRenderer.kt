@@ -14,8 +14,8 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
   /** 칸 높이(dp). 달력이 위젯의 남은 높이를 채운다. */
   fun cellHeightDp(heightDp: Int, weeks: Int): Int = ((heightDp - CHROME_DP).coerceAtLeast(0) / weeks.coerceAtLeast(1)) - 2
 
-  /** 칸에 넣을 제목 줄 수(0 이면 숫자 배지). 날짜 20dp, 제목 줄 15dp, "+N" 13dp. */
-  fun chipSlots(heightDp: Int, weeks: Int): Int = ((cellHeightDp(heightDp, weeks) - 20 - 13) / 15).coerceIn(0, CHIP_SLOTS)
+  /** 칸에 넣을 제목 줄 수(0 이면 숫자 배지). 날짜 20dp, 제목 줄 16dp(가독성), "+N" 13dp. CHIP_SLOTS=2 유지. */
+  fun chipSlots(heightDp: Int, weeks: Int): Int = ((cellHeightDp(heightDp, weeks) - 20 - 13) / 16).coerceIn(0, CHIP_SLOTS)
 
   data class Cell(val titles: List<String>, val more: Int, val badge: String)
 

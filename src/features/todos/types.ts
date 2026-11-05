@@ -34,6 +34,8 @@ export type TodoRecord = {
   completedAt: string | null;
   canceledAt: string | null;
   customerName: string | null;
+  /** Asia/Seoul 월요일 YYYY-MM-DD. 없으면 null(주간 집중 아님). */
+  weeklyFocusWeekStart: string | null;
 };
 
 export type TodoQuickFilter =
@@ -56,6 +58,10 @@ export type ListTodosParams = {
   sourceType?: string;
   /** 서버 PR #225(`related_entity_type='customer'` + id) 필터. 숫자 문자열만. */
   customerId?: string;
+  /** 주간 할 일 조회: 해당 주 월요일(Asia/Seoul). due in Mon–Sun OR focus == weekStart. */
+  weekStart?: string;
+  /** 주간 조회 시 완료 포함. '1' 이면 포함(기본 미완료만). */
+  includeCompleted?: string;
 };
 
 export type SaveTodoPayload = {
@@ -68,4 +74,6 @@ export type SaveTodoPayload = {
   priority?: TodoPriority;
   relatedEntityType?: TodoRelatedEntityType | null;
   relatedEntityId?: string | null;
+  /** 주간 집중 시작일(월요일) 지정/해제. null 이면 해제. */
+  weeklyFocusWeekStart?: string | null;
 };

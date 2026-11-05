@@ -49,7 +49,7 @@ import {
   todoFormDraftFromRecord,
   type TodoFormDraft,
 } from './todoFormSession';
-import { createTodo, deleteTodo, listTodos, updateTodo } from './todosApi';
+import { completeTodo, createTodo, deleteTodo, listTodos, reopenTodo, updateTodo } from './todosApi';
 import { showTodoLoadError } from './todoLoadError';
 import { todoQueryKeys } from './queryKeys';
 const ALL_TODOS_PARAMS = {};
@@ -245,6 +245,18 @@ function TodoFormEditor({
       leave(true);
     },
   });
+  const statusMutation = useMutation({
+    mutationFn: () => {
+      if (!editingTodo) return Promise.reject(new Error('할 일을 찾을 수 없습니다.'));
+      return editingTodo.status === 'completed'
+        ? reopenTodo(token, editingTodo.id)
+        : completeTodo(token, editingTodo.id);
+    },
+    onSuccess: async () => {
+      await invalidateTodoViews();
+      leave(true);
+    },
+  });
 
   const requestBack = useCallback(() => {
     if (dirty && !saveMutation.isPending) {
@@ -286,7 +298,7 @@ function TodoFormEditor({
     isError: todosQuery.isError,
     isSuccess: todosQuery.isSuccess,
     found: Boolean(editingTodo),
-    deleting: deleteMutation.isPending || deleteMutation.isSuccess,
+    deleting: deleteMutation.isPending || deleteMutation.isSuccess || statusMutation.isPending || statusMutation.isSuccess,
   })) {
     return (
       <ErrorState
@@ -302,8 +314,8 @@ function TodoFormEditor({
     : '';
   // 할 일 상세(수정)에서만 연결 고객 이름을 눌러 고객 상세로 간다. 목록 카드에는 별도 이동이 없다.
   const linkedCustomerId = mode === 'edit' ? validCustomerId(form.relatedCustomerId) : undefined;
-  const busy = saveMutation.isPending || deleteMutation.isPending;
-  const mutationError = saveMutation.error ?? deleteMutation.error;
+  const busy = saveMutation.isPending || deleteMutation.isPending || statusMutation.isPending;
+  const mutationError = saveMutation.error ?? deleteMutation.error ?? statusMutation.error;
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -438,13 +450,22 @@ function TodoFormEditor({
             {mutationError instanceof Error ? mutationError.message : '요청을 처리하지 못했습니다.'}
           </AppText>
         ) : null}
-        {mode === 'edit' ? (
-          <Button
-            label="할 일 삭제"
-            variant="danger"
-            disabled={busy}
-            onPress={() => setDeleteOpen(true)}
-          />
+        {mode === 'edit' && editingTodo ? (
+          <Stack gap="sm">
+            <Button
+              label={editingTodo.status === 'completed' ? '완료 취소' : '완료 처리'}
+              variant={editingTodo.status === 'completed' ? 'secondary' : 'primary'}
+              disabled={busy || editingTodo.status === 'canceled'}
+              loading={statusMutation.isPending}
+              onPress={() => statusMutation.mutate()}
+            />
+            <Button
+              label="할 일 삭제"
+              variant="danger"
+              disabled={busy}
+              onPress={() => setDeleteOpen(true)}
+            />
+          </Stack>
         ) : null}
       </ScrollView>
 

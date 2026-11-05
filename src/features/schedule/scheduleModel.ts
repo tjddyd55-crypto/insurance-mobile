@@ -283,6 +283,46 @@ export function dayCountLabel(count: number): string {
   return count > 9 ? '9+' : String(Math.floor(count));
 }
 
+/** 월간 칸에 제목 chip 으로 보여줄 최대 건수(초과는 +N). */
+export const MONTH_CHIP_SLOTS = 3;
+
+export type DayChipContent = { titles: string[]; more: number };
+
+/**
+ * 날짜별 제목 목록. countItemsByDay 와 같은 집합(미완료 할 일만).
+ * 일정 → 할 일 순, 각 그룹 안은 eventsOnDay / tasksOnDay 정렬.
+ */
+export function titlesByDay(result: Pick<ScheduleEventsResult, 'events' | 'tasks'>): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  const push = (day: string, title: string) => {
+    const list = map.get(day);
+    if (list) list.push(title);
+    else map.set(day, [title]);
+  };
+  const days = new Set<string>();
+  for (const event of result.events) {
+    const range = eventDayRange(event);
+    for (let day = range.first, guard = 0; day <= range.last && guard < 400; day = addDaysYmd(day, 1), guard += 1) {
+      days.add(day);
+    }
+  }
+  for (const task of result.tasks) if (task.dueDate && task.status !== 'completed') days.add(task.dueDate);
+  for (const day of days) {
+    for (const event of eventsOnDay(result.events, day)) push(day, event.title);
+    for (const task of tasksOnDay(result.tasks, day)) {
+      if (task.status !== 'completed') push(day, task.title);
+    }
+  }
+  return map;
+}
+
+/** slots 개까지 제목, 나머지는 more(+N). */
+export function dayChipContent(titles: readonly string[], slots = MONTH_CHIP_SLOTS): DayChipContent {
+  if (!titles.length || slots <= 0) return { titles: [], more: titles.length };
+  if (titles.length <= slots) return { titles: [...titles], more: 0 };
+  return { titles: titles.slice(0, slots), more: titles.length - slots };
+}
+
 export function eventTimeLabel(event: Pick<ScheduleEvent, 'allDay' | 'startAt' | 'endAt'>): string {
   if (event.allDay) {
     const range = eventDayRange(event);

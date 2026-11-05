@@ -18,10 +18,16 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
-import { buildTodoListParams, todoSourceLabel } from './todoModel';
+import {
+  buildTodoListParams,
+  formatWeekRangeLabel,
+  isManualWeeklyFocus,
+  seoulWeekRangeYmd,
+  todoSourceLabel,
+} from './todoModel';
 import { todoListEmptyCopy } from './todoPresentation';
 import { refreshScheduleSurfaces, markScheduleTodoStatus } from '../home-widgets/refreshScheduleSurfaces';
-import { completeTodo, listTodos, reopenTodo } from './todosApi';
+import { completeTodo, listTodos, reopenTodo, updateTodo } from './todosApi';
 import { TodoCard } from './TodoCard';
 import { todoQueryKeys } from './queryKeys';
 import type {
@@ -67,9 +73,19 @@ export function TodosScreen() {
   const [related, setRelated] = useState<TodoRelatedFilter>('any');
   const [source, setSource] = useState<TodoSourceType | 'all'>('all');
   const params = useMemo(() => buildTodoListParams(quick, related, source), [quick, related, source]);
+  const week = useMemo(() => seoulWeekRangeYmd(), []);
+  const weekParams = useMemo(
+    () => ({ weekStart: week.start }),
+    [week.start],
+  );
   const query = useQuery({
     queryKey: todoQueryKeys.list(params),
     queryFn: () => listTodos(token, params),
+    enabled: Boolean(token),
+  });
+  const weeklyQuery = useQuery({
+    queryKey: todoQueryKeys.list(weekParams),
+    queryFn: () => listTodos(token, weekParams),
     enabled: Boolean(token),
   });
   const stateMutation = useMutation({
@@ -80,7 +96,25 @@ export function TodosScreen() {
       await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
     },
   });
+  const weeklyMutation = useMutation({
+    mutationFn: async ({ todo, focus }: { todo: TodoRecord; focus: boolean }) => {
+      // 서버 SSOT만. local-only 상태 금지.
+      await updateTodo(token, todo.id, {
+        weeklyFocusWeekStart: focus ? week.start : null,
+      });
+      await queryClient.invalidateQueries({ queryKey: todoQueryKeys.all });
+      await refreshScheduleSurfaces(queryClient, token && user ? { token, user } : null);
+    },
+  });
   const emptyCopy = todoListEmptyCopy(quick !== 'open' || related !== 'any' || source !== 'all');
+  const weekLabel = formatWeekRangeLabel(week.start, week.end);
+  const weeklyBusyId =
+    weeklyMutation.isPending && weeklyMutation.variables ? weeklyMutation.variables.todo.id : null;
+
+  const refreshAll = () => {
+    void query.refetch();
+    void weeklyQuery.refetch();
+  };
 
   return (
     <View style={styles.root}>
@@ -92,8 +126,8 @@ export function TodosScreen() {
           contentContainerStyle={[styles.list, !query.data?.length && styles.emptyList]}
           refreshControl={
             <RefreshControl
-              refreshing={query.isRefetching}
-              onRefresh={() => void query.refetch()}
+              refreshing={query.isRefetching || weeklyQuery.isRefetching}
+              onRefresh={refreshAll}
               colors={[theme.colors.primary]}
               tintColor={theme.colors.primary}
             />
@@ -106,6 +140,65 @@ export function TodosScreen() {
                 </AppText>
                 <Button label="+ 추가" size="sm" onPress={() => router.push('/todos/new')} />
               </Inline>
+
+              <Card variant="outlined" padding="sm">
+                <Stack gap="sm">
+                  <Inline justify="space-between" align="center">
+                    <AppText variant="bodyStrong">주간 할 일</AppText>
+                    <AppText variant="caption" color="textSecondary">{weekLabel}</AppText>
+                  </Inline>
+                  <AppText variant="caption" color="textMuted">
+                    이번 주에 집중할 할 일을 모아봅니다. (필터 「주」와 다름)
+                  </AppText>
+                  {weeklyQuery.isLoading ? (
+                    <LoadingState compact message="주간 할 일을 불러오는 중…" />
+                  ) : weeklyQuery.isError ? (
+                    <ErrorState
+                      compact
+                      title="주간 할 일을 불러오지 못했습니다"
+                      message={
+                        weeklyQuery.error instanceof Error
+                          ? weeklyQuery.error.message
+                          : '서버 주간 API가 준비되면 다시 시도해 주세요.'
+                      }
+                      onRetry={() => void weeklyQuery.refetch()}
+                    />
+                  ) : !(weeklyQuery.data?.length) ? (
+                    <AppText variant="caption" color="textMuted">
+                      이번 주 할 일이 없습니다. 아래에서 「이번 주로」를 눌러 추가하세요.
+                    </AppText>
+                  ) : (
+                    <Stack gap="xs">
+                      {weeklyQuery.data.map((todo) => (
+                        <TodoCard
+                          key={`weekly-${todo.id}`}
+                          todo={todo}
+                          stateBusy={stateMutation.isPending && stateMutation.variables?.id === todo.id}
+                          onToggleDone={(row) => stateMutation.mutate(row)}
+                          weeklyAction={
+                            isManualWeeklyFocus(todo, week.start)
+                              ? {
+                                  label: '주간에서 빼기',
+                                  busy: weeklyBusyId === todo.id,
+                                  onPress: () => weeklyMutation.mutate({ todo, focus: false }),
+                                }
+                              : undefined
+                          }
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                  {weeklyMutation.isError ? (
+                    <AppText variant="caption" color="danger">
+                      {weeklyMutation.error instanceof Error
+                        ? weeklyMutation.error.message
+                        : '주간 집중을 변경하지 못했습니다.'}
+                    </AppText>
+                  ) : null}
+                </Stack>
+              </Card>
+
+              <AppText variant="bodyStrong">전체 할 일</AppText>
 
               <Card variant="outlined" padding="sm">
                 <Stack gap="sm">
@@ -149,13 +242,29 @@ export function TodosScreen() {
               ) : null}
             </Stack>
           }
-          renderItem={({ item }) => (
-            <TodoCard
-              todo={item}
-              stateBusy={stateMutation.isPending && stateMutation.variables?.id === item.id}
-              onToggleDone={(todo) => stateMutation.mutate(todo)}
-            />
-          )}
+          renderItem={({ item }) => {
+            const focused = isManualWeeklyFocus(item, week.start);
+            return (
+              <TodoCard
+                todo={item}
+                stateBusy={stateMutation.isPending && stateMutation.variables?.id === item.id}
+                onToggleDone={(todo) => stateMutation.mutate(todo)}
+                weeklyAction={
+                  focused
+                    ? {
+                        label: '주간에서 빼기',
+                        busy: weeklyBusyId === item.id,
+                        onPress: () => weeklyMutation.mutate({ todo: item, focus: false }),
+                      }
+                    : {
+                        label: '이번 주로',
+                        busy: weeklyBusyId === item.id,
+                        onPress: () => weeklyMutation.mutate({ todo: item, focus: true }),
+                      }
+                }
+              />
+            );
+          }}
           ListEmptyComponent={
             query.isLoading ? (
               <LoadingState compact message="할 일 목록을 불러오는 중…" />

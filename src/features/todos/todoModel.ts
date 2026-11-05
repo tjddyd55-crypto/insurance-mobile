@@ -90,6 +90,9 @@ export function normalizeTodo(value: unknown, context = '할 일 데이터'): To
     completedAt: nullableText(row.completedAt ?? row.completed_at),
     canceledAt: nullableText(row.canceledAt ?? row.canceled_at),
     customerName: nullableText(row.customerName ?? row.customer_name),
+    weeklyFocusWeekStart: nullableText(
+      row.weeklyFocusWeekStart ?? row.weekly_focus_week_start,
+    ),
   };
 }
 
@@ -210,4 +213,54 @@ export function isValidOptionalYmd(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T12:00:00+09:00`);
   return !Number.isNaN(date.getTime()) && formatSeoulYmd(date) === value;
+}
+
+
+/** Asia/Seoul 기준 해당 주의 월요일·일요일(YYYY-MM-DD). 주간 할 일 전용(월 시작). */
+export function seoulWeekRangeYmd(reference = new Date()): { start: string; end: string } {
+  const today = formatSeoulYmd(reference);
+  const parts = today.split('-').map(Number);
+  // UTC 자정으로 요일을 계산해 Asia/Seoul 달력일과 맞춘다(오늘 문자열은 이미 Seoul YMD).
+  const asUtc = Date.UTC(parts[0]!, parts[1]! - 1, parts[2]!);
+  const day = new Date(asUtc).getUTCDay(); // 0=Sun … 6=Sat
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(asUtc);
+  monday.setUTCDate(monday.getUTCDate() + mondayOffset);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  const ymd = (d: Date) => {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+  return { start: ymd(monday), end: ymd(sunday) };
+}
+
+/** UI: `11.02 ~ 11.08` */
+export function formatWeekRangeLabel(startYmd: string, endYmd: string): string {
+  const fmt = (ymd: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+    return `${ymd.slice(5, 7)}.${ymd.slice(8, 10)}`;
+  };
+  return `${fmt(startYmd)} ~ ${fmt(endYmd)}`;
+}
+
+/** due_date 가 주 범위 안이거나 weeklyFocusWeekStart === weekStart. */
+export function isTodoInWeeklyList(
+  todo: Pick<TodoRecord, 'dueDate' | 'weeklyFocusWeekStart'>,
+  weekStart: string,
+  weekEnd: string,
+): boolean {
+  if (todo.weeklyFocusWeekStart === weekStart) return true;
+  const due = todo.dueDate;
+  return Boolean(due && due >= weekStart && due <= weekEnd);
+}
+
+/** 사용자가 이번 주로 직접 지정한 항목(자동 due 포함과 구분). */
+export function isManualWeeklyFocus(
+  todo: Pick<TodoRecord, 'weeklyFocusWeekStart'>,
+  weekStart: string,
+): boolean {
+  return todo.weeklyFocusWeekStart === weekStart;
 }

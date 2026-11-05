@@ -24,11 +24,12 @@ jest.mock('../../../api/client', () => ({
 const { apiRequest } = jest.requireMock('../../../api/client');
 
 function todo(partial: Partial<TodoRecord>): TodoRecord {
+  // weeklyFocusWeekStart defaults below
   return {
     id: '1', tenantId: null, gaId: 1, ownerUserId: 'u', assigneeUserId: null, title: 't', description: 't',
     dueDate: null, dueTime: null, status: 'pending', priority: 'normal', sourceType: 'manual', sourceId: null,
     relatedEntityType: 'customer', relatedEntityId: '12', metadata: null, createdAt: null, updatedAt: null,
-    completedAt: null, canceledAt: null, customerName: null, ...partial,
+    completedAt: null, canceledAt: null, customerName: null, weeklyFocusWeekStart: null, ...partial,
   };
 }
 

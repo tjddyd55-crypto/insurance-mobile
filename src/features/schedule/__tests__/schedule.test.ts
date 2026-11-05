@@ -20,6 +20,9 @@ import {
   customerRouteOfTask,
   countItemsByDay,
   dayCountLabel,
+  dayChipContent,
+  titlesByDay,
+  MONTH_CHIP_SLOTS,
   daysWithItems,
   eventDayRange,
   eventTimeLabel,
@@ -316,3 +319,17 @@ describe('schedule refresh error copy', () => {
     expect(screen).toMatch(/error\.status === 429\) return SCHEDULE_COPY\.refreshLimited/);
   });
 });
+
+  it('builds month cell title chips with +N overflow', () => {
+    expect(MONTH_CHIP_SLOTS).toBe(3);
+    expect(dayChipContent(['a', 'b'], 3)).toEqual({ titles: ['a', 'b'], more: 0 });
+    expect(dayChipContent(['a', 'b', 'c', 'd'], 3)).toEqual({ titles: ['a', 'b', 'c'], more: 1 });
+    const { events, tasks } = normalizeScheduleEvents(serverPayload());
+    const titles = titlesByDay({ events, tasks });
+    for (const day of ['2026-10-19', '2026-10-20']) {
+      const list = titles.get(day) ?? [];
+      expect(list.length).toBe(
+        eventsOnDay(events, day).length + tasksOnDay(tasks, day).filter((task) => task.status !== 'completed').length,
+      );
+    }
+  });

@@ -69,12 +69,17 @@ object WidgetEngine {
   }
 
   /** 위젯 안 버튼. 새로고침은 종류별 30초 간격 제한 후 그 종류만 갱신. */
-  fun handleAction(context: Context, type: OneFcWidgetType, widgetId: Int, action: String, date: String?) {
+  fun handleAction(context: Context, type: OneFcWidgetType, widgetId: Int, action: String, date: String?, todoId: String? = null) {
     if (action == WidgetIntents.ACTION_REFRESH) {
       if (WidgetCacheManager.tryBeginManualRefresh(context, type)) {
         render(context, type)
         WidgetScheduler.refreshNow(context, listOf(type), "manual", force = true)
       }
+      return
+    }
+    if (action == WidgetIntents.ACTION_COMPLETE_TODO && type == OneFcWidgetType.TODO) {
+      // ○ 완료: headless JS 가 서버에 쓴 뒤에만 다시 그린다(실패 시 완료 표시 금지).
+      TodoComplete.start(context, todoId.orEmpty())
       return
     }
     val renderer = renderer(type) ?: return
