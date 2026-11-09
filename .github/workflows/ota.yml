@@ -1,7 +1,5 @@
 name: Manual OTA
 
-# push 로 실행하지 않는다. Actions 탭의 workflow_dispatch 만 허용한다.
-# github.ref_name 이 release/ 로 시작하지 않으면 첫 단계에서 즉시 실패한다.
 on:
   workflow_dispatch:
     inputs:
@@ -9,13 +7,11 @@ on:
         description: EAS Update platform
         required: true
         type: choice
-        default: all
+        default: android
         options:
           - android
-          - ios
-          - all
       message:
-        description: EAS update message
+        description: EAS update message (include PR)
         required: true
         type: string
 
@@ -28,57 +24,62 @@ jobs:
     env:
       APP_VARIANT: production
       EXPO_PUBLIC_APP_ENV: production
+      APPROVED_SOURCE_SHA: f993bfed6333bf119dec97d88d639e441950ecc5
     steps:
-      - name: Require release branch
+      - name: Require release branch and Android
         env:
           REF_NAME: ${{ github.ref_name }}
-          IS_RELEASE_BRANCH: ${{ startsWith(github.ref_name, 'release/') }}
+          OTA_PLATFORM: ${{ inputs.platform }}
         run: |
-          if [ "$IS_RELEASE_BRANCH" != "true" ]; then
-            echo "::error::Manual OTA는 github.ref_name이 release/ 로 시작할 때만 실행할 수 있습니다. 현재 ref: $REF_NAME"
-            exit 1
-          fi
-          echo "release 브랜치 확인: $REF_NAME"
+          case "$REF_NAME" in release/*) ;; *) exit 1 ;; esac
+          test "$OTA_PLATFORM" = android
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APPROVED_SOURCE_SHA }}
+      - name: Verify exact approved main commit
+        run: |
+          test "$(git rev-parse HEAD)" = "$APPROVED_SOURCE_SHA"
+          git fetch origin main --depth=1
+          test "$(git rev-parse origin/main)" = "$APPROVED_SOURCE_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
           cache: npm
       - run: npm ci
-      # 이 브랜치의 npm run check 는 기존 eslint 오류로 실패한다.
-      # 발행 전 게이트는 통과 가능한 typecheck + Jest 로 둔다.
       - name: Typecheck and Jest
-        run: npm run typecheck && npm test -- --runInBand
-      - name: Verify runtime 1.0.4
+        run: npm run typecheck && npm test -- --runInBand --forceExit
+      - name: Verify unchanged Android runtime 1.0.5
         run: |
           npx expo config --json > /tmp/expo-config.json
-          node scripts/otaWorkflow.mjs assert-runtime /tmp/expo-config.json
-      - name: Publish production OTA
+          node <<'NODE'
+          const c = require('/tmp/expo-config.json');
+          const policy = c.android?.runtimeVersion ?? c.runtimeVersion;
+          const runtime = typeof policy === 'string' ? policy : policy?.policy === 'appVersion' ? c.version : null;
+          if (c.version !== '1.0.5' || runtime !== '1.0.5' || c.android?.package !== 'com.onefc.app' || c.android?.versionCode !== 15 || !c.updates?.enabled || c.extra?.eas?.projectId !== '5e46e0bc-2885-4455-88ce-9ca1623df305') throw new Error('Production identity/runtime gate failed');
+          console.log(JSON.stringify({ version: c.version, runtime, platform: 'android', versionCode: c.android.versionCode }));
+          NODE
+      - name: Publish approved Android Production OTA
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          OTA_PLATFORM: ${{ inputs.platform }}
           OTA_MESSAGE: ${{ inputs.message }}
         run: |
-          set -o pipefail
-          if [ -z "${EXPO_TOKEN}" ]; then
-            echo "secrets.EXPO_TOKEN 이 없습니다." >&2
-            exit 1
-          fi
-          if [ -z "${OTA_MESSAGE}" ]; then
-            echo "message 입력이 비어 있습니다." >&2
-            exit 1
-          fi
-          case "${OTA_PLATFORM}" in
-            android|ios|all) ;;
-            *)
-              echo "platform 은 android, ios, all 만 가능합니다." >&2
-              exit 1
-              ;;
-          esac
-          npx --yes eas-cli@16 update \
-            --channel native-production \
-            --environment production \
-            --platform "${OTA_PLATFORM}" \
-            --message "${OTA_MESSAGE}" \
-            --non-interactive | tee /tmp/eas-update.txt
-          node scripts/otaWorkflow.mjs group-id /tmp/eas-update.txt
+          test -n "$EXPO_TOKEN"
+          test -n "$OTA_MESSAGE"
+          npx --yes eas-cli@16 update --channel native-production --environment production --platform android --message "$OTA_MESSAGE" --non-interactive --json > /tmp/ota-update.json
+          node <<'NODE'
+          const fs = require('fs');
+          const raw = JSON.parse(fs.readFileSync('/tmp/ota-update.json', 'utf8'));
+          const updates = Array.isArray(raw) ? raw : raw.updates;
+          if (!Array.isArray(updates) || updates.length !== 1) throw new Error('Expected one Android update');
+          const u = updates[0];
+          if (u.platform !== 'android' || u.runtimeVersion !== '1.0.5' || !u.id || !u.group) throw new Error('Published update identity mismatch');
+          if (u.gitCommitHash && u.gitCommitHash !== process.env.APPROVED_SOURCE_SHA) throw new Error('Published source mismatch');
+          const report = { updateId: u.id, groupId: u.group, platform: u.platform, runtimeVersion: u.runtimeVersion, channel: 'native-production', sourceCommitSha: process.env.APPROVED_SOURCE_SHA };
+          fs.writeFileSync('/tmp/ota-safe-report.json', JSON.stringify(report, null, 2));
+          console.log('OTA_RELEASE_REPORT=' + JSON.stringify(report));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '### Android Production OTA\n```json\n' + JSON.stringify(report, null, 2) + '\n```\n');
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-month-calendar-ota-report
+          path: /tmp/ota-safe-report.json
