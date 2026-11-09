@@ -12,7 +12,6 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import {
   AppText,
-  Badge,
   Button,
   Card,
   Inline,
@@ -79,6 +78,8 @@ import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
 import { armScheduleTodoReturn, TODO_RETURN_SOURCE_SCHEDULE } from '../todos/todoNavigation';
 import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleTask } from './types';
 
+import { scheduleItemAppearance, type ScheduleColorItem } from './scheduleItemColors';
+import { ScheduleItemBadge } from './ScheduleItemBadge';
 import { ScheduleMonthCalendar } from './ScheduleMonthCalendar';
 import { groupMonthItems, type ScheduleDayItems, type ScheduleMonthItem } from './scheduleMonthModel';
 
@@ -124,6 +125,14 @@ export function ScheduleScreen() {
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const itemSurface = (item: ScheduleColorItem) => {
+    const color = scheduleItemAppearance(item, theme.scheme);
+    return { backgroundColor: color.background, borderColor: color.border, opacity: color.opacity };
+  };
+  const itemText = (item: ScheduleColorItem) => {
+    const color = scheduleItemAppearance(item, theme.scheme);
+    return { color: color.foreground, textDecorationLine: color.textDecorationLine };
+  };
   const today = seoulYmd();
   const [month, setMonth] = useState(() => `${today.slice(0, 7)}-01`);
   const [selected, setSelected] = useState(today);
@@ -483,11 +492,11 @@ export function ScheduleScreen() {
           ) : null}
           {dayEvents.map((event) => (
             <Pressable key={event.id} accessibilityRole="button" accessibilityLabel={`${event.title}, ${eventTimeLabel(event)}, 상세 보기`} style={styles.listTarget} onPress={() => setDetail(event)}>
-              <Card variant="outlined" padding="md">
+              <Card variant="outlined" padding="md" style={itemSurface(event)}>
                 <Stack gap="xs">
                   <Inline justify="space-between">
-                    <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{event.title}</AppText>
-                    <Badge label={scheduleEventSourceLabel(event)} tone={event.source === 'google' ? 'info' : 'warning'} />
+                    <AppText variant="bodyStrong" numberOfLines={1} style={[styles.flex, itemText(event)]}>{event.title}</AppText>
+                    <ScheduleItemBadge inheritOpacity item={event} label={scheduleEventSourceLabel(event)} />
                   </Inline>
                   <AppText variant="caption" color="textSecondary">
                     {[eventTimeLabel(event), event.customerName, event.calendarName].filter(Boolean).join(' · ')}
@@ -498,10 +507,10 @@ export function ScheduleScreen() {
           ))}
           {dayTasks.map((task) => (
             <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`${task.title}, 할 일 상세 보기`} style={styles.listTarget} onPress={() => setDetail(task)}>
-              <Card variant="outlined" padding="md">
+              <Card variant="outlined" padding="md" style={itemSurface(task)}>
                 <Inline justify="space-between">
-                  <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{task.title}</AppText>
-                  <Badge label={task.status === 'completed' ? '완료' : taskSourceLabel(task)} tone={task.status === 'completed' ? 'success' : 'default'} />
+                  <AppText variant="bodyStrong" numberOfLines={1} style={[styles.flex, itemText(task)]}>{task.title}</AppText>
+                  <ScheduleItemBadge inheritOpacity item={task} label={task.status === 'completed' ? '완료' : taskSourceLabel(task)} />
                 </Inline>
               </Card>
             </Pressable>
@@ -568,7 +577,7 @@ function ScheduleDetailModal({
     const customer = customerRouteOfTask(item);
     const todo = todoRouteOfTask(item);
     return (
-      <ModalShell open title={item.title} subtitle={taskSourceLabel(item)} presentation="dialog" scroll onRequestClose={onClose}>
+      <ModalShell open title={item.title} subtitle={taskSourceLabel(item)} headerAction={<ScheduleItemBadge item={item} label={taskSourceLabel(item)} />} presentation="dialog" scroll onRequestClose={onClose}>
         <Stack gap="md">
           <AppText variant="body">{taskDateLine(item)}</AppText>
           {item.customerName ? <AppText variant="body">고객: {item.customerName}</AppText> : null}
@@ -586,6 +595,7 @@ function ScheduleDetailModal({
       open
       title={item.title}
       subtitle={scheduleEventSourceLabel(item)}
+      headerAction={<ScheduleItemBadge item={item} label={scheduleEventSourceLabel(item)} />}
       presentation="dialog"
       scroll
       busy={deleteBusy}

@@ -1,11 +1,12 @@
 import { fireEvent, render, within } from '@testing-library/react-native';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
 import { DesignSystemProvider } from '../../../design-system';
 import { ScheduleScreen } from '../ScheduleScreen';
 import { normalizeScheduleEvents } from '../scheduleModel';
+import { SCHEDULE_ITEM_COLORS } from '../scheduleItemColors';
 
 const mockPush = jest.fn();
 const mockParams = { date: '2026-11-13' };
@@ -13,7 +14,7 @@ const mockFlow = { armScheduleWidgetFlow: jest.fn(), markScheduleWidgetSaved: je
 const mockData = normalizeScheduleEvents({ events: Array.from({ length: 5 }, (_, id) => ({
   id: `onefc:${id}`, origin: 'onefc', title: `상담 일정 ${id}`, allDay: true,
   startAt: '2026-11-13', endAt: '2026-11-14',
-})), tasks: [{ id: 'task:1', title: '서류 준비', dueDate: '2026-11-13' }] });
+})), tasks: [{ id: 'task:1', sourceId: '1', title: '서류 준비', dueDate: '2026-11-13' }] });
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
@@ -74,6 +75,18 @@ describe('monthly screen integration with existing forms/routes', () => {
     expect(ui.getByRole('button', { name: '삭제' })).toBeTruthy();
     fireEvent.press(ui.getByRole('button', { name: '수정' }));
     expect(ui.getByDisplayValue('상담 일정 0')).toBeTruthy();
+  });
+
+  it('colors the Todo list and popup badge consistently while preserving 할 일 열기 instead of event editing', () => {
+    const ui = screen();
+    expect(StyleSheet.flatten(ui.getByText('서류 준비').props.style).color).toBe(SCHEDULE_ITEM_COLORS.onefc_todo.light.foreground);
+    fireEvent.press(ui.getByRole('button', { name: '서류 준비, 할 일 상세 보기' }));
+    expect(ui.getByRole('button', { name: '할 일 열기' })).toBeTruthy();
+    expect(ui.queryByRole('button', { name: '수정' })).toBeNull();
+    expect(ui.queryByRole('button', { name: '삭제' })).toBeNull();
+    expect(ui.getAllByText('ONE FC 할 일').some((node) => StyleSheet.flatten(node.props.style)?.color === SCHEDULE_ITEM_COLORS.onefc_todo.light.foreground)).toBe(true);
+    fireEvent.press(ui.getByRole('button', { name: '할 일 열기' }));
+    expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ pathname: '/todos/[todoId]/edit', params: expect.objectContaining({ todoId: '1' }) }));
   });
 
   it('changes the existing monthly query range without a query per cell or selected date', () => {
