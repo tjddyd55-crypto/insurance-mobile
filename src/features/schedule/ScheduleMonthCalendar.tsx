@@ -5,6 +5,8 @@ import { AppText, useAppTheme, type AppTheme } from '../../design-system';
 import { formatDayTitle, monthGrid } from './scheduleModel';
 import { monthDayPreview, type ScheduleDayItems, type ScheduleMonthItem } from './scheduleMonthModel';
 
+import { scheduleItemAppearance } from './scheduleItemColors';
+
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 type Props = {
@@ -71,17 +73,20 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
                   </View>
                 </Pressable>
                 <View pointerEvents="box-none" style={[styles.previews, { paddingTop: dateHeight + theme.spacing.xxs }]}>
-                  {preview.items.map((item) => (
+                  {preview.items.map((item) => {
+                    const color = scheduleItemAppearance(item, theme.scheme);
+                    return (
                     <Pressable
                       key={item.id}
                       accessibilityRole="button"
                       accessibilityLabel={`${formatDayTitle(cell.ymd)}, ${item.title}, 상세 보기`}
-                      style={({ pressed }) => [styles.chip, { minHeight: chipHeight }, pressed && styles.chipPressed]}
+                      style={({ pressed }) => [styles.chip, { minHeight: chipHeight, backgroundColor: color.background, borderColor: color.border, opacity: color.opacity * (pressed ? theme.opacity.pressed : 1) }]}
                       onPress={() => onOpenItem(item, cell.ymd)}
                     >
-                      <AppText variant="caption" color="text" numberOfLines={2} ellipsizeMode="tail">{item.title}</AppText>
+                      <AppText variant="caption" style={{ color: color.foreground, textDecorationLine: color.textDecorationLine }} numberOfLines={2} ellipsizeMode="tail">{item.title}</AppText>
                     </Pressable>
-                  ))}
+                    );
+                  })}
                   {preview.more > 0 ? (
                     <AppText pointerEvents="none" variant="caption" color="primary" style={styles.more} accessibilityLabel={`일정 ${preview.more}건 더 있음`}>
                       +{preview.more}
@@ -111,8 +116,7 @@ function createStyles(theme: AppTheme) {
     previews: { gap: theme.spacing.xxs },
     // Dense seven-column preview exception: compact chips have equivalent full-size
     // targets in the selected day's list. The date target covers the entire cell.
-    chip: { backgroundColor: theme.colors.primarySoft, borderLeftWidth: theme.spacing.xxs, borderColor: theme.colors.primary, borderRadius: theme.radius.xs, paddingHorizontal: theme.spacing.xxs, justifyContent: 'center' },
-    chipPressed: { backgroundColor: theme.colors.primaryBorder },
+    chip: { borderLeftWidth: theme.spacing.xxs, borderRadius: theme.radius.xs, paddingHorizontal: theme.spacing.xxs, justifyContent: 'center' },
     more: { paddingHorizontal: theme.spacing.xxs },
   });
 }
