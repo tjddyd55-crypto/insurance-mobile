@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,8 +41,6 @@ import {
   canEditEvent,
   customerRouteOfEvent,
   customerRouteOfTask,
-  countItemsByDay,
-  dayCountLabel,
   emptyEventForm,
   scheduleEventSaveForm,
   toggleScheduleTime,
@@ -50,17 +48,14 @@ import {
   withScheduleStartTime,
   eventTimeLabel,
   eventToForm,
-  eventsOnDay,
   formatDayTitle,
   formatMonthTitle,
-  monthGrid,
   monthRange,
   newScheduleRequestId,
   readOnlyMessage,
   seoulYmd,
   shiftMonth,
   taskSourceLabel,
-  tasksOnDay,
   todoRouteOfTask,
   validateEventForm,
   type ScheduleNativeRoute,
@@ -84,7 +79,8 @@ import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
 import { armScheduleTodoReturn, TODO_RETURN_SOURCE_SCHEDULE } from '../todos/todoNavigation';
 import type { ScheduleEvent, ScheduleEventForm, ScheduleEventsResult, ScheduleTask } from './types';
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+import { ScheduleMonthCalendar } from './ScheduleMonthCalendar';
+import { groupMonthItems, type ScheduleDayItems, type ScheduleMonthItem } from './scheduleMonthModel';
 
 export const SCHEDULE_COPY = {
   title: '일정 관리',
@@ -131,6 +127,7 @@ export function ScheduleScreen() {
   const today = seoulYmd();
   const [month, setMonth] = useState(() => `${today.slice(0, 7)}-01`);
   const [selected, setSelected] = useState(today);
+  const [calendarViewportHeight, setCalendarViewportHeight] = useState(0);
   const [detail, setDetail] = useState<ScheduleEvent | ScheduleTask | null>(null);
   const [formState, setFormState] = useState<FormState | null>(null);
   // 시작/종료 시간 선택 줄은 한 번에 하나만 연다.
@@ -202,6 +199,15 @@ export function ScheduleScreen() {
     enabled: Boolean(token),
   });
   const data = query.data;
+  const monthItems = useMemo(() => data ? groupMonthItems(data, month) : new Map<string, ScheduleDayItems>(), [data, month]);
+  const selectCalendarDate = useCallback((date: string) => {
+    setSelected(date);
+    setMonth((current) => current.slice(0, 7) === date.slice(0, 7) ? current : `${date.slice(0, 7)}-01`);
+  }, []);
+  const openCalendarItem = useCallback((item: ScheduleMonthItem, date: string) => {
+    selectCalendarDate(date);
+    setDetail(item);
+  }, [selectCalendarDate]);
   // 위젯 행 → 그 일정 상세. 캐시(이전에 받은 목록)에 없으면 바로 포기하지 않고 한 번 새로 받아 다시 찾는다.
   // (예전: 캐시에서 못 찾으면 pending 을 비움 → 모달이 열렸다 닫힌 것으로 보여 위젯 복귀=Android 홈.)
   const linkRefetched = useRef<string | null>(null);
@@ -275,10 +281,6 @@ export function ScheduleScreen() {
     const next = shiftMonth(month, delta);
     setMonth(next);
     setSelected(next.slice(0, 7) === today.slice(0, 7) ? today : next);
-  };
-  const goToday = () => {
-    setMonth(`${today.slice(0, 7)}-01`);
-    setSelected(today);
   };
   const openRoute = (route: ScheduleNativeRoute | null) => {
     if (!route) return;
@@ -437,9 +439,8 @@ export function ScheduleScreen() {
     );
   }
 
-  const dayCounts = countItemsByDay(data);
-  const dayEvents = eventsOnDay(data.events, selected);
-  const dayTasks = tasksOnDay(data.tasks, selected).filter((task) => task.status !== 'completed');
+  const dayEvents = monthItems.get(selected)?.events ?? [];
+  const dayTasks = monthItems.get(selected)?.tasks ?? [];
   // 날짜 없는 할 일(ONE FC·Google)은 특정 날짜 일정이 아니다. 날짜별 목록(tasksOnDay)에만 의존하고 별도 섹션도 두지 않는다.
   const googleWarning = scheduleGoogleWarning(data.google);
   const deletePrompt = deleting ? scheduleDeletePrompt(deleting) : scheduleDeletePrompt({});
@@ -449,59 +450,21 @@ export function ScheduleScreen() {
       {header}
       {/* 하단 내비게이션 바 inset: 다른 목록 화면과 같은 공통 Screen 정책. */}
       <Screen padded={false}>
-        <ScrollView contentContainerStyle={styles.body} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+        <ScrollView contentContainerStyle={styles.body} onLayout={(event) => setCalendarViewportHeight(event.nativeEvent.layout.height)} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
           <Inline justify="space-between">
             <Button label="‹" variant="ghost" size="sm" accessibilityLabel="이전 달" onPress={() => goMonth(-1)} />
             <AppText variant="sectionTitle">{formatMonthTitle(month)}</AppText>
-            <Inline gap="xs">
-              <Button label="오늘" variant="ghost" size="sm" onPress={goToday} />
-              <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
-            </Inline>
+            <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
           </Inline>
-          <Card variant="outlined" padding="sm">
-            <View style={styles.weekRow}>
-              {WEEKDAYS.map((label) => (
-                <AppText key={label} variant="caption" color="textMuted" align="center" style={styles.cell}>{label}</AppText>
-              ))}
-            </View>
-            {monthGrid(month).map((week) => (
-              <View key={week[0]!.ymd} style={styles.weekRow}>
-                {week.map((cell) => {
-                  const active = cell.ymd === selected;
-                  const count = dayCounts.get(cell.ymd) ?? 0;
-                  const countLabel = dayCountLabel(count);
-                  return (
-                    <Pressable
-                      key={cell.ymd}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${formatDayTitle(cell.ymd)}${count > 0 ? `, 일정 ${count}건` : ''}`}
-                      accessibilityState={{ selected: active }}
-                      style={[styles.cell, styles.dayCell, active && styles.dayActive]}
-                      onPress={() => {
-                        setSelected(cell.ymd);
-                        if (!cell.inMonth) setMonth(`${cell.ymd.slice(0, 7)}-01`);
-                      }}
-                    >
-                      <AppText variant="body" color={active ? 'onPrimary' : cell.inMonth ? (cell.ymd === today ? 'primary' : 'text') : 'textMuted'}>
-                        {cell.day}
-                      </AppText>
-                      <AppText
-                        variant="caption"
-                        align="center"
-                        numberOfLines={1}
-                        allowFontScaling={false}
-                        style={[styles.count, active ? styles.countOnActive : styles.countOn]}
-                        accessibilityElementsHidden
-                        importantForAccessibility="no"
-                      >
-                        {countLabel}
-                      </AppText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))}
-          </Card>
+          <ScheduleMonthCalendar
+            month={month}
+            selected={selected}
+            today={today}
+            viewportHeight={calendarViewportHeight}
+            days={monthItems}
+            onSelectDate={selectCalendarDate}
+            onOpenItem={openCalendarItem}
+          />
           {googleWarning ? (
             <Inline justify="space-between">
               <AppText variant="caption" color="warning" style={styles.flex}>{googleWarning.text}</AppText>
@@ -515,10 +478,10 @@ export function ScheduleScreen() {
             <View style={styles.flex}><Button label="할 일 추가" variant="secondary" size="sm" fullWidth accessibilityLabel="할 일 추가" onPress={openTodoCreate} /></View>
           </Inline>
           {dayEvents.length === 0 && dayTasks.length === 0 ? (
-            <AppText variant="body" color="textMuted">이 날 일정이 없습니다.</AppText>
+            <AppText variant="body" color="textMuted">등록된 일정이 없습니다.</AppText>
           ) : null}
           {dayEvents.map((event) => (
-            <Pressable key={event.id} accessibilityRole="button" onPress={() => setDetail(event)}>
+            <Pressable key={event.id} accessibilityRole="button" accessibilityLabel={`${event.title}, ${eventTimeLabel(event)}, 상세 보기`} style={styles.listTarget} onPress={() => setDetail(event)}>
               <Card variant="outlined" padding="md">
                 <Stack gap="xs">
                   <Inline justify="space-between">
@@ -533,7 +496,7 @@ export function ScheduleScreen() {
             </Pressable>
           ))}
           {dayTasks.map((task) => (
-            <Pressable key={task.id} accessibilityRole="button" onPress={() => setDetail(task)}>
+            <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`${task.title}, 할 일 상세 보기`} style={styles.listTarget} onPress={() => setDetail(task)}>
               <Card variant="outlined" padding="md">
                 <Inline justify="space-between">
                   <AppText variant="bodyStrong" numberOfLines={1} style={styles.flex}>{task.title}</AppText>
@@ -659,13 +622,6 @@ function createStyles(theme: AppTheme) {
     root: { flex: 1, backgroundColor: theme.colors.background },
     body: { padding: theme.layout.screenPaddingHorizontal, gap: theme.spacing.md, paddingBottom: theme.spacing.xl },
     flex: { flex: 1 },
-    weekRow: { flexDirection: 'row' },
-    cell: { flex: 1 },
-    dayCell: { alignItems: 'center', paddingVertical: theme.spacing.xs, borderRadius: theme.radius.md, minHeight: 44 },
-    dayActive: { backgroundColor: theme.colors.primary },
-    // 고정 높이: 숫자가 없어도 칸 높이가 같아 레이아웃이 흔들리지 않는다.
-    count: { height: 14, lineHeight: 14, fontSize: 11, fontWeight: '700', marginTop: 1 },
-    countOn: { color: theme.colors.primary },
-    countOnActive: { color: theme.colors.onPrimary },
+    listTarget: { minHeight: theme.interaction.minimumTouchTarget },
   });
 }

@@ -1,0 +1,91 @@
+import { fireEvent, render, within } from '@testing-library/react-native';
+import { ScrollView } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
+
+import { DesignSystemProvider } from '../../../design-system';
+import { ScheduleScreen } from '../ScheduleScreen';
+import { normalizeScheduleEvents } from '../scheduleModel';
+
+const mockPush = jest.fn();
+const mockParams = { date: '2026-11-13' };
+const mockFlow = { armScheduleWidgetFlow: jest.fn(), markScheduleWidgetSaved: jest.fn(), endScheduleWidgetFlow: jest.fn() };
+const mockData = normalizeScheduleEvents({ events: Array.from({ length: 5 }, (_, id) => ({
+  id: `onefc:${id}`, origin: 'onefc', title: `상담 일정 ${id}`, allDay: true,
+  startAt: '2026-11-13', endAt: '2026-11-14',
+})), tasks: [{ id: 'task:1', title: '서류 준비', dueDate: '2026-11-13' }] });
+
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => mockParams,
+  useRouter: () => ({ push: mockPush }),
+  useNavigation: () => ({}),
+}));
+jest.mock('../../../auth/AuthProvider', () => ({ useAuth: () => ({ token: 'fixture-token', user: { id: 'fixture', gaId: 1 } }) }));
+jest.mock('../../home-widgets/widgetReturn', () => ({
+  scheduleModalsOpen: () => false,
+  shouldStartScheduleWidgetFlow: () => false,
+  useScheduleWidgetReturn: () => mockFlow,
+  widgetEntryId: () => null,
+  widgetTypeOf: () => null,
+  isPendingWidgetOrigin: () => false,
+}));
+jest.mock('../../home-widgets/engine/widgetRefreshCoordinator', () => ({ refreshWidgets: jest.fn() }));
+jest.mock('@tanstack/react-query', () => ({
+  useQuery: jest.fn(() => ({ data: mockData, refetch: jest.fn(), isLoading: false, isError: false })),
+  useQueryClient: () => ({ invalidateQueries: jest.fn(), setQueryData: jest.fn() }),
+  useMutation: () => ({ mutate: jest.fn(), reset: jest.fn(), isPending: false, isError: false }),
+}));
+
+const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+function screen() {
+  return render(<SafeAreaProvider initialMetrics={metrics}><DesignSystemProvider><ScheduleScreen /></DesignSystemProvider></SafeAreaProvider>);
+}
+
+describe('monthly screen integration with existing forms/routes', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('retains the calendar, shows every selected-day event/task, and has one page scroll', () => {
+    const ui = screen();
+    expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
+    expect(ui.getByText('+4')).toBeTruthy();
+    for (let index = 2; index < 5; index += 1) expect(ui.getByText(`상담 일정 ${index}`)).toBeTruthy();
+    expect(ui.getByText('서류 준비')).toBeTruthy();
+    expect(ui.UNSAFE_getAllByType(ScrollView)).toHaveLength(1);
+    fireEvent.press(ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' }));
+    expect(ui.getByText('등록된 일정이 없습니다.')).toBeTruthy();
+    expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
+    expect(ui.queryByText('상담 일정 4')).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('seeds the existing creation form with the empty selected date', () => {
+    const ui = screen();
+    fireEvent.press(ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' }));
+    fireEvent.press(ui.getByRole('button', { name: '일정 추가' }));
+    expect(ui.getAllByDisplayValue('2026-11-14', { includeHiddenElements: true })).toHaveLength(2);
+    expect(ui.getByRole('button', { name: '저장' })).toBeTruthy();
+  });
+
+  it('opens the same detail/edit form from a preview chip', () => {
+    const ui = screen();
+    const calendar = within(ui.getByTestId('schedule-month-calendar'));
+    fireEvent.press(calendar.getByRole('button', { name: '11월 13일 (금), 상담 일정 0, 상세 보기' }));
+    expect(ui.getByRole('button', { name: '수정' })).toBeTruthy();
+    expect(ui.getByRole('button', { name: '삭제' })).toBeTruthy();
+    fireEvent.press(ui.getByRole('button', { name: '수정' }));
+    expect(ui.getByDisplayValue('상담 일정 0')).toBeTruthy();
+  });
+
+  it('changes the existing monthly query range without a query per cell or selected date', () => {
+    const ui = screen();
+    const currentKey = () => (useQuery as jest.Mock).mock.calls.at(-1)![0].queryKey;
+    expect(currentKey()).toEqual(['schedule', 'events', '2026-11-01', '2026-11-30']);
+    fireEvent.press(ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' }));
+    expect(currentKey()).toEqual(['schedule', 'events', '2026-11-01', '2026-11-30']);
+    fireEvent.press(ui.getByRole('button', { name: '다음 달' }));
+    expect(ui.getByText('2026년 12월')).toBeTruthy();
+    expect(currentKey()).toEqual(['schedule', 'events', '2026-12-01', '2026-12-31']);
+    fireEvent.press(ui.getByRole('button', { name: '이전 달' }));
+    expect(currentKey()).toEqual(['schedule', 'events', '2026-11-01', '2026-11-30']);
+  });
+});
