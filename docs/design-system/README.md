@@ -61,6 +61,10 @@ import { AppText, Button, Card, Stack, useAppTheme } from '@/src/design-system'
 - 색만으로 상태를 전달하지 않고 라벨·아이콘·보조 문구를 함께 제공합니다.
 - 새 변형을 추가할 때 기본/pressed/disabled/loading/error 상태를 함께 설계합니다.
 
+### 월간 달력의 밀집 일정 미리보기
+
+`ScheduleMonthCalendar`는 7열 달력에서 제목 2개를 읽을 수 있도록 기존 caption·spacing 토큰의 작은 chip을 사용합니다. 이 미리보기 chip은 44px 터치 높이의 예외이며, 같은 일정은 선택 날짜의 하단 목록에서 44px 이상의 항목으로도 열 수 있습니다. 날짜 선택 버튼은 셀 전체를 덮고, 일정 chip은 그 버튼과 형제 노드여서 터치 및 VoiceOver 포커스가 중첩되지 않습니다. 큰 글자에서는 행 최소 높이를 늘리고 단일 페이지 스크롤을 유지합니다.
+
 ## 갤러리
 
 DEV 앱에서 `/design-system` route로 접근합니다. 운영 앱에서는 메뉴에 노출하지 않으며 DEV 환경에서만 전체 갤러리를 렌더링합니다.
