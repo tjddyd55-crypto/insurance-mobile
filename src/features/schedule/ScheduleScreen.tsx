@@ -458,6 +458,7 @@ export function ScheduleScreen() {
           </Inline>
           <ScheduleMonthCalendar
             month={month}
+            style={styles.calendarWidth}
             selected={selected}
             today={today}
             viewportHeight={calendarViewportHeight}
@@ -621,6 +622,7 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     body: { padding: theme.layout.screenPaddingHorizontal, gap: theme.spacing.md, paddingBottom: theme.spacing.xl },
+    calendarWidth: { marginHorizontal: -theme.spacing.sm },
     flex: { flex: 1 },
     listTarget: { minHeight: theme.interaction.minimumTouchTarget },
   });

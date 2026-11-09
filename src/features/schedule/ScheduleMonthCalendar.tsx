@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 
 import { AppText, useAppTheme, type AppTheme } from '../../design-system';
 import { formatDayTitle, monthGrid } from './scheduleModel';
@@ -12,6 +12,7 @@ type Props = {
   selected: string;
   today: string;
   viewportHeight: number;
+  style?: StyleProp<ViewStyle>;
   days: Map<string, ScheduleDayItems>;
   onSelectDate: (date: string) => void;
   onOpenItem: (item: ScheduleMonthItem, date: string) => void;
@@ -19,7 +20,7 @@ type Props = {
 
 /** Presentation only. No query, navigation or second scroll container. */
 export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
-  month, selected, today, viewportHeight, days, onSelectDate, onOpenItem,
+  month, selected, today, viewportHeight, style, days, onSelectDate, onOpenItem,
 }: Props) {
   const theme = useAppTheme();
   const { fontScale } = useWindowDimensions();
@@ -27,7 +28,7 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
   const weeks = useMemo(() => monthGrid(month), [month]);
   const captionHeight = theme.typography.caption.lineHeight * fontScale;
   const dateHeight = theme.typography.body.lineHeight * fontScale + theme.spacing.xs;
-  const chipHeight = captionHeight + theme.spacing.xs;
+  const chipHeight = captionHeight * 2 + theme.spacing.xxs;
   // Two titles + overflow remain readable even on a short six-week screen or large text.
   // The page scrolls instead of shrinking/clipping these rows to fit a fixed height.
   const minimumHeight = dateHeight + chipHeight * 2 + captionHeight + theme.spacing.sm;
@@ -38,7 +39,7 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
   ));
 
   return (
-    <View style={styles.calendar} testID="schedule-month-calendar">
+    <View style={[styles.calendar, style]} testID="schedule-month-calendar">
       <View style={styles.weekdays}>
         {WEEKDAYS.map((label, index) => (
           <AppText key={label} variant="caption" align="center" color={index === 0 ? 'danger' : index === 6 ? 'info' : 'textSecondary'} style={styles.column}>
@@ -78,7 +79,7 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
                       style={({ pressed }) => [styles.chip, { minHeight: chipHeight }, pressed && styles.chipPressed]}
                       onPress={() => onOpenItem(item, cell.ymd)}
                     >
-                      <AppText variant="caption" color="text" numberOfLines={1} ellipsizeMode="tail">{item.title}</AppText>
+                      <AppText variant="caption" color="text" numberOfLines={2} ellipsizeMode="tail">{item.title}</AppText>
                     </Pressable>
                   ))}
                   {preview.more > 0 ? (
@@ -102,7 +103,7 @@ function createStyles(theme: AppTheme) {
     column: { flex: 1, minWidth: 0 },
     weekdays: { flexDirection: 'row', paddingVertical: theme.spacing.sm },
     week: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border },
-    day: { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.xxs, paddingBottom: theme.spacing.xs },
+    day: { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.none, paddingBottom: theme.spacing.xs },
     selected: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
     dateTarget: { padding: theme.spacing.xxs, alignItems: 'center' },
     dateNumber: { alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.full },
