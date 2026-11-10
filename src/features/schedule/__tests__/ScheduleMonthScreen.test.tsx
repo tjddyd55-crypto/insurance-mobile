@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
+import { ApiError as mockApiError } from '../../../api/client';
 import { DesignSystemProvider } from '../../../design-system';
 import { ScheduleScreen } from '../ScheduleScreen';
 import { normalizeScheduleEvents } from '../scheduleModel';
@@ -36,7 +37,7 @@ jest.mock('../../home-widgets/widgetReturn', () => ({
 }));
 jest.mock('../../home-widgets/engine/widgetRefreshCoordinator', () => ({ refreshWidgets: jest.fn() }));
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn((options) => ({ data: options.queryKey[1] === 'view-prefs' ? mockPrefs : mockData, refetch: jest.fn(), isLoading: false, isError: options.queryKey[1] === 'view-prefs' && mockPrefsError })),
+  useQuery: jest.fn((options) => ({ data: options.queryKey[1] === 'view-prefs' ? mockPrefs : mockData, refetch: jest.fn(), isLoading: false, isError: options.queryKey[1] === 'view-prefs' && mockPrefsError, error: mockPrefsError ? new mockApiError('not found', 404) : null })),
   useQueryClient: () => ({ invalidateQueries: jest.fn(), setQueryData: jest.fn() }),
   useMutation: () => ({ mutate: jest.fn(), reset: jest.fn(), isPending: false, isError: false }),
 }));
@@ -58,11 +59,25 @@ describe('monthly screen integration with existing forms/routes', () => {
     expect(mockData.events).toHaveLength(5);
   });
 
-  it('does not reveal hidden sources when saved settings cannot be loaded', () => {
+  it('keeps the calendar and selected-day list usable when the optional settings API fails', () => {
     mockPrefsError = true;
     const ui = screen();
-    expect(ui.getByText('일정 표시 설정을 불러오지 못했습니다')).toBeTruthy();
-    expect(ui.queryByTestId('schedule-month-calendar')).toBeNull();
+    expect(ui.getByText(/현재 서버는 PC 표시 설정 동기화를 지원하지 않습니다/)).toBeTruthy();
+    expect(ui.getByText(/상령일을 숨긴 기본 표시/)).toBeTruthy();
+    expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
+    expect(ui.getByText('상담 일정 4')).toBeTruthy();
+    fireEvent.press(ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' }));
+    expect(ui.getByText('등록된 일정이 없습니다.')).toBeTruthy();
+  });
+
+  it('keeps the last successfully read source restrictions during a later settings failure', () => {
+    mockPrefs = normalizeScheduleViewPrefs({ sources: ['onefc_todo'] });
+    mockPrefsError = true;
+    const ui = screen();
+    expect(ui.getByText(/마지막으로 확인한 표시 설정을 사용/)).toBeTruthy();
+    expect(ui.queryByText('상담 일정 0')).toBeNull();
+    expect(ui.getAllByText('서류 준비')).toHaveLength(2);
+    expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
   });
 
   it('retains the calendar, shows every selected-day event/task, and has one page scroll', () => {

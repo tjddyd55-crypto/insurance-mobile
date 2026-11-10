@@ -15,7 +15,7 @@ jobs:
         run: test '${{ github.ref_name }}' = 'release/native-schedule-preferences-dev'
       - uses: actions/checkout@v4
         with:
-          ref: dc039d350311935f2a70ac923cd45484b99e6b1c
+          ref: 021830d852bb5551be3d1b17a86b3b32ff1a1103
       - uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
@@ -36,7 +36,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           test -n "$EXPO_TOKEN"
-          npx --yes eas-cli@16 update --channel native-preview --environment development --platform android --message 'PR #54: PC schedule visibility and Google auto-sync settings; DEV Android' --non-interactive --json > /tmp/dev-update.json
+          npx --yes eas-cli@16 update --channel native-preview --environment development --platform android --message 'PR #54: fix calendar blocked by missing preferences API; DEV Android' --non-interactive --json > /tmp/dev-update.json
           node <<'JS'
           const raw = require('/tmp/dev-update.json');
           const updates = Array.isArray(raw) ? raw : [raw];
