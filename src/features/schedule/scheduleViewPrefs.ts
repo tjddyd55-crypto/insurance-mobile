@@ -19,6 +19,13 @@ export type ScheduleViewPrefs = {
 
 export const SCHEDULE_VIEW_PREFS_TIMEOUT_MS = 5_000;
 
+/** Server without this optional API: keep the calendar usable, with insurance age hidden.
+ * Screen must show a warning rather than claim these are synchronized PC settings. */
+export const UNAVAILABLE_SCHEDULE_VIEW_PREFS: ScheduleViewPrefs = {
+  sources: SCHEDULE_FILTER_KEYS.filter((key) => key !== 'insurance_age'),
+  includeCompleted: false, includeOverdue: false, googleCalendarIds: null, holidayMode: null,
+};
+
 /** 웹 scheduleFilterKeyOf 와 같다: Google 출처(ONE FC 일정 포함)는 'google', CRM 은 type. */
 export function scheduleFilterKeyOf(event: Pick<ScheduleEvent, 'source' | 'type'>): ScheduleFilterKey {
   return event.source === 'google' ? 'google' : (event.type as ScheduleFilterKey);

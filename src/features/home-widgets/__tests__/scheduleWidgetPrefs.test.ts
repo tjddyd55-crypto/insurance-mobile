@@ -1,7 +1,7 @@
 import { apiRequest } from '../../../api/client';
 import { fetchScheduleEvents } from '../../schedule/scheduleApi';
 import { normalizeScheduleEvents } from '../../schedule/scheduleModel';
-import { applyScheduleViewPrefs, fetchScheduleViewPrefs, normalizeScheduleViewPrefs, scheduleFilterKeyOf } from '../../schedule/scheduleViewPrefs';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs, normalizeScheduleViewPrefs, scheduleFilterKeyOf, UNAVAILABLE_SCHEDULE_VIEW_PREFS } from '../../schedule/scheduleViewPrefs';
 import { scheduleWidgetAdapter, scheduleWidgetPayload } from '../adapters/scheduleWidgetAdapter';
 
 jest.mock('../../../api/client', () => {
@@ -101,6 +101,12 @@ describe('schedule widget — web schedule-view-prefs SSOT', () => {
     await expect(fetchScheduleViewPrefs('tok')).resolves.toBeNull();
     await expect(fetchScheduleViewPrefs(null)).resolves.toBeNull();
     expect(api).toHaveBeenCalledTimes(3);
+  });
+
+  it('missing-API fallback hides insurance age without removing ordinary schedules and tasks', () => {
+    const filtered = applyScheduleViewPrefs(result(), UNAVAILABLE_SCHEDULE_VIEW_PREFS);
+    expect(filtered.events.map(event => event.id)).toEqual(['g:a', 'g:b', 'onefc:9', 'crm:1', 'crm:2']);
+    expect(filtered.tasks.map(task => task.id)).toEqual(['onefc_todo:1', 'google_task:l:3']);
   });
 
   it('strict screen reads reject failures instead of enabling every source', async () => {

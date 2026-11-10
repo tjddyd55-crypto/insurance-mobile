@@ -82,7 +82,7 @@ import { scheduleItemAppearance, type ScheduleColorItem } from './scheduleItemCo
 import { ScheduleItemBadge } from './ScheduleItemBadge';
 import { ScheduleMonthCalendar } from './ScheduleMonthCalendar';
 import { groupMonthItems, type ScheduleDayItems, type ScheduleMonthItem } from './scheduleMonthModel';
-import { applyScheduleViewPrefs, fetchScheduleViewPrefs } from './scheduleViewPrefs';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs, UNAVAILABLE_SCHEDULE_VIEW_PREFS } from './scheduleViewPrefs';
 
 export const SCHEDULE_COPY = {
   title: '일정 관리',
@@ -213,6 +213,7 @@ export function ScheduleScreen() {
     queryFn: () => fetchScheduleViewPrefs(token, { strict: true }),
     enabled: Boolean(token),
     staleTime: 0,
+    retry: (count, error) => !(error instanceof ApiError && error.status === 404) && count < 1,
   });
   const refreshViewPrefs = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') }, { cancelRefetch: false });
@@ -227,8 +228,9 @@ export function ScheduleScreen() {
   const data = query.data;
   // Keep shared cached/API data unfiltered for Google integration and explicit deep links.
   // Both month chips and the selected-day list use the same PC/Web preferences.
-  const visibleData = useMemo(() => data ? applyScheduleViewPrefs(data, prefsQuery.data ?? null) : undefined, [data, prefsQuery.data]);
-  const monthItems = useMemo(() => visibleData ? groupMonthItems(visibleData, month, prefsQuery.data?.includeCompleted) : new Map<string, ScheduleDayItems>(), [visibleData, month, prefsQuery.data?.includeCompleted]);
+  const effectivePrefs = prefsQuery.data ?? (prefsQuery.isError ? UNAVAILABLE_SCHEDULE_VIEW_PREFS : null);
+  const visibleData = useMemo(() => data ? applyScheduleViewPrefs(data, effectivePrefs) : undefined, [data, effectivePrefs]);
+  const monthItems = useMemo(() => visibleData ? groupMonthItems(visibleData, month, effectivePrefs?.includeCompleted) : new Map<string, ScheduleDayItems>(), [visibleData, month, effectivePrefs?.includeCompleted]);
   const selectCalendarDate = useCallback((date: string) => {
     setSelected(date);
     setMonth((current) => current.slice(0, 7) === date.slice(0, 7) ? current : `${date.slice(0, 7)}-01`);
@@ -264,7 +266,7 @@ export function ScheduleScreen() {
     try {
       const [next] = await Promise.all([
         fetchScheduleEvents(token, { ...range, refresh: true }),
-        prefsQuery.refetch({ throwOnError: true }),
+        prefsQuery.refetch(),
       ]);
       queryClient.setQueryData(scheduleQueryKeys.range(range.from, range.to), next);
       await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all, refetchType: 'none' });
@@ -302,7 +304,7 @@ export function ScheduleScreen() {
     try {
       const [next] = await Promise.all([
         fetchScheduleEvents(token, { ...range, refresh: true }),
-        prefsQuery.refetch({ throwOnError: true }),
+        prefsQuery.refetch(),
       ]);
       queryClient.setQueryData(scheduleQueryKeys.range(range.from, range.to), next);
     } catch (error) {
@@ -465,9 +467,6 @@ export function ScheduleScreen() {
   if (query.isLoading || prefsQuery.isLoading) {
     return <View style={styles.root}>{header}<LoadingState message="일정을 불러오는 중…" /></View>;
   }
-  if (prefsQuery.isError) {
-    return <View style={styles.root}>{header}<ErrorState title="일정 표시 설정을 불러오지 못했습니다" message="설정을 다시 확인한 뒤 일정을 표시합니다." onRetry={() => void prefsQuery.refetch()} /></View>;
-  }
   if (query.isError || !data) {
     return (
       <View style={styles.root}>
@@ -494,6 +493,12 @@ export function ScheduleScreen() {
             <AppText variant="sectionTitle">{formatMonthTitle(month)}</AppText>
             <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
           </Inline>
+          {prefsQuery.isError ? <Card variant="outlined"><Stack gap="xs">
+            <AppText variant="caption" color="warning">{prefsQuery.error instanceof ApiError && prefsQuery.error.status === 404
+              ? '현재 서버는 PC 표시 설정 동기화를 지원하지 않습니다.'
+              : 'PC 표시 설정을 확인하지 못했습니다.'} {prefsQuery.data ? '마지막으로 확인한 표시 설정을 사용합니다.' : '상령일을 숨긴 기본 표시로 일정을 보여드립니다.'}</AppText>
+            <Button label="표시 설정 다시 확인" variant="ghost" size="sm" onPress={() => void prefsQuery.refetch()} />
+          </Stack></Card> : null}
           <ScheduleMonthCalendar
             month={month}
             style={styles.calendarWidth}
