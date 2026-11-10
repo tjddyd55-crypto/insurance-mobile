@@ -1,6 +1,7 @@
+import { SCHEDULE_ITEM_COLORS, scheduleItemColorKey } from '../../schedule/scheduleItemColors';
 import { ApiError } from '../../../api/client';
 import { fetchScheduleEvents } from '../../schedule/scheduleApi';
-import { addDaysYmd, countItemsByDay, eventDayRange, eventTimeLabel, eventsOnDay, scheduleGoogleWarning, tasksOnDay } from '../../schedule/scheduleModel';
+import { addDaysYmd, eventDayRange, eventTimeLabel, eventsOnDay, scheduleGoogleWarning, tasksOnDay } from '../../schedule/scheduleModel';
 import { applyScheduleViewPrefs, fetchScheduleViewPrefs, type ScheduleViewPrefs } from '../../schedule/scheduleViewPrefs';
 import type { ScheduleEvent, ScheduleEventsResult } from '../../schedule/types';
 import { buildWidgetDeepLink } from '../engine/widgetDeepLink';
@@ -14,6 +15,7 @@ export type WidgetScheduleItem = {
   time: string;
   kind: 'event' | 'onefc_todo' | 'google_task';
   done: boolean;
+  colorKey: keyof typeof SCHEDULE_ITEM_COLORS;
   link: string;
 };
 
@@ -30,6 +32,8 @@ export type ScheduleWidgetPayload = {
   calendarCounts: Record<string, number>;
   events: WidgetScheduleDay[];
   googleNotice: string | null;
+  includeCompleted: boolean;
+  colors: Record<string, { background: string; foreground: string; border: string }>;
 };
 
 /** 연결 자체를 안 한 사용자에게는 띄우지 않는다(ONE FC 데이터는 계속 표시). */
@@ -60,13 +64,14 @@ export function buildScheduleDays(result: Pick<ScheduleEventsResult, 'events' | 
     const items: WidgetScheduleItem[] = [
       ...eventsOnDay(eventsByDay.get(date) ?? [], date).map((event) => {
         const time = eventTimeLabel(event);
-        return { id: event.id, title: clipWidgetTitle(event.title), time: time.startsWith('종일') ? '종일' : time, kind: 'event' as const, done: false, link: link('open', { date, event: event.id }) };
+        return { id: event.id, title: clipWidgetTitle(event.title, false), time: time.startsWith('종일') ? '종일' : time, kind: 'event' as const, colorKey: scheduleItemColorKey(event), done: false, link: link('open', { date, event: event.id }) };
       }),
       ...tasksOnDay(result.tasks, date).map((task) => ({
         id: task.id,
-        title: clipWidgetTitle(task.title),
+        title: clipWidgetTitle(task.title, false),
         time: task.dueTime ?? '',
         kind: task.source,
+        colorKey: scheduleItemColorKey(task),
         done: task.status === 'completed',
         link: task.source === 'onefc_todo' && /^\d+$/.test(task.sourceId) ? link('edit', { id: task.sourceId }) : link('open', { date, event: task.id }),
       })),
@@ -77,12 +82,14 @@ export function buildScheduleDays(result: Pick<ScheduleEventsResult, 'events' | 
 
 /** prefs = PC/웹 일정 보기 설정(SSOT). null(없음·실패) → 전부 표시. 칸 목록과 배지 수가 같은 걸러진 결과를 쓴다. */
 export function scheduleWidgetPayload(raw: ScheduleEventsResult, scheme: string, today: string, prefs: ScheduleViewPrefs | null = null): ScheduleWidgetPayload {
-  const result = applyScheduleViewPrefs(raw, prefs);
+  const filtered = applyScheduleViewPrefs(raw, prefs);
+  const includeCompleted = prefs?.includeCompleted === true;
+  const result = { ...filtered, tasks: filtered.tasks.filter(task => includeCompleted || task.status !== 'completed') };
   const range = widgetWindow(today);
   const events = buildScheduleDays(result, scheme, range.from, range.to);
   const calendarCounts: Record<string, number> = {};
-  for (const [day, count] of countItemsByDay(result)) if (day >= range.from && day <= range.to) calendarCounts[day] = count;
-  return { visibleRange: range, selectedDate: today, calendarDays: events.map((day) => day.date), calendarCounts, events, googleNotice: widgetGoogleNotice(result.google) };
+  for (const day of events) calendarCounts[day.date] = day.items.length;
+  return { visibleRange: range, selectedDate: today, calendarDays: events.map((day) => day.date), calendarCounts, events, googleNotice: widgetGoogleNotice(result.google), includeCompleted, colors: Object.fromEntries(Object.entries(SCHEDULE_ITEM_COLORS).map(([key, value]) => [key, value.light])) };
 }
 
 /** 수동 새로고침만 refresh=1. 서버 간격 제한(429)이면 일반 조회. */

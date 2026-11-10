@@ -82,8 +82,7 @@ import { scheduleItemAppearance, type ScheduleColorItem } from './scheduleItemCo
 import { ScheduleItemBadge } from './ScheduleItemBadge';
 import { ScheduleMonthCalendar } from './ScheduleMonthCalendar';
 import { groupMonthItems, type ScheduleDayItems, type ScheduleMonthItem } from './scheduleMonthModel';
-import { ScheduleViewSettings } from './ScheduleViewSettings';
-import { applyScheduleViewPrefs, fetchScheduleViewPrefs, saveScheduleViewPrefs, DEFAULT_SCHEDULE_VIEW_PREFS, type ScheduleViewPrefs } from './scheduleViewPrefs';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs, DEFAULT_SCHEDULE_VIEW_PREFS } from './scheduleViewPrefs';
 
 export const SCHEDULE_COPY = {
   title: '일정 관리',
@@ -215,14 +214,6 @@ export function ScheduleScreen() {
     enabled: Boolean(token),
     staleTime: 0,
     retry: (count, error) => !(error instanceof ApiError && error.status === 404) && count < 1,
-  });
-  const prefsMutation = useMutation({
-    mutationFn: (patch: Partial<ScheduleViewPrefs>) => saveScheduleViewPrefs(token, patch),
-    onMutate: () => queryClient.cancelQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') }),
-    onSuccess: (saved) => {
-      queryClient.setQueryData(scheduleQueryKeys.viewPrefs(user?.id ?? ''), saved);
-      if (token && user) void refreshWidgets({ token, user }, { reason: 'appMutation', widgetTypes: ['schedule'], force: true });
-    },
   });
   const refreshViewPrefs = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') }, { cancelRefetch: false });
@@ -506,9 +497,6 @@ export function ScheduleScreen() {
             <AppText variant="caption" color="warning">표시 설정을 불러오지 못했습니다. {prefsQuery.data ? '마지막으로 확인한 표시 설정을 사용합니다.' : '설정을 다시 확인해 주세요.'}</AppText>
             <Button label="표시 설정 다시 확인" variant="ghost" size="sm" onPress={() => void prefsQuery.refetch()} />
           </Stack></Card> : null}
-          <ScheduleViewSettings prefs={effectivePrefs} disabled={prefsQuery.isError || prefsQuery.isLoading || prefsMutation.isPending}
-            onChange={(patch) => prefsMutation.mutate(patch)} />
-          {prefsMutation.isError ? <AppText variant="caption" color="danger">표시 설정을 저장하지 못했습니다. 다시 시도해 주세요.</AppText> : null}
           <ScheduleMonthCalendar
             month={month}
             style={styles.calendarWidth}

@@ -64,6 +64,7 @@ describe('monthly screen integration with existing forms/routes', () => {
     const ui = screen();
     expect(ui.getByText(/표시 설정을 불러오지 못했습니다/)).toBeTruthy();
     expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
+    expect(ui.queryByRole('button', { name: '표시 설정' })).toBeNull();
     expect(ui.getByText('상담 일정 4')).toBeTruthy();
     fireEvent.press(ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' }));
     expect(ui.getByText('등록된 일정이 없습니다.')).toBeTruthy();

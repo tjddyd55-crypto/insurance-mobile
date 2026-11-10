@@ -43,23 +43,24 @@ class WidgetLayoutPreviewTest {
     val scheduleRaw = scheduleRaw()
     val schedule = WidgetEnvelope.parse(scheduleRaw, OneFcWidgetType.SCHEDULE)!!
 
-    val wide = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 400, false)!!)
+    WidgetCacheManager.saveInstance(context, OneFcWidgetType.SCHEDULE, 1, WidgetDates.today(schedule.timeZone), mapOf("month" to "2026-10-01", "selected" to "2026-10-21"))
+    val wide = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 650, false)!!)
     val wideText = texts(wide)
     assertTrue(wideText.contains("2026년 10월"))
     assertFalse(wideText.contains("ONE FC 일정"))
     assertTrue(wideText.contains("미팅"))
-    assertTrue(wideText.contains("+2"))
-    capture("schedule-4x4", wide, 360, 400)
+    assertTrue(wideText.contains("+1"))
+    capture("schedule-4x4", wide, 360, 650)
     // 타이포 상향 후에도 칸 내용(날짜·제목·+N)이 칸 높이 안에 들어간다(잘림·겹침 없음).
     assertCellsFit(wide)
 
-    val small = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 210, false)!!)
+    val small = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 360, false)!!)
     val smallText = texts(small)
     assertTrue(smallText.contains("2026년 10월"))
     assertFalse(smallText.contains("미팅"))
     assertTrue(smallText.contains("3"))
     assertTrue(smallText.contains("9+"))
-    capture("schedule-small", small, 250, 210)
+    capture("schedule-small", small, 250, 360)
     assertCellsFit(small)
 
     assertTrue(WidgetCacheManager.write(context, OneFcWidgetType.SCHEDULE, scheduleRaw))
@@ -286,6 +287,13 @@ class WidgetLayoutPreviewTest {
         if (child.visibility != View.VISIBLE || child.id == WidgetIds.COUNTS[row][col]) continue
         assertTrue("cell $row/$col child $i bottom ${child.bottom} <= ${cell.height}", child.bottom <= cell.height)
         if (child is TextView && child.text.isNotEmpty()) assertEquals("cell $row/$col child $i one line", 1, child.lineCount)
+        if (child is ViewGroup) for (n in 0 until child.childCount) {
+          val label = child.getChildAt(n)
+          if (label is TextView && label.text.isNotEmpty()) {
+            assertTrue("chip label max two lines", label.lineCount <= 2)
+            assertEquals("no title ellipsis", null, label.ellipsize)
+          }
+        }
       }
     }
   }

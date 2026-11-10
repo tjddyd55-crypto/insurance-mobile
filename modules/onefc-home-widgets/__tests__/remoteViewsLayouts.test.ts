@@ -102,9 +102,10 @@ describe('home widget RemoteViews layouts', () => {
       expect(xml).toMatch(/w_status"[^>]*@color\/onefc_widget_text_meta/);
     }
     // 일정 칸: 제목·+N 은 medium + includeFontPadding=false(칸 높이 예산 15dp/13dp 유지), 날짜·요일 medium.
-    const tags = (re: RegExp) => schedule.split('<TextView').filter((t) => re.test(t));
-    const chips = tags(/id="@\+id\/w_chip_/);
+    const tags = (re: RegExp) => Array.from(schedule.matchAll(/<TextView\b([^>]*)\/?>/g), match => match[1]).filter((t) => re.test(t));
+    const chips = tags(/id="@\+id\/w_chip_\d_\d_\d"/);
     expect(chips).toHaveLength(84);
+    for (const t of chips) { expect(t).toContain('android:maxLines="2"'); expect(t).not.toContain('ellipsize'); }
     for (const t of chips) expect(t).toMatch(/onefc_widget_event_text" android:fontFamily="sans-serif-medium" android:includeFontPadding="false"/);
     const more = tags(/id="@\+id\/w_cmore_/);
     expect(more).toHaveLength(42);
