@@ -4,4 +4,5 @@ export const notificationQueryKeys = {
   all: ['notifications'] as const,
   list: (view: NotificationView) => ['notifications', 'list', view] as const,
   settings: ['notifications', 'settings'] as const,
+  googleAutoSync: (userId: string) => ['notifications', 'google-autosync', userId] as const,
 };

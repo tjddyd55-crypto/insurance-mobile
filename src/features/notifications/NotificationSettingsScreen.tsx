@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState, BackHandler, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -28,9 +28,13 @@ import { DEFAULT_ALERT_SETTINGS } from './notificationModel';
 import { getNotificationSettings, saveNotificationSettings } from './notificationsApi';
 import { notificationQueryKeys } from './queryKeys';
 import type { UserAlertSettings } from './types';
+import { GoogleCalendarAutoSyncCard } from './GoogleCalendarAutoSyncCard';
+import { fetchGoogleAutoSync, googleAutoSyncInput, saveGoogleAutoSync, type GoogleAutoSyncInput } from './googleCalendarAutoSyncApi';
+import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
+import { scheduleQueryKeys } from '../schedule/queryKeys';
 
 export function NotificationSettingsScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
@@ -41,11 +45,34 @@ export function NotificationSettingsScreen() {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
+  const [googleDraft, setGoogleDraft] = useState<GoogleAutoSyncInput | null>(null);
+  const [initialGoogleSnapshot, setInitialGoogleSnapshot] = useState('');
+  const alertDirty = initialized && JSON.stringify(draft) !== initialSnapshot;
+  const googleDirty = googleDraft !== null && JSON.stringify(googleDraft) !== initialGoogleSnapshot;
   const query = useQuery({
     queryKey: notificationQueryKeys.settings,
     queryFn: () => getNotificationSettings(token),
     enabled: Boolean(token),
   });
+  const googleQuery = useQuery({
+    queryKey: notificationQueryKeys.googleAutoSync(user?.id ?? ''),
+    queryFn: () => fetchGoogleAutoSync(token),
+    enabled: Boolean(token),
+    refetchInterval: (current) => current.state.data?.syncStatus === 'syncing' ? 3_000 : false,
+  });
+  useEffect(() => {
+    if (!googleQuery.data || googleDirty) return;
+    const value = googleAutoSyncInput(googleQuery.data);
+    if (googleDraft !== null && JSON.stringify(value) === initialGoogleSnapshot) return;
+    setGoogleDraft(value);
+    setInitialGoogleSnapshot(JSON.stringify(value));
+  }, [googleDirty, googleDraft, googleQuery.data, initialGoogleSnapshot]);
+
+  const refreshSharedSettings = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.settings }, { cancelRefetch: false });
+    void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.googleAutoSync(user?.id ?? '') }, { cancelRefetch: false });
+  }, [queryClient, user?.id]);
+  useFocusEffect(refreshSharedSettings);
 
   const refreshOsPermission = () => {
     void getOsNotificationPermissionGranted().then(setOsPermissionGranted);
@@ -54,10 +81,10 @@ export function NotificationSettingsScreen() {
   useEffect(() => {
     refreshOsPermission();
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') refreshOsPermission();
+      if (state === 'active') { refreshOsPermission(); refreshSharedSettings(); }
     });
     return () => sub.remove();
-  }, []);
+  }, [refreshSharedSettings]);
 
   useEffect(() => {
     if (!token || osPermissionGranted !== true) return;
@@ -65,14 +92,37 @@ export function NotificationSettingsScreen() {
   }, [osPermissionGranted, token]);
 
   useEffect(() => {
-    if (!query.data || initialized) return;
+    if (!query.data || alertDirty) return;
+    if (initialized && JSON.stringify(query.data) === initialSnapshot) return;
     setDraft(query.data);
     setInitialSnapshot(JSON.stringify(query.data));
     setInitialized(true);
-  }, [initialized, query.data]);
-  const dirty = initialized && JSON.stringify(draft) !== initialSnapshot;
+  }, [initialized, query.data, alertDirty, initialSnapshot]);
+  const dirty = alertDirty || googleDirty;
   const saveMutation = useMutation({
-    mutationFn: () => saveNotificationSettings(token, draft),
+    mutationFn: async () => {
+      const saved = alertDirty ? await saveNotificationSettings(token, draft) : (query.data ?? draft);
+      // These existing endpoints are not atomic. Keep a successful alert save even
+      // if Google fails, leave the Google draft dirty, and never report full success.
+      setDraft(saved);
+      setInitialSnapshot(JSON.stringify(saved));
+      queryClient.setQueryData(notificationQueryKeys.settings, saved);
+      if (googleDirty && googleDraft) {
+        try {
+          const google = await saveGoogleAutoSync(token, googleDraft);
+          const value = googleAutoSyncInput(google);
+          setGoogleDraft(value);
+          setInitialGoogleSnapshot(JSON.stringify(value));
+          queryClient.setQueryData(notificationQueryKeys.googleAutoSync(user?.id ?? ''), google);
+          await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+        } catch {
+          throw new Error(alertDirty
+            ? '앱 알림 설정은 저장했지만 Google 자동 연동 설정은 저장하지 못했습니다. 다시 열어 저장 상태를 확인해 주세요.'
+            : 'Google 자동 연동 설정을 저장하지 못했습니다. 다시 열어 저장 상태를 확인해 주세요.');
+        }
+      }
+      return saved;
+    },
     onSuccess: async (saved) => {
       setInitialSnapshot(JSON.stringify(saved));
       queryClient.setQueryData(notificationQueryKeys.settings, saved);
@@ -82,7 +132,8 @@ export function NotificationSettingsScreen() {
   });
 
   const requestBack = () => {
-    if (dirty && !saveMutation.isPending) setDiscardOpen(true);
+    if (saveMutation.isPending) return;
+    if (dirty) setDiscardOpen(true);
     else router.back();
   };
   useEffect(() => {
@@ -196,6 +247,15 @@ export function NotificationSettingsScreen() {
           onEnabled={(enabled) => setWindowed('specialDate', { enabled })}
           onDays={(daysBefore) => setWindowed('specialDate', { daysBefore })}
         />
+        {googleQuery.isLoading ? <Card variant="outlined"><AppText variant="helper">Google 자동 연동 설정을 불러오는 중…</AppText></Card> : null}
+        {googleQuery.isError ? <Card variant="outlined"><Stack gap="sm">
+          <AppText color="danger" variant="caption">Google 자동 연동 설정을 불러오지 못했습니다. 앱 알림 설정은 계속 사용할 수 있습니다.</AppText>
+          <Button label="Google 자동 연동 다시 시도" variant="secondary" onPress={() => void googleQuery.refetch()} />
+        </Stack></Card> : null}
+        {googleQuery.data && googleDraft ? <GoogleCalendarAutoSyncCard
+          state={googleQuery.data} draft={googleDraft} onChange={setGoogleDraft} busy={saveMutation.isPending}
+          onOpenGoogle={() => router.push(GOOGLE_INTEGRATION_HREF)}
+        /> : null}
         {formError ? <AppText color="danger">{formError}</AppText> : null}
         {saveMutation.isError ? (
           <AppText color="danger">

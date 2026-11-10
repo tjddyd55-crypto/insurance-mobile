@@ -1,7 +1,7 @@
 import { apiRequest } from '../../../api/client';
 import { fetchScheduleEvents } from '../../schedule/scheduleApi';
 import { normalizeScheduleEvents } from '../../schedule/scheduleModel';
-import { applyScheduleViewPrefs, fetchScheduleViewPrefs, normalizeScheduleViewPrefs, scheduleFilterKeyOf } from '../../schedule/scheduleViewPrefs';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs, normalizeScheduleViewPrefs, scheduleFilterKeyOf, DEFAULT_SCHEDULE_VIEW_PREFS } from '../../schedule/scheduleViewPrefs';
 import { scheduleWidgetAdapter, scheduleWidgetPayload } from '../adapters/scheduleWidgetAdapter';
 
 jest.mock('../../../api/client', () => {
@@ -85,10 +85,10 @@ describe('schedule widget — web schedule-view-prefs SSOT', () => {
 
   it('normalize: empty/invalid/unknown → null fallback; unknown keys dropped', () => {
     expect(normalizeScheduleViewPrefs(null)).toBeNull();
-    expect(normalizeScheduleViewPrefs({})).toBeNull();
-    expect(normalizeScheduleViewPrefs({ sources: [] })).toBeNull();
-    expect(normalizeScheduleViewPrefs({ sources: ['nope'] })).toBeNull();
-    expect(normalizeScheduleViewPrefs({ sources: ['google', 'nope'], googleCalendarIds: [] })).toEqual({ sources: ['google'], includeCompleted: false, includeOverdue: false, googleCalendarIds: null, holidayMode: null });
+    expect(normalizeScheduleViewPrefs({})).toEqual(DEFAULT_SCHEDULE_VIEW_PREFS);
+    expect(normalizeScheduleViewPrefs({ sources: [] })?.sources).toEqual([]);
+    expect(normalizeScheduleViewPrefs({ sources: ['nope'] })?.sources).toEqual([]);
+    expect(normalizeScheduleViewPrefs({ sources: ['google', 'nope'], googleCalendarIds: [] })).toEqual({ sources: ['google'], includeCompleted: false, includeOverdue: false, googleCalendarIds: null, holidayMode: 'kr' });
   });
 
   it('fetch attaches the token via apiRequest and never throws (404/timeout → null)', async () => {
@@ -101,6 +101,11 @@ describe('schedule widget — web schedule-view-prefs SSOT', () => {
     await expect(fetchScheduleViewPrefs('tok')).resolves.toBeNull();
     await expect(fetchScheduleViewPrefs(null)).resolves.toBeNull();
     expect(api).toHaveBeenCalledTimes(3);
+  });
+
+  it('strict screen reads reject failures instead of enabling every source', async () => {
+    api.mockRejectedValueOnce(new Error('offline'));
+    await expect(fetchScheduleViewPrefs('tok', { strict: true })).rejects.toThrow('offline');
   });
 
   it('adapter.load reads latest prefs every load and falls back without error', async () => {
