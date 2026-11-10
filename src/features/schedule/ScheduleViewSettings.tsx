@@ -30,7 +30,7 @@ export function ScheduleViewSettings({
           label="표시 설정"
           variant="ghost"
           size="sm"
-          accessibilityLabel="달력 표시 설정"
+          accessibilityLabel="표시 설정"
           onPress={() => setOpen(true)}
         />
       </Inline>
