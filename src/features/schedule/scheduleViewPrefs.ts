@@ -41,13 +41,14 @@ export function normalizeScheduleViewPrefs(raw: unknown): ScheduleViewPrefs | nu
   };
 }
 
-/** Bearer 는 apiRequest 의 token 옵션이 붙인다. 404·실패·타임아웃·토큰 없음 → null. 절대 throw 하지 않는다. */
-export async function fetchScheduleViewPrefs(token: string | null): Promise<ScheduleViewPrefs | null> {
+/** Widget default: failure → null. The screen uses strict mode to avoid showing hidden sources on read failures. */
+export async function fetchScheduleViewPrefs(token: string | null, options: { strict?: boolean } = {}): Promise<ScheduleViewPrefs | null> {
   const bearer = token?.trim();
   if (!bearer) return null;
   try {
     return normalizeScheduleViewPrefs(await apiRequest<unknown>('/api/me/schedule-view-prefs', { token: bearer, timeoutMs: SCHEDULE_VIEW_PREFS_TIMEOUT_MS }));
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error;
     return null;
   }
 }

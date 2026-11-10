@@ -6,8 +6,11 @@ import { useQuery } from '@tanstack/react-query';
 import { DesignSystemProvider } from '../../../design-system';
 import { ScheduleScreen } from '../ScheduleScreen';
 import { normalizeScheduleEvents } from '../scheduleModel';
+import { normalizeScheduleViewPrefs } from '../scheduleViewPrefs';
 import { SCHEDULE_ITEM_COLORS } from '../scheduleItemColors';
 
+let mockPrefs: ReturnType<typeof normalizeScheduleViewPrefs> = null;
+let mockPrefsError = false;
 const mockPush = jest.fn();
 const mockParams = { date: '2026-11-13' };
 const mockFlow = { armScheduleWidgetFlow: jest.fn(), markScheduleWidgetSaved: jest.fn(), endScheduleWidgetFlow: jest.fn() };
@@ -20,6 +23,7 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
   useRouter: () => ({ push: mockPush }),
   useNavigation: () => ({}),
+  useFocusEffect: jest.fn(),
 }));
 jest.mock('../../../auth/AuthProvider', () => ({ useAuth: () => ({ token: 'fixture-token', user: { id: 'fixture', gaId: 1 } }) }));
 jest.mock('../../home-widgets/widgetReturn', () => ({
@@ -32,7 +36,7 @@ jest.mock('../../home-widgets/widgetReturn', () => ({
 }));
 jest.mock('../../home-widgets/engine/widgetRefreshCoordinator', () => ({ refreshWidgets: jest.fn() }));
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn(() => ({ data: mockData, refetch: jest.fn(), isLoading: false, isError: false })),
+  useQuery: jest.fn((options) => ({ data: options.queryKey[1] === 'view-prefs' ? mockPrefs : mockData, refetch: jest.fn(), isLoading: false, isError: options.queryKey[1] === 'view-prefs' && mockPrefsError })),
   useQueryClient: () => ({ invalidateQueries: jest.fn(), setQueryData: jest.fn() }),
   useMutation: () => ({ mutate: jest.fn(), reset: jest.fn(), isPending: false, isError: false }),
 }));
@@ -43,7 +47,23 @@ function screen() {
 }
 
 describe('monthly screen integration with existing forms/routes', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => { jest.clearAllMocks(); mockPrefs = null; mockPrefsError = false; });
+
+  it('applies PC source settings to calendar and selected-day list without mutating cached data', () => {
+    mockPrefs = normalizeScheduleViewPrefs({ sources: ['onefc_todo'] });
+    const ui = screen();
+    expect(ui.queryByText('상담 일정 0')).toBeNull();
+    expect(ui.getAllByText('서류 준비')).toHaveLength(2);
+    expect(ui.getByRole('button', { name: '11월 13일 (금), 일정 1건' })).toBeTruthy();
+    expect(mockData.events).toHaveLength(5);
+  });
+
+  it('does not reveal hidden sources when saved settings cannot be loaded', () => {
+    mockPrefsError = true;
+    const ui = screen();
+    expect(ui.getByText('일정 표시 설정을 불러오지 못했습니다')).toBeTruthy();
+    expect(ui.queryByTestId('schedule-month-calendar')).toBeNull();
+  });
 
   it('retains the calendar, shows every selected-day event/task, and has one page scroll', () => {
     const ui = screen();
@@ -91,7 +111,7 @@ describe('monthly screen integration with existing forms/routes', () => {
 
   it('changes the existing monthly query range without a query per cell or selected date', () => {
     const ui = screen();
-    const currentKey = () => (useQuery as jest.Mock).mock.calls.at(-1)![0].queryKey;
+    const currentKey = () => (useQuery as jest.Mock).mock.calls.filter(([options]) => options.queryKey[1] === 'events').at(-1)![0].queryKey;
     expect(currentKey()).toEqual(['schedule', 'events', '2026-11-01', '2026-11-30']);
     fireEvent.press(ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' }));
     expect(currentKey()).toEqual(['schedule', 'events', '2026-11-01', '2026-11-30']);

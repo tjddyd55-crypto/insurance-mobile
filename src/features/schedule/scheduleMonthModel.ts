@@ -10,6 +10,7 @@ export type ScheduleMonthItem = ScheduleEvent | ScheduleTask;
 export function groupMonthItems(
   data: Pick<ScheduleEventsResult, 'events' | 'tasks'>,
   month: string,
+  includeCompleted = false,
 ): Map<string, ScheduleDayItems> {
   const cells = monthGrid(month).flat();
   const first = cells[0]!.ymd;
@@ -22,7 +23,7 @@ export function groupMonthItems(
     for (let date = start; date <= end; date = addDaysYmd(date, 1)) days.get(date)?.events.push(event);
   }
   for (const task of data.tasks) {
-    if (task.dueDate && task.status !== 'completed') days.get(task.dueDate)?.tasks.push(task);
+    if (task.dueDate && (includeCompleted || task.status !== 'completed')) days.get(task.dueDate)?.tasks.push(task);
   }
   for (const [date, items] of days) {
     items.events = eventsOnDay(items.events, date);

@@ -103,6 +103,11 @@ describe('schedule widget — web schedule-view-prefs SSOT', () => {
     expect(api).toHaveBeenCalledTimes(3);
   });
 
+  it('strict screen reads reject failures instead of enabling every source', async () => {
+    api.mockRejectedValueOnce(new Error('offline'));
+    await expect(fetchScheduleViewPrefs('tok', { strict: true })).rejects.toThrow('offline');
+  });
+
   it('adapter.load reads latest prefs every load and falls back without error', async () => {
     events.mockResolvedValue(result());
     api.mockResolvedValueOnce({ sources: ['customer_alert'] });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '../../api/client';
@@ -82,6 +82,7 @@ import { scheduleItemAppearance, type ScheduleColorItem } from './scheduleItemCo
 import { ScheduleItemBadge } from './ScheduleItemBadge';
 import { ScheduleMonthCalendar } from './ScheduleMonthCalendar';
 import { groupMonthItems, type ScheduleDayItems, type ScheduleMonthItem } from './scheduleMonthModel';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs } from './scheduleViewPrefs';
 
 export const SCHEDULE_COPY = {
   title: '일정 관리',
@@ -207,8 +208,27 @@ export function ScheduleScreen() {
     queryFn: () => fetchScheduleEvents(token, range),
     enabled: Boolean(token),
   });
+  const prefsQuery = useQuery({
+    queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? ''),
+    queryFn: () => fetchScheduleViewPrefs(token, { strict: true }),
+    enabled: Boolean(token),
+    staleTime: 0,
+  });
+  const refreshViewPrefs = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') }, { cancelRefetch: false });
+  }, [queryClient, user?.id]);
+  useFocusEffect(refreshViewPrefs);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshViewPrefs();
+    });
+    return () => sub.remove();
+  }, [refreshViewPrefs]);
   const data = query.data;
-  const monthItems = useMemo(() => data ? groupMonthItems(data, month) : new Map<string, ScheduleDayItems>(), [data, month]);
+  // Keep shared cached/API data unfiltered for Google integration and explicit deep links.
+  // Both month chips and the selected-day list use the same PC/Web preferences.
+  const visibleData = useMemo(() => data ? applyScheduleViewPrefs(data, prefsQuery.data ?? null) : undefined, [data, prefsQuery.data]);
+  const monthItems = useMemo(() => visibleData ? groupMonthItems(visibleData, month, prefsQuery.data?.includeCompleted) : new Map<string, ScheduleDayItems>(), [visibleData, month, prefsQuery.data?.includeCompleted]);
   const selectCalendarDate = useCallback((date: string) => {
     setSelected(date);
     setMonth((current) => current.slice(0, 7) === date.slice(0, 7) ? current : `${date.slice(0, 7)}-01`);
@@ -242,7 +262,10 @@ export function ScheduleScreen() {
   /** 저장 직후 refresh=1 로 다시 읽는다(서버는 쓰기 성공 시 그 사용자 Google 캐시도 비운다). 새로고침 간격 제한(429)이면 일반 재조회. */
   const reloadAfterWrite = async () => {
     try {
-      const next = await fetchScheduleEvents(token, { ...range, refresh: true });
+      const [next] = await Promise.all([
+        fetchScheduleEvents(token, { ...range, refresh: true }),
+        prefsQuery.refetch({ throwOnError: true }),
+      ]);
       queryClient.setQueryData(scheduleQueryKeys.range(range.from, range.to), next);
       await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all, refetchType: 'none' });
     } catch {
@@ -277,7 +300,10 @@ export function ScheduleScreen() {
     setRefreshing(true);
     setRefreshError(null);
     try {
-      const next = await fetchScheduleEvents(token, { ...range, refresh: true });
+      const [next] = await Promise.all([
+        fetchScheduleEvents(token, { ...range, refresh: true }),
+        prefsQuery.refetch({ throwOnError: true }),
+      ]);
       queryClient.setQueryData(scheduleQueryKeys.range(range.from, range.to), next);
     } catch (error) {
       setRefreshError(scheduleRefreshError(error));
@@ -436,8 +462,11 @@ export function ScheduleScreen() {
       }
     />
   );
-  if (query.isLoading) {
+  if (query.isLoading || prefsQuery.isLoading) {
     return <View style={styles.root}>{header}<LoadingState message="일정을 불러오는 중…" /></View>;
+  }
+  if (prefsQuery.isError) {
+    return <View style={styles.root}>{header}<ErrorState title="일정 표시 설정을 불러오지 못했습니다" message="설정을 다시 확인한 뒤 일정을 표시합니다." onRetry={() => void prefsQuery.refetch()} /></View>;
   }
   if (query.isError || !data) {
     return (
