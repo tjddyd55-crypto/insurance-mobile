@@ -509,7 +509,7 @@ export function ScheduleScreen() {
             </Inline>
             <Inline gap="xs" justify="center">
               <Button
-                label={formatMonthTitle(shiftMonth(month, -1)).replace('2026년 ', '').replace('년 ', '년 ')}
+                label={`${Number(shiftMonth(month, -1).slice(5, 7))}월`}
                 variant="ghost"
                 size="sm"
                 accessibilityLabel="이전 달로 이동"
@@ -517,7 +517,7 @@ export function ScheduleScreen() {
               />
               <Button label="오늘" variant="secondary" size="sm" accessibilityLabel="오늘로 이동" onPress={goToday} />
               <Button
-                label={formatMonthTitle(shiftMonth(month, 1)).replace('2026년 ', '').replace('년 ', '년 ')}
+                label={`${Number(shiftMonth(month, 1).slice(5, 7))}월`}
                 variant="ghost"
                 size="sm"
                 accessibilityLabel="다음 달로 이동"
