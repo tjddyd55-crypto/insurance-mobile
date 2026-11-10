@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0b6326bd07e6c45dce79e822f4cc95805bdfb62c
+          ref: d592a574e125463edd1c9b0c82c10bd2dbac815b
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -22,6 +22,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
       - run: npm ci
       - run: npm run typecheck && npm test -- --runInBand --forceExit
       - name: Prepare Android test project

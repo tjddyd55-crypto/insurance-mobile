@@ -130,7 +130,6 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
           views.setViewVisibility(wrapperId, if (item != null) View.VISIBLE else View.GONE)
           if (item != null) {
             views.setTextViewText(chipId, item.title)
-            views.setInt(chipId, "setHeight", (28 * fontScale * context.resources.displayMetrics.density).toInt())
             val colors = payload.colors[item.colorKey]
             val background = colors?.background?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand_soft)
             val foreground = colors?.foreground?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand)

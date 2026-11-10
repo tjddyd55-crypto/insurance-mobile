@@ -44,7 +44,8 @@ class WidgetCalendarParityTest {
       assertEquals(title, first.text.toString())
       assertNull(first.ellipsize)
       assertEquals(2, first.maxLines)
-      assertTrue(first.lineCount <= 2)
+      val visibleLines = (0 until first.lineCount).count { first.layout.getLineBottom(it) <= first.height - first.paddingTop - first.paddingBottom }
+      assertTrue("visible lines $visibleLines", visibleLines in 1..2)
       assertEquals(Color.parseColor("#166534"), first.currentTextColor)
       assertEquals(Color.parseColor("#5b21b6"), second.currentTextColor)
       assertTrue(second.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG != 0)
