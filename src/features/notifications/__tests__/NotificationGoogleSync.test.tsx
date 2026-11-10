@@ -38,11 +38,14 @@ it('reads existing PC preferences without writes, and saves only after explicit 
   fireEvent.press(ui.getByRole('button', { name: '저장' }));
   await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
   expect(saveGoogleAutoSync).toHaveBeenCalledWith('fixture', { enabled: true, kinds: { ...state.kinds, insurance_age_date: true } });
+  expect(saveNotificationSettings).not.toHaveBeenCalled();
 });
 it('keeps the user on the screen and reports a partial save when Google fails', async () => {
   (saveGoogleAutoSync as jest.Mock).mockRejectedValue(new Error('offline'));
   const ui = screen();
   fireEvent(await ui.findByLabelText('Google 자동 연동 상령일 알림'), 'valueChange', true);
+  const appMaster = ui.getAllByRole('switch')[0]!;
+  fireEvent(appMaster, 'valueChange', !appMaster.props.value);
   fireEvent.press(ui.getByRole('button', { name: '저장' }));
   expect(await ui.findByText(/앱 알림 설정은 저장했지만 Google 자동 연동 설정은 저장하지 못했습니다/)).toBeTruthy();
   expect(mockBack).not.toHaveBeenCalled();

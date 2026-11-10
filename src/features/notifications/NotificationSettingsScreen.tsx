@@ -101,7 +101,7 @@ export function NotificationSettingsScreen() {
   const dirty = alertDirty || googleDirty;
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const saved = await saveNotificationSettings(token, draft);
+      const saved = alertDirty ? await saveNotificationSettings(token, draft) : (query.data ?? draft);
       // These existing endpoints are not atomic. Keep a successful alert save even
       // if Google fails, leave the Google draft dirty, and never report full success.
       setDraft(saved);
@@ -116,7 +116,9 @@ export function NotificationSettingsScreen() {
           queryClient.setQueryData(notificationQueryKeys.googleAutoSync(user?.id ?? ''), google);
           await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
         } catch {
-          throw new Error('앱 알림 설정은 저장했지만 Google 자동 연동 설정은 저장하지 못했습니다. 다시 열어 저장 상태를 확인해 주세요.');
+          throw new Error(alertDirty
+            ? '앱 알림 설정은 저장했지만 Google 자동 연동 설정은 저장하지 못했습니다. 다시 열어 저장 상태를 확인해 주세요.'
+            : 'Google 자동 연동 설정을 저장하지 못했습니다. 다시 열어 저장 상태를 확인해 주세요.');
         }
       }
       return saved;
