@@ -328,6 +328,10 @@ export function ScheduleScreen() {
     setMonth(next);
     setSelected(next.slice(0, 7) === today.slice(0, 7) ? today : next);
   };
+  const goToday = () => {
+    setMonth(`${today.slice(0, 7)}-01`);
+    setSelected(today);
+  };
   const openRoute = (route: ScheduleNativeRoute | null) => {
     if (!route) return;
     endScheduleWidgetFlow();
@@ -497,11 +501,30 @@ export function ScheduleScreen() {
       {/* 하단 내비게이션 바 inset: 다른 목록 화면과 같은 공통 Screen 정책. */}
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.body} onLayout={(event) => setCalendarViewportHeight(event.nativeEvent.layout.height)} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
-          <Inline justify="space-between">
-            <Button label="‹" variant="ghost" size="sm" accessibilityLabel="이전 달" onPress={() => goMonth(-1)} />
-            <AppText variant="sectionTitle">{formatMonthTitle(month)}</AppText>
-            <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
-          </Inline>
+          <Stack gap="xs">
+            <Inline justify="space-between">
+              <Button label="‹" variant="ghost" size="sm" accessibilityLabel="이전 달" onPress={() => goMonth(-1)} />
+              <AppText variant="sectionTitle">{formatMonthTitle(month)}</AppText>
+              <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
+            </Inline>
+            <Inline gap="xs" justify="center">
+              <Button
+                label={`${Number(shiftMonth(month, -1).slice(5, 7))}월`}
+                variant="ghost"
+                size="sm"
+                accessibilityLabel="이전 달로 이동"
+                onPress={() => goMonth(-1)}
+              />
+              <Button label="오늘" variant="secondary" size="sm" accessibilityLabel="오늘로 이동" onPress={goToday} />
+              <Button
+                label={`${Number(shiftMonth(month, 1).slice(5, 7))}월`}
+                variant="ghost"
+                size="sm"
+                accessibilityLabel="다음 달로 이동"
+                onPress={() => goMonth(1)}
+              />
+            </Inline>
+          </Stack>
           {prefsQuery.isError ? <Card variant="outlined"><Stack gap="xs">
             <AppText variant="caption" color="warning">표시 설정을 불러오지 못했습니다. {prefsQuery.data ? '마지막으로 확인한 표시 설정을 사용합니다.' : '설정을 다시 확인해 주세요.'}</AppText>
             <Button label="표시 설정 다시 확인" variant="ghost" size="sm" onPress={() => void prefsQuery.refetch()} />
@@ -675,7 +698,7 @@ function eventDayStart(event: ScheduleEvent): string {
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    body: { padding: theme.layout.screenPaddingHorizontal, gap: theme.spacing.md, paddingBottom: theme.spacing.xl },
+    body: { padding: theme.layout.screenPaddingHorizontal, gap: theme.spacing.sm, paddingBottom: theme.spacing.xl },
     calendarWidth: { marginHorizontal: -theme.spacing.sm },
     flex: { flex: 1 },
     listTarget: { minHeight: theme.interaction.minimumTouchTarget },

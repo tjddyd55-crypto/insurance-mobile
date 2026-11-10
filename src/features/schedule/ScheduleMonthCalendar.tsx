@@ -30,10 +30,10 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
   const weeks = useMemo(() => monthGrid(month), [month]);
   const captionHeight = theme.typography.caption.lineHeight * fontScale;
   const dateHeight = theme.typography.body.lineHeight * fontScale + theme.spacing.xs;
-  const chipHeight = captionHeight * 2 + theme.spacing.xxs;
-  // Two titles + overflow remain readable even on a short six-week screen or large text.
-  // The page scrolls instead of shrinking/clipping these rows to fit a fixed height.
-  const minimumHeight = dateHeight + chipHeight * 2 + captionHeight + theme.spacing.sm;
+  const chipMinHeight = captionHeight + theme.spacing.xxs;
+  // Titles wrap naturally inside the narrow seven-column cell. The page scrolls instead
+  // of truncating event names with ellipsis just to keep a fixed row height.
+  const minimumHeight = dateHeight + chipMinHeight * 2 + captionHeight + theme.spacing.sm;
   const reservedHeight = theme.controlSize.minimumTouchTarget + theme.spacing.xl + theme.spacing.lg * 2;
   const weekHeight = Math.max(minimumHeight, Math.min(
     minimumHeight + theme.spacing.xl,
@@ -80,10 +80,10 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
                       key={item.id}
                       accessibilityRole="button"
                       accessibilityLabel={`${formatDayTitle(cell.ymd)}, ${item.title}, 상세 보기`}
-                      style={({ pressed }) => [styles.chip, { minHeight: chipHeight, backgroundColor: color.background, borderColor: color.border, opacity: color.opacity * (pressed ? theme.opacity.pressed : 1) }]}
+                      style={({ pressed }) => [styles.chip, { minHeight: chipMinHeight, backgroundColor: color.background, borderColor: color.border, opacity: color.opacity * (pressed ? theme.opacity.pressed : 1) }]}
                       onPress={() => onOpenItem(item, cell.ymd)}
                     >
-                      <AppText variant="caption" style={{ color: color.foreground, textDecorationLine: color.textDecorationLine }} numberOfLines={2} ellipsizeMode="tail">{item.title}</AppText>
+                      <AppText variant="caption" style={{ color: color.foreground, textDecorationLine: color.textDecorationLine }}>{item.title}</AppText>
                     </Pressable>
                     );
                   })}
