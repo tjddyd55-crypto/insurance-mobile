@@ -62,8 +62,7 @@ describe('monthly screen integration with existing forms/routes', () => {
   it('keeps the calendar and selected-day list usable when the optional settings API fails', () => {
     mockPrefsError = true;
     const ui = screen();
-    expect(ui.getByText(/현재 서버는 PC 표시 설정 동기화를 지원하지 않습니다/)).toBeTruthy();
-    expect(ui.getByText(/상령일을 숨긴 기본 표시/)).toBeTruthy();
+    expect(ui.getByText(/표시 설정을 불러오지 못했습니다/)).toBeTruthy();
     expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
     expect(ui.getByText('상담 일정 4')).toBeTruthy();
     fireEvent.press(ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' }));

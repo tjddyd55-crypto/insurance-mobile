@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState, BackHandler, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -47,6 +47,8 @@ export function NotificationSettingsScreen() {
   const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
   const [googleDraft, setGoogleDraft] = useState<GoogleAutoSyncInput | null>(null);
   const [initialGoogleSnapshot, setInitialGoogleSnapshot] = useState('');
+  const alertDirty = initialized && JSON.stringify(draft) !== initialSnapshot;
+  const googleDirty = googleDraft !== null && JSON.stringify(googleDraft) !== initialGoogleSnapshot;
   const query = useQuery({
     queryKey: notificationQueryKeys.settings,
     queryFn: () => getNotificationSettings(token),
@@ -59,11 +61,18 @@ export function NotificationSettingsScreen() {
     refetchInterval: (current) => current.state.data?.syncStatus === 'syncing' ? 3_000 : false,
   });
   useEffect(() => {
-    if (!googleQuery.data || googleDraft !== null) return;
+    if (!googleQuery.data || googleDirty) return;
     const value = googleAutoSyncInput(googleQuery.data);
+    if (googleDraft !== null && JSON.stringify(value) === initialGoogleSnapshot) return;
     setGoogleDraft(value);
     setInitialGoogleSnapshot(JSON.stringify(value));
-  }, [googleDraft, googleQuery.data]);
+  }, [googleDirty, googleDraft, googleQuery.data, initialGoogleSnapshot]);
+
+  const refreshSharedSettings = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.settings }, { cancelRefetch: false });
+    void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.googleAutoSync(user?.id ?? '') }, { cancelRefetch: false });
+  }, [queryClient, user?.id]);
+  useFocusEffect(refreshSharedSettings);
 
   const refreshOsPermission = () => {
     void getOsNotificationPermissionGranted().then(setOsPermissionGranted);
@@ -72,10 +81,10 @@ export function NotificationSettingsScreen() {
   useEffect(() => {
     refreshOsPermission();
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') refreshOsPermission();
+      if (state === 'active') { refreshOsPermission(); refreshSharedSettings(); }
     });
     return () => sub.remove();
-  }, []);
+  }, [refreshSharedSettings]);
 
   useEffect(() => {
     if (!token || osPermissionGranted !== true) return;
@@ -83,13 +92,13 @@ export function NotificationSettingsScreen() {
   }, [osPermissionGranted, token]);
 
   useEffect(() => {
-    if (!query.data || initialized) return;
+    if (!query.data || alertDirty) return;
+    if (initialized && JSON.stringify(query.data) === initialSnapshot) return;
     setDraft(query.data);
     setInitialSnapshot(JSON.stringify(query.data));
     setInitialized(true);
-  }, [initialized, query.data]);
-  const googleDirty = googleDraft !== null && JSON.stringify(googleDraft) !== initialGoogleSnapshot;
-  const dirty = (initialized && JSON.stringify(draft) !== initialSnapshot) || googleDirty;
+  }, [initialized, query.data, alertDirty, initialSnapshot]);
+  const dirty = alertDirty || googleDirty;
   const saveMutation = useMutation({
     mutationFn: async () => {
       const saved = await saveNotificationSettings(token, draft);
