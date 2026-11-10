@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fireEvent, render, within } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 
 import { DesignSystemProvider, getTheme } from '../../../design-system';
 import { ScheduleMonthCalendar } from '../ScheduleMonthCalendar';
@@ -26,6 +26,18 @@ function calendar(month = '2026-11-01', viewportHeight = 700, mode: 'light' | 'd
 }
 
 describe('native month calendar', () => {
+  it('keeps the full accessible title and clips the two-line window without ellipsis', () => {
+    const ui = calendar();
+    const title = ui.getByText('고객 상담 0');
+    expect(title.props.numberOfLines).toBeUndefined();
+    expect(title.props.ellipsizeMode).not.toBe('tail');
+    let window = title.parent;
+    while (window && StyleSheet.flatten(window.props.style)?.overflow !== 'hidden') window = window.parent;
+    expect(window).not.toBeNull();
+    expect(StyleSheet.flatten(window!.props.style).height).toBe(getTheme('light').typography.caption.lineHeight * 2 * Dimensions.get('window').fontScale);
+    expect(ui.getByRole('button', { name: '11월 13일 (금), 고객 상담 0, 상세 보기' })).toBeTruthy();
+  });
+
   it('selects an empty whole cell without opening an event; selection and today remain distinct', () => {
     const ui = calendar();
     const empty = ui.getByRole('button', { name: '11월 14일 (토), 일정 0건' });

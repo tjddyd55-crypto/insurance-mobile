@@ -80,10 +80,12 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
                       key={item.id}
                       accessibilityRole="button"
                       accessibilityLabel={`${formatDayTitle(cell.ymd)}, ${item.title}, 상세 보기`}
-                      style={({ pressed }) => [styles.chip, { minHeight: chipHeight, backgroundColor: color.background, borderColor: color.border, opacity: color.opacity * (pressed ? theme.opacity.pressed : 1) }]}
+                      style={({ pressed }) => [styles.chip, { height: chipHeight, backgroundColor: color.background, borderColor: color.border, opacity: color.opacity * (pressed ? theme.opacity.pressed : 1) }]}
                       onPress={() => onOpenItem(item, cell.ymd)}
                     >
-                      <AppText variant="caption" style={{ color: color.foreground, textDecorationLine: color.textDecorationLine }} numberOfLines={2} ellipsizeMode="tail">{item.title}</AppText>
+                      <View style={{ height: captionHeight * 2, overflow: 'hidden' }}>
+                        <AppText variant="caption" style={{ color: color.foreground, textDecorationLine: color.textDecorationLine }} textBreakStrategy="simple">{item.title}</AppText>
+                      </View>
                     </Pressable>
                     );
                   })}

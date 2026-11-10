@@ -13,4 +13,7 @@
   <color name="onefc_widget_saturday">#FF2D6CB5</color>
   <color name="onefc_widget_warning">#FFB26A00</color>
   <color name="onefc_widget_on_brand">#FFFFFFFF</color>
+  <color name="onefc_schedule_primary">#FF16A34A</color>
+  <color name="onefc_schedule_primary_soft">#FFDCFCE7</color>
+  <color name="onefc_schedule_border">#FFE5E7EB</color>
 </resources>
