@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
-import { ApiError } from '../../../api/client';
+import { ApiError as mockApiError } from '../../../api/client';
 import { DesignSystemProvider } from '../../../design-system';
 import { ScheduleScreen } from '../ScheduleScreen';
 import { normalizeScheduleEvents } from '../scheduleModel';
@@ -37,7 +37,7 @@ jest.mock('../../home-widgets/widgetReturn', () => ({
 }));
 jest.mock('../../home-widgets/engine/widgetRefreshCoordinator', () => ({ refreshWidgets: jest.fn() }));
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn((options) => ({ data: options.queryKey[1] === 'view-prefs' ? mockPrefs : mockData, refetch: jest.fn(), isLoading: false, isError: options.queryKey[1] === 'view-prefs' && mockPrefsError, error: mockPrefsError ? new ApiError('not found', 404) : null })),
+  useQuery: jest.fn((options) => ({ data: options.queryKey[1] === 'view-prefs' ? mockPrefs : mockData, refetch: jest.fn(), isLoading: false, isError: options.queryKey[1] === 'view-prefs' && mockPrefsError, error: mockPrefsError ? new mockApiError('not found', 404) : null })),
   useQueryClient: () => ({ invalidateQueries: jest.fn(), setQueryData: jest.fn() }),
   useMutation: () => ({ mutate: jest.fn(), reset: jest.fn(), isPending: false, isError: false }),
 }));
