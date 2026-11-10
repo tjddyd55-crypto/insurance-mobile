@@ -2,7 +2,7 @@
  * 일정 보기 설정 — PC/웹이 저장한 GET /api/me/schedule-view-prefs 를 그대로 읽는다(SSOT).
  * 앱/위젯에 별도 설정·하드코딩 없음. 실패·빈 값은 null → 호출부가 "전부 표시"(기존 기본)로 둔다.
  */
-import { apiRequest } from '../../api/client';
+import { ApiError, apiRequest } from '../../api/client';
 import type { ScheduleEvent, ScheduleEventsResult, ScheduleTask } from './types';
 
 export type ScheduleFilterKey = 'google' | 'google_task' | 'onefc_todo' | 'customer_alert' | 'car_expiry' | 'insurance_age';
@@ -19,11 +19,9 @@ export type ScheduleViewPrefs = {
 
 export const SCHEDULE_VIEW_PREFS_TIMEOUT_MS = 5_000;
 
-/** Server without this optional API: keep the calendar usable, with insurance age hidden.
- * Screen must show a warning rather than claim these are synchronized PC settings. */
-export const UNAVAILABLE_SCHEDULE_VIEW_PREFS: ScheduleViewPrefs = {
-  sources: SCHEDULE_FILTER_KEYS.filter((key) => key !== 'insurance_age'),
-  includeCompleted: false, includeOverdue: false, googleCalendarIds: null, holidayMode: null,
+export const DEFAULT_SCHEDULE_VIEW_PREFS: ScheduleViewPrefs = {
+  sources: [...SCHEDULE_FILTER_KEYS], includeCompleted: false, includeOverdue: false,
+  googleCalendarIds: null, holidayMode: 'kr',
 };
 
 /** 웹 scheduleFilterKeyOf 와 같다: Google 출처(ONE FC 일정 포함)는 'google', CRM 은 type. */
@@ -35,16 +33,15 @@ export function scheduleFilterKeyOf(event: Pick<ScheduleEvent, 'source' | 'type'
 export function normalizeScheduleViewPrefs(raw: unknown): ScheduleViewPrefs | null {
   const body = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
   const inner = body && body.prefs && typeof body.prefs === 'object' ? (body.prefs as Record<string, unknown>) : body;
-  if (!inner || !Array.isArray(inner.sources)) return null;
-  const sources = SCHEDULE_FILTER_KEYS.filter((key) => (inner.sources as unknown[]).includes(key));
-  if (!sources.length) return null;
+  if (!inner) return null;
+  const sources = Array.isArray(inner.sources) ? SCHEDULE_FILTER_KEYS.filter((key) => (inner.sources as unknown[]).includes(key)) : [...SCHEDULE_FILTER_KEYS];
   const ids = Array.isArray(inner.googleCalendarIds) ? inner.googleCalendarIds.filter((id): id is string => typeof id === 'string' && id.trim() !== '') : null;
   return {
     sources,
     includeCompleted: inner.includeCompleted === true,
     includeOverdue: inner.includeOverdue === true,
     googleCalendarIds: ids && ids.length ? ids : null,
-    holidayMode: typeof inner.holidayMode === 'string' ? inner.holidayMode : null,
+    holidayMode: inner.holidayMode === 'none' ? 'none' : 'kr',
   };
 }
 
@@ -71,4 +68,15 @@ export function applyScheduleViewPrefs<T extends Pick<ScheduleEventsResult, 'eve
   const events = result.events.filter((event) => prefs.sources.includes(scheduleFilterKeyOf(event)) && googleCalendarVisible(event, prefs.googleCalendarIds));
   const tasks = result.tasks.filter((task: ScheduleTask) => prefs.sources.includes(task.source) && (prefs.includeCompleted || task.status !== 'completed'));
   return { ...result, events, tasks };
+}
+
+/** PATCH only the user's changed keys, preserving settings changed on another device. */
+export async function saveScheduleViewPrefs(token: string | null, patch: Partial<ScheduleViewPrefs>): Promise<ScheduleViewPrefs> {
+  if (!token?.trim()) throw new ApiError('로그인이 필요합니다.', 401);
+  const raw = await apiRequest<unknown>('/api/me/schedule-view-prefs', { token: token.trim(), method: 'PATCH', body: JSON.stringify({ prefs: patch }), timeoutMs: 20_000 });
+  const saved = normalizeScheduleViewPrefs(raw);
+  if (!saved || Object.entries(patch).some(([key, value]) => JSON.stringify(saved[key as keyof ScheduleViewPrefs]) !== JSON.stringify(value))) {
+    throw new ApiError('표시 설정을 저장하지 못했습니다. 다시 확인해 주세요.', 500);
+  }
+  return saved;
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DesignSystemProvider } from '../../../design-system';
@@ -7,7 +7,7 @@ import { DEFAULT_ALERT_SETTINGS } from '../notificationModel';
 import { getNotificationSettings, saveNotificationSettings } from '../notificationsApi';
 import { fetchGoogleAutoSync, saveGoogleAutoSync } from '../googleCalendarAutoSyncApi';
 const mockBack = jest.fn();
-jest.mock('expo-router', () => ({ useRouter: () => ({ back: mockBack, push: jest.fn() }) }));
+jest.mock('expo-router', () => ({ useRouter: () => ({ back: mockBack, push: jest.fn() }), useFocusEffect: jest.fn() }));
 jest.mock('../../../auth/AuthProvider', () => ({ useAuth: () => ({ token: 'fixture', user: { id: 'fixture' } }) }));
 jest.mock('../../../components/AppHeader', () => ({ AppHeader: () => null }));
 jest.mock('../../push/pushRegistration', () => ({ getOsNotificationPermissionGranted: jest.fn(async () => false), openOsNotificationSettings: jest.fn(), syncPushRegistrationIfPermitted: jest.fn() }));
@@ -17,7 +17,8 @@ const state = { enabled: true, available: true, connected: true, calendarWritabl
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 function screen() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}><SafeAreaProvider initialMetrics={metrics}><DesignSystemProvider><NotificationSettingsScreen /></DesignSystemProvider></SafeAreaProvider></QueryClientProvider>);
+  const ui = render(<QueryClientProvider client={client}><SafeAreaProvider initialMetrics={metrics}><DesignSystemProvider><NotificationSettingsScreen /></DesignSystemProvider></SafeAreaProvider></QueryClientProvider>);
+  return { ...ui, client };
 }
 beforeEach(() => {
   jest.clearAllMocks();
@@ -53,5 +54,17 @@ it('allows app alert settings to save when Google settings cannot be read', asyn
   expect(await ui.findByRole('button', { name: 'Google 자동 연동 다시 시도' })).toBeTruthy();
   fireEvent.press(ui.getByRole('button', { name: '저장' }));
   await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+  expect(saveGoogleAutoSync).not.toHaveBeenCalled();
+});
+
+it('reads Web Google changes on refetch without replacing an unsaved local edit', async () => {
+  const ui = screen();
+  await ui.findByLabelText('Google 자동 연동 상령일 알림');
+  (fetchGoogleAutoSync as jest.Mock).mockResolvedValue({ ...state, kinds: { ...state.kinds, insurance_age_date: true } });
+  await act(async () => { await ui.client.invalidateQueries({ queryKey: ['notifications', 'google-autosync'] }); });
+  await waitFor(() => expect(ui.getByLabelText('Google 자동 연동 상령일 알림').props.value).toBe(true));
+  fireEvent(ui.getByLabelText('Google 자동 연동 상령일 알림'), 'valueChange', false);
+  await act(async () => { await ui.client.invalidateQueries({ queryKey: ['notifications', 'google-autosync'] }); });
+  expect(ui.getByLabelText('Google 자동 연동 상령일 알림').props.value).toBe(false);
   expect(saveGoogleAutoSync).not.toHaveBeenCalled();
 });
