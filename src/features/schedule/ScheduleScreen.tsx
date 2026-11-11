@@ -82,8 +82,7 @@ import { scheduleItemAppearance, type ScheduleColorItem } from './scheduleItemCo
 import { ScheduleItemBadge } from './ScheduleItemBadge';
 import { ScheduleMonthCalendar } from './ScheduleMonthCalendar';
 import { groupMonthItems, type ScheduleDayItems, type ScheduleMonthItem } from './scheduleMonthModel';
-import { ScheduleViewSettings } from './ScheduleViewSettings';
-import { applyScheduleViewPrefs, fetchScheduleViewPrefs, saveScheduleViewPrefs, DEFAULT_SCHEDULE_VIEW_PREFS, type ScheduleViewPrefs } from './scheduleViewPrefs';
+import { applyScheduleViewPrefs, fetchScheduleViewPrefs, DEFAULT_SCHEDULE_VIEW_PREFS } from './scheduleViewPrefs';
 
 export const SCHEDULE_COPY = {
   title: '일정 관리',
@@ -215,14 +214,6 @@ export function ScheduleScreen() {
     enabled: Boolean(token),
     staleTime: 0,
     retry: (count, error) => !(error instanceof ApiError && error.status === 404) && count < 1,
-  });
-  const prefsMutation = useMutation({
-    mutationFn: (patch: Partial<ScheduleViewPrefs>) => saveScheduleViewPrefs(token, patch),
-    onMutate: () => queryClient.cancelQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') }),
-    onSuccess: (saved) => {
-      queryClient.setQueryData(scheduleQueryKeys.viewPrefs(user?.id ?? ''), saved);
-      if (token && user) void refreshWidgets({ token, user }, { reason: 'appMutation', widgetTypes: ['schedule'], force: true });
-    },
   });
   const refreshViewPrefs = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') }, { cancelRefetch: false });
@@ -501,37 +492,20 @@ export function ScheduleScreen() {
       {/* 하단 내비게이션 바 inset: 다른 목록 화면과 같은 공통 Screen 정책. */}
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.body} onLayout={(event) => setCalendarViewportHeight(event.nativeEvent.layout.height)} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
-          <Stack gap="xs">
-            <Inline justify="space-between">
+          <Inline gap="sm">
+            <Inline gap="xs" justify="space-between" style={styles.monthNavigation}>
               <Button label="‹" variant="ghost" size="sm" accessibilityLabel="이전 달" onPress={() => goMonth(-1)} />
               <AppText variant="sectionTitle">{formatMonthTitle(month)}</AppText>
               <Button label="›" variant="ghost" size="sm" accessibilityLabel="다음 달" onPress={() => goMonth(1)} />
             </Inline>
-            <Inline gap="xs" justify="center">
-              <Button
-                label={`${Number(shiftMonth(month, -1).slice(5, 7))}월`}
-                variant="ghost"
-                size="sm"
-                accessibilityLabel="이전 달로 이동"
-                onPress={() => goMonth(-1)}
-              />
+            <View style={styles.todayNavigation}>
               <Button label="오늘" variant="secondary" size="sm" accessibilityLabel="오늘로 이동" onPress={goToday} />
-              <Button
-                label={`${Number(shiftMonth(month, 1).slice(5, 7))}월`}
-                variant="ghost"
-                size="sm"
-                accessibilityLabel="다음 달로 이동"
-                onPress={() => goMonth(1)}
-              />
-            </Inline>
-          </Stack>
+            </View>
+          </Inline>
           {prefsQuery.isError ? <Card variant="outlined"><Stack gap="xs">
             <AppText variant="caption" color="warning">표시 설정을 불러오지 못했습니다. {prefsQuery.data ? '마지막으로 확인한 표시 설정을 사용합니다.' : '설정을 다시 확인해 주세요.'}</AppText>
             <Button label="표시 설정 다시 확인" variant="ghost" size="sm" onPress={() => void prefsQuery.refetch()} />
           </Stack></Card> : null}
-          <ScheduleViewSettings prefs={effectivePrefs} disabled={prefsQuery.isError || prefsQuery.isLoading || prefsMutation.isPending}
-            onChange={(patch) => prefsMutation.mutate(patch)} />
-          {prefsMutation.isError ? <AppText variant="caption" color="danger">표시 설정을 저장하지 못했습니다. 다시 시도해 주세요.</AppText> : null}
           <ScheduleMonthCalendar
             month={month}
             style={styles.calendarWidth}
@@ -699,6 +673,8 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     body: { padding: theme.layout.screenPaddingHorizontal, gap: theme.spacing.sm, paddingBottom: theme.spacing.xl },
+    monthNavigation: { flex: 3 },
+    todayNavigation: { flex: 1 },
     calendarWidth: { marginHorizontal: -theme.spacing.sm },
     flex: { flex: 1 },
     listTarget: { minHeight: theme.interaction.minimumTouchTarget },

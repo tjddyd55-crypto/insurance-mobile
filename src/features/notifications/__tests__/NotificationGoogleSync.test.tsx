@@ -5,7 +5,11 @@ import { DesignSystemProvider } from '../../../design-system';
 import { NotificationSettingsScreen } from '../NotificationSettingsScreen';
 import { DEFAULT_ALERT_SETTINGS } from '../notificationModel';
 import { getNotificationSettings, saveNotificationSettings } from '../notificationsApi';
+import { DEFAULT_SCHEDULE_VIEW_PREFS, fetchScheduleViewPrefs, saveScheduleViewPrefs } from '../../schedule/scheduleViewPrefs';
+import { refreshWidgets } from '../../home-widgets/engine/widgetRefreshCoordinator';
 import { fetchGoogleAutoSync, saveGoogleAutoSync } from '../googleCalendarAutoSyncApi';
+jest.mock('../../schedule/scheduleViewPrefs', () => ({ ...jest.requireActual('../../schedule/scheduleViewPrefs'), fetchScheduleViewPrefs: jest.fn(), saveScheduleViewPrefs: jest.fn() }));
+jest.mock('../../home-widgets/engine/widgetRefreshCoordinator', () => ({ refreshWidgets: jest.fn(async () => undefined) }));
 const mockBack = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: mockBack, push: jest.fn() }), useFocusEffect: jest.fn() }));
 jest.mock('../../../auth/AuthProvider', () => ({ useAuth: () => ({ token: 'fixture', user: { id: 'fixture' } }) }));
@@ -22,6 +26,8 @@ function screen() {
 }
 beforeEach(() => {
   jest.clearAllMocks();
+  (fetchScheduleViewPrefs as jest.Mock).mockResolvedValue(DEFAULT_SCHEDULE_VIEW_PREFS);
+  (saveScheduleViewPrefs as jest.Mock).mockImplementation(async (_token, patch) => ({ ...DEFAULT_SCHEDULE_VIEW_PREFS, ...patch }));
   (getNotificationSettings as jest.Mock).mockResolvedValue(DEFAULT_ALERT_SETTINGS);
   (saveNotificationSettings as jest.Mock).mockResolvedValue(DEFAULT_ALERT_SETTINGS);
   (fetchGoogleAutoSync as jest.Mock).mockResolvedValue(state);
@@ -70,4 +76,65 @@ it('reads Web Google changes on refetch without replacing an unsaved local edit'
   await act(async () => { await ui.client.invalidateQueries({ queryKey: ['notifications', 'google-autosync'] }); });
   expect(ui.getByLabelText('Google 자동 연동 상령일 알림').props.value).toBe(false);
   expect(saveGoogleAutoSync).not.toHaveBeenCalled();
+});
+
+it('edits calendar/widget visibility in notification settings and saves only on Save', async () => {
+  const ui = screen();
+  const toggle = await ui.findByLabelText('달력 표시 상령일');
+  expect(ui.getByText('일정·위젯 표시')).toBeTruthy();
+  fireEvent(toggle, 'valueChange', false);
+  expect(saveScheduleViewPrefs).not.toHaveBeenCalled();
+  fireEvent.press(ui.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+  expect(saveScheduleViewPrefs).toHaveBeenCalledWith('fixture', { sources: DEFAULT_SCHEDULE_VIEW_PREFS.sources.filter(key => key !== 'insurance_age') });
+  expect(saveGoogleAutoSync).not.toHaveBeenCalled();
+  expect(saveNotificationSettings).not.toHaveBeenCalled();
+  expect(refreshWidgets).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({ widgetTypes: ['schedule'], force: true }));
+});
+
+it('keeps a failed visibility save open and does not report success', async () => {
+  (saveScheduleViewPrefs as jest.Mock).mockRejectedValue(new Error('offline'));
+  const ui = screen();
+  fireEvent(await ui.findByLabelText('달력 표시 상령일'), 'valueChange', false);
+  fireEvent.press(ui.getByRole('button', { name: '저장' }));
+  expect(await ui.findByText(/일정·위젯 표시 설정을 저장하지 못했습니다/)).toBeTruthy();
+  expect(mockBack).not.toHaveBeenCalled();
+});
+
+it('keeps alert settings usable when the display preferences API fails', async () => {
+  (fetchScheduleViewPrefs as jest.Mock).mockRejectedValue(new Error('offline'));
+  const ui = screen();
+  await ui.findByRole('button', { name: '표시 항목 다시 확인' });
+  const master = ui.getAllByRole('switch')[0]!;
+  fireEvent(master, 'valueChange', !master.props.value);
+  fireEvent.press(ui.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+  expect(saveNotificationSettings).toHaveBeenCalledTimes(1);
+  expect(saveScheduleViewPrefs).not.toHaveBeenCalled();
+});
+
+it('reads Web display changes on refetch and preserves unsaved local toggles', async () => {
+  const ui = screen();
+  await ui.findByLabelText('달력 표시 완료 포함');
+  (fetchScheduleViewPrefs as jest.Mock).mockResolvedValue({ ...DEFAULT_SCHEDULE_VIEW_PREFS, includeCompleted: true });
+  await act(async () => { await ui.client.invalidateQueries({ queryKey: ['schedule', 'view-prefs'] }); });
+  await waitFor(() => expect(ui.getByLabelText('달력 표시 완료 포함').props.value).toBe(true));
+  fireEvent(ui.getByLabelText('달력 표시 완료 포함'), 'valueChange', false);
+  await act(async () => { await ui.client.invalidateQueries({ queryKey: ['schedule', 'view-prefs'] }); });
+  expect(ui.getByLabelText('달력 표시 완료 포함').props.value).toBe(false);
+  expect(saveScheduleViewPrefs).not.toHaveBeenCalled();
+});
+
+it('does not repeat a successful display save after a later Google save failure', async () => {
+  (saveGoogleAutoSync as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+  const ui = screen();
+  fireEvent(await ui.findByLabelText('달력 표시 완료 포함'), 'valueChange', true);
+  fireEvent(await ui.findByLabelText('Google 자동 연동 상령일 알림'), 'valueChange', true);
+  fireEvent.press(ui.getByRole('button', { name: '저장' }));
+  await ui.findByText(/일정·위젯 표시 설정은 저장했지만 Google/);
+  expect(mockBack).not.toHaveBeenCalled();
+  fireEvent.press(ui.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+  expect(saveScheduleViewPrefs).toHaveBeenCalledTimes(1);
+  expect(saveGoogleAutoSync).toHaveBeenCalledTimes(2);
 });

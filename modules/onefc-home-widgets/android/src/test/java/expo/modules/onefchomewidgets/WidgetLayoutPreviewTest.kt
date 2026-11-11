@@ -43,24 +43,26 @@ class WidgetLayoutPreviewTest {
     val scheduleRaw = scheduleRaw()
     val schedule = WidgetEnvelope.parse(scheduleRaw, OneFcWidgetType.SCHEDULE)!!
 
-    val wide = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 400, false)!!)
+    WidgetCacheManager.saveInstance(context, OneFcWidgetType.SCHEDULE, 1, WidgetDates.today(schedule.timeZone), mapOf("month" to "2026-10-01", "selected" to "2026-10-21"))
+    val wide = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 650, false)!!)
     val wideText = texts(wide)
     assertTrue(wideText.contains("2026년 10월"))
     assertFalse(wideText.contains("ONE FC 일정"))
     assertTrue(wideText.contains("미팅"))
-    assertTrue(wideText.contains("+2"))
-    capture("schedule-4x4", wide, 360, 400)
+    assertTrue(wideText.contains("+1"))
+    capture("schedule-4x4", wide, 360, 650)
     // 타이포 상향 후에도 칸 내용(날짜·제목·+N)이 칸 높이 안에 들어간다(잘림·겹침 없음).
     assertCellsFit(wide)
 
-    val small = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 210, false)!!)
+    val small = apply(context, ScheduleWidgetRenderer.render(context, schedule, 1, 360, false)!!)
     val smallText = texts(small)
     assertTrue(smallText.contains("2026년 10월"))
     assertFalse(smallText.contains("미팅"))
     assertTrue(smallText.contains("3"))
     assertTrue(smallText.contains("9+"))
-    capture("schedule-small", small, 250, 210)
+    capture("schedule-small", small, 250, 360)
     assertCellsFit(small)
+    captureKoreanScheduleTitles(context, schedule)
 
     assertTrue(WidgetCacheManager.write(context, OneFcWidgetType.SCHEDULE, scheduleRaw))
     val threeItems = dayDialog("2026-10-21")
@@ -141,7 +143,8 @@ class WidgetLayoutPreviewTest {
     val model = File(outDir, "scenes.json")
     model.writeText(JSONObject().put("scenes", scenes).toString())
     val script = locateScript()
-    val process = ProcessBuilder("python3", script.absolutePath, model.absolutePath, outDir.absolutePath)
+    val python = System.getenv("ONEFC_WIDGET_PREVIEW_PYTHON") ?: "python3"
+    val process = ProcessBuilder(python, script.absolutePath, model.absolutePath, outDir.absolutePath)
       .redirectErrorStream(true)
       .start()
     val log = process.inputStream.bufferedReader().readText()
@@ -276,6 +279,39 @@ class WidgetLayoutPreviewTest {
     scenes.put(scene(name, view))
   }
 
+  private fun captureKoreanScheduleTitles(context: Context, schedule: WidgetEnvelope) {
+    val titles = listOf(
+      "국제실골프", "김도훈\n삼성화재", "토스 해외\n결제", "역대회장협\n의회 여수",
+      "강원지구회\n구회장 취임식", "서울지구\n회원대회", "성욱쌀화환\n보내기", "서영기\n자동차", "위원장 모임",
+    )
+    for ((month, weekCount) in listOf("2026-10-01" to 5, "2026-08-01" to 6)) {
+      val weeks = WidgetDates.monthGrid(month)
+      assertEquals(weekCount, weeks.size)
+      val dates = weeks.flatten().filter { it.inMonth }.takeLast(titles.size)
+      val events = JSONArray()
+      for ((date, title) in dates.zip(titles)) {
+        val item = JSONObject().put("id", date.ymd).put("title", title).put("kind", "event")
+        events.put(JSONObject().put("date", date.ymd).put("items", JSONArray().put(item)))
+      }
+      val payload = JSONObject().put("visibleRange", JSONObject().put("from", month).put("to", dates.last().ymd)).put("events", events)
+      val id = 100 + weekCount
+      WidgetCacheManager.saveInstance(context, OneFcWidgetType.SCHEDULE, id, WidgetDates.today(schedule.timeZone), mapOf("month" to month, "selected" to dates.last().ymd))
+      val view = apply(context, ScheduleWidgetRenderer.render(context, schedule.copy(payload = payload), id, 650, false)!!)
+      capture("schedule-korean-${weekCount}weeks", view, 520, 650)
+      assertCellsFit(view)
+      for ((date, title) in dates.zip(titles)) {
+        val row = weeks.indexOfFirst { date in it }
+        val column = weeks[row].indexOf(date)
+        val label = view.findViewById<TextView>(WidgetIds.CHIPS[0][row][column])
+        assertEquals(title, label.text.toString())
+        assertEquals("Expected visible line count for $title", title.lines().size, label.lineCount)
+        val lastLine = label.lineCount - 1
+        val textBottom = label.layout.getLineBottom(lastLine)
+        assertTrue("Bottom of $title fits inside its card", textBottom <= label.height - label.paddingTop - label.paddingBottom)
+      }
+    }
+  }
+
   private fun assertCellsFit(root: View) {
     for (row in 0 until 6) for (col in 0 until 7) {
       val cell = root.findViewById<ViewGroup>(WidgetIds.CELLS[row][col])
@@ -286,6 +322,13 @@ class WidgetLayoutPreviewTest {
         if (child.visibility != View.VISIBLE || child.id == WidgetIds.COUNTS[row][col]) continue
         assertTrue("cell $row/$col child $i bottom ${child.bottom} <= ${cell.height}", child.bottom <= cell.height)
         if (child is TextView && child.text.isNotEmpty()) assertEquals("cell $row/$col child $i one line", 1, child.lineCount)
+        if (child is ViewGroup) for (n in 0 until child.childCount) {
+          val label = child.getChildAt(n)
+          if (label is TextView && label.text.isNotEmpty()) {
+            assertTrue("chip label max two lines", label.lineCount <= 2)
+            assertEquals("no title ellipsis", null, label.ellipsize)
+          }
+        }
       }
     }
   }

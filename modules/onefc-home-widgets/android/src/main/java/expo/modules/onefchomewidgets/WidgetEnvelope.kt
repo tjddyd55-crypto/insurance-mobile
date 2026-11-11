@@ -71,10 +71,13 @@ data class SchedulePayload(
   val googleNotice: String?,
   /** 날짜별 항목 수(앱·웹 달력과 같은 규칙). 없으면 그 날 미완료 items 수. */
   val calendarCounts: Map<String, Int> = emptyMap(),
+  val includeCompleted: Boolean = false,
+  val colors: Map<String, ChipColors> = emptyMap(),
 ) {
-  fun countOn(ymd: String): Int = calendarCounts[ymd] ?: events[ymd]?.count { !it.done } ?: 0
+  fun countOn(ymd: String): Int = calendarCounts[ymd] ?: events[ymd]?.count { includeCompleted || !it.done } ?: 0
 
-  data class Item(val id: String, val title: String, val time: String, val kind: String, val done: Boolean, val link: String)
+  data class ChipColors(val background: String, val foreground: String, val border: String)
+  data class Item(val id: String, val title: String, val time: String, val kind: String, val done: Boolean, val link: String, val colorKey: String = "")
 
   fun covers(ymd: String): Boolean = ymd >= visibleFrom && ymd <= visibleTo
 
@@ -86,7 +89,7 @@ data class SchedulePayload(
         val days = HashSet<String>()
         payload.optJSONArray("calendarDays")?.let { array -> for (i in 0 until array.length()) array.optString(i).takeIf { WidgetDates.isYmd(it) }?.let(days::add) }
         val events = WidgetPayloads.days(payload.optJSONArray("events")) { item ->
-          Item(item.optString("id"), item.optString("title"), item.optString("time"), item.optString("kind"), item.optBoolean("done"), WidgetEnvelope.safeLink(item.optString("link"), envelope.scheme))
+          Item(item.optString("id"), item.optString("title"), item.optString("time"), item.optString("kind"), item.optBoolean("done"), WidgetEnvelope.safeLink(item.optString("link"), envelope.scheme), item.optString("colorKey"))
         }
         days.addAll(events.keys)
         val counts = HashMap<String, Int>()
@@ -96,6 +99,14 @@ data class SchedulePayload(
             if (WidgetDates.isYmd(key) && n > 0) counts[key] = n
           }
         }
+        val colors = mutableMapOf<String, ChipColors>()
+        payload.optJSONObject("colors")?.let { palette ->
+          for (key in palette.keys()) {
+            val color = palette.optJSONObject(key) ?: continue
+            val values = listOf("background", "foreground", "border").map { color.optString(it) }
+            if (values.all { it.matches(Regex("#[0-9a-fA-F]{6}")) }) colors[key] = ChipColors(values[0], values[1], values[2])
+          }
+        }
         SchedulePayload(
           range.optString("from"),
           range.optString("to"),
@@ -103,6 +114,8 @@ data class SchedulePayload(
           events,
           if (payload.isNull("googleNotice")) null else payload.optString("googleNotice").ifBlank { null },
           counts,
+          payload.optBoolean("includeCompleted", false),
+          colors,
         )
       } catch (error: Exception) {
         null

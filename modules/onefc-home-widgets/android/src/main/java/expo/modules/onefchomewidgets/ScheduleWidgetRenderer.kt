@@ -1,6 +1,10 @@
 package expo.modules.onefchomewidgets
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.Paint
+import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 
@@ -8,14 +12,24 @@ import android.widget.RemoteViews
 object ScheduleWidgetRenderer : OneFcWidgetRenderer {
   override val type = OneFcWidgetType.SCHEDULE
   const val CHIP_SLOTS = 2
-  /** 월 헤더 36 + 요일 20 + 패딩 20 + 상태 줄 16. */
-  const val CHROME_DP = 92
+  /** 월 헤더 36 + 요일 24 + 패딩 16 + 하단 도구 36. */
+  const val CHROME_DP = 112
+
+  // View.setAlpha is not a RemoteViews method on older Android releases.
+  // Dim all card colors instead so the launcher can inflate the same layout.
+  fun cardColor(color: Int, done: Boolean): Int = if (done) {
+    (color and 0x00ffffff) or ((Color.alpha(color) / 2) shl 24)
+  } else color
 
   /** 칸 높이(dp). 달력이 위젯의 남은 높이를 채운다. */
   fun cellHeightDp(heightDp: Int, weeks: Int): Int = ((heightDp - CHROME_DP).coerceAtLeast(0) / weeks.coerceAtLeast(1)) - 2
 
-  /** 칸에 넣을 제목 줄 수(0 이면 숫자 배지). 날짜 20dp, 제목 줄 15dp, "+N" 13dp. */
-  fun chipSlots(heightDp: Int, weeks: Int): Int = ((cellHeightDp(heightDp, weeks) - 20 - 13) / 15).coerceIn(0, CHIP_SLOTS)
+  /** 날짜와 각 카드의 상단 여백, 필요한 경우 +N의 높이를 확보한다. */
+  fun chipSlots(heightDp: Int, weeks: Int, fontScale: Float = 1f, cardHeightDp: Float = 31 * fontScale, reserveOverflow: Boolean = true): Int {
+    val headerAndOverflowDp = if (reserveOverflow) 38 else 24
+    val availableDp = cellHeightDp(heightDp, weeks) - headerAndOverflowDp * fontScale
+    return (availableDp / (cardHeightDp + 1)).toInt().coerceIn(0, CHIP_SLOTS)
+  }
 
   data class Cell(val titles: List<String>, val more: Int, val badge: String)
 
@@ -92,8 +106,11 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     val sunday = context.getColor(R.color.onefc_widget_sunday)
     val saturday = context.getColor(R.color.onefc_widget_saturday)
     val onBrand = context.getColor(R.color.onefc_widget_on_brand)
-    val secondary = context.getColor(R.color.onefc_widget_text_secondary)
-    val slots = chipSlots(heightDp, weeks.size)
+    val fontScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
+    val resources = context.resources
+    val cardHeightDp = resources.getDimensionPixelSize(R.dimen.onefc_widget_event_min_height) / resources.displayMetrics.density
+    val slots = chipSlots(heightDp, weeks.size, fontScale, cardHeightDp)
+    val slotsWithoutOverflow = chipSlots(heightDp, weeks.size, fontScale, cardHeightDp, reserveOverflow = false)
     for (row in 0 until 6) {
       views.setViewVisibility(WidgetIds.WEEKS[row], if (row < weeks.size) View.VISIBLE else View.GONE)
       if (row >= weeks.size) continue
@@ -103,30 +120,51 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
         val dayId = WidgetIds.DAYS[row][col]
         val isToday = cell.ymd == today
         val total = payload.countOn(cell.ymd)
-        val content = cell(total, payload.events[cell.ymd].orEmpty().filterNot { it.done }.map { it.title }, slots)
+        val items = payload.events[cell.ymd].orEmpty().filter { payload.includeCompleted || !it.done }
+        val fittingSlots = if (total <= slotsWithoutOverflow && total <= items.size) slotsWithoutOverflow else slots
+        val content = cell(total, items.map { it.title }, fittingSlots)
         views.setTextViewText(dayId, cell.day.toString())
+        val dateSize = (24 * fontScale * context.resources.displayMetrics.density).toInt()
+        views.setInt(dayId, "setWidth", dateSize)
+        views.setInt(dayId, "setHeight", dateSize)
         views.setTextColor(dayId, when {
+          isToday -> onBrand
           !cell.inMonth -> muted
           col == 0 -> sunday
           col == 6 -> saturday
           else -> text
         })
-        views.setInt(cellId, "setBackgroundResource", if (isToday) R.drawable.onefc_widget_today else 0)
+        views.setInt(cellId, "setBackgroundResource", if (cell.ymd == state.selected) R.drawable.onefc_widget_today else R.drawable.onefc_widget_calendar_cell)
+        views.setInt(dayId, "setBackgroundResource", if (isToday) R.drawable.onefc_widget_today_number else 0)
         for (slot in 0 until CHIP_SLOTS) {
           val chipId = WidgetIds.CHIPS[slot][row][col]
-          val title = content.titles.getOrNull(slot)
-          views.setViewVisibility(chipId, if (title != null) View.VISIBLE else View.GONE)
-          if (title != null) views.setTextViewText(chipId, title)
+          val wrapperId = WidgetIds.CHIP_WRAPPERS[slot][row][col]
+          val stripeId = WidgetIds.CHIP_STRIPES[slot][row][col]
+          val item = items.getOrNull(slot).takeIf { slot < content.titles.size }
+          views.setViewVisibility(wrapperId, if (item != null) View.VISIBLE else View.GONE)
+          if (item != null) {
+            views.setTextViewText(chipId, item.title)
+            val colors = payload.colors[item.colorKey]
+            val background = cardColor(colors?.background?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand_soft), item.done)
+            val foreground = cardColor(colors?.foreground?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand), item.done)
+            val border = cardColor(colors?.border?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand), item.done)
+            if (Build.VERSION.SDK_INT >= 31) views.setColorStateList(wrapperId, "setBackgroundTintList", ColorStateList.valueOf(background))
+            else views.setInt(wrapperId, "setBackgroundColor", background)
+            views.setTextColor(chipId, foreground)
+            views.setInt(stripeId, "setBackgroundColor", border)
+            views.setInt(chipId, "setPaintFlags", Paint.ANTI_ALIAS_FLAG or (if (item.done) Paint.STRIKE_THRU_TEXT_FLAG else 0))
+          }
         }
+
         val moreId = WidgetIds.CELL_MORE[row][col]
         views.setViewVisibility(moreId, if (content.more > 0) View.VISIBLE else View.GONE)
         if (content.more > 0) {
           views.setTextViewText(moreId, "+${content.more}")
-          views.setTextColor(moreId, secondary)
+          views.setTextColor(moreId, context.getColor(R.color.onefc_schedule_primary))
         }
         val countId = WidgetIds.COUNTS[row][col]
         // 배지 칸 높이를 항상 차지(INVISIBLE)해 숫자 유무로 흔들리지 않는다.
-        views.setViewVisibility(countId, if (content.badge.isNotEmpty()) View.VISIBLE else if (slots == 0) View.INVISIBLE else View.GONE)
+        views.setViewVisibility(countId, if (content.badge.isNotEmpty()) View.VISIBLE else if (fittingSlots == 0) View.INVISIBLE else View.GONE)
         views.setTextViewText(countId, content.badge)
         views.setInt(countId, "setBackgroundResource", R.drawable.onefc_widget_count)
         views.setTextColor(countId, onBrand)

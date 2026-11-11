@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ApiError as mockApiError } from '../../../api/client';
 import { DesignSystemProvider } from '../../../design-system';
 import { ScheduleScreen } from '../ScheduleScreen';
-import { normalizeScheduleEvents } from '../scheduleModel';
+import { formatDayTitle, normalizeScheduleEvents, seoulYmd } from '../scheduleModel';
 import { normalizeScheduleViewPrefs } from '../scheduleViewPrefs';
 import { SCHEDULE_ITEM_COLORS } from '../scheduleItemColors';
 
@@ -82,6 +82,7 @@ describe('monthly screen integration with existing forms/routes', () => {
   it('retains the calendar, shows every selected-day event/task, and has one page scroll', () => {
     const ui = screen();
     expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
+    expect(ui.queryByRole('button', { name: '표시 설정' })).toBeNull();
     expect(ui.getByText('+4')).toBeTruthy();
     for (let index = 2; index < 5; index += 1) expect(ui.getByText(`상담 일정 ${index}`)).toBeTruthy();
     expect(ui.getByText('서류 준비')).toBeTruthy();
@@ -132,7 +133,13 @@ describe('monthly screen integration with existing forms/routes', () => {
     fireEvent.press(ui.getByRole('button', { name: '다음 달' }));
     expect(ui.getByText('2026년 12월')).toBeTruthy();
     expect(currentKey()).toEqual(['schedule', 'events', '2026-12-01', '2026-12-31']);
+    expect(ui.queryByRole('button', { name: '다음 달로 이동' })).toBeNull();
+    expect(ui.queryByRole('button', { name: '이전 달로 이동' })).toBeNull();
+    fireEvent.press(ui.getByRole('button', { name: '다음 달' }));
+    expect(ui.getByText('2027년 1월')).toBeTruthy();
     fireEvent.press(ui.getByRole('button', { name: '이전 달' }));
-    expect(currentKey()).toEqual(['schedule', 'events', '2026-11-01', '2026-11-30']);
+    expect(ui.getByText('2026년 12월')).toBeTruthy();
+    fireEvent.press(ui.getByRole('button', { name: '오늘로 이동' }));
+    expect(ui.getByRole('button', { name: new RegExp(`^${formatDayTitle(seoulYmd()).replace(/[()]/g, '\\$&')}, 오늘`), selected: true })).toBeTruthy();
   });
 });

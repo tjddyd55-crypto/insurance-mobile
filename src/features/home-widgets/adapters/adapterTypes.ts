@@ -19,7 +19,7 @@ export type WidgetAdapter<P> = {
 
 export const WIDGET_TITLE_MAX = 80;
 
-export function clipWidgetTitle(title: string): string {
+export function clipWidgetTitle(title: string, ellipsis = true): string {
   const oneLine = title.replace(/\s+/g, ' ').trim();
-  return oneLine.length > WIDGET_TITLE_MAX ? `${oneLine.slice(0, WIDGET_TITLE_MAX - 1)}…` : oneLine || '(제목 없음)';
+  return oneLine.length > WIDGET_TITLE_MAX ? ellipsis ? `${oneLine.slice(0, WIDGET_TITLE_MAX - 1)}…` : oneLine.slice(0, WIDGET_TITLE_MAX) : oneLine || '(제목 없음)';
 }

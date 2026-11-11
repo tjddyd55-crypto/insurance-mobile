@@ -32,6 +32,9 @@ import { GoogleCalendarAutoSyncCard } from './GoogleCalendarAutoSyncCard';
 import { fetchGoogleAutoSync, googleAutoSyncInput, saveGoogleAutoSync, type GoogleAutoSyncInput } from './googleCalendarAutoSyncApi';
 import { GOOGLE_INTEGRATION_HREF } from '../profile/googleIntegrationRoute';
 import { scheduleQueryKeys } from '../schedule/queryKeys';
+import { ScheduleViewSettings } from '../schedule/ScheduleViewSettings';
+import { DEFAULT_SCHEDULE_VIEW_PREFS, fetchScheduleViewPrefs, saveScheduleViewPrefs, type ScheduleViewPrefs } from '../schedule/scheduleViewPrefs';
+import { refreshWidgets } from '../home-widgets/engine/widgetRefreshCoordinator';
 
 export function NotificationSettingsScreen() {
   const { token, user } = useAuth();
@@ -47,6 +50,18 @@ export function NotificationSettingsScreen() {
   const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
   const [googleDraft, setGoogleDraft] = useState<GoogleAutoSyncInput | null>(null);
   const [initialGoogleSnapshot, setInitialGoogleSnapshot] = useState('');
+  const [displayDraft, setDisplayDraft] = useState<ScheduleViewPrefs | null>(null);
+  const [initialDisplaySnapshot, setInitialDisplaySnapshot] = useState('');
+  const displayDirty = displayDraft !== null && JSON.stringify(displayDraft) !== initialDisplaySnapshot;
+  const displayQuery = useQuery({
+    queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? ''),
+    queryFn: async () => (await fetchScheduleViewPrefs(token, { strict: true })) ?? DEFAULT_SCHEDULE_VIEW_PREFS, enabled: Boolean(token), staleTime: 0,
+  });
+  useEffect(() => {
+    if (!displayQuery.data || displayDirty || JSON.stringify(displayQuery.data) === initialDisplaySnapshot) return;
+    setDisplayDraft(displayQuery.data);
+    setInitialDisplaySnapshot(JSON.stringify(displayQuery.data));
+  }, [displayQuery.data, displayDirty, initialDisplaySnapshot]);
   const alertDirty = initialized && JSON.stringify(draft) !== initialSnapshot;
   const googleDirty = googleDraft !== null && JSON.stringify(googleDraft) !== initialGoogleSnapshot;
   const query = useQuery({
@@ -69,6 +84,7 @@ export function NotificationSettingsScreen() {
   }, [googleDirty, googleDraft, googleQuery.data, initialGoogleSnapshot]);
 
   const refreshSharedSettings = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') }, { cancelRefetch: false });
     void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.settings }, { cancelRefetch: false });
     void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.googleAutoSync(user?.id ?? '') }, { cancelRefetch: false });
   }, [queryClient, user?.id]);
@@ -98,7 +114,7 @@ export function NotificationSettingsScreen() {
     setInitialSnapshot(JSON.stringify(query.data));
     setInitialized(true);
   }, [initialized, query.data, alertDirty, initialSnapshot]);
-  const dirty = alertDirty || googleDirty;
+  const dirty = alertDirty || googleDirty || displayDirty;
   const saveMutation = useMutation({
     mutationFn: async () => {
       const saved = alertDirty ? await saveNotificationSettings(token, draft) : (query.data ?? draft);
@@ -107,6 +123,27 @@ export function NotificationSettingsScreen() {
       setDraft(saved);
       setInitialSnapshot(JSON.stringify(saved));
       queryClient.setQueryData(notificationQueryKeys.settings, saved);
+      if (displayDirty && displayDraft) {
+        const initial = JSON.parse(initialDisplaySnapshot) as ScheduleViewPrefs;
+        const patch: Partial<ScheduleViewPrefs> = {};
+        if (JSON.stringify(initial.sources) !== JSON.stringify(displayDraft.sources)) patch.sources = displayDraft.sources;
+        if (initial.includeCompleted !== displayDraft.includeCompleted) patch.includeCompleted = displayDraft.includeCompleted;
+        try {
+          await queryClient.cancelQueries({ queryKey: scheduleQueryKeys.viewPrefs(user?.id ?? '') });
+          const display = await saveScheduleViewPrefs(token, patch);
+          setDisplayDraft(display);
+          setInitialDisplaySnapshot(JSON.stringify(display));
+          queryClient.setQueryData(scheduleQueryKeys.viewPrefs(user?.id ?? ''), display);
+        } catch {
+          throw new Error('일정·위젯 표시 설정을 저장하지 못했습니다. 다른 설정의 저장 상태도 다시 확인해 주세요.');
+        }
+        await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
+        try {
+          if (token && user) await refreshWidgets({ token, user }, { reason: 'appMutation', widgetTypes: ['schedule'], force: true });
+        } catch {
+          throw new Error('일정·위젯 표시 설정은 저장했지만 위젯을 새로고침하지 못했습니다. 위젯에서 새로고침해 주세요.');
+        }
+      }
       if (googleDirty && googleDraft) {
         try {
           const google = await saveGoogleAutoSync(token, googleDraft);
@@ -116,7 +153,9 @@ export function NotificationSettingsScreen() {
           queryClient.setQueryData(notificationQueryKeys.googleAutoSync(user?.id ?? ''), google);
           await queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.all });
         } catch {
-          throw new Error(alertDirty
+          throw new Error(displayDirty
+            ? '일정·위젯 표시 설정은 저장했지만 Google 자동 연동 설정은 저장하지 못했습니다. 다시 확인해 주세요.'
+            : alertDirty
             ? '앱 알림 설정은 저장했지만 Google 자동 연동 설정은 저장하지 못했습니다. 다시 열어 저장 상태를 확인해 주세요.'
             : 'Google 자동 연동 설정을 저장하지 못했습니다. 다시 열어 저장 상태를 확인해 주세요.');
         }
@@ -247,6 +286,13 @@ export function NotificationSettingsScreen() {
           onEnabled={(enabled) => setWindowed('specialDate', { enabled })}
           onDays={(daysBefore) => setWindowed('specialDate', { daysBefore })}
         />
+        {displayQuery.isLoading ? <Card variant="outlined"><AppText variant="helper">일정·위젯 표시 설정을 불러오는 중…</AppText></Card> : null}
+        {displayQuery.isError ? <Card variant="outlined"><Stack gap="sm">
+          <AppText variant="caption" color="danger">일정·위젯 표시 설정을 불러오지 못했습니다.</AppText>
+          <Button label="표시 항목 다시 확인" variant="secondary" onPress={() => void displayQuery.refetch()} />
+        </Stack></Card> : null}
+        {displayDraft ? <ScheduleViewSettings prefs={displayDraft} disabled={saveMutation.isPending || displayQuery.isError}
+          onChange={(patch) => setDisplayDraft(previous => previous ? { ...previous, ...patch } : previous)} /> : null}
         {googleQuery.isLoading ? <Card variant="outlined"><AppText variant="helper">Google 자동 연동 설정을 불러오는 중…</AppText></Card> : null}
         {googleQuery.isError ? <Card variant="outlined"><Stack gap="sm">
           <AppText color="danger" variant="caption">Google 자동 연동 설정을 불러오지 못했습니다. 앱 알림 설정은 계속 사용할 수 있습니다.</AppText>
