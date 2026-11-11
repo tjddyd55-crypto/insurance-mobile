@@ -15,6 +15,12 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
   /** 월 헤더 36 + 요일 24 + 패딩 16 + 하단 도구 36. */
   const val CHROME_DP = 112
 
+  // View.setAlpha is not a RemoteViews method on older Android releases.
+  // Dim all card colors instead so the launcher can inflate the same layout.
+  fun cardColor(color: Int, done: Boolean): Int = if (done) {
+    (color and 0x00ffffff) or ((Color.alpha(color) / 2) shl 24)
+  } else color
+
   /** 칸 높이(dp). 달력이 위젯의 남은 높이를 채운다. */
   fun cellHeightDp(heightDp: Int, weeks: Int): Int = ((heightDp - CHROME_DP).coerceAtLeast(0) / weeks.coerceAtLeast(1)) - 2
 
@@ -131,15 +137,14 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
           if (item != null) {
             views.setTextViewText(chipId, item.title)
             val colors = payload.colors[item.colorKey]
-            val background = colors?.background?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand_soft)
-            val foreground = colors?.foreground?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand)
-            val border = colors?.border?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand)
+            val background = cardColor(colors?.background?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand_soft), item.done)
+            val foreground = cardColor(colors?.foreground?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand), item.done)
+            val border = cardColor(colors?.border?.let(Color::parseColor) ?: context.getColor(R.color.onefc_widget_brand), item.done)
             if (Build.VERSION.SDK_INT >= 31) views.setColorStateList(wrapperId, "setBackgroundTintList", ColorStateList.valueOf(background))
             else views.setInt(wrapperId, "setBackgroundColor", background)
             views.setTextColor(chipId, foreground)
             views.setInt(stripeId, "setBackgroundColor", border)
             views.setInt(chipId, "setPaintFlags", Paint.ANTI_ALIAS_FLAG or (if (item.done) Paint.STRIKE_THRU_TEXT_FLAG else 0))
-            views.setFloat(wrapperId, "setAlpha", if (item.done) 0.5f else 1f)
           }
         }
 

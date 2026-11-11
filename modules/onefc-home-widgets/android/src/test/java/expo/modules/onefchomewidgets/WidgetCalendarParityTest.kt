@@ -47,9 +47,9 @@ class WidgetCalendarParityTest {
       val visibleLines = (0 until first.lineCount).count { first.layout.getLineBottom(it) <= first.height - first.paddingTop - first.paddingBottom }
       assertTrue("visible lines $visibleLines", visibleLines in 1..2)
       assertEquals(Color.parseColor("#166534"), first.currentTextColor)
-      assertEquals(Color.parseColor("#5b21b6"), second.currentTextColor)
+      assertEquals(ScheduleWidgetRenderer.cardColor(Color.parseColor("#5b21b6"), true), second.currentTextColor)
       assertTrue(second.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG != 0)
-      assertEquals(0.5f, view.findViewById<View>(WidgetIds.CHIP_WRAPPERS[1][1][5]).alpha, 0.001f)
+      assertEquals(127, Color.alpha(second.currentTextColor))
       assertEquals("+1", view.findViewById<TextView>(WidgetIds.CELL_MORE[1][5]).text.toString())
       val cell = view.findViewById<View>(WidgetIds.CELLS[1][5])
       for (slot in 0..1) assertTrue(view.findViewById<View>(WidgetIds.CHIP_WRAPPERS[slot][1][5]).bottom <= cell.height)

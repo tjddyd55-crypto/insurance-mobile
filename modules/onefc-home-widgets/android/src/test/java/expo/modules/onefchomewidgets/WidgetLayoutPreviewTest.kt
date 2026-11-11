@@ -142,7 +142,8 @@ class WidgetLayoutPreviewTest {
     val model = File(outDir, "scenes.json")
     model.writeText(JSONObject().put("scenes", scenes).toString())
     val script = locateScript()
-    val process = ProcessBuilder("python3", script.absolutePath, model.absolutePath, outDir.absolutePath)
+    val python = System.getenv("ONEFC_WIDGET_PREVIEW_PYTHON") ?: "python3"
+    val process = ProcessBuilder(python, script.absolutePath, model.absolutePath, outDir.absolutePath)
       .redirectErrorStream(true)
       .start()
     val log = process.inputStream.bufferedReader().readText()
