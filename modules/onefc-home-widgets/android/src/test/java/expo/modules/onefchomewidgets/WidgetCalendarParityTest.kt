@@ -58,7 +58,8 @@ class WidgetCalendarParityTest {
 
   @Test fun smallerCalendarsReduceCardsBeforeShrinkingText() {
     assertEquals(0, ScheduleWidgetRenderer.chipSlots(320, 6))
-    assertEquals(1, ScheduleWidgetRenderer.chipSlots(520, 6))
+    assertEquals(0, ScheduleWidgetRenderer.chipSlots(520, 6))
+    assertEquals(1, ScheduleWidgetRenderer.chipSlots(520, 6, reserveOverflow = false))
     assertEquals(2, ScheduleWidgetRenderer.chipSlots(740, 6))
     assertTrue(ScheduleWidgetRenderer.chipSlots(740, 6, 1.4f) < ScheduleWidgetRenderer.chipSlots(740, 6))
   }

@@ -62,6 +62,7 @@ class WidgetLayoutPreviewTest {
     assertTrue(smallText.contains("9+"))
     capture("schedule-small", small, 250, 360)
     assertCellsFit(small)
+    captureKoreanScheduleTitles(context, schedule)
 
     assertTrue(WidgetCacheManager.write(context, OneFcWidgetType.SCHEDULE, scheduleRaw))
     val threeItems = dayDialog("2026-10-21")
@@ -276,6 +277,39 @@ class WidgetLayoutPreviewTest {
     view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
     view.layout(0, 0, view.measuredWidth, view.measuredHeight)
     scenes.put(scene(name, view))
+  }
+
+  private fun captureKoreanScheduleTitles(context: Context, schedule: WidgetEnvelope) {
+    val titles = listOf(
+      "국제실골프", "김도훈\n삼성화재", "토스 해외\n결제", "역대회장협\n의회 여수",
+      "강원지구회\n구회장 취임식", "서울지구\n회원대회", "성욱쌀화환\n보내기", "서영기\n자동차", "위원장 모임",
+    )
+    for ((month, weekCount) in listOf("2026-10-01" to 5, "2026-08-01" to 6)) {
+      val weeks = WidgetDates.monthGrid(month)
+      assertEquals(weekCount, weeks.size)
+      val dates = weeks.flatten().filter { it.inMonth }.takeLast(titles.size)
+      val events = JSONArray()
+      for ((date, title) in dates.zip(titles)) {
+        val item = JSONObject().put("id", date.ymd).put("title", title).put("kind", "event")
+        events.put(JSONObject().put("date", date.ymd).put("items", JSONArray().put(item)))
+      }
+      val payload = JSONObject().put("visibleRange", JSONObject().put("from", month).put("to", dates.last().ymd)).put("events", events)
+      val id = 100 + weekCount
+      WidgetCacheManager.saveInstance(context, OneFcWidgetType.SCHEDULE, id, WidgetDates.today(schedule.timeZone), mapOf("month" to month, "selected" to dates.last().ymd))
+      val view = apply(context, ScheduleWidgetRenderer.render(context, schedule.copy(payload = payload), id, 650, false)!!)
+      capture("schedule-korean-${weekCount}weeks", view, 520, 650)
+      assertCellsFit(view)
+      for ((date, title) in dates.zip(titles)) {
+        val row = weeks.indexOfFirst { date in it }
+        val column = weeks[row].indexOf(date)
+        val label = view.findViewById<TextView>(WidgetIds.CHIPS[0][row][column])
+        assertEquals(title, label.text.toString())
+        assertEquals("Expected visible line count for $title", title.lines().size, label.lineCount)
+        val lastLine = label.lineCount - 1
+        val textBottom = label.layout.getLineBottom(lastLine)
+        assertTrue("Bottom of $title fits inside its card", textBottom <= label.height - label.paddingTop - label.paddingBottom)
+      }
+    }
   }
 
   private fun assertCellsFit(root: View) {

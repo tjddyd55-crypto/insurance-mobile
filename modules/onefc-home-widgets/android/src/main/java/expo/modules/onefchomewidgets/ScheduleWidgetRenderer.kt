@@ -24,8 +24,12 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
   /** 칸 높이(dp). 달력이 위젯의 남은 높이를 채운다. */
   fun cellHeightDp(heightDp: Int, weeks: Int): Int = ((heightDp - CHROME_DP).coerceAtLeast(0) / weeks.coerceAtLeast(1)) - 2
 
-  /** 날짜 24dp + 두 줄 카드 28sp + 더 보기 14sp. 작은 위젯은 숫자 배지로 보존. */
-  fun chipSlots(heightDp: Int, weeks: Int, fontScale: Float = 1f): Int = ((cellHeightDp(heightDp, weeks) - 24 * fontScale - 14 * fontScale) / (28 * fontScale)).toInt().coerceIn(0, CHIP_SLOTS)
+  /** 날짜와 각 카드의 상단 여백, 필요한 경우 +N의 높이를 확보한다. */
+  fun chipSlots(heightDp: Int, weeks: Int, fontScale: Float = 1f, cardHeightDp: Float = 31 * fontScale, reserveOverflow: Boolean = true): Int {
+    val headerAndOverflowDp = if (reserveOverflow) 38 else 24
+    val availableDp = cellHeightDp(heightDp, weeks) - headerAndOverflowDp * fontScale
+    return (availableDp / (cardHeightDp + 1)).toInt().coerceIn(0, CHIP_SLOTS)
+  }
 
   data class Cell(val titles: List<String>, val more: Int, val badge: String)
 
@@ -103,7 +107,10 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
     val saturday = context.getColor(R.color.onefc_widget_saturday)
     val onBrand = context.getColor(R.color.onefc_widget_on_brand)
     val fontScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
-    val slots = chipSlots(heightDp, weeks.size, fontScale)
+    val resources = context.resources
+    val cardHeightDp = resources.getDimensionPixelSize(R.dimen.onefc_widget_event_min_height) / resources.displayMetrics.density
+    val slots = chipSlots(heightDp, weeks.size, fontScale, cardHeightDp)
+    val slotsWithoutOverflow = chipSlots(heightDp, weeks.size, fontScale, cardHeightDp, reserveOverflow = false)
     for (row in 0 until 6) {
       views.setViewVisibility(WidgetIds.WEEKS[row], if (row < weeks.size) View.VISIBLE else View.GONE)
       if (row >= weeks.size) continue
@@ -114,7 +121,8 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
         val isToday = cell.ymd == today
         val total = payload.countOn(cell.ymd)
         val items = payload.events[cell.ymd].orEmpty().filter { payload.includeCompleted || !it.done }
-        val content = cell(total, items.map { it.title }, slots)
+        val fittingSlots = if (total <= slotsWithoutOverflow && total <= items.size) slotsWithoutOverflow else slots
+        val content = cell(total, items.map { it.title }, fittingSlots)
         views.setTextViewText(dayId, cell.day.toString())
         val dateSize = (24 * fontScale * context.resources.displayMetrics.density).toInt()
         views.setInt(dayId, "setWidth", dateSize)
@@ -156,7 +164,7 @@ object ScheduleWidgetRenderer : OneFcWidgetRenderer {
         }
         val countId = WidgetIds.COUNTS[row][col]
         // 배지 칸 높이를 항상 차지(INVISIBLE)해 숫자 유무로 흔들리지 않는다.
-        views.setViewVisibility(countId, if (content.badge.isNotEmpty()) View.VISIBLE else if (slots == 0) View.INVISIBLE else View.GONE)
+        views.setViewVisibility(countId, if (content.badge.isNotEmpty()) View.VISIBLE else if (fittingSlots == 0) View.INVISIBLE else View.GONE)
         views.setTextViewText(countId, content.badge)
         views.setInt(countId, "setBackgroundResource", R.drawable.onefc_widget_count)
         views.setTextColor(countId, onBrand)

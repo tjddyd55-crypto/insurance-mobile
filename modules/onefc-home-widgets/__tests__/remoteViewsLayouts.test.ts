@@ -101,12 +101,15 @@ describe('home widget RemoteViews layouts', () => {
       expect(xml).not.toContain('@dimen/onefc_widget_month_text');
       expect(xml).toMatch(/w_status"[^>]*@color\/onefc_widget_text_meta/);
     }
-    // 일정 칸: 제목·+N 은 medium + includeFontPadding=false(칸 높이 예산 15dp/13dp 유지), 날짜·요일 medium.
+    // 일정 제목은 medium과 글꼴 여백을 사용하고, +N은 기존 한 줄 배치를 유지한다.
     const tags = (re: RegExp) => Array.from(schedule.matchAll(/<TextView\b([^>]*)\/?>/g), match => match[1]).filter((t) => re.test(t));
     const chips = tags(/id="@\+id\/w_chip_\d_\d_\d"/);
     expect(chips).toHaveLength(84);
     for (const t of chips) { expect(t).toContain('android:maxLines="2"'); expect(t).not.toContain('ellipsize'); }
-    for (const t of chips) expect(t).toMatch(/onefc_widget_event_text" android:fontFamily="sans-serif-medium" android:includeFontPadding="false"/);
+    for (const t of chips) {
+      expect(t).toMatch(/onefc_widget_event_text" android:fontFamily="sans-serif-medium" android:includeFontPadding="true"/);
+      expect(t).toContain('android:minHeight="@dimen/onefc_widget_event_min_height"');
+    }
     const more = tags(/id="@\+id\/w_cmore_/);
     expect(more).toHaveLength(42);
     for (const t of more) expect(t).toMatch(/onefc_widget_more_text" android:fontFamily="sans-serif-medium" android:includeFontPadding="false"/);
