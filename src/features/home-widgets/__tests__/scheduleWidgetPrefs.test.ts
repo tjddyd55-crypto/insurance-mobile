@@ -1,3 +1,4 @@
+import { SCHEDULE_ITEM_COLORS } from '../../schedule/scheduleItemColors';
 import { apiRequest } from '../../../api/client';
 import { fetchScheduleEvents } from '../../schedule/scheduleApi';
 import { normalizeScheduleEvents } from '../../schedule/scheduleModel';
@@ -42,13 +43,27 @@ const prefs = (extra: Record<string, unknown>) => normalizeScheduleViewPrefs({ s
 beforeEach(() => { api.mockReset(); events.mockReset(); });
 
 describe('schedule widget — web schedule-view-prefs SSOT', () => {
+  it('sends app colors and includes completed cards in the same preview total only when enabled', () => {
+    const data = result();
+    data.events[0].title = '읽을 수 있는 긴 제목'.repeat(20);
+    const payload = scheduleWidgetPayload(data, 'onefc-dev', '2026-10-27', prefs({ includeCompleted: true }));
+    const items = payload.events[0].items;
+    expect(payload.calendarCounts['2026-10-27']).toBe(items.length);
+    expect(payload.includeCompleted).toBe(true);
+    expect(items.find(item => item.id === 'onefc_todo:2')).toMatchObject({ done: true, colorKey: 'onefc_todo' });
+    expect(items.find(item => item.id === 'onefc:9')?.colorKey).toBe('onefc_event');
+    expect(payload.colors.onefc_todo).toEqual(SCHEDULE_ITEM_COLORS.onefc_todo.light);
+    expect(items.find(item => item.id === 'g:a')?.title).not.toContain('…');
+    expect(items.find(item => item.id === 'g:a')?.title).toHaveLength(80);
+  });
+
   it('maps event keys like the web scheduleFilterKeyOf', () => {
     expect(result().events.map(scheduleFilterKeyOf)).toEqual(['google', 'google', 'google', 'customer_alert', 'car_expiry', 'insurance_age']);
   });
 
-  it('fallback (null prefs) keeps the current default: everything incl. completed', () => {
+  it('fallback matches the app default: all sources, completed tasks hidden', () => {
     const payload = scheduleWidgetPayload(result(), 'onefc', '2026-10-27', null);
-    expect(ids(payload)).toHaveLength(9);
+    expect(ids(payload)).toHaveLength(8);
     // 배지 수는 기존 countItemsByDay 규칙(완료 할 일 제외) 그대로.
     expect(payload.calendarCounts['2026-10-27']).toBe(8);
   });
@@ -115,7 +130,7 @@ describe('schedule widget — web schedule-view-prefs SSOT', () => {
     expect(ids(first)).toEqual(['crm:1']);
     api.mockRejectedValueOnce(new Error('500'));
     const second = await scheduleWidgetAdapter.load({ token: 'tok', scheme: 'onefc', today: '2026-10-27', reason: 'manual' } as never);
-    expect(ids(second)).toHaveLength(9);
+    expect(ids(second)).toHaveLength(8);
     expect(api).toHaveBeenCalledTimes(2);
   });
 });

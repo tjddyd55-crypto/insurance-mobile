@@ -82,6 +82,7 @@ describe('monthly screen integration with existing forms/routes', () => {
   it('retains the calendar, shows every selected-day event/task, and has one page scroll', () => {
     const ui = screen();
     expect(ui.getByTestId('schedule-month-calendar')).toBeTruthy();
+    expect(ui.queryByRole('button', { name: '표시 설정' })).toBeNull();
     expect(ui.getByText('+4')).toBeTruthy();
     for (let index = 2; index < 5; index += 1) expect(ui.getByText(`상담 일정 ${index}`)).toBeTruthy();
     expect(ui.getByText('서류 준비')).toBeTruthy();

@@ -6,9 +6,9 @@ import {
 } from '../releasePreflightExpectations';
 
 describe('releasePreflightExpectations', () => {
-  it('defines the 1.0.5 store build contract', () => {
-    expect(RELEASE_VERSION_NAME).toBe('1.0.5');
-    expect(RELEASE_STORE_BUILD_NUMBER).toBe(15);
+  it('defines the 1.0.6 store build contract', () => {
+    expect(RELEASE_VERSION_NAME).toBe('1.0.6');
+    expect(RELEASE_STORE_BUILD_NUMBER).toBe(16);
   });
 
   it('keeps production and development identities isolated', () => {
