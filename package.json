@@ -73,6 +73,7 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "setupFilesAfterEnv": ["<rootDir>/jest.setup.cjs"],
     "testMatch": [
       "**/__tests__/**/*.test.ts",
       "**/__tests__/**/*.test.tsx"
