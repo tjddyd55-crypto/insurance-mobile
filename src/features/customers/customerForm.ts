@@ -196,10 +196,6 @@ export type ValidateCustomerFormOptions = {
   original?: CustomerFormState;
 };
 
-function isUnsetDriver(value: CustomerFormState["driver"]): boolean {
-  return value !== "yes" && value !== "no";
-}
-
 function isUnsetGender(value: CustomerFormState["gender"]): boolean {
   return value !== "male" && value !== "female";
 }
@@ -234,16 +230,7 @@ export function validateCustomerForm(
       errors.gender = "성별을 선택해 주세요.";
     }
   }
-  if (isUnsetDriver(form.driver)) {
-    const legacyUnsetOnEdit =
-      options?.mode === "edit" &&
-      options.original &&
-      isUnsetDriver(options.original.driver) &&
-      form.driver === options.original.driver;
-    if (!legacyUnsetOnEdit) {
-      errors.driver = "운전 여부를 선택해 주세요.";
-    }
-  }
+  // 운전 여부는 선택 항목: 운전함 / 운전안함 / 미입력(null) 모두 허용.
   if (form.renewalDate && !isValidYmd(form.renewalDate)) {
     errors.renewalDate = "갱신 예정일을 YYYY-MM-DD 형식으로 입력해 주세요.";
   }
