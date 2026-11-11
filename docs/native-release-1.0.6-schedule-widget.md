@@ -22,10 +22,14 @@ Base: main `67eaf7e429939fa310ece5404204638060cc84cd` (PR #56).
 | Runtime | 1.0.6 (appVersion policy) |
 | Update channel | native-production |
 | API | Existing EAS production EXPO_PUBLIC_API_BASE_URL_PROD |
-| Output | AAB; no automatic Play submission |
+| Output | AAB; production rollout is separate from internal testing |
 | Signing | Existing EAS-managed production upload key; verify build details before submission |
 
 Native Kotlin/XML/drawable/provider changes require installation of a new binary. An OTA for the old 1.0.5 runtime does not deliver these changes. No OTA is part of this change.
+
+The installed Play app uses the Play app-signing certificate, while EAS APKs use the upload certificate. A direct APK update may therefore fail with UPDATE_INCOMPATIBLE. Preserve the installed app and its data; use the user-authorized Play internal test track for an update signed by Play.
+
+The `internal` submit profile targets only `internal` / `completed`. It does not change the production submit profile. Resolve app.config with `APP_VARIANT=production` and `EXPO_PUBLIC_APP_ENV=production` when submitting. EAS automatic submission requires a configured Google Play service account; without it, use Play Console with the already-built AAB. Do not remove the installed app to work around a certificate mismatch.
 
 ## Verification before merging and submitting
 
