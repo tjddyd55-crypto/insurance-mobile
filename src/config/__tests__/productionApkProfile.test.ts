@@ -22,16 +22,16 @@ describe('production-apk profile', () => {
     expect(profile.android.buildType).toBe('apk');
   });
 
-  it('ships production 1.0.6 from local version numbers on native-production', () => {
+  it('ships production 1.0.7 from local version numbers on native-production', () => {
     expect(eas.cli.appVersionSource).toBe('local');
     expect(eas.build.production.channel).toBe('native-production');
     expect(eas.build.production.env).toEqual({
       APP_VARIANT: 'production',
       EXPO_PUBLIC_APP_ENV: 'production',
     });
-    expect(appConfig).toContain("const appVersion = isProduction ? '1.0.6' : '1.0.0'");
-    expect(appConfig).toContain('const androidVersionCode = isProduction ? 16 : 1');
-    expect(appConfig).toContain("const iosBuildNumber = isProduction ? '16' : '1'");
+    expect(appConfig).toContain("const appVersion = isProduction ? '1.0.7' : '1.0.0'");
+    expect(appConfig).toContain('const androidVersionCode = isProduction ? 17 : 1');
+    expect(appConfig).toContain("const iosBuildNumber = isProduction ? '17' : '1'");
     expect(appConfig).toContain("policy: 'appVersion'");
     const identity = JSON.parse(fs.readFileSync(path.join(root, 'app.identity.json'), 'utf8'));
     expect(identity.production.applicationId).toBe('com.onefc.app');
