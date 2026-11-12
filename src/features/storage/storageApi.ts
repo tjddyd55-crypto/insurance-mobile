@@ -52,7 +52,7 @@ export async function listStorageFiles(token: string | null, folderId: number | 
 export async function getStorageQuota(token: string | null): Promise<StorageQuota> { return normalizeStorageQuota(await apiRequest('/api/storage/quota', { token: tokenOf(token) })); }
 export async function getStorageUsageBreakdown(token: string | null): Promise<StorageUsageBreakdown> { return normalizeStorageUsageBreakdown(await apiRequest('/api/storage/usage-breakdown', { token: tokenOf(token) })); }
 export async function renameStorageFile(token: string | null, id: number, displayName: string): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'PATCH', token: tokenOf(token), body: JSON.stringify({ displayName: displayName.trim() }) }); }
-export async function deleteStorageFile(token: string | null, id: number): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'DELETE', token: tokenOf(token) }); }
+export async function deleteStorageFile(token: string | null, id: number, removeBinderReferences = false): Promise<void> { await apiRequest(`/api/storage/files/${id}`, { method: 'DELETE', token: tokenOf(token), body: removeBinderReferences ? JSON.stringify({ removeBinderReferences: true }) : undefined }); }
 export async function createStorageOpenUrl(token: string | null, id: number): Promise<string> {
   const result = await apiRequest<{ openUrl: string }>(`/api/storage/files/${id}/open-token`, {
     method: 'POST',
@@ -80,4 +80,24 @@ export async function uploadStorageFile(token: string | null, asset: { uri: stri
   const put = await fetch(presign.uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType, ...(presign.putHeaders ?? {}) }, body: blob });
   if (!put.ok) { await apiRequest('/api/storage/files/upload-fail', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ fileId: presign.fileId }) }).catch(() => undefined); throw new ApiError('파일 업로드에 실패했습니다.', put.status); }
   await apiRequest('/api/storage/files', { method: 'POST', token: tokenOf(token), body: JSON.stringify({ fileId: presign.fileId, fileName: asset.name, displayName: asset.name, objectKey: presign.objectKey, fileUrl: presign.fileUrl, size: asset.size ?? blob.size, mimeType: contentType, content: '', folderId, customerId: null }) });
+}
+
+export type StorageFileBinderDeleteImpact = {
+  materialCount: number;
+  binderCount: number;
+  binderItemCount: number;
+  binders: { id: string; title: string; itemCount: number }[];
+  materials: { id: string; title: string }[];
+};
+export async function fetchStorageFileBinderDeleteImpact(token: string | null, fileId: number): Promise<StorageFileBinderDeleteImpact> {
+  return apiRequest(`/api/storage/files/${fileId}/binder-delete-impact`, { method: 'GET', token: tokenOf(token) });
+}
+export type StorageBatchDeleteResult = {
+  deleted: number[];
+  failed: { id: number; reason: 'NOT_FOUND' | 'USED_IN_BINDER' | 'INTERNAL' }[];
+};
+export async function deleteStorageFilesBatch(token: string | null, fileIds: number[], removeBinderReferences = false): Promise<StorageBatchDeleteResult> {
+  return apiRequest('/api/storage/files/batch', {
+    method: 'DELETE', token: tokenOf(token), body: JSON.stringify({ fileIds, removeBinderReferences }),
+  });
 }

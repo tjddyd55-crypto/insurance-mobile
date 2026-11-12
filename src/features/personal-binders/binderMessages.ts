@@ -23,3 +23,7 @@ export function binderActionMessage(error: unknown, fallback: string): string {
 export function isBinderConflict(error: unknown): boolean {
   return error instanceof ApiError && error.status === 409;
 }
+
+export function isBinderSourceUnavailable(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409 && error.code === 'BINDER_SOURCE_UNAVAILABLE';
+}
