@@ -35,10 +35,12 @@ import {
 } from './binderPageImage';
 import { sharePersonalBinderPdf } from './personalBinderApi';
 import { personalBinderQueryKeys } from './queryKeys';
+import { useBinderFocusRefresh } from './useBinderFocusRefresh';
 import { usePageImageLink } from './usePageImageLink';
 
 export function BinderViewerScreen({ binderId }: { binderId: string }) {
   const { token } = useAuth();
+  useBinderFocusRefresh(Boolean(token));
   const router = useRouter();
   const navigation = useNavigation();
   const theme = useAppTheme();

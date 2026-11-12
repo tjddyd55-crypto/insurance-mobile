@@ -125,7 +125,12 @@ export function StorageScreen() {
           : Promise.resolve(),
     onSuccess: async () => {
       setRename(null);
-      await qc.invalidateQueries({ queryKey: ROOT });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ROOT }),
+        // Prefix includes every binder detail and viewer pages key.
+        qc.invalidateQueries({ queryKey: personalBinderQueryKeys.all }),
+        qc.invalidateQueries({ queryKey: personalBinderQueryKeys.materials }),
+      ]);
     },
   });
   const impactMutation = useMutation({
