@@ -1,3 +1,5 @@
+import { ApiError } from "../../api/client";
+import { personalBinderQueryKeys } from "../personal-binders/queryKeys";
 import { useMemo, useRef, useState } from "react";
 import {
   Linking,
@@ -30,6 +32,9 @@ import {
   createStorageFolder,
   createStorageOpenUrl,
   deleteStorageFile,
+  deleteStorageFilesBatch,
+  fetchStorageFileBinderDeleteImpact,
+  type StorageBatchDeleteResult,
   deleteStorageFolder,
   getStorageQuota,
   getStorageUsageBreakdown,
@@ -42,6 +47,12 @@ import {
 } from "./storageApi";
 import {
   calculateStorageUsageRatio,
+  toggleStorageSelection,
+  retainFailedStorageSelection,
+  storageDeleteSummary,
+  storageBinderUsageMessage,
+  chunkStorageFileIds,
+  mapStorageImpacts,
   formatStorageDate,
   formatStorageFileType,
   formatStorageSize,
@@ -51,7 +62,7 @@ const ROOT = ["storage"] as const;
 type RenameTarget =
   | { kind: "folder"; value: StorageFolder }
   | { kind: "file"; value: StorageFile };
-type DeleteTarget = RenameTarget;
+type DeleteTarget = { kind: "folder"; value: StorageFolder };
 export function StorageScreen() {
   const { token } = useAuth();
   const qc = useQueryClient();
@@ -62,6 +73,11 @@ export function StorageScreen() {
   const [rename, setRename] = useState<RenameTarget | null>(null);
   const [renameName, setRenameName] = useState("");
   const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [fileDelete, setFileDelete] = useState<{ ids: number[]; counts: number[]; single: boolean; name?: string } | null>(null);
+  const [notice, setNotice] = useState("");
+  const operationLock = useRef(false);
   const folders = useQuery({
     queryKey: [...ROOT, "folders"],
     queryFn: () => listStorageFolders(token),
@@ -112,20 +128,82 @@ export function StorageScreen() {
       await qc.invalidateQueries({ queryKey: ROOT });
     },
   });
+  const impactMutation = useMutation({
+    mutationFn: async ({ ids, single, name }: { ids: number[]; single: boolean; name?: string }) => {
+      const counts = await mapStorageImpacts(ids, async (id) => {
+        try {
+          return (await fetchStorageFileBinderDeleteImpact(token, id)).binderCount;
+        } catch (error) {
+          // Stale rows are reported by the delete endpoint as NOT_FOUND.
+          if (error instanceof ApiError && error.status === 404) return 0;
+          throw error;
+        }
+      });
+      return { ids, counts, single, name };
+    },
+    onSuccess: setFileDelete,
+    onError: (error) => setNotice(error.message),
+    onSettled: () => { operationLock.current = false; },
+  });
+  function prepareFileDelete(ids: number[], single = false, name?: string) {
+    if (!ids.length || operationLock.current || fileDelete || deleting) return;
+    operationLock.current = true;
+    setNotice("");
+    impactMutation.mutate({ ids: [...ids], single, name });
+  }
   const deleteMutation = useMutation({
-    mutationFn: () =>
-      deleting?.kind === "folder"
-        ? deleteStorageFolder(token, deleting.value.id)
-        : deleting
-          ? deleteStorageFile(token, deleting.value.id)
-          : Promise.resolve(),
-    onSuccess: async () => {
-      if (deleting?.kind === "folder" && folderId === deleting.value.id)
-        setFolderId(null);
+    mutationFn: async () => {
+      if (deleting?.kind === "folder") {
+        await deleteStorageFolder(token, deleting.value.id);
+        return null;
+      }
+      if (!fileDelete) return null;
+      const removeReferences = fileDelete.counts.some((count) => count > 0);
+      const result: StorageBatchDeleteResult = { deleted: [], failed: [] };
+      if (fileDelete.single) {
+        await deleteStorageFile(token, fileDelete.ids[0], removeReferences);
+        result.deleted.push(fileDelete.ids[0]);
+      } else {
+        for (const ids of chunkStorageFileIds(fileDelete.ids)) {
+          try {
+            const chunk = await deleteStorageFilesBatch(token, ids, removeReferences);
+            result.deleted.push(...chunk.deleted);
+            result.failed.push(...chunk.failed);
+          } catch {
+            // Preserve earlier successes and leave this chunk selected for retry.
+            result.failed.push(...ids.map((id) => ({ id, reason: "INTERNAL" as const })));
+          }
+        }
+      }
+      return result;
+    },
+    onSuccess: async (result) => {
+      if (deleting?.kind === "folder" && folderId === deleting.value.id) setFolderId(null);
+      if (result) {
+        const deleted = new Set(result.deleted);
+        qc.setQueriesData<StorageFile[]>({ queryKey: [...ROOT, "files"] }, (rows) => rows?.filter((file) => !deleted.has(file.id)));
+        setSelected((previous) => fileDelete?.single
+          ? previous.filter((id) => !deleted.has(id))
+          : retainFailedStorageSelection(previous, result.failed.map((file) => file.id)));
+        setNotice(storageDeleteSummary(result.deleted.length, result.failed.length));
+      }
       setDeleting(null);
-      await qc.invalidateQueries({ queryKey: ROOT });
+      setFileDelete(null);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ROOT }),
+        qc.invalidateQueries({ queryKey: personalBinderQueryKeys.all }),
+        qc.invalidateQueries({ queryKey: personalBinderQueryKeys.materials }),
+      ]);
+    },
+    onError: (error) => {
+      setNotice(error.message);
+      setFileDelete(null);
+      setDeleting(null);
+      // A concurrent binder change requires a fresh impact check and confirmation.
+      void qc.invalidateQueries({ queryKey: ROOT });
     },
   });
+  const deleteBusy = impactMutation.isPending || deleteMutation.isPending || Boolean(fileDelete) || Boolean(deleting);
   const upload = useMutation({
     mutationFn: async () => {
       const result = await DocumentPicker.getDocumentAsync({
@@ -278,6 +356,21 @@ export function StorageScreen() {
               onPress={() => upload.mutate()}
             />
           </Inline>
+          <Button label="선택" size="sm" variant={selectionMode ? "selected" : "secondary"}
+            disabled={deleteBusy}
+            onPress={() => { setSelectionMode((value) => !value); setSelected([]); }} />
+          {selectionMode ? (
+            <Stack gap="sm">
+              <AppText>{selected.length}개 선택됨</AppText>
+              <Inline wrap>
+                <Button label="전체 선택" size="sm" disabled={deleteBusy} onPress={() => setSelected((previous) => [...new Set([...previous, ...visibleFiles.map((file) => file.id)])])} />
+                <Button label="선택 해제" size="sm" disabled={deleteBusy} onPress={() => setSelected([])} />
+                <Button label="선택 삭제" size="sm" variant="danger" disabled={deleteBusy || !selected.length}
+                  loading={impactMutation.isPending} onPress={() => prepareFileDelete(selected)} />
+              </Inline>
+            </Stack>
+          ) : null}
+          {notice ? <AppText accessibilityRole="alert">{notice}</AppText> : null}
           <Inline align="flex-end">
             <TextField
               label="새 폴더"
@@ -346,7 +439,7 @@ export function StorageScreen() {
                     size="sm"
                     variant="danger"
                     onPress={() =>
-                      setDeleting({ kind: "folder", value: folder })
+                      !deleteBusy && setDeleting({ kind: "folder", value: folder })
                     }
                   />
                 </Inline>
@@ -357,6 +450,13 @@ export function StorageScreen() {
             <Card key={`file-${file.id}`} variant="outlined">
               <Stack gap="sm">
                 <Inline justify="space-between" align="flex-start">
+                  {selectionMode ? (
+                    <Button label={selected.includes(file.id) ? "☑" : "☐"}
+                      accessibilityLabel={`${file.displayName} 선택`}
+                      accessibilityRole="checkbox" accessibilityState={{ checked: selected.includes(file.id), disabled: deleteBusy }}
+                      size="sm" variant={selected.includes(file.id) ? "selected" : "secondary"} disabled={deleteBusy}
+                      onPress={() => setSelected((previous) => toggleStorageSelection(previous, file.id))} />
+                  ) : null}
                   <View style={styles.grow}>
                     <AppText variant="bodyStrong" numberOfLines={2}>
                       📄 {file.displayName}
@@ -388,7 +488,8 @@ export function StorageScreen() {
                     label="삭제"
                     size="sm"
                     variant="danger"
-                    onPress={() => setDeleting({ kind: "file", value: file })}
+                    disabled={deleteBusy}
+                    onPress={() => prepareFileDelete([file.id], true, file.displayName)}
                   />
                 </Inline>
               </Stack>
@@ -408,7 +509,7 @@ export function StorageScreen() {
       </Screen>
       <ConfirmDialog
         open={Boolean(deleting)}
-        title={deleting?.kind === "folder" ? "폴더 삭제" : "파일 삭제"}
+        title="폴더 삭제"
         message="삭제하면 되돌릴 수 없습니다. 계속하시겠습니까?"
         confirmLabel="삭제"
         tone="danger"
@@ -416,6 +517,27 @@ export function StorageScreen() {
         onCancel={() => setDeleting(null)}
         onConfirm={() => deleteMutation.mutate()}
       />
+      <ModalShell
+        open={Boolean(fileDelete)}
+        title={fileDelete?.single ? (fileDelete.counts.some((count) => count > 0) ? "바인더에서 사용 중인 자료" : "파일 삭제") : `선택한 ${fileDelete?.ids.length ?? 0}개 파일을 삭제하시겠습니까?`}
+        presentation="dialog"
+        busy={deleteMutation.isPending}
+        closeOnBackdrop={false}
+        dismissOnAndroidBack={false}
+        onRequestClose={() => { if (!deleteMutation.isPending) setFileDelete(null); }}
+        footer={
+          <Stack gap="sm">
+            <Button label="취소" variant="secondary" disabled={deleteMutation.isPending} onPress={() => setFileDelete(null)} />
+            <Button label={fileDelete?.counts.some((count) => count > 0) ? "파일과 바인더 참조 모두 삭제" : "삭제"}
+              variant="danger" loading={deleteMutation.isPending} disabled={deleteMutation.isPending} onPress={() => deleteMutation.mutate()} />
+          </Stack>
+        }
+      >
+        <Stack gap="sm">
+          {fileDelete?.single ? <AppText>{fileDelete.counts.some((count) => count > 0) ? `"${fileDelete.name}"` : `"${fileDelete.name}" 파일을 삭제합니다.`}</AppText> : null}
+          {fileDelete?.counts.some((count) => count > 0) ? <AppText>{storageBinderUsageMessage(fileDelete.counts)}</AppText> : null}
+        </Stack>
+      </ModalShell>
       {rename ? (
         <RenameOverlay
           name={renameName}

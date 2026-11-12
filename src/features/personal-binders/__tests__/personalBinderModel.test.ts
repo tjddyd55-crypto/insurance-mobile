@@ -4,9 +4,11 @@ import {
   binderActionMessage,
   isBinderApiUnavailable,
   isBinderConflict,
+  isBinderSourceUnavailable,
 } from '../binderMessages';
 import {
   binderExportFileName,
+  normalizeBinderMaterial,
   buildBinderViewerPages,
   formatSelectedPages,
   pageSelectionForSave,
@@ -130,5 +132,20 @@ describe('personal binder pages', () => {
     expect(sha256HexSync(new TextEncoder().encode('abc'))).toBe(
       'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
     );
+  });
+});
+
+describe('binder source and display-name contract', () => {
+  it('uses the server-resolved title while preserving original metadata', () => {
+    expect(normalizeBinderMaterial({ id: 'm1', title: '현재 표시 이름.pdf', originalFileName: 'original.pdf' }))
+      .toMatchObject({ title: '현재 표시 이름.pdf', originalFileName: 'original.pdf' });
+  });
+  it('recognizes unavailable sources and preserves the server message', () => {
+    const message = '원본 파일이 삭제되었거나 사용할 수 없습니다. 목록을 새로고침해 주세요.';
+    const error = new ApiError(message, 409, { code: 'BINDER_SOURCE_UNAVAILABLE' });
+    expect(isBinderSourceUnavailable(error)).toBe(true);
+    expect(binderActionMessage(error, '실패')).toBe(message);
+    expect(isBinderSourceUnavailable(new ApiError('다른 충돌', 409))).toBe(false);
+    expect(isBinderSourceUnavailable(new Error(message))).toBe(false);
   });
 });

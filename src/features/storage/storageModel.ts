@@ -59,3 +59,39 @@ export function normalizeStorageUsageBreakdown(value: unknown): StorageUsageBrea
     totalSize: Math.max(0, Number(row.totalSize ?? row.total_size) || 0),
   };
 }
+
+export function toggleStorageSelection(selected: readonly number[], id: number): number[] {
+  return selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id];
+}
+export function retainFailedStorageSelection(selected: readonly number[], failedIds: readonly number[]): number[] {
+  const failed = new Set(failedIds);
+  return selected.filter((id) => failed.has(id));
+}
+export function storageDeleteSummary(deleted: number, failed: number): string {
+  return `${deleted}개 삭제 완료${failed > 0 ? ` / ${failed}개 삭제 실패` : ''}`;
+}
+export function storageBinderUsageMessage(counts: readonly number[]): string {
+  return counts.length === 1
+    ? `이 파일은 ${counts[0]}개의 바인더에서 사용 중입니다.`
+    : `선택한 파일 중 ${counts.filter((count) => count > 0).length}개가 바인더에서 사용 중입니다.`;
+}
+export function chunkStorageFileIds(ids: readonly number[]): number[][] {
+  const unique = [...new Set(ids)];
+  const chunks: number[][] = [];
+  for (let i = 0; i < unique.length; i += 100) chunks.push(unique.slice(i, i + 100));
+  return chunks;
+}
+/** At most three active impact requests, preserving input order. */
+export async function mapStorageImpacts<T, R>(values: readonly T[], task: (value: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(values.length);
+  let next = 0;
+  const workers = await Promise.allSettled(Array.from({ length: Math.min(3, values.length) }, async () => {
+    while (next < values.length) {
+      const index = next++;
+      results[index] = await task(values[index]);
+    }
+  }));
+  const failure = workers.find((worker) => worker.status === 'rejected');
+  if (failure?.status === 'rejected') throw failure.reason;
+  return results;
+}
