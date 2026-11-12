@@ -42,6 +42,7 @@ import {
   pageSelectionForSave,
 } from './personalBinderModel';
 import { personalBinderQueryKeys } from './queryKeys';
+import { useBinderFocusRefresh } from './useBinderFocusRefresh';
 import { usePageImageLink } from './usePageImageLink';
 import { BinderPageSelectionModal } from './BinderPageSelectionModal';
 import type { PersonalBinderItem, PersonalBinderMaterial, PersonalBinderSection } from './types';
@@ -55,6 +56,7 @@ type PageTarget = {
 
 export function BinderEditorScreen({ binderId }: { binderId: string }) {
   const { token } = useAuth();
+  useBinderFocusRefresh(Boolean(token));
   const router = useRouter();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -157,7 +159,7 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
       />
       <BinderPageSelectionModal
         open={pageTarget != null}
-        title={pageTarget?.material.title ?? ''}
+        title={materials.data?.find((material) => material.id === pageTarget?.material.id)?.title ?? pageTarget?.material.title ?? ''}
         pageCount={pageTarget?.material.pageCount ?? 0}
         initialSelection={pageTarget?.initialSelection ?? null}
         busy={busy}
@@ -456,7 +458,6 @@ function MaterialPicker({
             >
               <AppText variant="bodyStrong" numberOfLines={2}>{material.title}</AppText>
               <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-                {material.originalFileName ? `${material.originalFileName} · ` : ''}
                 {material.pageCount}페이지
               </AppText>
             </Pressable>

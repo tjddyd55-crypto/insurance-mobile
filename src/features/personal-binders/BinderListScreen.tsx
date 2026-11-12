@@ -48,6 +48,7 @@ import {
   maxBinderPdfBytes,
 } from './personalBinderModel';
 import { personalBinderQueryKeys } from './queryKeys';
+import { useBinderFocusRefresh } from './useBinderFocusRefresh';
 import type { PersonalBinderMaterial, PersonalBinderSummary } from './types';
 
 type BinderForm =
@@ -56,6 +57,7 @@ type BinderForm =
 
 export function BinderListScreen() {
   const { token } = useAuth();
+  useBinderFocusRefresh(Boolean(token));
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
   const theme = useAppTheme();
@@ -348,7 +350,6 @@ function MaterialCards({
         <Card key={material.id}>
           <Stack gap="xs">
             <AppText variant="bodyStrong">{material.title}</AppText>
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>{material.originalFileName}</AppText>
             <AppText variant="caption" color="textMuted">
               {material.pageCount}페이지 · {formatFileSize(material.fileSize)} · 바인더 {material.binderCount ?? 0}개
             </AppText>

@@ -10,7 +10,7 @@ jest.mock('../../../auth/AuthProvider', () => ({ useAuth: () => ({ token: 'fixtu
 jest.mock('../../../components/AppHeader', () => ({ AppHeader: () => null }));
 jest.mock('../storageApi', () => ({
   ...jest.requireActual('../storageApi'),
-  listStorageFiles: jest.fn(), listStorageFolders: jest.fn(), getStorageQuota: jest.fn(), getStorageUsageBreakdown: jest.fn(),
+  renameStorageFile: jest.fn(), listStorageFiles: jest.fn(), listStorageFolders: jest.fn(), getStorageQuota: jest.fn(), getStorageUsageBreakdown: jest.fn(),
   fetchStorageFileBinderDeleteImpact: jest.fn(), deleteStorageFilesBatch: jest.fn(), deleteStorageFile: jest.fn(),
 }));
 const rows = [1, 2].map((id) => ({ id, displayName: `현재 이름${id}.pdf`, fileName: `original${id}.pdf`, folderId: null, fileUrl: '', fileSize: 100, mimeType: 'application/pdf', createdAt: '2026-11-12' }));
@@ -85,4 +85,18 @@ it('blocks confirmation on impact errors but lets stale 404 rows reach batch del
   fireEvent.press(ui.getByRole('button', { name: '선택 삭제' }));
   expect(await ui.findByText('선택한 2개 파일을 삭제하시겠습니까?')).toBeTruthy();
   expect(ui.queryByRole('button', { name: '파일과 바인더 참조 모두 삭제' })).toBeNull();
+});
+
+it('invalidates binder materials, details and viewer pages after a storage file rename', async () => {
+  jest.mocked(api.renameStorageFile).mockResolvedValue(undefined);
+  const ui = screen();
+  await ui.findByText('📄 현재 이름1.pdf');
+  const client = clients[clients.length - 1];
+  const keys = [['personal-binders'], ['personal-binders', 'materials'], ['personal-binders', 'b1'], ['personal-binders', 'b1', 'pages']];
+  keys.forEach((queryKey) => client.setQueryData(queryKey, { title: 'old' }));
+  fireEvent.press(ui.getAllByRole('button', { name: '이름 변경' })[0]);
+  fireEvent.changeText(ui.getByDisplayValue('현재 이름1.pdf'), '새 이름.pdf');
+  fireEvent.press(ui.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(api.renameStorageFile).toHaveBeenCalledWith('fixture', 1, '새 이름.pdf'));
+  await waitFor(() => keys.forEach((queryKey) => expect(client.getQueryState(queryKey)?.isInvalidated).toBe(true)));
 });
