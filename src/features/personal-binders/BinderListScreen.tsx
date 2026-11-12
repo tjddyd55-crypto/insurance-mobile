@@ -28,6 +28,7 @@ import {
   BINDER_API_UNAVAILABLE_TITLE,
   isBinderApiUnavailable,
   isBinderConflict,
+  isBinderSourceUnavailable,
 } from './binderMessages';
 import {
   createPersonalBinder,
@@ -164,7 +165,7 @@ export function BinderListScreen() {
       </ModalShell>
       <ConfirmDialog
         open={pendingDelete != null}
-        title={'sectionCount' in (pendingDelete ?? {}) ? '바인더를 삭제할까요?' : '자료를 삭제할까요?'}
+        title={'sectionCount' in (pendingDelete ?? {}) ? '이 바인더를 삭제하시겠습니까?' : '자료를 삭제할까요?'}
         message={deleteMessage(pendingDelete)}
         confirmLabel={'binderCount' in (pendingDelete ?? {}) && (pendingDelete as PersonalBinderMaterial).binderCount ? '확인' : '삭제'}
         tone="danger"
@@ -218,6 +219,10 @@ export function BinderListScreen() {
       }
     } catch (error) {
       setNotice(binderActionMessage(error, '바인더를 저장하지 못했습니다.'));
+      if (isBinderSourceUnavailable(error)) {
+        setForm(null);
+        await done();
+      }
     } finally {
       setBusy(false);
     }
@@ -241,7 +246,7 @@ export function BinderListScreen() {
     const target = pendingDelete;
     if (!target || busy) return;
     if ('binderCount' in target && (target.binderCount ?? 0) > 0) {
-      setNotice(`이 자료는 ${target.binderCount}개의 바인더에서 사용 중이므로 삭제할 수 없습니다.`);
+      setNotice(`이 파일은 ${target.binderCount}개의 바인더에서 사용 중입니다.`);
       setPendingDelete(null);
       return;
     }
@@ -269,10 +274,10 @@ export function BinderListScreen() {
 function deleteMessage(target: PersonalBinderSummary | PersonalBinderMaterial | null): string {
   if (!target) return '';
   if ('sectionCount' in target) {
-    return `${target.title}의 섹션과 상담 구성이 삭제됩니다. 원본 PDF는 자료 보관함에 유지됩니다.`;
+    return '바인더 구성은 삭제되지만 원본 파일은 내 파일에서 삭제되지 않습니다.';
   }
   if ((target.binderCount ?? 0) > 0) {
-    return `이 자료는 ${target.binderCount}개의 바인더에서 사용 중이므로 삭제할 수 없습니다.`;
+    return `이 파일은 ${target.binderCount}개의 바인더에서 사용 중입니다.`;
   }
   return `${target.title} 원본 PDF도 함께 삭제됩니다.`;
 }

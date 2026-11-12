@@ -20,7 +20,7 @@ import {
   useAppTheme,
   type AppTheme,
 } from '../../design-system';
-import { binderActionMessage } from './binderMessages';
+import { binderActionMessage, isBinderSourceUnavailable } from './binderMessages';
 import {
   addPersonalBinderItem,
   createPersonalBinderSection,
@@ -276,6 +276,13 @@ export function BinderEditorScreen({ binderId }: { binderId: string }) {
       await refresh();
     } catch (error) {
       setNotice(binderActionMessage(error, '페이지를 저장하지 못했습니다.'));
+      if (isBinderSourceUnavailable(error)) {
+        setPageTarget(null);
+        await Promise.all([
+          refresh(),
+          queryClient.invalidateQueries({ queryKey: personalBinderQueryKeys.materials }),
+        ]);
+      }
     } finally {
       setBusy(false);
     }
