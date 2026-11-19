@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
+import { resolveDisplayGaName } from '../../navigation/gaTenantLabel';
 import { AppHeader } from '../../components/AppHeader';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -79,6 +80,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
   const channel = isBoard ? null : props.channel;
   const boardSlug = isBoard ? props.boardSlug.trim() : '';
   const { token, user } = useAuth();
+  const gaName = resolveDisplayGaName(user?.gaName, user?.gaCode, user?.username);
   const theme = useAppTheme();
   const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, windowWidth), [theme, windowWidth]);
@@ -183,7 +185,7 @@ export function NewslettersScreen(props: NewslettersScreenProps) {
       ) : null}
       <Inline wrap>
         <Badge label={`${items.length}건`} tone="info" />
-        {user?.gaName ? <Badge label={user.gaName} /> : null}
+        {gaName ? <Badge label={gaName} /> : null}
       </Inline>
       {!query.isLoading && !query.isError && !items.length ? (
         <Card variant="outlined">

@@ -69,7 +69,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const isProduction = environment === 'production';
   const appVersion = isProduction ? '1.0.7' : '1.0.0';
   const androidVersionCode = isProduction ? 17 : 1;
-  const iosBuildNumber = isProduction ? '17' : '1';
+  const iosBuildNumber = isProduction ? '18' : '1';
   const projectId =
     process.env.EAS_PROJECT_ID || '5e46e0bc-2885-4455-88ce-9ca1623df305';
 

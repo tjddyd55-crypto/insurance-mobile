@@ -75,29 +75,30 @@ function scanSensitiveUntracked() {
 function checkVersion(appConfigSource) {
   const { appVersion, androidVersionCode, iosBuildNumber } = parseAppConfigNumbers(appConfigSource);
   const expectedName = '1.0.7';
-  const expected = 17;
+  const expectedAndroidCode = 17;
+  const expectedIosBuild = 18;
   addCheck('version.name', appVersion === expectedName ? 'PASS' : 'BLOCKED', `versionName=${appVersion}`);
   if (releaseMode) {
     addCheck(
       'version.androidCode',
-      androidVersionCode === expected ? 'PASS' : 'BLOCKED',
-      `Android versionCode=${androidVersionCode}, expected release code=${expected}`,
+      androidVersionCode === expectedAndroidCode ? 'PASS' : 'BLOCKED',
+      `Android versionCode=${androidVersionCode}, expected release code=${expectedAndroidCode}`,
     );
     addCheck(
       'version.iosBuild',
-      iosBuildNumber === expected ? 'PASS' : 'BLOCKED',
-      `iOS buildNumber=${iosBuildNumber}, expected release build=${expected}`,
+      iosBuildNumber === expectedIosBuild ? 'PASS' : 'BLOCKED',
+      `iOS buildNumber=${iosBuildNumber}, expected release build=${expectedIosBuild}`,
     );
   } else {
     addCheck(
       'version.androidCode',
-      androidVersionCode === expected ? 'PASS' : 'WARN',
-      `Android versionCode=${androidVersionCode} (release step will require ${expected})`,
+      androidVersionCode === expectedAndroidCode ? 'PASS' : 'WARN',
+      `Android versionCode=${androidVersionCode} (release step will require ${expectedAndroidCode})`,
     );
     addCheck(
       'version.iosBuild',
-      iosBuildNumber === expected ? 'PASS' : 'WARN',
-      `iOS buildNumber=${iosBuildNumber} (release step will require ${expected})`,
+      iosBuildNumber === expectedIosBuild ? 'PASS' : 'WARN',
+      `iOS buildNumber=${iosBuildNumber} (release step will require ${expectedIosBuild})`,
     );
   }
 }

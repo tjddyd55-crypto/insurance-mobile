@@ -136,7 +136,7 @@ export function ProfileScreen() {
                     {query.data.displayName || query.data.username}
                   </AppText>
                   <AppText color="textSecondary" numberOfLines={2}>
-                    {formatProfileOrganization(user?.gaName, user?.gaCode)}
+                    {formatProfileOrganization(user?.gaName, user?.gaCode, user?.username)}
                   </AppText>
                 </View>
                 <Badge label={formatProfileRole(query.data.role)} tone="info" />
@@ -260,10 +260,10 @@ export function ProfileScreen() {
             </Stack>
           </Card>
 
-          {user?.role === 'USER' ? <AccountDeletionSection token={token} onDeleted={async (notice) => {
+          {user?.role === 'USER' ? <AccountDeletionSection token={token} onDeleted={async () => {
             await logout();
             router.replace('/(auth)/login');
-            Alert.alert('회원탈퇴 완료', notice);
+            Alert.alert('회원탈퇴 완료', '계정이 삭제되었습니다.');
           }} /> : null}
 
           <SectionTitle title="로그아웃" description="이 기기에서 ONE FC 사용을 종료합니다." />

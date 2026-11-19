@@ -3,7 +3,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { AppText, Button, Card, Inline, ModalShell, Stack, TextField } from '../../design-system';
 import { requestAccountDeletion } from './profileApi';
 
-type Props = { token: string | null; onDeleted: (message: string) => Promise<void> };
+type Props = { token: string | null; onDeleted: () => Promise<void> };
 
 /** Reuses the existing Web self-service deletion endpoint without changing its policy. */
 export function AccountDeletionSection({ token, onDeleted }: Props) {
@@ -26,9 +26,9 @@ export function AccountDeletionSection({ token, onDeleted }: Props) {
     setBusy(true);
     setError('');
     try {
-      const result = await requestAccountDeletion(token);
+      await requestAccountDeletion(token);
       close();
-      await onDeleted(result.message || '계정 삭제 요청이 접수되었습니다.');
+      await onDeleted();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : '계정 삭제 요청에 실패했습니다.');
     } finally {
