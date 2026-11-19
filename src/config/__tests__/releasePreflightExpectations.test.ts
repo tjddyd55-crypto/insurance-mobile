@@ -1,14 +1,16 @@
 import {
   DEVELOPMENT_APP_IDENTITY,
   PRODUCTION_APP_IDENTITY,
-  RELEASE_STORE_BUILD_NUMBER,
+  RELEASE_ANDROID_VERSION_CODE,
+  RELEASE_IOS_BUILD_NUMBER,
   RELEASE_VERSION_NAME,
 } from '../releasePreflightExpectations';
 
 describe('releasePreflightExpectations', () => {
   it('defines the 1.0.7 store build contract', () => {
     expect(RELEASE_VERSION_NAME).toBe('1.0.7');
-    expect(RELEASE_STORE_BUILD_NUMBER).toBe(17);
+    expect(RELEASE_ANDROID_VERSION_CODE).toBe(17);
+    expect(RELEASE_IOS_BUILD_NUMBER).toBe(18);
   });
 
   it('keeps production and development identities isolated', () => {

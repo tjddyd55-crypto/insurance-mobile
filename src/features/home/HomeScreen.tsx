@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
 import { useAuth } from '../../auth/AuthProvider';
+import { resolveDisplayGaName } from '../../navigation/gaTenantLabel';
 import { AppHeader } from '../../components/AppHeader';
 import { getEnvironmentConfig } from '../../config/environment';
 import {
@@ -22,6 +23,7 @@ import { resolveHomeMenuIcon } from './homeMenuIcons';
 
 export function HomeScreen() {
   const { user } = useAuth();
+  const gaName = resolveDisplayGaName(user?.gaName, user?.gaCode, user?.username);
   const router = useRouter();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -47,7 +49,7 @@ export function HomeScreen() {
               <AppText variant="caption">
                 {isSuperAdmin
                   ? '플랫폼 관리자 · SUPER_ADMIN'
-                  : `${user?.gaName || user?.gaCode || 'ONE FC'} · ${user?.role || 'USER'}`}
+                  : `${gaName || user?.gaCode || 'ONE FC'} · ${user?.role || 'USER'}`}
               </AppText>
             </Stack>
           </Card>

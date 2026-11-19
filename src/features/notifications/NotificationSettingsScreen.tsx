@@ -227,7 +227,7 @@ export function NotificationSettingsScreen() {
               {osPermissionGranted == null
                 ? '권한 상태를 확인하는 중…'
                 : osPermissionGranted
-                  ? 'Android 알림 권한이 허용되어 있습니다.'
+                  ? '기기 알림 권한이 허용되어 있습니다.'
                   : '기기 알림이 꺼져 있습니다. 앱 설정을 켜도 Push가 오지 않을 수 있습니다.'}
             </AppText>
             {osPermissionGranted === false ? (

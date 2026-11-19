@@ -1,3 +1,5 @@
+import { resolveDisplayGaName } from '../../navigation/gaTenantLabel';
+
 const ROLE_LABELS: Record<string, string> = {
   USER: '설계사',
   GA_ADMIN: 'GA 관리자',
@@ -14,6 +16,7 @@ export function formatProfileRole(role: string): string {
 export function formatProfileOrganization(
   gaName?: string | null,
   gaCode?: string | null,
+  username?: string | null,
 ): string {
-  return gaName?.trim() || gaCode?.trim() || '소속 정보 없음';
+  return resolveDisplayGaName(gaName, gaCode, username) || gaCode?.trim() || '소속 정보 없음';
 }

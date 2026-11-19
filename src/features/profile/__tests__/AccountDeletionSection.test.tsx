@@ -38,8 +38,8 @@ test('submits once, locks pending actions and completes only after API success',
   expect(request).toHaveBeenCalledTimes(1);
   expect(deleted).not.toHaveBeenCalled();
   expect(ui.getByRole('button', { name: '취소' })).toBeDisabled();
-  await act(async () => resolve({ ok: true, message: '접수 완료' }));
-  await waitFor(() => expect(deleted).toHaveBeenCalledWith('접수 완료'));
+  await act(async () => resolve({ ok: true, message: '계정 삭제 요청이 접수되었습니다. 이용해 주셔서 감사합니다.' }));
+  await waitFor(() => expect(deleted).toHaveBeenCalledWith());
   expect(ui.queryByLabelText('확인 문구')).toBeNull();
 });
 

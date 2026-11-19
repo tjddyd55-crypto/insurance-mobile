@@ -1,5 +1,6 @@
 export const RELEASE_VERSION_NAME = '1.0.7';
-export const RELEASE_STORE_BUILD_NUMBER = 17;
+export const RELEASE_ANDROID_VERSION_CODE = 17;
+export const RELEASE_IOS_BUILD_NUMBER = 18;
 
 export const PRODUCTION_APP_IDENTITY = {
   displayName: 'ONE FC',
