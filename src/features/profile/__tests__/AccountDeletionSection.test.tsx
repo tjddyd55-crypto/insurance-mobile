@@ -43,6 +43,18 @@ test('submits once, locks pending actions and completes only after API success',
   expect(ui.queryByLabelText('확인 문구')).toBeNull();
 });
 
+test('accepts a lowercase English confirmation phrase with surrounding spaces', async () => {
+  request.mockResolvedValue({ ok: true, message: '계정 삭제 요청이 접수되었습니다.' });
+  const ui = screen();
+  fireEvent.press(ui.getByRole('button', { name: '회원탈퇴' }));
+  fireEvent.changeText(ui.getByLabelText('확인 문구'), ' delete ');
+  const submit = ui.getByRole('button', { name: '계정 삭제 요청' });
+  expect(submit).toBeEnabled();
+  fireEvent.press(submit);
+  expect(request).toHaveBeenCalledWith('token');
+  await waitFor(() => expect(deleted).toHaveBeenCalledTimes(1));
+});
+
 test('keeps the form and session on a failed deletion', async () => {
   request.mockRejectedValue(new Error('서버 응답 오류'));
   const ui = screen();
