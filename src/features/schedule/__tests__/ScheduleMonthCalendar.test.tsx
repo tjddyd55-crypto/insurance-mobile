@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fireEvent, render, within } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { PixelRatio, StyleSheet } from 'react-native';
 
 import { DesignSystemProvider, getTheme } from '../../../design-system';
 import { ScheduleMonthCalendar } from '../ScheduleMonthCalendar';
@@ -12,13 +12,13 @@ const data = normalizeScheduleEvents({ events: Array.from({ length: 5 }, (_, id)
 })), tasks: [] });
 const days = groupMonthItems(data, '2026-11-01');
 
-function calendar(month = '2026-11-01', viewportHeight = 700, mode: 'light' | 'dark' = 'light') {
+function calendar(month = '2026-11-01', viewportHeight = 700, mode: 'light' | 'dark' = 'light', calendarDays = days) {
   const onSelect = jest.fn();
   const onOpen = jest.fn();
   function Host() {
     const [selected, setSelected] = useState('2026-11-13');
     return <DesignSystemProvider initialMode={mode}>
-      <ScheduleMonthCalendar month={month} selected={selected} today="2026-11-09" viewportHeight={viewportHeight} days={days}
+      <ScheduleMonthCalendar month={month} selected={selected} today="2026-11-09" viewportHeight={viewportHeight} days={calendarDays}
         onSelectDate={(date) => { setSelected(date); onSelect(date); }} onOpenItem={onOpen} />
     </DesignSystemProvider>;
   }
@@ -44,6 +44,29 @@ describe('native month calendar', () => {
     fireEvent.press(cell.getByRole('button', { name: '11월 13일 (금), 고객 상담 0, 상세 보기' }));
     expect(ui.onOpen).toHaveBeenCalledWith(data.events[0], '2026-11-13');
     expect(ui.onSelect).not.toHaveBeenCalled();
+  });
+
+  it('clips long titles in a top-aligned two-line chip without an ellipsis', () => {
+    const title = '김하늘(데모) · 정기 보장 점검 추가 확인 항목';
+    const month = '2026-11-01';
+    const events = normalizeScheduleEvents({
+      events: [{ id: 'long-title', title, allDay: true, startAt: '2026-11-13', endAt: '2026-11-14' }],
+      tasks: [],
+    });
+    const ui = calendar(month, 700, 'light', groupMonthItems(events, month));
+    const chip = ui.getByRole('button', { name: `11월 13일 (금), ${title}, 상세 보기` });
+    const titleText = within(chip).getByText(title);
+    const theme = getTheme('light');
+
+    expect(titleText.props.numberOfLines).toBeUndefined();
+    expect(titleText.props.ellipsizeMode).toBeUndefined();
+    expect(titleText.props.children).toBe(title);
+    expect(titleText.props.children).not.toMatch(/…|\.\.\./);
+    expect(StyleSheet.flatten(chip.props.style)).toMatchObject({
+      height: theme.typography.caption.lineHeight * PixelRatio.getFontScale() * 2 + theme.spacing.xxs,
+      justifyContent: 'flex-start',
+      overflow: 'hidden',
+    });
   });
 
   it.each(['light', 'dark'] as const)('uses semantic Sunday/Saturday and today colors in %s mode', (mode) => {
