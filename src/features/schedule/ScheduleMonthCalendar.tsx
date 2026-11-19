@@ -30,10 +30,10 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
   const weeks = useMemo(() => monthGrid(month), [month]);
   const captionHeight = theme.typography.caption.lineHeight * fontScale;
   const dateHeight = theme.typography.body.lineHeight * fontScale + theme.spacing.xs;
-  const chipMinHeight = captionHeight + theme.spacing.xxs;
-  // Titles wrap naturally inside the narrow seven-column cell. The page scrolls instead
-  // of truncating event names with ellipsis just to keep a fixed row height.
-  const minimumHeight = dateHeight + chipMinHeight * 2 + captionHeight + theme.spacing.sm;
+  // Match the home widget by clipping titles after two lines without an ellipsis
+  // on both iOS and Android.
+  const chipHeight = captionHeight * 2 + theme.spacing.xxs;
+  const minimumHeight = dateHeight + chipHeight * 2 + captionHeight + theme.spacing.sm;
   const reservedHeight = theme.controlSize.minimumTouchTarget + theme.spacing.xl + theme.spacing.lg * 2;
   const weekHeight = Math.max(minimumHeight, Math.min(
     minimumHeight + theme.spacing.xl,
@@ -80,7 +80,7 @@ export const ScheduleMonthCalendar = memo(function ScheduleMonthCalendar({
                       key={item.id}
                       accessibilityRole="button"
                       accessibilityLabel={`${formatDayTitle(cell.ymd)}, ${item.title}, 상세 보기`}
-                      style={({ pressed }) => [styles.chip, { minHeight: chipMinHeight, backgroundColor: color.background, borderColor: color.border, opacity: color.opacity * (pressed ? theme.opacity.pressed : 1) }]}
+                      style={({ pressed }) => [styles.chip, { height: chipHeight, backgroundColor: color.background, borderColor: color.border, opacity: color.opacity * (pressed ? theme.opacity.pressed : 1) }]}
                       onPress={() => onOpenItem(item, cell.ymd)}
                     >
                       <AppText variant="caption" style={{ color: color.foreground, textDecorationLine: color.textDecorationLine }}>{item.title}</AppText>
@@ -116,7 +116,7 @@ function createStyles(theme: AppTheme) {
     previews: { gap: theme.spacing.xxs },
     // Dense seven-column preview exception: compact chips have equivalent full-size
     // targets in the selected day's list. The date target covers the entire cell.
-    chip: { borderLeftWidth: theme.spacing.xxs, borderRadius: theme.radius.xs, paddingHorizontal: theme.spacing.xxs, justifyContent: 'center' },
+    chip: { borderLeftWidth: theme.spacing.xxs, borderRadius: theme.radius.xs, paddingHorizontal: theme.spacing.xxs, justifyContent: 'flex-start', overflow: 'hidden' },
     more: { paddingHorizontal: theme.spacing.xxs },
   });
 }
