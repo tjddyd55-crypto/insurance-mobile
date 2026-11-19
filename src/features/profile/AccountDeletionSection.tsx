@@ -13,7 +13,7 @@ export function AccountDeletionSection({ token, onDeleted }: Props) {
   const [busy, setBusy] = useState(false);
   const [discard, setDiscard] = useState(false);
   const submitting = useRef(false);
-  const valid = ['삭제', '계정삭제'].includes(phrase.trim());
+  const valid = ['삭제', '계정삭제', 'DELETE'].includes(phrase.trim().toUpperCase());
   const close = () => { setOpen(false); setPhrase(''); setError(''); setDiscard(false); };
   const requestClose = () => {
     if (submitting.current) return;
@@ -50,7 +50,8 @@ export function AccountDeletionSection({ token, onDeleted }: Props) {
       </Inline>}>
       <Stack gap="md">
         <AppText>계정과 저장된 고객·상담·파일 등 데이터가 삭제되며, 이 계정으로 더 이상 로그인할 수 없습니다. 정말 탈퇴하시겠습니까?</AppText>
-        <TextField label="확인 문구" value={phrase} editable={!busy} placeholder="삭제 또는 계정삭제"
+        <TextField label="확인 문구" value={phrase} editable={!busy} placeholder="삭제 또는 DELETE"
+          helperText="'삭제' 또는 'DELETE'를 입력하세요"
           onChangeText={(value) => { setPhrase(value); setError(''); }} />
         {error ? <AppText color="danger" accessibilityRole="alert">{error}</AppText> : null}
       </Stack>
