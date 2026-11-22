@@ -3,6 +3,7 @@ import { usePathname, useRouter } from 'expo-router';
 
 import { useAuth } from '../auth/AuthProvider';
 import { LoadingState } from '../components/LoadingState';
+import { isIosCouponUiHidden, MANAGED_ACCESS_MESSAGE } from '../features/billing/iosBillingUiPolicy';
 import { isExpiredNativePathAllowed } from './nativeMenuPolicy';
 
 export function SubscriptionAccessGate({ children }: { children: ReactNode }) {
@@ -19,7 +20,7 @@ export function SubscriptionAccessGate({ children }: { children: ReactNode }) {
   }, [allowed, expired, router]);
 
   if (expired && !allowed) {
-    return <LoadingState message="이용 상태를 확인하는 중…" />;
+    return <LoadingState message={isIosCouponUiHidden() ? MANAGED_ACCESS_MESSAGE : '이용 상태를 확인하는 중…'} />;
   }
   return <>{children}</>;
 }

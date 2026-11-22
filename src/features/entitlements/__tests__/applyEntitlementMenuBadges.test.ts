@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { applyEntitlementMenuBadges } from '../applyEntitlementMenuBadges';
 import { FEATURE_KEYS } from '../featureEntitlementPolicy';
 import type { NativeMenuLink, NativeMenuSection } from '../../../navigation/menuConfig';
@@ -17,7 +18,13 @@ function section(children: NativeMenuLink[]): NativeMenuSection[] {
 }
 
 describe('applyEntitlementMenuBadges', () => {
-  it('adds paid badge for blocked features', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([
+    ['android', '유료'],
+    ['ios', '이용 제한'],
+  ] as const)('adds the %s badge for blocked features', (platform, badge) => {
+    jest.replaceProperty(Platform, 'OS', platform);
     const [result] = applyEntitlementMenuBadges(
       section([
         {
@@ -33,7 +40,7 @@ describe('applyEntitlementMenuBadges', () => {
       FREE_GENERAL,
     );
     const link = result.children[0] as EntitlementMenuLink | undefined;
-    expect(link?.badge).toBe('유료');
+    expect(link?.badge).toBe(badge);
     expect(link?.entitlementBlocked).toBe(true);
     expect(link?.featureKey).toBe(FEATURE_KEYS.CUSTOMERS);
   });

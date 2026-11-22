@@ -19,6 +19,8 @@ import {
 } from '../../design-system';
 import { useNativeMenu } from '../../navigation/useNativeMenu';
 import { useRootBackExit } from '../../navigation/useRootBackExit';
+import { isIosCouponUiHidden } from '../billing/iosBillingUiPolicy';
+import { resolveEntitlementMenuNavigationPath } from '../entitlements/featureEntitlementGuard';
 import { resolveHomeMenuIcon } from './homeMenuIcons';
 
 export function HomeScreen() {
@@ -71,13 +73,16 @@ export function HomeScreen() {
               <View style={styles.grid}>
                 {section.children.map((item) => {
                   const disabled = item.disabled || item.mode === 'DISABLED';
+                  const target = isIosCouponUiHidden() && item.entitlementReason === 'paid_required'
+                    ? resolveEntitlementMenuNavigationPath(item)
+                    : item.nativePath;
                   return (
                     <Pressable
                       key={item.id}
                       accessibilityRole="button"
                       accessibilityState={{ disabled }}
                       disabled={disabled}
-                      onPress={() => router.push(item.nativePath as '/customers')}
+                      onPress={() => router.push(target as '/customers')}
                       style={({ pressed }) => [
                         styles.menuCard,
                         pressed && styles.pressed,

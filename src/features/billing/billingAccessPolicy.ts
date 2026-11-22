@@ -1,3 +1,5 @@
+import { isHiddenIosBillingPath } from './iosBillingUiPolicy';
+
 type BillingVisibilityUser = {
   username?: string | null;
   gaCode?: string | null;
@@ -53,6 +55,7 @@ export function isBillingUiVisibleForUser(
 const BILLING_ALLOWED_NATIVE_PATHS = ['/billing', '/profile', '/feature-request'] as const;
 
 export function isBillingAllowedNativePath(pathname: string): boolean {
+  if (isHiddenIosBillingPath(pathname)) return false;
   return BILLING_ALLOWED_NATIVE_PATHS.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
