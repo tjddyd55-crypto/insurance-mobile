@@ -1,4 +1,5 @@
-import type { NativeMenuLink, NativeMenuSection } from '../../navigation/menuConfig';
+import type { NativeMenuSection } from '../../navigation/menuConfig';
+import { isIosCouponUiHidden } from '../billing/iosBillingUiPolicy';
 import {
   evaluateFeatureAccess,
   formatFeatureAccessBadge,
@@ -34,7 +35,10 @@ export function applyEntitlementMenuBadges(
       if (verdict.allowed) {
         return child;
       }
-      const badge = formatFeatureAccessBadge(verdict.badges);
+      const badges = isIosCouponUiHidden()
+        ? verdict.badges.map((badge) => badge === '유료' ? '이용 제한' : badge)
+        : verdict.badges;
+      const badge = formatFeatureAccessBadge(badges);
       if (!badge) {
         return child;
       }
@@ -44,10 +48,6 @@ export function applyEntitlementMenuBadges(
         entitlementBlocked: true,
         entitlementReason: verdict.reason,
         featureKey,
-      } as NativeMenuLink & {
-        entitlementBlocked?: boolean;
-        entitlementReason?: 'paid_required' | 'ga_required' | null;
-        featureKey?: string;
       };
     }),
   }));

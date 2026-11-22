@@ -6,6 +6,7 @@ import {
   isInsuranceBillingEnabled,
 } from '../billing/billingAccessPolicy';
 import { hasActiveBillingEntitlement } from '../billing/billingEntitlement';
+import { isIosCouponUiHidden, MANAGED_ACCESS_PROFILE_PATH } from '../billing/iosBillingUiPolicy';
 import {
   evaluateFeatureAccess,
   isGaMemberUser,
@@ -60,20 +61,15 @@ export function evaluateRouteFeatureAccess(
   };
 }
 
-type EntitlementMenuLink = NativeMenuLink & {
-  entitlementBlocked?: boolean;
-  entitlementReason?: 'paid_required' | 'ga_required' | null;
-};
-
 export function resolveEntitlementMenuNavigationPath(
-  item: EntitlementMenuLink,
+  item: NativeMenuLink,
   _billingSummary?: CheckoutSummary | null,
 ): string {
   if (!item.entitlementBlocked) {
     return item.nativePath;
   }
   if (item.entitlementReason === 'paid_required') {
-    return '/billing';
+    return isIosCouponUiHidden() ? MANAGED_ACCESS_PROFILE_PATH : '/billing';
   }
   if (item.entitlementReason === 'ga_required') {
     return `/public-account-restricted?from=${encodeURIComponent(item.nativePath)}`;

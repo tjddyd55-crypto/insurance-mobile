@@ -3,6 +3,7 @@ import {
   isInsuranceBillingAccessEnforced,
   isInsuranceBillingEnabled,
 } from '../features/billing/billingAccessPolicy';
+import { isHiddenIosBillingPath } from '../features/billing/iosBillingUiPolicy';
 import { applyEntitlementMenuBadges } from '../features/entitlements/applyEntitlementMenuBadges';
 import { isGaMemberUser } from '../features/entitlements/featureEntitlementPolicy';
 import {
@@ -36,6 +37,7 @@ const PUBLIC_ACCOUNT_GA_ONLY_PREFIXES = [
 const NATIVE_CRM_MENU_ROLES = new Set<AuthUser['role']>(['USER']);
 
 export function isExpiredNativePathAllowed(pathname: string): boolean {
+  if (isHiddenIosBillingPath(pathname)) return false;
   return EXPIRED_ALLOWED_NATIVE_PATHS.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
@@ -44,7 +46,9 @@ export function isExpiredNativePathAllowed(pathname: string): boolean {
 function cloneUserMenu(): NativeMenuSection[] {
   return USER_APP_MENU.map((section) => ({
     ...section,
-    children: section.children.map((child) => ({ ...child })),
+    children: section.children
+      .filter((child) => !isHiddenIosBillingPath(child.nativePath))
+      .map((child) => ({ ...child })),
   }));
 }
 
@@ -179,10 +183,8 @@ export function buildNativeMenuForSession(
     capabilities.dynamicNewsletterBoards,
   );
   const withTeamOwner = injectTeamOwnerMenu(withNewsletter, capabilities.isTeamOwner);
-  // The legacy billing route now offers coupons only, including during free launch.
-  const withBillingPolicy = withTeamOwner;
   const withExpiredPolicy = applyExpiredPolicy(
-    withBillingPolicy,
+    withTeamOwner,
     user.subscription?.effectiveStatus === 'EXPIRED',
   );
   const withEntitlement = applyEntitlementPolicy(withExpiredPolicy, user, capabilities);

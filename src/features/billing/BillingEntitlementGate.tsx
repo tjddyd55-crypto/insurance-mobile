@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { resolveAppEnvironment } from '../../config/environment';
+import { LoadingState } from '../../components/LoadingState';
 import {
   isBillingAllowedNativePath,
   isBillingUiVisibleForUser,
@@ -16,6 +17,7 @@ import {
   evaluateRouteFeatureAccess,
 } from '../entitlements/featureEntitlementGuard';
 import { resolveBillingStartupAccess } from './billingStartupAccess';
+import { isIosCouponUiHidden, MANAGED_ACCESS_MESSAGE, MANAGED_ACCESS_PROFILE_PATH } from './iosBillingUiPolicy';
 
 export function BillingEntitlementGate({ children }: { children: ReactNode }) {
   const { token, user } = useAuth();
@@ -51,11 +53,15 @@ export function BillingEntitlementGate({ children }: { children: ReactNode }) {
       environment,
     });
 
+  const hideCouponUi = isIosCouponUiHidden();
   useEffect(() => {
     if (access === 'redirect_billing') {
-      router.replace('/billing');
+      router.replace(hideCouponUi ? MANAGED_ACCESS_PROFILE_PATH : '/billing');
     }
-  }, [access, router]);
+  }, [access, hideCouponUi, router]);
 
+  if (hideCouponUi && access === 'redirect_billing') {
+    return <LoadingState message={MANAGED_ACCESS_MESSAGE} />;
+  }
   return <>{children}</>;
 }

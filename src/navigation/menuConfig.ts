@@ -29,6 +29,8 @@ export type NativeMenuLink = {
   roles: UserRole[];
   disabled?: boolean;
   badge?: string;
+  entitlementBlocked?: boolean;
+  entitlementReason?: 'paid_required' | 'ga_required' | null;
 };
 
 export type NativeMenuSection = {

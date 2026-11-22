@@ -1,4 +1,7 @@
+import { Platform } from 'react-native';
 import type { AuthUser, UserRole } from '../../api/authApi';
+import { isBillingAllowedNativePath } from '../../features/billing/billingAccessPolicy';
+import { resolveEntitlementMenuNavigationPath } from '../../features/entitlements/featureEntitlementGuard';
 import {
   buildNativeMenuForSession,
   isExpiredNativePathAllowed,
@@ -44,9 +47,12 @@ describe('native session menu policy', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
+    jest.replaceProperty(Platform, 'OS', 'android');
     process.env.EXPO_PUBLIC_FREE_LAUNCH_HIDE_BILLING_UI = 'false';
     process.env.EXPO_PUBLIC_BILLING_REVIEW_ACCESS_ENABLED = 'true';
   });
+
+  afterEach(() => jest.restoreAllMocks());
 
   afterAll(() => {
     process.env = originalEnv;
@@ -180,6 +186,23 @@ describe('native session menu policy', () => {
       username: 'google_review',
       gaCode: '',
     }), capabilities))).toContain('쿠폰 적용');
+  });
+
+  test.each(['ios', 'android'] as const)('applies coupon and locked-menu policy on %s', (platform) => {
+    jest.replaceProperty(Platform, 'OS', platform);
+    process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENABLED = 'true';
+    process.env.EXPO_PUBLIC_INSURANCE_BILLING_ENFORCE_ACCESS = 'true';
+    const menu = buildNativeMenuForSession(user({ username: 'apple_review', gaCode: '' }), capabilities);
+    const links = menu.flatMap((section) => section.children);
+    const coupon = links.find((link) => link.id === 'billing');
+    const customers = links.find((link) => link.id === 'customer-list')!;
+    const android = platform === 'android';
+
+    expect(coupon?.label).toBe(android ? '쿠폰 적용' : undefined);
+    expect(customers.badge).toBe(android ? '유료' : '이용 제한');
+    expect(resolveEntitlementMenuNavigationPath(customers)).toBe(android ? '/billing' : '/profile?access=managed');
+    expect(isExpiredNativePathAllowed('/billing')).toBe(android);
+    expect(isBillingAllowedNativePath('/billing')).toBe(android);
   });
 
   test('does not show paid badges for ACTIVE_GENERAL users', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../auth/AuthProvider';
@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { getEnvironmentConfig } from '../../config/environment';
+import { isIosCouponUiHidden, MANAGED_ACCESS_MESSAGE } from '../billing/iosBillingUiPolicy';
 import {
   AppText,
   Badge,
@@ -36,6 +37,10 @@ import { GOOGLE_INTEGRATION_COPY, GoogleIntegrationSection } from './GoogleInteg
 export function ProfileScreen() {
   const { token, user, updateUser, logout } = useAuth();
   const router = useRouter();
+  const { access } = useLocalSearchParams<{ access?: string }>();
+  const hideCouponUi = isIosCouponUiHidden();
+  const showManagedAccess = hideCouponUi
+    && (access === 'managed' || user?.subscription?.effectiveStatus === 'EXPIRED');
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -128,6 +133,7 @@ export function ProfileScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
         >
+          {showManagedAccess ? <AppText>{MANAGED_ACCESS_MESSAGE}</AppText> : null}
           <Card variant="elevated" padding="md">
             <Stack gap="sm">
               <Inline justify="space-between" align="flex-start">
@@ -236,7 +242,10 @@ export function ProfileScreen() {
             />
           </Card>
 
-          <SectionTitle title="서비스 관리" description="저장공간, 쿠폰, 문의 내역으로 이동합니다." />
+          <SectionTitle
+            title="서비스 관리"
+            description={hideCouponUi ? '저장공간, 문의 내역으로 이동합니다.' : '저장공간, 쿠폰, 문의 내역으로 이동합니다.'}
+          />
           <Card variant="outlined">
             <Stack gap="sm">
               <Button
@@ -245,12 +254,14 @@ export function ProfileScreen() {
                 fullWidth
                 onPress={() => router.push('/storage')}
               />
-              <Button
-                label="쿠폰 적용"
-                variant="secondary"
-                fullWidth
-                onPress={() => router.push('/billing')}
-              />
+              {hideCouponUi ? null : (
+                <Button
+                  label="쿠폰 적용"
+                  variant="secondary"
+                  fullWidth
+                  onPress={() => router.push('/billing')}
+                />
+              )}
               <Button
                 label="문의요청"
                 variant="secondary"

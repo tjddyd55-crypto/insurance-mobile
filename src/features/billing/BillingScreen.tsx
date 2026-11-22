@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
+import { Redirect } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../auth/AuthProvider';
 import { AppHeader } from '../../components/AppHeader';
@@ -7,9 +8,13 @@ import { AppText, Button, Card, Screen, Stack, TextField } from '../../design-sy
 import { billingCheckoutSummaryQueryKey, getCheckoutSummary } from './billingApi';
 import { redeemNativeCoupon } from './redeemNativeCoupon';
 import { formatBillingDate } from './billingModel';
+import { isIosCouponUiHidden } from './iosBillingUiPolicy';
 
-/** Legacy billing deep links expose coupons only on both platforms. */
 export function BillingScreen() {
+  return isIosCouponUiHidden() ? <Redirect href="/profile" /> : <CouponForm />;
+}
+
+function CouponForm() {
   const { token } = useAuth();
   const client = useQueryClient();
   const [code, setCode] = useState('');
