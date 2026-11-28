@@ -5,6 +5,7 @@ export type HomeMenuIconName = SFSymbol | { ios: SFSymbol; android: AndroidSymbo
 const MENU_ICON_BY_ID: Partial<Record<string, HomeMenuIconName>> = {
   'ta-call': { ios: 'phone.fill', android: 'call' },
   todos: { ios: 'checklist', android: 'checklist' },
+  'education-schedule': { ios: 'calendar', android: 'calendar_month' },
   memo: { ios: 'note.text', android: 'note' },
   notifications: { ios: 'bell.fill', android: 'notifications' },
   'customer-list': { ios: 'person.2.fill', android: 'groups' },

@@ -35,7 +35,8 @@ describe('menuConfig', () => {
 
   it('filters by role', () => {
     expect(filterMenuForRole(USER_APP_MENU, 'USER').length).toBeGreaterThan(0);
-    expect(filterMenuForRole(USER_APP_MENU, 'GA_ADMIN')).toEqual([]);
+    const adminLinks = filterMenuForRole(USER_APP_MENU, 'GA_ADMIN').flatMap((section) => section.children);
+    expect(adminLinks.map((item) => item.nativePath)).toEqual(['/education-schedule']);
   });
 
   it('maps native paths and keeps legacyWebPath', () => {

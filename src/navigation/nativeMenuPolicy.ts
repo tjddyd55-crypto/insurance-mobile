@@ -13,7 +13,9 @@ import {
   type DynamicNewsletterBoardMenuItem,
 } from '../features/newsletters/newsletterBoardMenu';
 import {
+  EDUCATION_SCHEDULE_ROLES,
   USER_APP_MENU,
+  filterMenuForRole,
   withoutHiddenContactsMenu,
   type NativeMenuLink,
   type NativeMenuSection,
@@ -34,7 +36,6 @@ const PUBLIC_ACCOUNT_GA_ONLY_PREFIXES = [
   '/portal/newsletters',
   '/portal/adjuster-news',
 ] as const;
-const NATIVE_CRM_MENU_ROLES = new Set<AuthUser['role']>(['USER']);
 
 export function isExpiredNativePathAllowed(pathname: string): boolean {
   if (isHiddenIosBillingPath(pathname)) return false;
@@ -43,17 +44,22 @@ export function isExpiredNativePathAllowed(pathname: string): boolean {
   );
 }
 
-function cloneUserMenu(): NativeMenuSection[] {
-  return USER_APP_MENU.map((section) => ({
+function sessionMenu(user: AuthUser): NativeMenuSection[] {
+  return filterMenuForRole(USER_APP_MENU, user.role).map((section) => ({
     ...section,
     children: section.children
       .filter((child) => !isHiddenIosBillingPath(child.nativePath))
+      .filter((child) => child.id !== 'education-schedule' || canAccessNativeEducationSchedule(user))
       .map((child) => ({ ...child })),
   }));
 }
 
 export function isPublicGeneralAccount(user: AuthUser): boolean {
   return !isGaMemberUser(user);
+}
+
+export function canAccessNativeEducationSchedule(user: AuthUser | null | undefined): boolean {
+  return Boolean(user && EDUCATION_SCHEDULE_ROLES.includes(user.role) && !isPublicGeneralAccount(user));
 }
 
 export function isPublicAccountGaOnlyPath(path: string): boolean {
@@ -176,10 +182,12 @@ export function buildNativeMenuForSession(
   user: AuthUser | null | undefined,
   capabilities: NativeMenuCapabilities,
 ): NativeMenuSection[] {
-  if (!user || !NATIVE_CRM_MENU_ROLES.has(user.role)) return [];
+  if (!user) return [];
+  // Keep the CRM menu limited to USER. GA operators only get the education link.
+  if (user.role !== 'USER' && !canAccessNativeEducationSchedule(user)) return [];
 
   const withNewsletter = applyNewsletterPolicy(
-    cloneUserMenu(),
+    sessionMenu(user),
     capabilities.dynamicNewsletterBoards,
   );
   const withTeamOwner = injectTeamOwnerMenu(withNewsletter, capabilities.isTeamOwner);
