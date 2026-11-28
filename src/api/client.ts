@@ -2,7 +2,7 @@
  * API client — Native port of insurance `src/lib/apiClient.ts` behavior.
  * - Absolute API host + `/api/...` paths (server mounts both `/api` and `/backend`)
  * - Bearer token
- * - JSON
+ * - JSON and multipart FormData
  * - response unwrap (safeApiResponse)
  * - ApiError normalize
  * - timeout + network error
@@ -155,6 +155,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const { token, headers, timeoutMs = DEFAULT_TIMEOUT_MS, ...rest } = options;
   const bearer = typeof token === 'string' && token.trim() ? `Bearer ${token.trim()}` : '';
   const resolvedUrl = resolveApiUrl(path);
+  const multipart = typeof FormData !== 'undefined' && rest.body instanceof FormData;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -165,7 +166,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       ...rest,
       signal: rest.signal ?? controller.signal,
       headers: {
-        'Content-Type': 'application/json',
+        ...(multipart ? {} : { 'Content-Type': 'application/json' }),
         // 접속 채널/기기 telemetry (인증·권한과 무관). 로그인·/api/me 포함 모든 요청에 동일하게 붙는다.
         ...getClientContextHeaders(),
         ...(bearer ? { Authorization: bearer } : {}),
@@ -173,10 +174,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      if (rest.signal?.aborted) {
-        throw error;
-      }
+    const aborted = error instanceof Error && error.name === 'AbortError';
+    if (aborted && rest.signal?.aborted) throw error;
+    if (aborted || (!rest.signal && controller.signal.aborted)) {
       throw new ApiError('요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.', 0);
     }
     throw new ApiError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.', 0);

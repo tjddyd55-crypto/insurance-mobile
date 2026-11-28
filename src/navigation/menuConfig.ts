@@ -82,6 +82,7 @@ export const USER_MENU_FEATURE_FLAGS = {
 } as const;
 
 const USER_ROLES: UserRole[] = ['USER'];
+export const EDUCATION_SCHEDULE_ROLES: UserRole[] = ['USER', 'GA_ADMIN', 'GA_STAFF'];
 
 function link(
   partial: Omit<NativeMenuLink, 'type' | 'roles'> & { roles?: UserRole[] },
@@ -105,7 +106,7 @@ export const USER_APP_MENU: NativeMenuSection[] = [
     type: 'section',
     id: 'tasks-alerts',
     label: '할일 및 알림',
-    roles: USER_ROLES,
+    roles: EDUCATION_SCHEDULE_ROLES,
     children: [
       link({
         id: 'ta-call',
@@ -127,6 +128,14 @@ export const USER_APP_MENU: NativeMenuSection[] = [
         legacyWebPath: '/schedule',
         nativePath: '/schedule',
         mode: 'NATIVE',
+      }),
+      link({
+        id: 'education-schedule',
+        label: '교육일정',
+        legacyWebPath: '/education-schedule',
+        nativePath: '/education-schedule',
+        mode: 'NATIVE',
+        roles: EDUCATION_SCHEDULE_ROLES,
       }),
       link({
         id: 'memo',

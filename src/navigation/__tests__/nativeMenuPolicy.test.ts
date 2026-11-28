@@ -4,6 +4,7 @@ import { isBillingAllowedNativePath } from '../../features/billing/billingAccess
 import { resolveEntitlementMenuNavigationPath } from '../../features/entitlements/featureEntitlementGuard';
 import {
   buildNativeMenuForSession,
+  canAccessNativeEducationSchedule,
   isExpiredNativePathAllowed,
   isPublicAccountGaOnlyPath,
   type NativeMenuCapabilities,
@@ -71,7 +72,7 @@ describe('native session menu policy', () => {
       '내정보',
     ]);
     expect(labels(menu)).toEqual([
-      '오늘의 TA', '할일', '일정 관리', '메모', '알림',
+      '오늘의 TA', '할일', '일정 관리', '교육일정', '메모', '알림',
       '고객리스트', '고객 지도', '카드 수납', '고객소식지', '청구관리',
       '내 바인더', '시뮬레이션',
       '원수사소식지', '손해사정사 소식지',
@@ -83,8 +84,6 @@ describe('native session menu policy', () => {
   });
 
   test.each<UserRole>([
-    'GA_ADMIN',
-    'GA_STAFF',
     'INSURER_MANAGER',
     'LOSS_ADJUSTER',
   ])('does not expose unsupported Web-only routes to %s', (role) => {
@@ -98,6 +97,19 @@ describe('native session menu policy', () => {
     });
 
     expect(menu).toEqual([]);
+    expect(canAccessNativeEducationSchedule(user({ role: 'SUPER_ADMIN' }))).toBe(false);
+  });
+
+  test.each<UserRole>(['GA_ADMIN', 'GA_STAFF'])('exposes only education schedule to %s', (role) => {
+    const menu = buildNativeMenuForSession(user({ role }), { ...capabilities, isTeamOwner: true });
+    expect(labels(menu)).toEqual(['교육일정']);
+    expect(menu[0].children[0]).toMatchObject({ nativePath: '/education-schedule', mode: 'NATIVE' });
+  });
+
+  test('excludes education schedule for a public USER', () => {
+    const publicUser = user({ gaCode: 'GENERAL', gaName: '공용' });
+    expect(canAccessNativeEducationSchedule(publicUser)).toBe(false);
+    expect(labels(buildNativeMenuForSession(publicUser, capabilities))).not.toContain('교육일정');
   });
 
   test('injects team management only for the team owner', () => {
@@ -106,7 +118,7 @@ describe('native session menu policy', () => {
       ...capabilities,
       isTeamOwner: true,
     });
-    expect(labels(ownerMenu).slice(17, 21)).toEqual([
+    expect(ownerMenu.find((section) => section.id === 'team')?.children.map((item) => item.label)).toEqual([
       '팀원리스트',
       '팀 게시판',
       '팀 자료',
@@ -175,7 +187,7 @@ describe('native session menu policy', () => {
         },
       }), capabilities);
       expect(menu).toHaveLength(8);
-      expect(labels(menu)).toHaveLength(27);
+      expect(labels(menu)).toHaveLength(28);
     },
   );
 
